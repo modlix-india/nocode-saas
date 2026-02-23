@@ -15,7 +15,9 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 
@@ -394,5 +396,185 @@ class AuthenticationIntegrationTest extends AbstractIntegrationTest {
 		assertThat(secondResponse.getAccessToken()).isNotBlank();
 		assertThat(firstResponse.getAccessTokenExpiryAt()).isNotNull();
 		assertThat(secondResponse.getAccessTokenExpiryAt()).isNotNull();
+	}
+
+	@Test
+	@Order(11)
+	void authenticate_DeletedUser_Returns403() {
+
+		String ts = String.valueOf(System.currentTimeMillis());
+		String userName = "deltest_" + ts;
+
+		// Create a user and set status to DELETED
+		insertTestUser(businessClientId, userName, "deltest_" + ts + "@test.com", "testpass123")
+				.flatMap(userId -> databaseClient.sql(
+						"UPDATE security_user SET STATUS_CODE = 'DELETED' WHERE ID = :userId")
+						.bind("userId", userId.longValue())
+						.then())
+				.block();
+
+		AuthenticationRequest request = new AuthenticationRequest()
+				.setUserName(userName)
+				.setPassword("testpass123");
+
+		webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("clientCode", "TESTBUS1")
+				.header("appCode", BUSINESS_APP_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().isForbidden();
+	}
+
+	@Test
+	@Order(12)
+	void authenticate_WithEmail_ReturnsToken() {
+
+		// Authenticate using email address instead of username
+		AuthenticationRequest request = new AuthenticationRequest()
+				.setUserName("testuser@test.com")
+				.setPassword("testpass123")
+				.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
+
+		webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("clientCode", "TESTBUS1")
+				.header("appCode", BUSINESS_APP_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody(AuthenticationResponse.class)
+				.value(response -> {
+					assertThat(response).isNotNull();
+					assertThat(response.getAccessToken()).isNotBlank();
+					assertThat(response.getUser()).isNotNull();
+					assertThat(response.getUser().getEmailId()).isEqualTo("testuser@test.com");
+				});
+	}
+
+	@Test
+	@Order(13)
+	void authenticate_MissingClientCodeHeader_Returns5xx() {
+
+		AuthenticationRequest request = new AuthenticationRequest()
+				.setUserName(SYSADMIN_USERNAME)
+				.setPassword(SYSADMIN_PASSWORD);
+
+		webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().is5xxServerError();
+	}
+
+	@Test
+	@Order(15)
+	void contextAuthentication_WithValidToken_ReturnsContext() {
+
+		AuthenticationRequest authRequest = new AuthenticationRequest()
+				.setUserName(SYSADMIN_USERNAME)
+				.setPassword(SYSADMIN_PASSWORD);
+
+		AuthenticationResponse authResponse = webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("clientCode", SYSTEM_CLIENT_CODE)
+				.header("appCode", SYSTEM_APP_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(authRequest)
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody(AuthenticationResponse.class)
+				.returnResult()
+				.getResponseBody();
+
+		assertThat(authResponse).isNotNull();
+		String accessToken = authResponse.getAccessToken();
+
+		webTestClient.get()
+				.uri("/api/security/internal/securityContextAuthentication")
+				.header("Authorization", "Bearer " + accessToken)
+				.header("clientCode", SYSTEM_CLIENT_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody(ContextAuthentication.class)
+				.value(ctx -> {
+					assertThat(ctx).isNotNull();
+					assertThat(ctx.getUser()).isNotNull();
+				});
+	}
+
+	@Test
+	@Order(16)
+	void authenticate_InactiveUser_Returns403() {
+
+		String ts = String.valueOf(System.currentTimeMillis());
+		String userName = "inactive_" + ts;
+
+		// Create a user and set status to INACTIVE
+		insertTestUser(businessClientId, userName, "inactive_" + ts + "@test.com", "testpass123")
+				.flatMap(userId -> databaseClient.sql(
+						"UPDATE security_user SET STATUS_CODE = 'INACTIVE' WHERE ID = :userId")
+						.bind("userId", userId.longValue())
+						.then())
+				.block();
+
+		AuthenticationRequest request = new AuthenticationRequest()
+				.setUserName(userName)
+				.setPassword("testpass123");
+
+		webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("clientCode", "TESTBUS1")
+				.header("appCode", BUSINESS_APP_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().isForbidden();
+	}
+
+	@Test
+	@Order(18)
+	void authenticate_EmptyPassword_Returns400() {
+
+		AuthenticationRequest request = new AuthenticationRequest()
+				.setUserName(SYSADMIN_USERNAME)
+				.setPassword("");
+
+		webTestClient.post()
+				.uri(AUTH_ENDPOINT)
+				.header("clientCode", SYSTEM_CLIENT_CODE)
+				.header("appCode", SYSTEM_APP_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.header("X-Real-IP", "127.0.0.1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(request)
+				.exchange()
+				.expectStatus().isBadRequest();
+	}
+
+	@Test
+	@Order(19)
+	void refreshToken_WithNoToken_Returns401() {
+
+		webTestClient.get()
+				.uri(REFRESH_TOKEN_ENDPOINT)
+				.header("clientCode", SYSTEM_CLIENT_CODE)
+				.header("X-Forwarded-Host", "localhost")
+				.exchange()
+				.expectStatus().isUnauthorized();
 	}
 }
