@@ -34,9 +34,9 @@ class RoleV2DAOIntegrationTest extends AbstractIntegrationTest {
 	@AfterEach
 	void tearDown() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
-				.then(databaseClient.sql("DELETE FROM security_v2_role_permission WHERE ID > 0").then())
-				.then(databaseClient.sql("DELETE FROM security_v2_user_role WHERE ID > 0").then())
-				.then(databaseClient.sql("DELETE FROM security_v2_role_role WHERE ID > 0").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_role_permission WHERE ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1)").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_user_role WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_role_role WHERE ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1) OR SUB_ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1)").then())
 				.then(databaseClient.sql("DELETE FROM security_v2_role WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_permission WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
