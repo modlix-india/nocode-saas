@@ -30,6 +30,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.otp.OtpGenerationRequest;
+import com.fincity.security.service.ClientManagerService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.appregistration.ClientRegistrationService;
 
@@ -43,23 +44,32 @@ public class ClientController
         extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
 
     private final ClientRegistrationService clientRegistrationService;
+    private final ClientManagerService clientManagerService;
 
-    public ClientController(ClientRegistrationService clientRegistrationService) {
+    public ClientController(ClientRegistrationService clientRegistrationService,
+            ClientManagerService clientManagerService) {
         this.clientRegistrationService = clientRegistrationService;
+        this.clientManagerService = clientManagerService;
     }
 
-    @GetMapping("/internal/isBeingManaged")
-    public Mono<ResponseEntity<Boolean>> isBeingManaged(@RequestParam String managingClientCode,
-            @RequestParam String clientCode) {
+    @GetMapping("/internal/isUserClientManageClient")
+    public Mono<ResponseEntity<Boolean>> isUserClientManageClient(String appCode, ULong userId, ULong userClientId,
+            ULong targetClientId) {
 
-        return this.service.isBeingManagedBy(managingClientCode, clientCode).map(ResponseEntity::ok);
+        return this.service.isUserClientManageClient(appCode, userId, userClientId, targetClientId)
+                .map(ResponseEntity::ok);
     }
 
-    @GetMapping("/internal/isBeingManagedById")
-    public Mono<ResponseEntity<Boolean>> isBeingManagedById(@RequestParam ULong managingClientId,
-            @RequestParam ULong clientId) {
+    @GetMapping("/internal/doesClientManageClient")
+    public Mono<ResponseEntity<Boolean>> doesClientManageClient(ULong managingClientId, ULong clientId) {
+        return this.service.doesClientManageClient(managingClientId, clientId).map(ResponseEntity::ok);
+    }
 
-        return this.service.isBeingManagedBy(managingClientId, clientId).map(ResponseEntity::ok);
+    @GetMapping("/internal/doesClientManageClientCode")
+    public Mono<ResponseEntity<Boolean>> doesClientManageClientCode(String managingClientCode, String clientCode) {
+        return Mono.zip(this.service.getClientBy(managingClientCode), this.service.getClientBy(clientCode))
+                .flatMap(e -> this.service.doesClientManageClient(e.getT1().getId(), e.getT2().getId()))
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/getClientById")
@@ -74,18 +84,11 @@ public class ClientController
         return this.service.getClientBy(clientCode).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/internal/isUserBeingManaged")
-    public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
-            @RequestParam String clientCode) {
-
-        return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
-    }
-
     @GetMapping("/internal/isUserPartOfHierarchy")
-    public Mono<ResponseEntity<Boolean>> isUserPartOfHierarchy(@RequestParam ULong userId,
+    public Mono<ResponseEntity<Boolean>> isUserPartOfHierarchy(@RequestParam BigInteger userId,
             @RequestParam String clientCode) {
 
-        return this.service.isUserPartOfHierarchy(clientCode, userId).map(ResponseEntity::ok);
+        return this.service.isUserPartOfHierarchy(clientCode, ULong.valueOf(userId)).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/managedClient")
@@ -101,6 +104,13 @@ public class ClientController
     @GetMapping("/internal/managingClientIds")
     public Mono<ResponseEntity<List<ULong>>> getManagingClientIds(@RequestParam ULong clientId) {
         return this.service.getManagingClientIds(clientId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/clientIdsOfManager")
+    public Mono<ResponseEntity<List<ULong>>> getClientIdsOfManager(@RequestParam ULong managerId) {
+        return this.clientManagerService
+                .getClientIdsOfManagerInternal(managerId)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/validateClientCode")

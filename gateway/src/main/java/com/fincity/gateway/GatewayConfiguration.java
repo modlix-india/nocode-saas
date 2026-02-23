@@ -8,11 +8,10 @@ import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.util.LogUtil;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.annotation.PostConstruct;
 
@@ -32,7 +31,11 @@ public class GatewayConfiguration extends AbstractBaseConfiguration {
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                signal.getContextView()
+                        .getOrEmpty(LogUtil.DEBUG_KEY)
+                        .ifPresent(dc -> log.debug("{} - {}", name,
+                                !dc.toString().startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..."
+                                        : v));
             else
                 log.debug(v);
         }));

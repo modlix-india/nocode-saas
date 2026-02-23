@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.AbstractClientCheckDAO;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.plansnbilling.ClientPlan;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.jooq.enums.SecurityPlanStatus;
@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
+public class PlanDAO extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
 
     public PlanDAO() {
         super(Plan.class, SECURITY_PLAN, SECURITY_PLAN.ID);
@@ -86,8 +86,8 @@ public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, P
                         .where(DSL.and(SECURITY_CLIENT_PLAN.CLIENT_ID.eq(clientId),
                                 SECURITY_CLIENT.CODE.eq(urlClientCode),
                                 SECURITY_CLIENT_PLAN.END_DATE.gt(LocalDateTime.now()))))
-                        .map(Record1::value1).filter(appId -> !planApps.contains(appId)).collectList()
-                        .map(apps -> !apps.isEmpty()))
+                        .map(Record1::value1).filter(planApps::contains).collectList()
+                        .map(List::isEmpty))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanDao.findConflictPlans"));
     }
 

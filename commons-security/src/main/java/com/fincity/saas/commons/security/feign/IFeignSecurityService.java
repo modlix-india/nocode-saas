@@ -41,12 +41,6 @@ public interface IFeignSecurityService {
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader("appCode") String appCode);
 
-    @GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
-    Mono<Boolean> isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
-
-    @GetMapping("${security.feign.isBeingManagedById:/api/security/clients/internal/isBeingManagedById}")
-    Mono<Boolean> isBeingManagedById(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
-
     @GetMapping("${security.feign.getClientById:/api/security/clients/internal/getClientById}")
     Mono<Client> getClientById(@RequestParam BigInteger clientId);
 
@@ -56,9 +50,6 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getManagedClientOfClientById:/api/security/clients/internal/managedClient}")
     Mono<Client> getManagedClientOfClientById(@RequestParam BigInteger clientId);
 
-    @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
-    Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
-
     @GetMapping("${security.feign.isUserPartOfHierarchy:/api/security/clients/internal/isUserPartOfHierarchy}")
     Mono<Boolean> isUserPartOfHierarchy(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
@@ -67,6 +58,13 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.getManagingClientIds:/api/security/clients/internal/managingClientIds}")
     Mono<List<BigInteger>> getManagingClientIds(@RequestParam BigInteger clientId);
+
+    @GetMapping("${security.feign.clientIdsOfManager:/api/security/clients/internal/clientIdsOfManager}")
+    Mono<List<BigInteger>> getClientIdsOfManager(@RequestParam BigInteger managerId);
+
+    @PostMapping("${security.feign.createClientManager:/api/security/client-managers/{userId}/{clientId}}")
+    Mono<Boolean> createClientManager(
+            @PathVariable("userId") BigInteger userId, @PathVariable("clientId") BigInteger clientId);
 
     @GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
     Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
@@ -267,4 +265,14 @@ public interface IFeignSecurityService {
     Mono<List<Department>> getDepartmentInternal(
             @RequestParam List<BigInteger> departmentIds, @RequestParam MultiValueMap<String, String> params);
 
+    @GetMapping(value = "${security.feign.isUserClientManageClient:/api/security/clients/internal/isUserClientManageClient}")
+    Mono<Boolean> isUserClientManageClient(@RequestParam String appCode, @RequestParam BigInteger userId,
+            @RequestParam BigInteger userClientId, @RequestParam BigInteger targetClientId);
+
+    @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
+    Mono<Boolean> doesClientManageClient(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
+
+    @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClientCode}")
+    Mono<Boolean> doesClientManageClientCode(@RequestParam String managingClientCode,
+            @RequestParam String clientCode);
 }

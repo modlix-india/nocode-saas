@@ -22,6 +22,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
+import com.fincity.security.jooq.tables.SecurityClientManager;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
@@ -156,6 +157,11 @@ public class Tables {
      * The table <code>security.security_client_hierarchy</code>.
      */
     public static final SecurityClientHierarchy SECURITY_CLIENT_HIERARCHY = SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
+
+    /**
+     * The table <code>security.security_client_manager</code>.
+     */
+    public static final SecurityClientManager SECURITY_CLIENT_MANAGER = SecurityClientManager.SECURITY_CLIENT_MANAGER;
 
     /**
      * The table <code>security.security_client_otp_policy</code>.

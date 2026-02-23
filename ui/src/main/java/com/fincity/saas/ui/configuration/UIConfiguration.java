@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.mongo.configuration.AbstractMongoConfiguration;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
@@ -19,8 +20,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
 import reactivefeign.client.ReactiveHttpRequestInterceptor;
 import reactor.core.publisher.Mono;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class UIConfiguration extends AbstractMongoConfiguration implements ISecurityConfiguration {
@@ -38,7 +37,11 @@ public class UIConfiguration extends AbstractMongoConfiguration implements ISecu
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                signal.getContextView()
+                        .getOrEmpty(LogUtil.DEBUG_KEY)
+                        .ifPresent(dc -> log.debug("{} - {}", name,
+                                !dc.toString().startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..."
+                                        : v));
             else
                 log.debug(v);
         }));

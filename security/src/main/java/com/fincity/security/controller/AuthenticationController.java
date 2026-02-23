@@ -123,6 +123,17 @@ public class AuthenticationController {
 
                         (ca, ca2, client, vr) -> Mono
                                 .<ResponseEntity<AuthenticationResponse>>just(ResponseEntity.ok(vr)))
+                .switchIfEmpty(Mono.defer(() -> {
+
+                    Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+
+                    if (tuple.getT2().isBlank())
+                        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                .build());
+
+                    return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .build());
+                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
     }

@@ -3,11 +3,11 @@ package com.fincity.security.dto;
 import java.io.Serial;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import org.jooq.types.ULong;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 
 import lombok.Data;
@@ -45,7 +45,7 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private Client managagingClient;
     private List<App> apps;
     private User createdByUser;
-
+    private List<User> clientManagers;
 
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {
