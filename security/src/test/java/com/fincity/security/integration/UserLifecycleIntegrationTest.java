@@ -50,6 +50,7 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 
 		Mono<User> result = insertTestClient("BUSONE", "Business One", "BUS")
 				.flatMap(clientId -> insertClientHierarchy(clientId, ULong.valueOf(1), null, null, null)
+						.then(insertClientManager(clientId, ULong.valueOf(1)))
 						.then(Mono.just(clientId)))
 				.flatMap(clientId -> {
 					User user = new User();
