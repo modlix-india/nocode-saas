@@ -392,10 +392,10 @@ class RoleProfileIntegrationTest extends AbstractIntegrationTest {
 	@AfterAll
 	void cleanup() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
-				.then(databaseClient.sql("DELETE FROM security_profile_role WHERE PROFILE_ID > 0").then())
-				.then(databaseClient.sql("DELETE FROM security_v2_role_role WHERE ID > 0").then())
-				.then(databaseClient.sql("DELETE FROM security_v2_role WHERE ID > 0").then())
-				.then(databaseClient.sql("DELETE FROM security_profile WHERE ID > 0").then())
+				.then(databaseClient.sql("DELETE FROM security_profile_role WHERE ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1)").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_role_role WHERE ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1) OR SUB_ROLE_ID IN (SELECT ID FROM security_v2_role WHERE CLIENT_ID > 1)").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_role WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_profile WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_app WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
 				.block();

@@ -72,30 +72,27 @@ class ClientManagerDAOIntegrationTest extends AbstractIntegrationTest {
 	}
 
 	@Nested
-	@DisplayName("readByClientIdAndManagerId()")
-	class ReadByClientIdAndManagerIdTests {
+	@DisplayName("isManagerForClient() - existence checks")
+	class ManagerExistenceTests {
 
 		@Test
-		void existingRecord_ReturnsClientManager() {
+		void existingRecord_ReturnsTrue() {
 			ULong bus1Id = insertTestClient("BUS1", "Business One", "BUS").block();
 			ULong managerId = insertTestUser(SYSTEM_CLIENT_ID, "manager1", "manager1@test.com", "password123")
 					.block();
 
 			insertClientManager(bus1Id, managerId).block();
 
-			StepVerifier.create(clientManagerDAO.readByClientIdAndManagerId(bus1Id, managerId))
-					.assertNext(cm -> {
-						assertNotNull(cm);
-						assertEquals(bus1Id, cm.getClientId());
-						assertEquals(managerId, cm.getManagerId());
-					})
+			StepVerifier.create(clientManagerDAO.isManagerForClient(managerId, bus1Id))
+					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
 		}
 
 		@Test
-		void nonExistingRecord_ReturnsEmpty() {
+		void nonExistingRecord_ReturnsFalse() {
 			StepVerifier.create(
-					clientManagerDAO.readByClientIdAndManagerId(ULong.valueOf(999999), ULong.valueOf(999998)))
+					clientManagerDAO.isManagerForClient(ULong.valueOf(999999), ULong.valueOf(999998)))
+					.assertNext(result -> assertFalse(result))
 					.verifyComplete();
 		}
 	}
@@ -200,7 +197,8 @@ class ClientManagerDAOIntegrationTest extends AbstractIntegrationTest {
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
 
-			StepVerifier.create(clientManagerDAO.readByClientIdAndManagerId(bus1Id, managerId))
+			StepVerifier.create(clientManagerDAO.isManagerForClient(managerId, bus1Id))
+					.assertNext(result -> assertFalse(result))
 					.verifyComplete();
 		}
 
