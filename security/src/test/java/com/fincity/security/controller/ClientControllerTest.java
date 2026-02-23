@@ -53,6 +53,9 @@ class ClientControllerTest {
     @MockitoBean
     private ClientRegistrationService clientRegistrationService;
 
+    @MockitoBean
+    private com.fincity.security.service.ClientManagerService clientManagerService;
+
     private Client sampleClient;
 
     @BeforeEach
