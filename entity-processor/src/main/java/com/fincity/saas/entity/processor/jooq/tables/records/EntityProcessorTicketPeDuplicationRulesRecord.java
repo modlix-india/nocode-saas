@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType;
+import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 
 import java.time.LocalDateTime;
@@ -141,7 +141,7 @@ public class EntityProcessorTicketPeDuplicationRulesRecord extends UpdatableReco
      * <code>entity_processor.entity_processor_ticket_pe_duplication_rules.PHONE_NUMBER_AND_EMAIL_TYPE</code>.
      * Phone Number and email type for this client.
      */
-    public EntityProcessorTicketPeDuplicationRulesRecord setPhoneNumberAndEmailType(EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType value) {
+    public EntityProcessorTicketPeDuplicationRulesRecord setPhoneNumberAndEmailType(PhoneNumberAndEmailType value) {
         set(6, value);
         return this;
     }
@@ -151,8 +151,8 @@ public class EntityProcessorTicketPeDuplicationRulesRecord extends UpdatableReco
      * <code>entity_processor.entity_processor_ticket_pe_duplication_rules.PHONE_NUMBER_AND_EMAIL_TYPE</code>.
      * Phone Number and email type for this client.
      */
-    public EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType getPhoneNumberAndEmailType() {
-        return (EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType) get(6);
+    public PhoneNumberAndEmailType getPhoneNumberAndEmailType() {
+        return (PhoneNumberAndEmailType) get(6);
     }
 
     /**
@@ -293,7 +293,7 @@ public class EntityProcessorTicketPeDuplicationRulesRecord extends UpdatableReco
      * Create a detached, initialised
      * EntityProcessorTicketPeDuplicationRulesRecord
      */
-    public EntityProcessorTicketPeDuplicationRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType phoneNumberAndEmailType, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketPeDuplicationRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, PhoneNumberAndEmailType phoneNumberAndEmailType, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTicketPeDuplicationRules.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES);
 
         setId(id);

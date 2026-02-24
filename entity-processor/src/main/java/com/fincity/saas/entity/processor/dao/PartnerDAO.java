@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.dao;
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PARTNERS;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -67,19 +66,5 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass))
                         .collectList());
-    }
-
-    public Mono<List<Partner>> getPartnersByManagerId(String appCode, String clientCode, ULong managerId) {
-        AbstractCondition condition = ComplexCondition.and(
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
-                        .setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
-                        .setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make(Partner.Fields.managerId, managerId).setOperator(FilterConditionOperator.EQUALS));
-        return super.filter(condition)
-                .flatMapMany(jCondition ->
-                        Flux.from(this.dslContext.selectFrom(this.table).where(jCondition)))
-                .map(rec -> rec.into(this.pojoClass))
-                .collectList();
     }
 }
