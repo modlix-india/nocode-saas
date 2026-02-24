@@ -79,6 +79,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
     public static final String APP_PROP_URL = "URL";
 
+    public static final String APP_PROP_USER_CHECK = "USER_CHECK";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CLIENT = "NO_DUPLICATE_USER_CLIENT";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CUSTOMER = "NO_DUPLICATE_USER_CUSTOMER";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CONSUMER = "NO_DUPLICATE_USER_CONSUMER";
+    public static final String APP_PROP_USER_CHECK_DEFAULT = "NO_DUPLICATE_CHECK_REQUIRED";
+
     public static final String APP_ACCESS_TYPE = "appAccessType";
     public static final String APP_USAGE_TYPE = "appUsageType";
     public static final String APP_NAME = "appName";
