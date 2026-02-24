@@ -30,6 +30,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -2574,6 +2575,13 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(dao.checkUserExists(eq(BUS_CLIENT_ID), any(), any(), any(), eq("INDV")))
 					.thenReturn(Mono.just(false));
+
+			// validateUserCheckProperty stubs
+			App mockApp = new App();
+			mockApp.setClientId(appClientId);
+			when(appService.getAppById(appId)).thenReturn(Mono.just(mockApp));
+			when(appService.getProperties(any(), eq(appId), any(), eq(AppService.APP_PROP_USER_CHECK)))
+					.thenReturn(Mono.just(Map.of()));
 
 			when(dao.create(any(User.class))).thenReturn(Mono.just(user));
 
