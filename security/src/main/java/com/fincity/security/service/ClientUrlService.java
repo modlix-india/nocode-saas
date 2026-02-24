@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.security.dto.AppProperty;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -252,9 +253,16 @@ public class ClientUrlService
 
                 (ca, app, cc, cId) -> appService.getProperties(cId, app.getId(), appCode, APP_PROP_URL),
 
-                (ca, app, cc, cId, prop) -> prop == null || prop.isEmpty()
-                        ? this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId)
-                        : Mono.just(prop.get(cId).get(APP_PROP_URL).getValue()),
+                (ca, app, cc, cId, prop) -> {
+                    if (prop == null || prop.isEmpty())
+                        return this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId);
+
+                    Map<String, AppProperty> clientProps = prop.get(cId);
+                    AppProperty urlProp = clientProps != null ? clientProps.get(APP_PROP_URL) : null;
+                    return urlProp != null
+                            ? Mono.just(urlProp.getValue())
+                            : this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, cId);
+                },
 
                 (ca, app, cc, cId, prop, url) -> Mono.just(checkUrl(url))
 

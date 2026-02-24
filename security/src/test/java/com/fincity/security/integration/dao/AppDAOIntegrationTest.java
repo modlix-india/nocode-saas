@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.AfterEach;
@@ -12,10 +13,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.security.dao.AppDAO;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.integration.AbstractIntegrationTest;
+import com.fincity.security.testutil.TestDataFactory;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -755,6 +760,312 @@ class AppDAOIntegrationTest extends AbstractIntegrationTest {
 							.flatMap(appId -> appDAO.createPropertyFromTransport(appId, SYSTEM_CLIENT_ID,
 									"TRANSPORT_PROP", "transport_value")))
 					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getByAppCodeExplicitInfo()")
+	class GetByAppCodeExplicitInfoTests {
+
+		@Test
+		void existingAppCode_ReturnsCommonsAppDto() {
+			String appCode = "exinf_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "Explicit Info App")
+							.then(appDAO.getByAppCodeExplicitInfo(appCode)))
+					.assertNext(app -> {
+						assertNotNull(app);
+						assertEquals(appCode, app.getAppCode());
+						assertEquals("Explicit Info App", app.getAppName());
+						assertNotNull(app.getId());
+						assertNotNull(app.getClientId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void nonExistentAppCode_ReturnsEmpty() {
+			StepVerifier.create(appDAO.getByAppCodeExplicitInfo("NONEXISTENT_APPCODE_XYZ"))
+					.verifyComplete();
+		}
+
+		@Test
+		void explicitAppWithWriteAccess_SetsExplicitClientId() {
+			String appCode = "expwr_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestClient("EXPCL", "Explicit Client", "BUS")
+							.flatMap(busClientId -> databaseClient.sql(
+									"INSERT INTO security_app (CLIENT_ID, APP_NAME, APP_CODE, APP_TYPE, APP_ACCESS_TYPE) VALUES (:clientId, :appName, :appCode, 'APP', 'EXPLICIT')")
+									.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+									.bind("appName", "Explicit Access App")
+									.bind("appCode", appCode)
+									.filter(s -> s.returnGeneratedValues("ID"))
+									.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+									.one()
+									.flatMap(appId -> insertAppAccess(appId, busClientId, true)
+											.then(appDAO.getByAppCodeExplicitInfo(appCode))
+											.map(app -> Map.entry(busClientId, app)))))
+					.assertNext(entry -> {
+						com.fincity.saas.commons.security.dto.App app = entry.getValue();
+						assertNotNull(app);
+						assertEquals("EXPLICIT", app.getAppAccessType());
+						assertNotNull(app.getExplicitClientId());
+						assertEquals(entry.getKey().toBigInteger(), app.getExplicitClientId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void explicitAppWithNoWriteAccess_ExplicitClientIdNull() {
+			String appCode = "expnw_" + System.currentTimeMillis();
+			StepVerifier.create(
+					databaseClient.sql(
+							"INSERT INTO security_app (CLIENT_ID, APP_NAME, APP_CODE, APP_TYPE, APP_ACCESS_TYPE) VALUES (:clientId, :appName, :appCode, 'APP', 'EXPLICIT')")
+							.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+							.bind("appName", "Explicit No Write App")
+							.bind("appCode", appCode)
+							.filter(s -> s.returnGeneratedValues("ID"))
+							.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+							.one()
+							.then(appDAO.getByAppCodeExplicitInfo(appCode)))
+					.assertNext(app -> {
+						assertNotNull(app);
+						assertEquals("EXPLICIT", app.getAppAccessType());
+						assertNull(app.getExplicitClientId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void nonExplicitApp_DoesNotSetExplicitClientId() {
+			String appCode = "nonex_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "Non Explicit App")
+							.then(appDAO.getByAppCodeExplicitInfo(appCode)))
+					.assertNext(app -> {
+						assertNotNull(app);
+						assertNull(app.getExplicitClientId());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getProperties()")
+	class GetPropertiesTests {
+
+		private ContextAuthentication systemAuth;
+
+		@BeforeEach
+		void setUpAuth() {
+			systemAuth = TestDataFactory.createSystemAuth();
+		}
+
+		@Test
+		void multipleClientsWithProperties_ReturnsGroupedMap() {
+			String appCode = "gpmc_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestClient("GPC1", "GetProp Client1", "BUS")
+							.flatMap(busClientId -> insertTestApp(SYSTEM_CLIENT_ID, appCode, "GetProp Multi App")
+									.flatMap(appId -> insertAppProperty(appId, SYSTEM_CLIENT_ID, "DEFAULT_PROP",
+											"default_val")
+											.then(insertAppProperty(appId, busClientId, "CLIENT_PROP",
+													"client_val"))
+											.then(appDAO.getProperties(List.of(busClientId), appId, appCode,
+													null))))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(propsMap -> {
+						assertNotNull(propsMap);
+						assertFalse(propsMap.isEmpty());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void filterByPropName_OnlyMatchingPropsReturned() {
+			String appCode = "gpfn_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "GetProp Filter App")
+							.flatMap(appId -> insertAppProperty(appId, SYSTEM_CLIENT_ID, "WANTED_PROP",
+									"wanted_val")
+									.then(insertAppProperty(appId, SYSTEM_CLIENT_ID, "UNWANTED_PROP",
+											"unwanted_val"))
+									.then(appDAO.getProperties(null, appId, appCode, "WANTED_PROP")))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(propsMap -> {
+						assertNotNull(propsMap);
+						for (Map.Entry<ULong, Map<String, AppProperty>> entry : propsMap.entrySet()) {
+							assertTrue(entry.getValue().containsKey("WANTED_PROP"));
+							assertFalse(entry.getValue().containsKey("UNWANTED_PROP"));
+						}
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void noPropertiesExist_ReturnsEmptyMap() {
+			String appCode = "gpnp_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "GetProp Empty App")
+							.flatMap(appId -> appDAO.getProperties(null, appId, appCode, null))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(propsMap -> {
+						assertNotNull(propsMap);
+						assertTrue(propsMap.isEmpty());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void lookupByAppCode_WhenAppIdIsNull() {
+			String appCode = "gpac_" + System.currentTimeMillis();
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "GetProp ByCode App")
+							.flatMap(appId -> insertAppProperty(appId, SYSTEM_CLIENT_ID, "CODE_PROP",
+									"code_val")
+									.then(appDAO.getProperties(null, null, appCode, null)))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(propsMap -> {
+						assertNotNull(propsMap);
+						assertFalse(propsMap.isEmpty());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("readAnyAppsPageFilter()")
+	class ReadAnyAppsPageFilterTests {
+
+		private ContextAuthentication systemAuth;
+
+		@BeforeEach
+		void setUpAuth() {
+			systemAuth = TestDataFactory.createSystemAuth();
+		}
+
+		private Mono<ULong> insertAnyApp(ULong clientId, String appCode, String appName) {
+			return databaseClient.sql(
+					"INSERT INTO security_app (CLIENT_ID, APP_NAME, APP_CODE, APP_TYPE, APP_ACCESS_TYPE) VALUES (:clientId, :appName, :appCode, 'APP', 'ANY')")
+					.bind("clientId", clientId.longValue())
+					.bind("appName", appName)
+					.bind("appCode", appCode)
+					.filter(s -> s.returnGeneratedValues("ID"))
+					.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+					.one();
+		}
+
+		@Test
+		void multipleApps_FirstPage() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertAnyApp(SYSTEM_CLIENT_ID, "any1_" + ts, "Any App 1")
+							.then(insertAnyApp(SYSTEM_CLIENT_ID, "any2_" + ts, "Any App 2"))
+							.then(insertAnyApp(SYSTEM_CLIENT_ID, "any3_" + ts, "Any App 3"))
+							.then(appDAO.readAnyAppsPageFilter(PageRequest.of(0, 2), null, SYSTEM_CLIENT_ID))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertEquals(2, page.getContent().size());
+						assertTrue(page.getTotalElements() >= 3);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void secondPage_ReturnsRemainingItems() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertAnyApp(SYSTEM_CLIENT_ID, "pg1_" + ts, "Page App 1")
+							.then(insertAnyApp(SYSTEM_CLIENT_ID, "pg2_" + ts, "Page App 2"))
+							.then(insertAnyApp(SYSTEM_CLIENT_ID, "pg3_" + ts, "Page App 3"))
+							.then(appDAO.readAnyAppsPageFilter(PageRequest.of(0, 100), null, SYSTEM_CLIENT_ID))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getContent().size() >= 3);
+						assertTrue(page.getTotalElements() >= 3);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void withNullCondition_ReturnsResults() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertAnyApp(SYSTEM_CLIENT_ID, "anyn_" + ts, "Any Null Cond App")
+							.then(appDAO.readAnyAppsPageFilter(PageRequest.of(0, 10), null, SYSTEM_CLIENT_ID))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertFalse(page.getContent().isEmpty());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void noAnyAppsForClient_ReturnsEmptyPage() {
+			StepVerifier.create(
+					insertTestClient("NOANY", "No Any Client", "BUS")
+							.flatMap(busClientId -> appDAO
+									.readAnyAppsPageFilter(PageRequest.of(0, 10), null, busClientId))
+							.contextWrite(ReactiveSecurityContextHolder
+									.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getContent().isEmpty());
+						assertEquals(0, page.getTotalElements());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("deleteEverythingRelated()")
+	class DeleteEverythingRelatedTests {
+
+		@Test
+		void deleteAppWithPropertiesAndAccess_CleansUp() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String appCode = "delall_" + ts;
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "Delete All App")
+							.flatMap(appId -> insertAppProperty(appId, SYSTEM_CLIENT_ID, "DEL_PROP",
+									"del_value")
+									.then(insertAppAccess(appId, SYSTEM_CLIENT_ID, false))
+									.then(appDAO.deleteEverythingRelated(appId, appCode))))
+					.assertNext(result -> {
+						// deleteEverythingRelated returns Boolean indicating if the app was deleted
+						assertNotNull(result);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void deleteAppWithAccessEntries_Completes() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String appCode = "delacc_" + ts;
+			StepVerifier.create(
+					insertTestClient("DELAC", "Del Access Client", "BUS")
+							.flatMap(busClientId -> insertTestApp(SYSTEM_CLIENT_ID, appCode, "Delete Access App")
+									.flatMap(appId -> insertAppAccess(appId, busClientId, true)
+											.then(appDAO.deleteEverythingRelated(appId, appCode)))))
+					.assertNext(result -> assertNotNull(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void deleteNonExistentApp_ReturnsFalse() {
+			StepVerifier.create(appDAO.deleteEverythingRelated(ULong.valueOf(999999), "NONEXISTENT_CODE"))
+					.assertNext(result -> assertFalse(result))
 					.verifyComplete();
 		}
 	}

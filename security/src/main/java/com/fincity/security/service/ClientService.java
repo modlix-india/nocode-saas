@@ -297,6 +297,18 @@ public class ClientService
                                 .map(x -> client);
 
                     return Mono.just(client);
+                },
+
+                (ca, client, hClient) -> {
+                    if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
+                            ca.getAuthorities()))
+                        return this.clientManagerService
+                                .createInternal(hClient.getId(),
+                                        ULongUtil.valueOf(ca.getUser().getId()),
+                                        ULongUtil.valueOf(ca.getUser().getId()))
+                                .thenReturn(hClient);
+
+                    return Mono.just(hClient);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
     }
 

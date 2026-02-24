@@ -445,6 +445,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
+			when(clientManagerService.createInternal(any(), any(), any()))
+					.thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.create(input))
 					.assertNext(result -> {
@@ -1883,6 +1885,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
+			when(clientManagerService.createInternal(any(), any(), any()))
+					.thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.create(input))
 					.assertNext(result -> assertEquals(SecurityClientLevelType.CUSTOMER, result.getLevelType()))
@@ -1916,6 +1920,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, customerClientId);
 			when(clientHierarchyService.create(customerClientId, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
+			when(clientManagerService.createInternal(any(), any(), any()))
+					.thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.create(input))
 					.assertNext(result -> assertEquals(SecurityClientLevelType.CONSUMER, result.getLevelType()))

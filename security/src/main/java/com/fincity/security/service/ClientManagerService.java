@@ -211,6 +211,10 @@ public class ClientManagerService
         return this.dao.getManagerIds(clientIds);
     }
 
+    public Mono<Integer> createInternal(ULong clientId, ULong managerId, ULong createdBy) {
+        return this.dao.createIfNotExists(clientId, managerId, createdBy);
+    }
+  
     public Mono<List<ULong>> getClientIdsOfManagerInternal(ULong managerId) {
         return this.dao
                 .getClientIdsOfManager(managerId)
