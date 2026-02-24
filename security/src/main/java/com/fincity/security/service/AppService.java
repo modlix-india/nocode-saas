@@ -636,9 +636,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getPropertiesWithClients"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
     public Mono<Boolean> updateProperty(AppProperty property) {
 
-        if (property.getAppId() == null || StringUtil.safeIsBlank(property.getName())) {
+        if (property.getAppId() == null || property.getClientId() == null
+                || StringUtil.safeIsBlank(property.getName())) {
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.MANDATORY_APP_ID_NAME);
         }
@@ -677,6 +679,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.updateProperty"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     public Mono<Boolean> deletePropertyById(ULong propertyId) {
 
         return FlatMapUtil.flatMapMono(
@@ -713,9 +716,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deletePropertyById"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String name) {
 
-        if (appId == null) {
+        if (appId == null || clientId == null || StringUtil.safeIsBlank(name)) {
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
         }
@@ -920,7 +924,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 (ca, access) -> {
                     if (ca.isSystemClient())
-                        Mono.just(true);
+                        return Mono.just(true);
 
                     return this.clientService.isUserClientManageClient(ca, clientCode)
                             .filter(BooleanUtil::safeValueOf)
