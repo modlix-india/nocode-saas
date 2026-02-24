@@ -208,4 +208,8 @@ public class ClientManagerService
     public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
         return this.dao.getManagerIds(clientIds);
     }
+
+    public Mono<Integer> createInternal(ULong clientId, ULong managerId, ULong createdBy) {
+        return this.dao.createIfNotExists(clientId, managerId, createdBy);
+    }
 }
