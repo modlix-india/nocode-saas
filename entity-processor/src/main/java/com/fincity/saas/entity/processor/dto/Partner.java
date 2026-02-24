@@ -1,9 +1,9 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientFieldResolver;
-import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
@@ -27,20 +27,26 @@ public class Partner extends BaseUpdatableDto<Partner> {
     private static final long serialVersionUID = 3748035430910724547L;
 
     private ULong clientId;
+
+    /**
+     * @deprecated Manager linkage has moved to security_client_manager.
+     *             This field is kept only for backward compatibility and will be removed later.
+     */
+    @Deprecated(forRemoval = true)
+    @JsonIgnore
     private ULong managerId;
+
     private PartnerVerificationStatus partnerVerificationStatus = PartnerVerificationStatus.INVITATION_SENT;
     private Boolean dnc = Boolean.FALSE;
 
     public Partner() {
         super();
         this.relationsResolverMap.put(ClientFieldResolver.class, Fields.clientId);
-        this.relationsResolverMap.put(UserFieldResolver.class, Fields.managerId);
     }
 
     public Partner(Partner partner) {
         super(partner);
         this.clientId = partner.clientId;
-        this.managerId = partner.managerId;
         this.partnerVerificationStatus = partner.partnerVerificationStatus;
         this.dnc = partner.dnc;
     }

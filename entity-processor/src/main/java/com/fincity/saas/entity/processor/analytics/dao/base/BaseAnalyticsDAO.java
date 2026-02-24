@@ -39,6 +39,37 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
         return this.addBucketConditions(condition, access, ticketBucketFilter);
     }
 
+    public <T extends BaseFilter<T>> Mono<AbstractCondition> createBucketConditionsWithoutDate(
+            ProcessorAccess access, T filter) {
+        return this.addBucketConditionsWithoutDate(null, access, filter);
+    }
+
+    private <T extends BaseFilter<T>> Mono<AbstractCondition> addBucketConditionsWithoutDate(
+            AbstractCondition baseCondition, ProcessorAccess access, T filter) {
+
+        Map<String, String> fieldMappings = this.getBucketFilterFieldMappings();
+
+        return Mono.zip(
+                        this.getBaseAccessConditions(access, fieldMappings)
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()),
+                        this.getFilterAccessConditions(filter, fieldMappings)
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()))
+                .map(condTuple -> {
+                    List<AbstractCondition> conditions = new ArrayList<>();
+
+                    condTuple.getT1().ifPresent(conditions::add);
+                    condTuple.getT2().ifPresent(conditions::add);
+
+                    if (baseCondition != null && !baseCondition.isEmpty()) conditions.add(baseCondition);
+
+                    return ComplexCondition.and(conditions.stream()
+                            .filter(AbstractCondition::isNonEmpty)
+                            .toList());
+                });
+    }
+
     private <T extends BaseFilter<T>> Mono<AbstractCondition> addBucketConditions(
             AbstractCondition baseCondition, ProcessorAccess access, T filter) {
 
