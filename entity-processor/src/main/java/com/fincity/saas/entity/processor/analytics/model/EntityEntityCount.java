@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Comparator;
@@ -25,6 +26,8 @@ public class EntityEntityCount implements Serializable {
     private CountPercentage totalCount;
 
     private List<EntityCount> entityCounts;
+
+    private List<IdAndValue<ULong, String>> metadata;
 
     public EntityEntityCount(ULong id, String name, List<EntityCount> entityCounts, boolean includePercentage) {
         this.id = id;

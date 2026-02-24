@@ -101,6 +101,21 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .collectList();
     }
 
+    /**
+     * Returns distinct client IDs managed by any of the given manager IDs.
+     */
+    public Mono<List<ULong>> getClientIdsOfManagers(Collection<ULong> managerIds) {
+        if (managerIds == null || managerIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+        return Flux.from(this.dslContext
+                        .selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.in(managerIds)))
+                .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
+                .collectList();
+    }
+
     public Mono<ULong> getLatestManagerIdForClient(ULong clientId) {
         return Mono.from(this.dslContext
                         .select(SECURITY_CLIENT_MANAGER.MANAGER_ID)
