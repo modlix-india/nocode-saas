@@ -221,9 +221,6 @@ public class ClientManagerService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
     }
 
-    /**
-     * Returns distinct client IDs managed by any of the given manager IDs.
-     */
     public Mono<List<ULong>> getClientIdsOfManagersInternal(List<ULong> managerIds) {
         return this.dao
                 .getClientIdsOfManagers(managerIds)
