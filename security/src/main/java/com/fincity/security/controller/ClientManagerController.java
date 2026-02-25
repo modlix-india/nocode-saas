@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.security.dto.Client;
@@ -49,6 +50,13 @@ public class ClientManagerController {
     @PostMapping("/{uid}/{clientId}")
     public Mono<ResponseEntity<Boolean>> create(@PathVariable ULong uid, @PathVariable ULong clientId) {
         return service.create(uid, clientId)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/{clientId}")
+    public Mono<ResponseEntity<Boolean>> updateManager(@PathVariable ULong clientId,
+            @RequestParam ULong oldManagerId, @RequestParam ULong newManagerId) {
+        return service.updateManager(clientId, oldManagerId, newManagerId)
                 .map(ResponseEntity::ok);
     }
 
