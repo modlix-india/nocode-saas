@@ -54,12 +54,15 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
+import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -349,15 +352,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> {
-                    if (entity.getClientId() == null) {
+                    if (entity.getClientId() == null)
                         entity.setClientId(ULong.valueOf(ca.getUser().getClientId()));
-                        return Mono.just(entity);
-                    }
 
                     updateUserIdentificationKeys(entity);
-
-                    if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-                        return Mono.just(entity);
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.canAccessClientForUserOperation(entity.getClientId()),
@@ -394,13 +392,24 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         pass),
                 (ca, user, isValid, pass, passValid) -> this.checkBusinessClientUser(
                         user.getClientId(), user.getUserName(), user.getEmailId(), user.getPhoneNumber()),
-                (ca, user, isValid, pass, passValid, isAvailable) -> this.dao.create(user),
-                (ca, user, isValid, pass, passValid, isAvailable, createdUser) -> {
+                (ca, user, isValid, pass, passValid, isAvailable) -> {
+                    String appCode = ca.getUrlAppCode();
+                    if (StringUtil.safeIsBlank(appCode))
+                        return Mono.just(true);
+
+                    return this.appService.getAppByCode(appCode)
+                            .flatMap(app -> this.validateUserCheckProperty(
+                                    app.getId(), user.getClientId(),
+                                    user.getUserName(), user.getEmailId(), user.getPhoneNumber()))
+                            .defaultIfEmpty(true);
+                },
+                (ca, user, isValid, pass, passValid, isAvailable, userCheckValid) -> this.dao.create(user),
+                (ca, user, isValid, pass, passValid, isAvailable, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(
                             createdUser.getId(), CREATE, getSoxObjectName(), "User created");
                     return this.setPasswordEntities(createdUser, pass);
                 },
-                (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) -> Mono
+                (ca, user, isValid, pass, passValid, isAvailable, userCheckValid, createdUser, passSet) -> Mono
                         .zip(this.evictOwnerCache(
                                 passSet.getClientId(), ULong.valueOf(ca.getUser().getId())),
                                 this.evictOwnerCache(passSet.getClientId(), passSet.getReportingTo()))
@@ -472,6 +481,127 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         : Mono.just(clientTypeNCode.getT1()),
                 (clientTypeNCode, clientType) -> this.dao.checkUserExists(clientId, "BUS", userName, emailId,
                         phoneNumber));
+    }
+
+    private Mono<Boolean> validateUserCheckProperty(
+            ULong appId, ULong clientId,
+            String userName, String emailId, String phoneNumber) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.appService.getAppById(appId),
+
+                app -> this.appService.getProperties(null, appId, null, AppService.APP_PROP_USER_CHECK),
+
+                (app, props) -> {
+
+                    String checkValue = AppService.APP_PROP_USER_CHECK_DEFAULT;
+
+                    if (props != null && !props.isEmpty()) {
+                        for (Map.Entry<ULong, Map<String, AppProperty>> entry : props.entrySet()) {
+                            Map<String, AppProperty> propMap = entry.getValue();
+                            if (propMap != null) {
+                                AppProperty prop = propMap.get(AppService.APP_PROP_USER_CHECK);
+                                if (prop != null && !StringUtil.safeIsBlank(prop.getValue())) {
+                                    checkValue = prop.getValue();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (AppService.APP_PROP_USER_CHECK_DEFAULT.equals(checkValue)
+                            || StringUtil.safeIsBlank(checkValue))
+                        return Mono.just(true);
+
+                    return Mono.just(checkValue);
+                },
+
+                (app, props, checkVal) -> {
+
+                    if (checkVal instanceof Boolean)
+                        return Mono.just(true);
+
+                    String check = checkVal.toString();
+                    ULong appClientId = app.getClientId();
+
+                    return FlatMapUtil.flatMapMono(
+
+                            () -> this.clientService.getClientLevelType(clientId, appId),
+
+                            level -> this.clientHierarchyService.getClientHierarchy(clientId),
+
+                            (level, hierarchy) -> {
+
+                                ULong parentId;
+                                boolean directChildren;
+                                boolean grandChildren;
+
+                                switch (check) {
+
+                                    case AppService.APP_PROP_USER_CHECK_NO_DUP_CLIENT:
+                                        if (level != ClientLevelType.CLIENT)
+                                            return Mono.just(true);
+
+                                        parentId = appClientId;
+                                        directChildren = true;
+                                        grandChildren = false;
+                                        break;
+
+                                    case AppService.APP_PROP_USER_CHECK_NO_DUP_CUSTOMER:
+                                        if (level != ClientLevelType.CUSTOMER && level != ClientLevelType.CONSUMER)
+                                            return Mono.just(true);
+
+                                        if (appClientId.equals(hierarchy.getManageClientLevel1()))
+                                            parentId = hierarchy.getManageClientLevel0();
+                                        else if (appClientId.equals(hierarchy.getManageClientLevel2()))
+                                            parentId = hierarchy.getManageClientLevel1();
+                                        else if (appClientId.equals(hierarchy.getManageClientLevel3()))
+                                            parentId = hierarchy.getManageClientLevel2();
+                                        else
+                                            return Mono.just(true);
+
+                                        directChildren = true;
+                                        grandChildren = true;
+                                        break;
+
+                                    case AppService.APP_PROP_USER_CHECK_NO_DUP_CONSUMER:
+                                        if (level != ClientLevelType.CONSUMER)
+                                            return Mono.just(true);
+
+                                        if (appClientId.equals(hierarchy.getManageClientLevel2()))
+                                            parentId = hierarchy.getManageClientLevel0();
+                                        else if (appClientId.equals(hierarchy.getManageClientLevel3()))
+                                            parentId = hierarchy.getManageClientLevel1();
+                                        else
+                                            return Mono.just(true);
+
+                                        directChildren = true;
+                                        grandChildren = false;
+                                        break;
+
+                                    default:
+                                        return Mono.just(true);
+                                }
+
+                                return this.dao.checkUserExistsUnderManagingClient(
+                                        parentId, directChildren, grandChildren,
+                                        userName, emailId, phoneNumber, null)
+                                        .flatMap(exists -> {
+                                            if (Boolean.TRUE.equals(exists))
+                                                return this.securityMessageResourceService.throwMessage(
+                                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                                        SecurityMessageResourceService.USER_ALREADY_EXISTS,
+                                                        userName != null ? userName : emailId);
+
+                                            return Mono.just(true);
+                                        });
+                            })
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                                    "UserService.validateUserCheckProperty"));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.validateUserCheckProperty"))
+                .defaultIfEmpty(true);
     }
 
     private Mono<User> setPasswordEntities(User user, Map<AuthenticationPasswordType, String> passEntities) {
@@ -1138,14 +1268,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 "INDV")
                         .filter(userExists -> !userExists)
                         .map(userExists -> Boolean.FALSE),
-                userExists -> this.dao.create(user),
-                (userExists, createdUser) -> {
+                userExists -> this.validateUserCheckProperty(
+                        appId, user.getClientId(),
+                        user.getUserName(), user.getEmailId(), user.getPhoneNumber()),
+                (userExists, userCheckValid) -> this.dao.create(user),
+                (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(
                             createdUser.getId(), CREATE, getSoxObjectName(), "User created");
 
                     return this.setPassword(createdUser.getId(), createdUser.getId(), password, passwordType);
                 },
-                (userExists, createdUser, passSet) -> {
+                (userExists, userCheckValid, createdUser, passSet) -> {
                     Mono<Boolean> roleUser = this.addRegistrationObjects(appId, appClientId, urlClientId, client,
                             createdUser.getId());
 

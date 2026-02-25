@@ -1,5 +1,9 @@
 package com.fincity.security.service;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -21,6 +25,8 @@ import com.fincity.security.dao.ClientManagerDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
+
+import java.util.List;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -173,8 +179,11 @@ public class ClientManagerService
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
+        if (SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()))
+            return Mono.just(Boolean.TRUE);
+
         if (userClientId.equals(targetClientId))
-            return Mono.just(SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+            return Mono.just(Boolean.FALSE);
 
         return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
                 () -> this.dao.isManagerForClient(userId, targetClientId),
@@ -183,12 +192,39 @@ public class ClientManagerService
 
     public Mono<Boolean> isUserClientManager(String appCode, ULong userId, ULong userClientId, ULong targetClientId) {
 
-        if (userClientId.equals(targetClientId))
-            return this.userService.getUserAuthorities(appCode, userClientId, userId)
-                    .map(list -> SecurityContextUtil.hasAuthority(OWNER_ROLE, list));
+        return this.userService.getUserAuthorities(appCode, userClientId, userId)
+                .flatMap(list -> {
 
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
-                () -> this.dao.isManagerForClient(userId, targetClientId),
-                userId, targetClientId);
+                    if (SecurityContextUtil.hasAuthority(OWNER_ROLE, list))
+                        return Mono.just(Boolean.TRUE);
+
+                    if (userClientId.equals(targetClientId))
+                        return Mono.just(Boolean.FALSE);
+
+                    return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+                            () -> this.dao.isManagerForClient(userId, targetClientId),
+                            userId, targetClientId);
+                });
+    }
+
+    public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
+        return this.dao.getManagerIds(clientIds);
+    }
+
+    public Mono<Integer> createInternal(ULong clientId, ULong managerId, ULong createdBy) {
+        return this.dao.createIfNotExists(clientId, managerId, createdBy);
+    }
+  
+    public Mono<List<ULong>> getClientIdsOfManagerInternal(ULong managerId) {
+        return this.dao
+                .getClientIdsOfManager(managerId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
+    }
+
+    public Mono<List<ULong>> getClientIdsOfManagersInternal(List<ULong> managerIds) {
+        return this.dao
+                .getClientIdsOfManagers(managerIds)
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagersInternal"));
     }
 }

@@ -31,6 +31,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
@@ -436,11 +437,15 @@ public class ClientRegistrationService {
                     if (props.isEmpty())
                         return "";
 
-                    if (props.containsKey(clientId))
-                        return props.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
+                    Map<String, AppProperty> clientProps = props.get(clientId);
+                    if (clientProps != null) {
+                        AppProperty prop = clientProps.get(propName);
+                        return prop != null ? prop.getValue() : "";
+                    }
 
                     return props.values().stream().findFirst()
-                            .map(prop -> prop.get(AppService.APP_PROP_REG_TYPE).getValue())
+                            .map(p -> p.get(propName))
+                            .map(AppProperty::getValue)
                             .orElse("");
                 });
     }

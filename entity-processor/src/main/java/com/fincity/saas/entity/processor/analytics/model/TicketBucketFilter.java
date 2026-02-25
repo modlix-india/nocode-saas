@@ -89,6 +89,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
                 this.isIncludeZero(),
                 this.isIncludePercentage(),
                 this.isIncludeTotal(),
+                this.isIncludeAllTotal(),
                 this.includeNone,
                 this.getTimezone());
     }

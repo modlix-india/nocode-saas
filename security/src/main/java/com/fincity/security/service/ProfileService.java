@@ -371,11 +371,7 @@ public class ProfileService
                 .flatMap(
                         pid -> cacheService.cacheValueOrGet(CACHE_AUTHORITIES_BY_ID + "_" + pid,
                                 () -> this.dao.getProfileAuthorities(pid,
-                                        clientHierarchy).defaultIfEmpty(List.of())
-                                        .map(e -> {
-                                            System.out.println("List (" + pid + "): " + e);
-                                            return e;
-                                        }),
+                                        clientHierarchy).defaultIfEmpty(List.of()),
                                 clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
                 .filter(Objects::nonNull)

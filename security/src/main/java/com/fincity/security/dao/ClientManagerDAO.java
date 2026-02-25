@@ -1,8 +1,11 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityClientManager.SECURITY_CLIENT_MANAGER;
+import static com.fincity.security.jooq.tables.SecurityClientManager.*;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jooq.Field;
 import org.jooq.Record1;
@@ -31,15 +34,9 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
         return SECURITY_CLIENT_MANAGER.CLIENT_ID;
     }
 
-    public Mono<ClientManager> readByClientIdAndManagerId(ULong clientId, ULong managerId) {
-        return Mono.from(this.dslContext.selectFrom(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId)
-                        .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))))
-                .map(e -> e.into(this.pojoClass));
-    }
-
     public Mono<Integer> createIfNotExists(ULong clientId, ULong managerId, ULong createdBy) {
-        return Mono.from(this.dslContext.insertInto(SECURITY_CLIENT_MANAGER)
+        return Mono.from(this.dslContext
+                .insertInto(SECURITY_CLIENT_MANAGER)
                 .set(SECURITY_CLIENT_MANAGER.CLIENT_ID, clientId)
                 .set(SECURITY_CLIENT_MANAGER.MANAGER_ID, managerId)
                 .set(SECURITY_CLIENT_MANAGER.CREATED_BY, createdBy)
@@ -47,35 +44,82 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
     }
 
     public Mono<Integer> deleteByClientIdAndManagerId(ULong clientId, ULong managerId) {
-        return Mono.from(this.dslContext.deleteFrom(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId)
+        return Mono.from(this.dslContext
+                .deleteFrom(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER
+                        .CLIENT_ID
+                        .eq(clientId)
                         .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))));
     }
 
     public Mono<Page<ULong>> getClientsOfManager(ULong managerId, Pageable pageable) {
 
-        Mono<Integer> countMono = Mono.from(this.dslContext.selectCount()
-                .from(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
+        Mono<Integer> countMono = Mono.from(this.dslContext
+                        .selectCount()
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
                 .map(Record1::value1);
 
-        Mono<List<ULong>> listMono = Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
-                .from(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))
-                .limit(pageable.getPageSize())
-                .offset(pageable.getOffset()))
+        Mono<List<ULong>> listMono = Flux.from(this.dslContext
+                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))
+                        .limit(pageable.getPageSize())
+                        .offset(pageable.getOffset()))
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
                 .collectList();
 
-        return listMono.flatMap(list -> countMono
-                .map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)));
+        return listMono.flatMap(
+                list -> countMono.map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)));
     }
 
     public Mono<Boolean> isManagerForClient(ULong managerId, ULong clientId) {
-        return Mono.from(this.dslContext.selectCount()
-                .from(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)
-                        .and(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))))
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER
+                                .MANAGER_ID
+                                .eq(managerId)
+                                .and(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))))
                 .map(r -> r.value1() > 0);
+    }
+
+    public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.in(clientIds)))
+                .collectMultimap(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID),
+                        r -> r.get(SECURITY_CLIENT_MANAGER.MANAGER_ID));
+    }
+
+    public Mono<List<ULong>> getClientIdsOfManager(ULong managerId) {
+        return Flux.from(this.dslContext
+                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
+                .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
+                .collectList();
+    }
+
+    public Mono<List<ULong>> getClientIdsOfManagers(Collection<ULong> managerIds) {
+        if (managerIds == null || managerIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+        return Flux.from(this.dslContext
+                        .selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.in(managerIds)))
+                .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
+                .collectList();
+    }
+
+    public Mono<ULong> getLatestManagerIdForClient(ULong clientId) {
+        return Mono.from(this.dslContext
+                        .select(SECURITY_CLIENT_MANAGER.MANAGER_ID)
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))
+                        .orderBy(SECURITY_CLIENT_MANAGER.CREATED_AT.desc())
+                        .limit(1))
+                .map(r -> r.get(SECURITY_CLIENT_MANAGER.MANAGER_ID));
     }
 }

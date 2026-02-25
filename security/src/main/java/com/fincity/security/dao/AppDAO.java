@@ -378,13 +378,6 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
             }
         }
 
-        Map<String, AppProperty> defaultProps = appClientProps.get(appClientId);
-        appClientProps.remove(appClientId);
-
-        if (appClientProps.isEmpty() && defaultProps != null && !defaultProps.isEmpty()) {
-            appClientProps.put(appClientId, defaultProps);
-        }
-
         return appClientProps;
     }
 

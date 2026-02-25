@@ -14,12 +14,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
+import com.fincity.nocode.kirun.engine.runtime.debug.ExecutionLog;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -65,6 +69,8 @@ import reactor.util.function.Tuples;
 
 @Service
 public class CoreFunctionService extends AbstractFunctionService<CoreFunction, CoreFunctionDocumentRepository> {
+
+    private static final Logger logger = LoggerFactory.getLogger(CoreFunctionService.class);
 
     private static final Map<SchemaType, java.util.function.Function<String, Number>> CONVERTOR = Map.of(
             SchemaType.DOUBLE,
@@ -220,11 +226,40 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                                 execRepo);
                     }
 
-                    return fun.execute(new ReactiveFunctionExecutionParameters(execRepo, schRepo)
-                            .setArguments(args)
-                            .setValuesMap(Map.of(ate.getPrefix(), ate)));
+                    Mono<FunctionOutput> result = fun
+                            .execute(new ReactiveFunctionExecutionParameters(execRepo, schRepo)
+                                    .setArguments(args)
+                                    .setValuesMap(Map.of(ate.getPrefix(), ate)));
+
+                    if (fun instanceof DefinitionFunction df) {
+                        result = result
+                                .doOnNext(output -> logExecutionLogs(df, false))
+                                .doOnError(err -> logExecutionLogs(df, true));
+                    }
+
+                    return result;
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
+    }
+
+    private void logExecutionLogs(DefinitionFunction df, boolean errored) {
+        ExecutionLog execLog = df.getExecutionLog();
+        if (execLog == null || execLog.getLogs() == null || execLog.getLogs().isEmpty())
+            return;
+
+        String functionName = df.getSignature().getFullName();
+
+        for (var log : execLog.getLogs()) {
+            if (errored || log.getError() != null) {
+                logger.error("Function: {} | Step: {} | Fn: {} | Duration: {}ms | Event: {} | Error: {}",
+                        functionName, log.getStatementName(), log.getFunctionName(),
+                        log.getDuration(), log.getEventName(), log.getError());
+            } else {
+                logger.debug("Function: {} | Step: {} | Fn: {} | Duration: {}ms | Event: {} | Result: {}",
+                        functionName, log.getStatementName(), log.getFunctionName(),
+                        log.getDuration(), log.getEventName(), log.getResult());
+            }
+        }
     }
 
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(

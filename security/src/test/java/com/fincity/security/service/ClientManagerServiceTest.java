@@ -424,6 +424,9 @@ class ClientManagerServiceTest extends AbstractServiceUnitTest {
 	@Test
 	void isUserClientManager_ByAppCode_DifferentClient_IsManager_ReturnsTrue() {
 
+		when(userService.getUserAuthorities(eq("appCode"), eq(BUS_CLIENT_ID), eq(USER_ID)))
+				.thenReturn(Mono.just(List.of("Authorities.Client_READ", "Authorities.Logged_IN")));
+
 		when(dao.isManagerForClient(USER_ID, TARGET_CLIENT_ID))
 				.thenReturn(Mono.just(true));
 

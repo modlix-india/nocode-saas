@@ -9,12 +9,16 @@ import org.jooq.Record1;
 import org.jooq.SelectJoinStep;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -29,6 +33,21 @@ public abstract class AbstractUpdatableClientCheckDAO<
     @Override
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
         return ClientCheckDAOHelper.getSelectJointStep(dslContext, table, this.getClientIDField());
+    }
+
+    @Override
+    protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
+
+        if (cc.getConditions() == null || cc.getConditions().isEmpty())
+            return Mono.just(DSL.noCondition());
+
+        return Flux.concat(cc.getConditions().stream()
+                .map(condition -> super.filter(condition, selectJoinStep))
+                .toList())
+                .collectList()
+                .map(conditions -> cc.getOperator() == ComplexConditionOperator.AND
+                        ? DSL.and(conditions)
+                        : DSL.or(conditions));
     }
 
     @Override
