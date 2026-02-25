@@ -299,7 +299,11 @@ public class ProductWalkInFormService
                                             access, created.getT1().getAssignedUserId()),
                                     (created, uAccess) -> this.activityService
                                             .acWalkIn(uAccess, created.getT1(), ticketRequest.getComment())
-                                            .then(this.activityService.acStageStatus(uAccess, created.getT1(), null, created.getT1().getStage()))
+                                            .then(this.activityService.acStageStatus(
+                                                    uAccess,
+                                                    created.getT1(),
+                                                    null,
+                                                    created.getT1().getStage()))
                                             .thenReturn(created.getT2()));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));

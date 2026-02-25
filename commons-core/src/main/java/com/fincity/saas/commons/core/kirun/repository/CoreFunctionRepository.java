@@ -1,5 +1,10 @@
 package com.fincity.saas.commons.core.kirun.repository;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
@@ -15,7 +20,11 @@ import com.fincity.saas.commons.core.functions.file.TemplateToPdf;
 import com.fincity.saas.commons.core.functions.hash.HashData;
 import com.fincity.saas.commons.core.functions.notification.SendNotification;
 import com.fincity.saas.commons.core.functions.rest.CallRequest;
-import com.fincity.saas.commons.core.functions.security.*;
+import com.fincity.saas.commons.core.functions.security.GetAppUrl;
+import com.fincity.saas.commons.core.functions.security.GetClient;
+import com.fincity.saas.commons.core.functions.security.GetUserAdminEmails;
+import com.fincity.saas.commons.core.functions.security.IsBeingManagedByCode;
+import com.fincity.saas.commons.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.commons.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.commons.core.functions.securitycontext.GetUser;
 import com.fincity.saas.commons.core.functions.securitycontext.HasAuthority;
@@ -38,11 +47,6 @@ import com.fincity.saas.commons.core.service.security.ContextService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.google.gson.Gson;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -78,11 +82,10 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     private void makeSecurityFunctions(IFeignSecurityService securityService, Gson gson) {
         ReactiveFunction isBeingManagedByCode = new IsBeingManagedByCode(securityService);
         ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
-        ReactiveFunction isUserBeingManaged = new IsUserBeingManaged(securityService);
         ReactiveFunction getClient = new GetClient(securityService, gson);
         ReactiveFunction getUserAdminEmails = new GetUserAdminEmails(securityService, gson);
 
-        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, isUserBeingManaged, getClient, getUserAdminEmails);
+        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, getClient, getUserAdminEmails);
     }
 
     private void makeSecurityContextFunctions(
@@ -119,18 +122,18 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
             IFeignFilesService filesService,
             IFeignSecurityService securityService,
             Gson gson) {
-        ReactiveFunction getRequest =
-                new CallRequest(restService, filesService, securityService, "GetRequest", "GET", false, gson);
-        ReactiveFunction postRequest =
-                new CallRequest(restService, filesService, securityService, "PostRequest", "POST", true, gson);
-        ReactiveFunction putRequest =
-                new CallRequest(restService, filesService, securityService, "PutRequest", "PUT", true, gson);
-        ReactiveFunction patchRequest =
-                new CallRequest(restService, filesService, securityService, "PatchRequest", "PATCH", true, gson);
-        ReactiveFunction deleteRequest =
-                new CallRequest(restService, filesService, securityService, "DeleteRequest", "DELETE", false, gson);
-        ReactiveFunction callRequest =
-                new CallRequest(restService, filesService, securityService, "CallRequest", "", true, gson);
+        ReactiveFunction getRequest = new CallRequest(restService, filesService, securityService, "GetRequest", "GET",
+                false, gson);
+        ReactiveFunction postRequest = new CallRequest(restService, filesService, securityService, "PostRequest",
+                "POST", true, gson);
+        ReactiveFunction putRequest = new CallRequest(restService, filesService, securityService, "PutRequest", "PUT",
+                true, gson);
+        ReactiveFunction patchRequest = new CallRequest(restService, filesService, securityService, "PatchRequest",
+                "PATCH", true, gson);
+        ReactiveFunction deleteRequest = new CallRequest(restService, filesService, securityService, "DeleteRequest",
+                "DELETE", false, gson);
+        ReactiveFunction callRequest = new CallRequest(restService, filesService, securityService, "CallRequest", "",
+                true, gson);
 
         this.addToRepoMap(getRequest, postRequest, putRequest, patchRequest, deleteRequest, callRequest);
     }

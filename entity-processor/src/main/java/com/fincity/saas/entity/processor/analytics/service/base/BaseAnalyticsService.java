@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
@@ -18,11 +19,18 @@ import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.util.CollectionUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseAnalyticsService<
@@ -111,21 +119,72 @@ public abstract class BaseAnalyticsService<
 
     public Mono<TicketBucketFilter> resolveClients(ProcessorAccess access, TicketBucketFilter filter) {
 
-        List<BigInteger> clientIds =
-                CollectionUtil.intersectLists(
-                                filter.getClientIds(), access.getUserInherit().getManagingClientIds())
-                        .stream()
-                        .map(ULong::toBigInteger)
-                        .toList();
+        List<ULong> clientIds = CollectionUtil.intersectLists(
+                filter.getClientIds(), access.getUserInherit().getManagingClientIds());
 
         if (clientIds.isEmpty()) return Mono.empty();
 
-        return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientInternalBatch(clientIds, null),
-                clientList -> Mono.just(filter.filterClientIds(
-                                access.getUserInherit().getManagingClientIds())
-                        .setClients(clientList.stream()
-                                .map(client -> IdAndValue.of(ULongUtil.valueOf(client.getId()), client.getName()))
-                                .toList())));
+        return applyClientManagerFilter(clientIds, filter).flatMap(ids -> fetchClientsAndApplyToFilter(ids, filter));
+    }
+
+    private Mono<List<ULong>> applyClientManagerFilter(List<ULong> clientIds, TicketBucketFilter filter) {
+
+        if (filter.getClientManagerIds() == null || filter.getClientManagerIds().isEmpty()) return Mono.just(clientIds);
+
+        List<BigInteger> managerIds =
+                filter.getClientManagerIds().stream().map(ULong::toBigInteger).toList();
+
+        return securityService.getClientIdsOfManagers(managerIds).map(managerClientIds -> {
+            Set<BigInteger> set = new HashSet<>(managerClientIds);
+            return clientIds.stream()
+                    .filter(id -> set.contains(id.toBigInteger()))
+                    .toList();
+        });
+    }
+
+    private Mono<TicketBucketFilter> fetchClientsAndApplyToFilter(
+            List<ULong> resolvedClientIds, TicketBucketFilter filter) {
+
+        if (resolvedClientIds.isEmpty()) return Mono.empty();
+
+        List<BigInteger> idsBigInt =
+                resolvedClientIds.stream().map(ULong::toBigInteger).toList();
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("fetchClientManagers", "true");
+
+        return securityService
+                .getClientInternalBatch(idsBigInt, params)
+                .map(clientList -> buildResolvedClientFilter(clientList, filter, resolvedClientIds));
+    }
+
+    private TicketBucketFilter buildResolvedClientFilter(
+            List<Client> clientList, TicketBucketFilter filter, List<ULong> resolvedClientIds) {
+
+        int size = clientList.size();
+        List<IdAndValue<ULong, String>> clients = new ArrayList<>(size);
+        Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId =
+                LinkedHashMap.newLinkedHashMap((int) (size / 0.75f) + 1);
+
+        for (Client client : clientList) {
+            ULong clientId = ULongUtil.valueOf(client.getId());
+            clients.add(IdAndValue.of(clientId, client.getName()));
+            List<IdAndValue<ULong, String>> managers = toManagerIdAndValues(client.getClientManagers());
+            clientManagersByClientId.put(clientId, managers);
+        }
+
+        return filter.filterClientIds(resolvedClientIds)
+                .setClients(clients)
+                .setClientManagersByClientId(clientManagersByClientId);
+    }
+
+    private static List<IdAndValue<ULong, String>> toManagerIdAndValues(List<User> clientManagers) {
+
+        if (clientManagers == null || clientManagers.isEmpty()) return List.of();
+
+        return clientManagers.stream()
+                .map(u -> IdAndValue.of(
+                        ULongUtil.valueOf(u.getId()),
+                        NameUtil.assembleFullName(u.getFirstName(), u.getMiddleName(), u.getLastName())))
+                .toList();
     }
 }

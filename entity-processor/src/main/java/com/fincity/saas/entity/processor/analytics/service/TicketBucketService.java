@@ -138,7 +138,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 clientFilter.getFieldData().getProducts(),
                                                 clientFilter.getBaseFieldData().getClients(),
                                                 clientFilter.isIncludeZero(),
-                                                clientFilter.isIncludePercentage())
+                                                clientFilter.isIncludePercentage(),
+                                                clientFilter.isIncludeAllTotal(),
+                                                clientFilter.getBaseFieldData().getClientManagersByClientId())
                                         .collectList(),
                         (access, productFilter, stageFilter, clientFilter, perValueCountList, entityStatusCounts) ->
                                 ReactivePaginationUtil.toPage(entityStatusCounts, pageable))
@@ -157,7 +159,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         (access, clientFilter, perDateCountList) -> ReportUtil.toEntityDateCounts(
                                         perDateCountList,
                                         clientFilter.getBaseFieldData().getClients(),
-                                        clientFilter.toReportOptions())
+                                        clientFilter.toReportOptions(),
+                                        clientFilter.getBaseFieldData().getClientManagersByClientId())
                                 .collectList(),
                         (access, clientFilter, perDateCountList, entityDateCounts) ->
                                 ReactivePaginationUtil.toPage(entityDateCounts, pageable))

@@ -31,6 +31,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
@@ -53,6 +54,7 @@ import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientHierarchyService;
+import com.fincity.security.service.ClientManagerService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
@@ -85,6 +87,7 @@ public class ClientRegistrationService {
     private final AuthenticationService authenticationService;
     private final ClientService clientService;
     private final ClientHierarchyService clientHierarchyService;
+    private final ClientManagerService clientManagerService;
     private final EventCreationService ecService;
     private final ClientUrlService clientUrlService;
     private final AppRegistrationV2DAO appRegistrationDAO;
@@ -99,7 +102,8 @@ public class ClientRegistrationService {
 
     public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
                                      OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
-                                     ClientHierarchyService clientHierarchyService, EventCreationService ecService,
+                                     ClientHierarchyService clientHierarchyService, ClientManagerService clientManagerService,
+                                     EventCreationService ecService,
                                      ClientUrlService clientUrlService, AppRegistrationV2DAO appRegistrationDAO, IFeignFilesService filesService,
                                      AppRegistrationIntegrationService appRegistrationIntegrationService,
                                      AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
@@ -113,6 +117,7 @@ public class ClientRegistrationService {
         this.authenticationService = authenticationService;
         this.clientService = clientService;
         this.clientHierarchyService = clientHierarchyService;
+        this.clientManagerService = clientManagerService;
         this.ecService = ecService;
         this.clientUrlService = clientUrlService;
         this.appRegistrationDAO = appRegistrationDAO;
@@ -436,11 +441,15 @@ public class ClientRegistrationService {
                     if (props.isEmpty())
                         return "";
 
-                    if (props.containsKey(clientId))
-                        return props.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
+                    Map<String, AppProperty> clientProps = props.get(clientId);
+                    if (clientProps != null) {
+                        AppProperty prop = clientProps.get(propName);
+                        return prop != null ? prop.getValue() : "";
+                    }
 
                     return props.values().stream().findFirst()
-                            .map(prop -> prop.get(AppService.APP_PROP_REG_TYPE).getValue())
+                            .map(p -> p.get(propName))
+                            .map(AppProperty::getValue)
                             .orElse("");
                 });
     }
@@ -523,11 +532,23 @@ public class ClientRegistrationService {
                         (isVerified, app, c, createdClient) -> this.clientHierarchyService
                                 .create(loggedInFromClientId, createdClient.getId()),
 
-                        (isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
+                        (isVerified, app, c, createdClient, clientHierarchy) -> {
+                            if (request.getManagerId() != null && ca.isAuthenticated()
+                                    && SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
+                                            ca.getAuthorities()))
+                                return this.clientManagerService
+                                        .createInternal(createdClient.getId(),
+                                                request.getManagerId(),
+                                                ULongUtil.valueOf(ca.getUser().getId()))
+                                        .thenReturn(Boolean.TRUE);
+                            return Mono.just(Boolean.TRUE);
+                        },
+
+                        (isVerified, app, c, createdClient, clientHierarchy, managerAdded) -> this.clientService
                                 .addClientRegistrationObjects(app.getId(), app.getClientId(), loggedInFromClientId,
                                         createdClient),
 
-                        (isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
+                        (isVerified, app, c, createdClient, clientHierarchy, managerAdded, packagesAdded) -> this.appService
                                 .addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient)
                                 .map(clientAccessAdded -> createdClient))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));

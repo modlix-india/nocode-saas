@@ -1,7 +1,7 @@
 package com.fincity.security.service;
 
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
+import static com.fincity.saas.commons.util.StringUtil.*;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,10 +24,14 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserInviteDAO;
+import com.fincity.security.dto.AppProperty;
+import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
+import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
@@ -49,10 +53,12 @@ public class UserInviteService
     private final AuthenticationService authenticationService;
     private final SoxLogService soxLogService;
     private final ProfileService profileService;
+    private final AppService appService;
+    private final ClientHierarchyService clientHierarchyService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
-            ProfileService profileService) {
+            ProfileService profileService, AppService appService, ClientHierarchyService clientHierarchyService) {
 
         this.msgService = msgService;
         this.clientService = clientService;
@@ -60,6 +66,8 @@ public class UserInviteService
         this.authenticationService = authenticationService;
         this.soxLogService = soxLogService;
         this.profileService = profileService;
+        this.appService = appService;
+        this.clientHierarchyService = clientHierarchyService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
@@ -75,8 +83,7 @@ public class UserInviteService
                     }
 
                     return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId())
+                            .isUserClientManageClient(ca, entity.getClientId())
                             .filter(BooleanUtil::safeValueOf)
                             .map(x -> entity);
                 },
@@ -232,9 +239,15 @@ public class UserInviteService
                         user.getPhoneNumber(), null)
                         .filter(userExists -> !userExists).map(userExists -> Boolean.FALSE),
 
-                userExists -> this.userDao.create(user),
+                userExists -> SecurityContextUtil.getUsersContextAuthentication()
+                        .flatMap(ca -> this.appService.getAppByCode(ca.getUrlAppCode()))
+                        .flatMap(app -> this.validateUserCheckForInvite(
+                                app.getId(), app.getClientId(), user.getClientId(),
+                                user.getUserName(), user.getEmailId(), user.getPhoneNumber())),
 
-                (userExists, createdUser) -> {
+                (userExists, userCheckValid) -> this.userDao.create(user),
+
+                (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(createdUser.getId(), CREATE,
                             SecuritySoxLogObjectName.USER, "User created");
 
@@ -245,12 +258,12 @@ public class UserInviteService
                             .flatMap(BooleanUtil::safeValueOfWithEmpty);
                 },
 
-                (userExists, createdUser, passSet) -> (userInvite.getProfileId() != null)
+                (userExists, userCheckValid, createdUser, passSet) -> (userInvite.getProfileId() != null)
                         ? profileService.hasAccessToProfiles(user.getClientId(),
                                 Set.of(userInvite.getProfileId()))
                         : Mono.just(Boolean.FALSE),
 
-                (userExists, createdUser, passSet, hasAddableProfile) -> {
+                (userExists, userCheckValid, createdUser, passSet, hasAddableProfile) -> {
                     if (!BooleanUtil.safeValueOf(hasAddableProfile))
                         return Mono.just(createdUser);
 
@@ -263,6 +276,119 @@ public class UserInviteService
                         "UserInviteService.createWithInvitationInternal"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "User"));
+    }
+
+    private Mono<Boolean> validateUserCheckForInvite(
+            ULong appId, ULong appClientId, ULong clientId,
+            String userName, String emailId, String phoneNumber) {
+
+        return this.appService.getProperties(null, appId, null, AppService.APP_PROP_USER_CHECK)
+                .flatMap(props -> {
+
+                    String checkValue = AppService.APP_PROP_USER_CHECK_DEFAULT;
+
+                    if (props != null && !props.isEmpty()) {
+                        for (Map.Entry<ULong, Map<String, AppProperty>> entry : props.entrySet()) {
+                            Map<String, AppProperty> propMap = entry.getValue();
+                            if (propMap != null) {
+                                AppProperty prop = propMap.get(AppService.APP_PROP_USER_CHECK);
+                                if (prop != null && !StringUtil.safeIsBlank(prop.getValue())) {
+                                    checkValue = prop.getValue();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (AppService.APP_PROP_USER_CHECK_DEFAULT.equals(checkValue)
+                            || StringUtil.safeIsBlank(checkValue))
+                        return Mono.just(true);
+
+                    final String check = checkValue;
+
+                    return FlatMapUtil.flatMapMono(
+
+                            () -> this.clientService.getClientLevelType(clientId, appId),
+
+                            level -> this.clientHierarchyService.getClientHierarchy(clientId),
+
+                            (level, hierarchy) -> resolveAndCheckDuplicate(
+                                    check, level, hierarchy, appClientId,
+                                    userName, emailId, phoneNumber))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                                    "UserInviteService.validateUserCheckForInvite"))
+                            .defaultIfEmpty(true);
+                })
+                .defaultIfEmpty(true);
+    }
+
+    private Mono<Boolean> resolveAndCheckDuplicate(
+            String check, ClientLevelType level, ClientHierarchy hierarchy, ULong appClientId,
+            String userName, String emailId, String phoneNumber) {
+
+        ULong parentId;
+        boolean directChildren;
+        boolean grandChildren;
+
+        switch (check) {
+
+            case AppService.APP_PROP_USER_CHECK_NO_DUP_CLIENT:
+                if (level != ClientLevelType.CLIENT)
+                    return Mono.just(true);
+
+                parentId = appClientId;
+                directChildren = true;
+                grandChildren = false;
+                break;
+
+            case AppService.APP_PROP_USER_CHECK_NO_DUP_CUSTOMER:
+                if (level != ClientLevelType.CUSTOMER && level != ClientLevelType.CONSUMER)
+                    return Mono.just(true);
+
+                if (appClientId.equals(hierarchy.getManageClientLevel1()))
+                    parentId = hierarchy.getManageClientLevel0();
+                else if (appClientId.equals(hierarchy.getManageClientLevel2()))
+                    parentId = hierarchy.getManageClientLevel1();
+                else if (appClientId.equals(hierarchy.getManageClientLevel3()))
+                    parentId = hierarchy.getManageClientLevel2();
+                else
+                    return Mono.just(true);
+
+                directChildren = true;
+                grandChildren = true;
+                break;
+
+            case AppService.APP_PROP_USER_CHECK_NO_DUP_CONSUMER:
+                if (level != ClientLevelType.CONSUMER)
+                    return Mono.just(true);
+
+                if (appClientId.equals(hierarchy.getManageClientLevel2()))
+                    parentId = hierarchy.getManageClientLevel0();
+                else if (appClientId.equals(hierarchy.getManageClientLevel3()))
+                    parentId = hierarchy.getManageClientLevel1();
+                else
+                    return Mono.just(true);
+
+                directChildren = true;
+                grandChildren = false;
+                break;
+
+            default:
+                return Mono.just(true);
+        }
+
+        return this.userDao.checkUserExistsUnderManagingClient(
+                parentId, directChildren, grandChildren,
+                userName, emailId, phoneNumber, null)
+                .flatMap(exists -> {
+                    if (Boolean.TRUE.equals(exists))
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                SecurityMessageResourceService.USER_ALREADY_EXISTS,
+                                userName != null ? userName : emailId);
+
+                    return Mono.just(true);
+                });
     }
 
     private Mono<Map<String, Object>> addUserProfile(UserInvite invite) {

@@ -1,7 +1,7 @@
 package com.fincity.security.controller;
 
 import com.fincity.security.service.ProfileService;
-import jakarta.ws.rs.PathParam;
+
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

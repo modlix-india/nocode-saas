@@ -1,5 +1,8 @@
 package com.fincity.saas.commons.mongo.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
+import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.*;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,8 +26,6 @@ import org.springframework.util.MultiValueMap;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -37,7 +38,6 @@ import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
-import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.FORBIDDEN_CREATE;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
@@ -176,7 +176,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                     }
 
                     if (checkAppWriteAccess)
-                        return this.securityService.isBeingManaged(ca.getClientCode(), clientCode);
+                        return this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode);
                     else
                         return this.inheritanceService
                                 .order(appCode, ca.getUrlClientCode(), ca.getClientCode())
@@ -478,7 +478,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         return this.securityService.hasReadAccess(appCode, ca.getClientCode())
                                 .map(e -> Tuples.of(e, ca.getClientCode()));
 
-                    return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
+                    return this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode)
                             .flatMap(e -> !BooleanUtil.safeValueOf(e) ? Mono.empty()
                                     : this.securityService.hasReadAccess(appCode, clientCode))
                             .map(e -> Tuples.of(e, clientCode));
@@ -528,7 +528,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         return this.securityService.hasReadAccess(appCode, ca.getClientCode())
                                 .map(e -> Tuples.of(e, ca.getClientCode()));
 
-                    return this.securityService.isBeingManaged(ca.getClientCode(), clientCode)
+                    return this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode)
                             .flatMap(e -> !BooleanUtil.safeValueOf(e) ? Mono.empty()
                                     : this.securityService.hasReadAccess(appCode, clientCode))
                             .map(e -> Tuples.of(e, clientCode));
@@ -654,7 +654,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 ca -> {
                     if (params.containsKey(CLIENT_CODE) && !ca.isSystemClient())
-                        return this.securityService.isBeingManaged(ca.getClientCode(), params.getFirst(CLIENT_CODE));
+                        return this.securityService.doesClientManageClientCode(ca.getClientCode(),
+                                params.getFirst(CLIENT_CODE));
 
                     return Mono.just(Boolean.TRUE);
                 },

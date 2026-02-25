@@ -28,6 +28,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -71,6 +72,7 @@ public class ClientService
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
     private static final String FETCH_APPS = "fetchApps";
     private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
+    private static final String FETCH_CLIENT_MANAGERS = "fetchClientManagers";
     private static final String CACHE_NAME_CLIENT_TYPE_CODE_LEVEL = "clientTypeCodeLevel";
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
@@ -97,6 +99,10 @@ public class ClientService
     private ClientPinPolicyService clientPinPolicyService;
     @Autowired
     private ClientOtpPolicyService clientOtpPolicyService;
+    @Autowired
+    @Lazy
+    private ClientManagerService clientManagerService;
+
     @Value("${security.subdomain.endings}")
     private String[] subDomainURLEndings;
 
@@ -144,24 +150,67 @@ public class ClientService
         return this.dao.getClientsBy(ids);
     }
 
-    public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
-        return this.clientHierarchyService.isBeingManagedBy(managingClientId, clientId);
+    public Mono<Boolean> isUserClientManageClient(ContextAuthentication ca, ULong targetClientId) {
+
+        ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
+
+                isManaged -> Boolean.TRUE.equals(isManaged)
+                        ? this.clientManagerService.isUserClientManager(ca, targetClientId)
+                        : Mono.just(Boolean.FALSE))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
-        return this.clientHierarchyService.isBeingManagedBy(managingClientCode, clientCode);
+    public Mono<Boolean> isUserClientManageClient(ContextAuthentication ca, String targetClientCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.getClientBy(targetClientCode),
+
+                targetClient -> this.isUserClientManageClient(ca, targetClient.getId()))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong userId) {
-        return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
+    public Mono<Boolean> isUserClientManageClient(String appCode, ULong userId, ULong userClientId,
+            ULong targetClientId) {
+
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
+
+                isManaged -> Boolean.TRUE.equals(isManaged)
+                        ? this.clientManagerService.isUserClientManager(appCode, userId, userClientId, targetClientId)
+                        : Mono.just(Boolean.FALSE))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
+    }
+
+    public Mono<Boolean> doesClientManageClient(ULong managingClientId, ULong clientId) {
+        return this.clientHierarchyService.isClientBeingManagedBy(managingClientId, clientId);
     }
 
     public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
-        return this.userService.readInternal(userId).map(User::getClientId).flatMap(this::readInternal)
-                .map(Client::getCode)
-                .flatMap(uClientCode -> Mono.zip(this.clientHierarchyService.isBeingManagedBy(uClientCode, clientCode),
-                        this.clientHierarchyService.isBeingManagedBy(clientCode, uClientCode)))
-                .map(tup -> tup.getT1() || tup.getT2());
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userService.readInternal(userId),
+
+                user -> this.getClientBy(clientCode),
+
+                (user, client) -> Mono.zip(
+                        this.clientHierarchyService.isClientBeingManagedBy(user.getClientId(), client.getId()),
+                        this.clientHierarchyService.isClientBeingManagedBy(client.getId(), user.getClientId()))
+                        .map(tup -> tup.getT1() || tup.getT2()))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.isUserPartOfHierarchy"));
     }
 
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
@@ -248,6 +297,25 @@ public class ClientService
                                 .map(x -> client);
 
                     return Mono.just(client);
+                },
+
+                (ca, client, hClient) -> {
+                    if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
+                            ca.getAuthorities()))
+                        return this.clientManagerService
+                                .createInternal(hClient.getId(),
+                                        ULongUtil.valueOf(ca.getUser().getId()),
+                                        ULongUtil.valueOf(ca.getUser().getId()))
+                                .thenReturn(hClient);
+
+                    if (entity.getManagerId() != null)
+                        return this.clientManagerService
+                                .createInternal(hClient.getId(),
+                                        entity.getManagerId(),
+                                        ULongUtil.valueOf(ca.getUser().getId()))
+                                .thenReturn(hClient);
+
+                    return Mono.just(hClient);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
     }
 
@@ -375,7 +443,7 @@ public class ClientService
                         .getClientId()))),
 
                 (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
+                        : this.isUserClientManageClient(ca, id),
 
                 (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
                         ? this.dao.makeClientActiveIfInActive(clientId)
@@ -399,8 +467,7 @@ public class ClientService
                         .getClientId()))),
 
                 (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-                                .getClientId()), id),
+                        : this.isUserClientManageClient(ca, id),
 
                 (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
                         : Mono.empty())
@@ -508,6 +575,7 @@ public class ClientService
         boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
         boolean fetchApps = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_APPS));
         boolean fetchCreatedByUser = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY_USER));
+        boolean fetchClientManagers = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CLIENT_MANAGERS));
 
         Map<ULong, Client> map = clients.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
 
@@ -541,6 +609,22 @@ public class ClientService
                                             : client.setOwners(
                                                     idsMap.get(client.getId()).stream().map(userMap::get).toList()))
                                     .toList()));
+
+        if (fetchClientManagers)
+            clientsMono = clientsMono.flatMap(c -> {
+
+                Map<ULong, Client> cMap = c.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
+
+                return this.clientManagerService.getManagerIds(cMap.keySet())
+                        .flatMap(idsMap -> Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
+                                .distinct().flatMap(this.userService::readInternal)
+                                .collectMap(User::getId)
+                                .map(userMap -> c.stream()
+                                        .map(client -> idsMap.get(client.getId()) == null ? client
+                                                : client.setClientManagers(
+                                                        idsMap.get(client.getId()).stream().map(userMap::get).toList()))
+                                        .toList()));
+            });
 
         return clientsMono;
     }

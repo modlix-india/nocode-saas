@@ -34,6 +34,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -65,7 +66,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
+public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     private final PasswordEncoder encoder;
     private final ClientDAO clientDAO;
@@ -260,6 +261,50 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         return Mono.from(
                 this.dslContext.selectCount().from(SECURITY_USER)
                         .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+                        .where(DSL.and(userConditions)))
+                .map(e -> e.value1() > 0);
+    }
+
+    public Mono<Boolean> checkUserExistsUnderManagingClient(
+            ULong managingClientId,
+            boolean includeDirectChildren,
+            boolean includeGrandChildren,
+            String userName, String emailId, String phoneNumber,
+            ULong excludeUserId) {
+
+        if (managingClientId == null)
+            return Mono.just(false);
+
+        List<Condition> availabilityConditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
+        if (availabilityConditions.isEmpty())
+            return Mono.just(false);
+
+        List<Condition> hierarchyConditions = new ArrayList<>();
+
+        if (includeDirectChildren)
+            hierarchyConditions.add(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId));
+
+        if (includeGrandChildren)
+            hierarchyConditions.add(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1.eq(managingClientId));
+
+        if (hierarchyConditions.isEmpty())
+            return Mono.just(false);
+
+        List<Condition> userConditions = new ArrayList<>();
+
+        userConditions.add(SECURITY_USER.CLIENT_ID.in(
+                this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                        .from(SECURITY_CLIENT_HIERARCHY)
+                        .where(DSL.or(hierarchyConditions))));
+
+        userConditions.add(DSL.or(availabilityConditions));
+        userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+        if (excludeUserId != null)
+            userConditions.add(SECURITY_USER.ID.ne(excludeUserId));
+
+        return Mono.from(
+                this.dslContext.selectCount().from(SECURITY_USER)
                         .where(DSL.and(userConditions)))
                 .map(e -> e.value1() > 0);
     }

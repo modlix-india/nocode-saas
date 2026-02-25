@@ -1,5 +1,15 @@
 package com.fincity.security.service;
 
+import java.util.UUID;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
@@ -17,17 +27,9 @@ import com.fincity.security.dto.UserRequest;
 import com.fincity.security.jooq.enums.SecurityUserRequestStatus;
 import com.fincity.security.jooq.tables.records.SecurityUserRequestRecord;
 import com.fincity.security.model.UserAppAccessRequest;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.util.UUID;
 
 @Service
 public class UserRequestService
@@ -192,8 +194,7 @@ public class UserRequestService
                 ca -> this.dao.readByRequestId(requestId),
 
                 (ca, req) -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                req.getClientId())
+                        .isUserClientManageClient(ca, req.getClientId())
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, req, hasAccess) -> this.userDao.readById(req.getUserId()))

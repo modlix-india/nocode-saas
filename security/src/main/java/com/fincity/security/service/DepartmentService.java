@@ -3,19 +3,22 @@ package com.fincity.security.service;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.service.CacheService;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.DepartmentDAO;
@@ -23,9 +26,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -38,10 +39,6 @@ public class DepartmentService
     private static final String DEPARTMENT = "Department";
     private static final String FETCH_PARENT_DEPARTMENT = "fetchParentDepartment";
 
-    private static final String NAME = "name";
-    private static final String DESCRIPTION = "description";
-    private static final String PARENT_DEPARTMENT_ID = "parentDepartmentId";
-
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
     private final CacheService cacheService;
@@ -49,8 +46,8 @@ public class DepartmentService
     private static final String CACHE_NAME_DEPARTMENT = "department";
 
     public DepartmentService(SecurityMessageResourceService securityMessageResourceService,
-                             ClientService clientService,
-                             CacheService cacheService) {
+            ClientService clientService,
+            CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.cacheService = cacheService;
@@ -60,22 +57,22 @@ public class DepartmentService
     @Override
     public Mono<Department> create(Department entity) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> {
-                            if (entity.getClientId() == null)
-                                return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (entity.getClientId() == null)
+                        return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
-                            if (ca.isSystemClient())
-                                return Mono.just(entity);
+                    if (ca.isSystemClient())
+                        return Mono.just(entity);
 
-                            return this.clientService
-                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                                    .filter(BooleanUtil::safeValueOf)
-                                    .map(x -> entity);
-                        },
-                        (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+                    return this.clientService
+                            .isUserClientManageClient(ca, entity.getClientId())
+                            .filter(BooleanUtil::safeValueOf)
+                            .map(x -> entity);
+                },
+                (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
 
-                        (ca, managed, sameClient) -> super.create(entity))
+                (ca, managed, sameClient) -> super.create(entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -105,16 +102,14 @@ public class DepartmentService
     public Mono<Department> update(Department entity) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+                () -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
 
-                        managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
+                managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                        (managed, canBeUpdated) -> super.update(entity),
-                        (managed, canBeUpdated, updatedDepartment) ->
-                                this.cacheService
-                                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
-                                .thenReturn(updatedDepartment)
-                )
+                (managed, canBeUpdated) -> super.update(entity),
+                (managed, canBeUpdated, updatedDepartment) -> this.cacheService
+                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                        .thenReturn(updatedDepartment))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -124,15 +119,14 @@ public class DepartmentService
     @Override
     public Mono<Department> update(ULong key, Map<String, Object> fields) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.dao.canBeUpdated(key)
-                                .filter(BooleanUtil::safeValueOf),
+                () -> this.dao.canBeUpdated(key)
+                        .filter(BooleanUtil::safeValueOf),
 
-                        canBeUpdated -> super.update(key, fields),
+                canBeUpdated -> super.update(key, fields),
 
-                        (canBeUpdated, updatedDepartment) -> this.cacheService
-                                .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
-                                .thenReturn(updatedDepartment)
-                )
+                (canBeUpdated, updatedDepartment) -> this.cacheService
+                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                        .thenReturn(updatedDepartment))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
@@ -166,7 +160,8 @@ public class DepartmentService
     }
 
     public Mono<Department> readInternal(ULong departmentId) {
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_DEPARTMENT, () -> this.dao.readInternal(departmentId), departmentId);
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_DEPARTMENT, () -> this.dao.readInternal(departmentId),
+                departmentId);
     }
 
     public Mono<List<Department>> fillDetails(List<Department> departments, MultiValueMap<String, String> queryParams) {
@@ -176,7 +171,11 @@ public class DepartmentService
         Flux<Department> departmentFlux = Flux.fromIterable(departments);
 
         if (fetchParentDepartment)
-            departmentFlux = departmentFlux.filter(department -> department.getParentDepartmentId() != null && department.getParentDepartmentId().intValue() != 0).flatMap(department -> this.readInternal(department.getParentDepartmentId()).map(department::setParentDepartment));
+            departmentFlux = departmentFlux
+                    .filter(department -> department.getParentDepartmentId() != null
+                            && department.getParentDepartmentId().intValue() != 0)
+                    .flatMap(department -> this.readInternal(department.getParentDepartmentId())
+                            .map(department::setParentDepartment));
 
         return departmentFlux.collectList();
     }
@@ -190,9 +189,9 @@ public class DepartmentService
     public Mono<List<Department>> readByIds(List<ULong> departmentIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readAllFilter(new FilterCondition()
-                                .setField("id")
-                                .setOperator(FilterConditionOperator.IN)
-                                .setMultiValue(departmentIds))
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(departmentIds))
                         .collectList(),
                 departments -> this.fillDetails(departments, queryParams));
     }
