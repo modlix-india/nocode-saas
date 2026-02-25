@@ -124,19 +124,19 @@ public class FileSystemService {
     public Page<FileDetail> list(String clientCode, String path, FileType[] fileType, String filter,
             Pageable page) {
 
-        FilesPage firstPage = null;
+        FilesPage firstPage;
 
         if ((fileType != null && fileType.length > 0)
                 || !StringUtil.safeIsBlank(filter)
-                || (page.getSort().isEmpty() || page.getSort().isUnsorted())
+                || page.getSort().isSorted()
                 || page.getPageNumber() != 0
                 || page.getPageSize() != 200)
             firstPage = this.fileSystemDao.list(this.fileSystemType, clientCode, path, fileType, filter, page);
-
-        firstPage = cacheService.<FilesPage>cacheValueOrGet(
-                CACHE_NAME_LIST + "-" + this.fileSystemType.name() + "-" + clientCode,
-                () -> this.fileSystemDao.list(this.fileSystemType, clientCode, path, null, null, page),
-                path);
+        else
+            firstPage = cacheService.<FilesPage>cacheValueOrGet(
+                    CACHE_NAME_LIST + "-" + this.fileSystemType.name() + "-" + clientCode,
+                    () -> this.fileSystemDao.list(this.fileSystemType, clientCode, path, null, null, page),
+                    path);
 
         if (firstPage == null)
             return PageableExecutionUtils.getPage(new ArrayList<>(), page, () -> 0L);
