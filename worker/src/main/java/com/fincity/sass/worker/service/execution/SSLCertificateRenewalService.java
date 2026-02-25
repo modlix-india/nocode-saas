@@ -1,16 +1,12 @@
-package com.fincity.sass.worker.service;
+package com.fincity.sass.worker.service.execution;
 
 import com.fincity.sass.worker.dto.SSLCertificateRenewalResult;
 import com.fincity.sass.worker.dto.Task;
 import com.fincity.sass.worker.feign.IFeignSecuritySSLService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SSLCertificateRenewalService {
-
-    private static final Logger logger = LoggerFactory.getLogger(SSLCertificateRenewalService.class);
+public class SSLCertificateRenewalService extends AbstractExecutionService {
     private static final String JOB_DATA_DAYS_BEFORE_EXPIRY = "daysBeforeExpiry";
     private static final int DEFAULT_DAYS_BEFORE_EXPIRY = 30;
 
@@ -20,12 +16,14 @@ public class SSLCertificateRenewalService {
         this.feignSecuritySSLService = feignSecuritySSLService;
     }
 
-    public String renewExpiringCertificates(Task task) {
+    @Override
+    public String execute(Task task) {
         int daysBeforeExpiry = getDaysBeforeExpiry(task);
         logger.info("Executing SSL certificate renewal for certificates expiring within {} days", daysBeforeExpiry);
 
         try {
-            SSLCertificateRenewalResult result = feignSecuritySSLService.renewExpiringCertificates(daysBeforeExpiry);
+            SSLCertificateRenewalResult result =
+                    runWithTimeout(() -> feignSecuritySSLService.renewExpiringCertificates(daysBeforeExpiry));
             return formatResult(result);
         } catch (Exception e) {
             logger.error("SSL certificate renewal failed: {}", e.getMessage());

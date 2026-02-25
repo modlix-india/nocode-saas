@@ -143,13 +143,11 @@ public class QuartzService {
         logger.info("Initializing job: {}", task.getName());
 
         org.quartz.Scheduler qScheduler = schedulerRepository.lookup(workerScheduler.getName());
-        if (qScheduler == null) {
+        if (qScheduler == null)
             throw new SchedulerException("Quartz scheduler not found: " + workerScheduler.getName());
-        }
 
-        if (task.getId() == null) {
+        if (task.getId() == null)
             throw new SchedulerException("Task must be persisted before scheduling; task ID is required");
-        }
 
         JobBuilder jobBuilder = JobBuilder.newJob(TaskExecutorJob.class)
                 .withIdentity(task.getName(), task.getGroupName())
@@ -158,9 +156,7 @@ public class QuartzService {
                 .usingJobData(
                         TaskExecutorJob.TASK_DATA, task.getJobData() != null ? gson.toJson(task.getJobData()) : "");
 
-        if (Boolean.TRUE.equals(task.getDurable())) {
-            jobBuilder.storeDurably();
-        }
+        if (Boolean.TRUE.equals(task.getDurable())) jobBuilder.storeDurably();
 
         JobDetail jobDetail = jobBuilder.build();
 
@@ -187,9 +183,8 @@ public class QuartzService {
     public Task updateTask(Scheduler workerScheduler, Task task, TaskOperationType taskOperationType)
             throws SchedulerException {
         var qScheduler = schedulerRepository.lookup(workerScheduler.getName());
-        if (qScheduler == null) {
+        if (qScheduler == null)
             throw new SchedulerException("Quartz scheduler not found: " + workerScheduler.getName());
-        }
 
         JobKey jobKey = new JobKey(task.getName(), task.getGroupName());
 

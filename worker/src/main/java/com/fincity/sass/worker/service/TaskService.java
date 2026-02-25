@@ -52,14 +52,6 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
         return created;
     }
 
-    /**
-     * Create a task from FunctionExecutionTask model. Converts API fields (functionName, functionNamespace,
-     * functionParams) into jobData via prepareForPersistence(), then persists as Task.
-     */
-    public Task createFunctionExecutionTask(FunctionExecutionTask task) {
-        return create(task);
-    }
-
     @Override
     public Integer delete(ULong id) {
         throw new GenericException(

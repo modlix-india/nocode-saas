@@ -1,16 +1,12 @@
-package com.fincity.sass.worker.service;
+package com.fincity.sass.worker.service.execution;
 
 import com.fincity.sass.worker.dto.ExpireTicketsResult;
 import com.fincity.sass.worker.dto.Task;
 import com.fincity.sass.worker.feign.IFeignEntityProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class TicketExpirationService {
-
-    private static final Logger logger = LoggerFactory.getLogger(TicketExpirationService.class);
+public class TicketExpirationService extends AbstractExecutionService {
 
     private final IFeignEntityProcessor feignEntityProcessor;
 
@@ -18,7 +14,8 @@ public class TicketExpirationService {
         this.feignEntityProcessor = feignEntityProcessor;
     }
 
-    public String runExpiration(Task task) {
+    @Override
+    public String execute(Task task) {
         String appCode = task.getAppCode();
         String clientCode = task.getClientCode();
         if (appCode == null || appCode.isBlank() || clientCode == null || clientCode.isBlank())
@@ -26,7 +23,8 @@ public class TicketExpirationService {
 
         logger.info("Executing ticket expiration for appCode={}, clientCode={}", appCode, clientCode);
         try {
-            ExpireTicketsResult result = feignEntityProcessor.runTicketExpiration(appCode, clientCode);
+            ExpireTicketsResult result =
+                    runWithTimeout(() -> feignEntityProcessor.runTicketExpiration(appCode, clientCode));
             return "Expired " + result.getExpiredCount() + " ticket(s)";
         } catch (Exception e) {
             logger.error(

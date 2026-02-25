@@ -38,7 +38,6 @@
         <package.c.server>worker</package.c.server>
         <!-- internal -->
         <package.i.nocode-kirun-version>3.14.1</package.i.nocode-kirun-version>
-        <package.i.saas-commons-core-version>1.0.0</package.i.saas-commons-core-version>
         <package.i.saas-commons2-jooq-version>2.0.0</package.i.saas-commons2-jooq-version>
         <package.i.saas-commons2-security-version>2.0.0</package.i.saas-commons2-security-version>
         <package.i.saas-commons2-version>2.0.0</package.i.saas-commons2-version>
@@ -66,11 +65,6 @@
             <groupId>com.fincity.nocode</groupId>
             <artifactId>kirun-java</artifactId>
             <version>${package.i.nocode-kirun-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-core</artifactId>
-            <version>${package.i.saas-commons-core-version}</version>
         </dependency>
         <dependency>
             <groupId>com.modlix.saas</groupId>

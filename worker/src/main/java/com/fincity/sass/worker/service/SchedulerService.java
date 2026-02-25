@@ -156,8 +156,7 @@ public class SchedulerService
     @Override
     protected Scheduler updatableEntity(Scheduler entity) {
         Scheduler existing = this.read(entity.getId());
-        if (existing == null)
-            return null;
+        if (existing == null) return null;
 
         existing.setName(entity.getName());
         existing.setSchedulerStatus(entity.getSchedulerStatus());
