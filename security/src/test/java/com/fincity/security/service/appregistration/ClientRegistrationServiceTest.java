@@ -46,6 +46,7 @@ import com.fincity.security.service.AbstractServiceUnitTest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientHierarchyService;
+import com.fincity.security.service.ClientManagerService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
@@ -81,6 +82,9 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 
 	@Mock
 	private ClientHierarchyService clientHierarchyService;
+
+	@Mock
+	private ClientManagerService clientManagerService;
 
 	@Mock
 	private EventCreationService ecService;
@@ -121,7 +125,7 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 	void setUp() {
 		service = new ClientRegistrationService(
 				dao, appService, userService, otpService, authenticationService,
-				clientService, clientHierarchyService, ecService, clientUrlService,
+				clientService, clientHierarchyService, clientManagerService, ecService, clientUrlService,
 				appRegistrationDAO, filesService, appRegistrationIntegrationService,
 				appRegistrationIntegrationTokenService, securityMessageResourceService,
 				planService);
