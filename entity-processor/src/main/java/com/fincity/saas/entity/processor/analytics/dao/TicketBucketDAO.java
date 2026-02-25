@@ -4,8 +4,6 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActiv
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
-import com.fincity.saas.entity.processor.enums.ActivityAction;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -22,6 +20,7 @@ import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.time.LocalDateTime;
@@ -265,8 +264,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                     .flatMap(totalCondition -> Mono.zip(super.filter(abstractCondition), super.filter(totalCondition)));
         }
 
-        return super.filter(abstractCondition)
-                .map(conditions -> Tuples.of(conditions, conditions));
+        return super.filter(abstractCondition).map(conditions -> Tuples.of(conditions, conditions));
     }
 
     private Mono<Tuple3<Condition, Condition, TicketBucketFilter>> resolveActivityBasedStageConditions(
@@ -275,7 +273,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         return Mono.zip(
                         this.createTicketBucketConditionsWithoutDate(access, ticketBucketFilter)
                                 .flatMap(super::filter),
-                        this.createTotalCountConditions(access, ticketBucketFilter).flatMap(super::filter))
+                        this.createTotalCountConditions(access, ticketBucketFilter)
+                                .flatMap(super::filter))
                 .map(condTuple -> Tuples.of(condTuple.getT1(), condTuple.getT2(), ticketBucketFilter));
     }
 
@@ -306,8 +305,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                             : this.buildGroupedStageJoinCountSelect(groupField, joinField, conditions, requiresNonNull)
                                     .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME);
 
-                    return Flux.from(select)
-                            .map(rec -> this.mapToPerValueCount(rec, groupField, defaultValue, false));
+                    return Flux.from(select).map(rec -> this.mapToPerValueCount(rec, groupField, defaultValue, false));
                 });
     }
 
@@ -319,7 +317,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             boolean requiresNonNull) {
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter).flux(),
+                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter)
+                        .flux(),
                 conditionsTuple -> {
                     var stageConditions = conditionsTuple.getT1();
                     var totalConditions = conditionsTuple.getT2();
@@ -343,8 +342,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                             : this.buildActivityBasedStageCountSelect(groupField, config)
                                     .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME);
 
-                    return Flux.from(select)
-                            .map(rec -> this.mapToPerValueCount(rec, groupField, defaultValue, true));
+                    return Flux.from(select).map(rec -> this.mapToPerValueCount(rec, groupField, defaultValue, true));
                 });
     }
 
@@ -353,8 +351,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
         if (stageName == null) stageName = defaultValue;
 
-        Field<? extends Number> countField =
-                useDistinct ? DSL.countDistinct(this.idField) : DSL.count(this.idField);
+        Field<? extends Number> countField = useDistinct ? DSL.countDistinct(this.idField) : DSL.count(this.idField);
 
         return new PerValueCount()
                 .setGroupedId(rec.get(groupField))
@@ -423,7 +420,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 .where(config.ticketConditions())
                 .and(activityCondition);
 
-        return this.applyTicketNotNullFilters(query, config.requiresCreatedByNotNull(), config.requiresClientIdNotNull());
+        return this.applyTicketNotNullFilters(
+                query, config.requiresCreatedByNotNull(), config.requiresClientIdNotNull());
     }
 
     public Flux<PerDateCount> getTicketPerAssignedUserStageSourceDateCount(
@@ -447,7 +445,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 DSL.min(ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter).flux(),
+                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter)
+                        .flux(),
                 conditionsTuple -> {
                     var stageConditions = conditionsTuple.getT1();
                     var totalConditions = conditionsTuple.getT2();
@@ -469,7 +468,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                             .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, activityDateGroupField),
                                     this.buildTotalOnlyDateCountSelect(
                                                     groupField,
-                                                    DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate"),
+                                                    DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT)
+                                                            .as("groupDate"),
                                                     totalConditions,
                                                     requiresNonNull)
                                             .groupBy(
@@ -480,7 +480,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                     .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, activityDateGroupField);
 
                     return Flux.from(select)
-                            .map(rec -> this.mapToPerDateCountDistinct(rec, groupField, minActivityDateField, defaultValue));
+                            .map(rec -> this.mapToPerDateCountDistinct(
+                                    rec, groupField, minActivityDateField, defaultValue));
                 });
     }
 
@@ -560,7 +561,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         Field<? extends Number> countField = DSL.countDistinct(this.idField);
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter).flux(),
+                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter)
+                        .flux(),
                 conditionsTuple -> {
                     var stageConditions = conditionsTuple.getT1();
                     var totalConditions = conditionsTuple.getT2();
@@ -638,10 +640,12 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
     private Condition buildActivityCondition(LocalDateTime startDate, LocalDateTime endDate, List<ULong> stageIds) {
         Condition condition = ENTITY_PROCESSOR_ACTIVITIES
-                .ACTIVITY_ACTION.eq(ActivityAction.STAGE_UPDATE)
+                .ACTIVITY_ACTION
+                .eq(ActivityAction.STAGE_UPDATE)
                 .and(ENTITY_PROCESSOR_ACTIVITIES.STAGE_ID.isNotNull());
 
-        condition = this.applyDateRangeCondition(condition, ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE, startDate, endDate);
+        condition =
+                this.applyDateRangeCondition(condition, ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE, startDate, endDate);
 
         if (stageIds != null && !stageIds.isEmpty()) {
             condition = condition.and(ENTITY_PROCESSOR_ACTIVITIES.STAGE_ID.in(stageIds));
@@ -688,7 +692,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID).as("uniqueClientCount");
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter).flux(),
+                () -> this.resolveActivityBasedStageConditions(access, ticketBucketFilter)
+                        .flux(),
                 conditionsTuple -> {
                     var stageConditions = conditionsTuple.getT1();
                     var totalConditions = conditionsTuple.getT2();
@@ -743,7 +748,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 .where(config.ticketConditions())
                 .and(activityCondition);
 
-        return this.applyTicketNotNullFilters(query, config.requiresCreatedByNotNull(), config.requiresClientIdNotNull());
+        return this.applyTicketNotNullFilters(
+                query, config.requiresCreatedByNotNull(), config.requiresClientIdNotNull());
     }
 
     private Field<LocalDateTime> toDateBucketGroupKeyField(

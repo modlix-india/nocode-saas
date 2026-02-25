@@ -695,6 +695,24 @@ public class ReportUtil {
             boolean includeZero,
             boolean includePercentage,
             boolean includeAllTotal) {
+        return toEntityStageCounts(
+                perValueCountList,
+                innerEntityList,
+                outerEntityList,
+                includeZero,
+                includePercentage,
+                includeAllTotal,
+                null);
+    }
+
+    public static Flux<EntityEntityCount> toEntityStageCounts(
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> innerEntityList,
+            List<IdAndValue<ULong, String>> outerEntityList,
+            boolean includeZero,
+            boolean includePercentage,
+            boolean includeAllTotal,
+            Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId) {
 
         if (perValueCountList.isEmpty() && !includeZero) return Flux.empty();
 
@@ -707,7 +725,12 @@ public class ReportUtil {
                 .filter(entry -> includeZero || !entry.getValue().isEmpty())
                 .publishOn(Schedulers.boundedElastic())
                 .map(entry -> buildAggregatedTotalEntityStatusCount(
-                        entry, innerEntityMap, outerEntityMap, includePercentage, includeZero))
+                        entry,
+                        innerEntityMap,
+                        outerEntityMap,
+                        includePercentage,
+                        includeZero,
+                        clientManagersByClientId))
                 .filter(e -> includeAllTotal || isTotalCountNonZero(e.getTotalCount()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityStageCounts"));
     }
@@ -731,7 +754,8 @@ public class ReportUtil {
             Map<ULong, String> innerEntityMap,
             Map<ULong, String> outerEntityMap,
             boolean includePercentage,
-            boolean includeZero) {
+            boolean includeZero,
+            Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId) {
 
         String outerEntityIdStr = entry.getKey();
         ULong outerEntityId = ULongUtil.valueOf(outerEntityIdStr);
@@ -755,13 +779,27 @@ public class ReportUtil {
             statusCounts.add(EntityCount.of(innerEntityId, innerEntityName, totalCountPercentage));
         }
 
-        return new EntityEntityCount(outerEntityId, outerEntityName, statusCounts, includePercentage);
+        List<IdAndValue<ULong, String>> clientManagers =
+                (clientManagersByClientId != null && clientManagersByClientId.containsKey(outerEntityId))
+                        ? clientManagersByClientId.get(outerEntityId)
+                        : List.of();
+
+        return new EntityEntityCount(outerEntityId, outerEntityName, statusCounts, includePercentage)
+                .setMetadata(clientManagers);
     }
 
     public static Flux<EntityDateCount> toEntityDateCounts(
             List<PerDateCount> perDateCountList,
             List<IdAndValue<ULong, String>> outerEntityList,
             BaseFilter.ReportOptions options) {
+        return toEntityDateCounts(perDateCountList, outerEntityList, options, null);
+    }
+
+    public static Flux<EntityDateCount> toEntityDateCounts(
+            List<PerDateCount> perDateCountList,
+            List<IdAndValue<ULong, String>> outerEntityList,
+            BaseFilter.ReportOptions options,
+            Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId) {
 
         if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
@@ -782,7 +820,12 @@ public class ReportUtil {
         return Flux.fromIterable(grouped.entrySet())
                 .filter(entry -> options.includeZero() || !entry.getValue().isEmpty())
                 .map(entry -> buildAggregatedTotalEntityDateCount(
-                        entry, datePairMap, outerEntityMap, options.includePercentage(), options.includeZero()))
+                        entry,
+                        datePairMap,
+                        outerEntityMap,
+                        options.includePercentage(),
+                        options.includeZero(),
+                        clientManagersByClientId))
                 .filter(e -> options.includeAllTotal() || isTotalCountNonZero(e.getTotalCount()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityDateCounts"));
     }
@@ -816,7 +859,8 @@ public class ReportUtil {
             NavigableMap<DatePair, List<PerDateCount>> datePairMap,
             Map<ULong, String> outerEntityMap,
             boolean includePercentage,
-            boolean includeZero) {
+            boolean includeZero,
+            Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId) {
 
         ULong outerEntityId = entry.getKey();
         String outerEntityName = outerEntityMap.getOrDefault(outerEntityId, outerEntityId.toString());
@@ -837,6 +881,12 @@ public class ReportUtil {
             dateCountList.add(DateCount.of(datePair, totalCountPercentage));
         }
 
-        return new EntityDateCount(outerEntityId, outerEntityName, dateCountList, includePercentage);
+        List<IdAndValue<ULong, String>> clientManagers =
+                (clientManagersByClientId != null && clientManagersByClientId.containsKey(outerEntityId))
+                        ? clientManagersByClientId.get(outerEntityId)
+                        : List.of();
+
+        return new EntityDateCount(outerEntityId, outerEntityName, dateCountList, includePercentage)
+                .setMetadata(clientManagers);
     }
 }

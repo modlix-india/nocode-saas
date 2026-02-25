@@ -220,4 +220,11 @@ public class ClientManagerService
                 .getClientIdsOfManager(managerId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
     }
+
+    public Mono<List<ULong>> getClientIdsOfManagersInternal(List<ULong> managerIds) {
+        return this.dao
+                .getClientIdsOfManagers(managerIds)
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagersInternal"));
+    }
 }
