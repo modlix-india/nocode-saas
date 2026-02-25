@@ -4,7 +4,7 @@
 package com.fincity.sass.worker.jooq;
 
 
-import com.fincity.sass.worker.jooq.tables.WorkerSchedulers;
+import com.fincity.sass.worker.jooq.tables.WorkerClientScheduleControls;
 import com.fincity.sass.worker.jooq.tables.WorkerTasks;
 
 
@@ -15,9 +15,9 @@ import com.fincity.sass.worker.jooq.tables.WorkerTasks;
 public class Tables {
 
     /**
-     * The table <code>worker.worker_schedulers</code>.
+     * The table <code>worker.worker_client_schedule_controls</code>.
      */
-    public static final WorkerSchedulers WORKER_SCHEDULERS = WorkerSchedulers.WORKER_SCHEDULERS;
+    public static final WorkerClientScheduleControls WORKER_CLIENT_SCHEDULE_CONTROLS = WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS;
 
     /**
      * The table <code>worker.worker_tasks</code>.

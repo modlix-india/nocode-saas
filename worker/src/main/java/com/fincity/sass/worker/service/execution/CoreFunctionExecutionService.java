@@ -22,8 +22,7 @@ public class CoreFunctionExecutionService extends AbstractExecutionService {
     @Override
     public String execute(Task task) {
         FunctionExecutionSpec spec = FunctionExecutionSpec.fromJobData(task.getJobData());
-        if (spec == null || !spec.hasFunctionSpec())
-            return "No function specified for execution";
+        if (spec == null || !spec.hasFunctionSpec()) return "No function specified for execution";
 
         Map<String, JsonElement> params = spec.getParams() != null ? spec.getParams() : Map.of();
         return execute(task, spec, params);

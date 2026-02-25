@@ -25,9 +25,8 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong> {
     private String clientCode;
     private String appCode;
     private String name;
-    private String groupName;
     private TaskState taskState = TaskState.NORMAL;
-    private ULong schedulerId;
+    private ULong clientScheduleControlId;
     private String description;
     private Map<String, Object> jobData;
     private Boolean durable;
@@ -59,5 +58,11 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong> {
     public Task setRepeatCount(Integer repeatCount) {
         this.repeatInterval = repeatCount;
         return this;
+    }
+
+    public String getJobGroup() {
+        if (clientCode == null) return null;
+        if (appCode == null || appCode.isBlank()) return clientCode;
+        return appCode + "_" + clientCode;
     }
 }

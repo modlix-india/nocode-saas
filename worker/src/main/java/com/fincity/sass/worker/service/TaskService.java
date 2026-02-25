@@ -1,7 +1,7 @@
 package com.fincity.sass.worker.service;
 
 import com.fincity.sass.worker.dao.TaskDAO;
-import com.fincity.sass.worker.dto.Scheduler;
+import com.fincity.sass.worker.dto.ClientScheduleControl;
 import com.fincity.sass.worker.dto.Task;
 import com.fincity.sass.worker.enums.TaskOperationType;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
@@ -16,15 +16,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRecord, ULong, Task, TaskDAO> {
 
-    private final SchedulerService schedulerService;
+    private final ClientScheduleControlService clientScheduleControlService;
     private final QuartzService quartzService;
     private final WorkerMessageResourceService messageResourceService;
 
     private TaskService(
-            SchedulerService schedulerService,
+            ClientScheduleControlService clientScheduleControlService,
             QuartzService quartzService,
             WorkerMessageResourceService messageResourceService) {
-        this.schedulerService = schedulerService;
+        this.clientScheduleControlService = clientScheduleControlService;
         this.quartzService = quartzService;
         this.messageResourceService = messageResourceService;
     }
@@ -33,15 +33,15 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
     public Task create(Task task) {
         if (task instanceof FunctionExecutionTask fet) fet.prepareForPersistence();
 
-        Scheduler scheduler = this.schedulerService.read(task.getSchedulerId());
-        if (scheduler == null)
+        ClientScheduleControl control = this.clientScheduleControlService.read(task.getClientScheduleControlId());
+        if (control == null)
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
 
         Task created = super.create(task);
         try {
-            this.quartzService.initializeTask(scheduler, created);
+            this.quartzService.initializeTask(created);
         } catch (Exception e) {
             logger.error("Error initializing task in Quartz: {}", task.getName(), e);
             throw new GenericException(
@@ -80,14 +80,14 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.TASK_NOT_FOUND));
 
-        Scheduler scheduler = schedulerService.read(task.getSchedulerId());
-        if (scheduler == null)
+        ClientScheduleControl control = clientScheduleControlService.read(task.getClientScheduleControlId());
+        if (control == null)
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
 
         try {
-            quartzService.updateTask(scheduler, task, operationType);
+            quartzService.updateTask(task, operationType);
         } catch (Exception e) {
             logger.error("Error {} task: {}", operationType.name().toLowerCase() + "ing", task.getName(), e);
             throw new GenericException(

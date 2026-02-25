@@ -1,7 +1,6 @@
 package com.fincity.sass.worker.service;
 
-import com.fincity.sass.worker.configuration.QuartzConfiguration;
-import com.fincity.sass.worker.dto.Scheduler;
+import com.fincity.sass.worker.dto.ClientScheduleControl;
 import com.fincity.sass.worker.dto.Task;
 import com.fincity.sass.worker.enums.SchedulerStatus;
 import com.fincity.sass.worker.enums.TaskJobType;
@@ -10,147 +9,81 @@ import com.fincity.sass.worker.enums.TaskState;
 import com.fincity.sass.worker.job.TaskExecutorJob;
 import com.google.gson.Gson;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Set;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.ScheduleBuilder;
+import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
-import org.quartz.impl.SchedulerRepository;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationContext;
-import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.stereotype.Service;
 
 @Service
 public class QuartzService {
     private static final ZoneId DEFAULT_ZONE = ZoneId.systemDefault();
     private static final Logger logger = LoggerFactory.getLogger(QuartzService.class);
-    private final QuartzConfiguration quartzConfiguration;
-    private final ApplicationContext applicationContext;
-    private final SchedulerRepository schedulerRepository;
+    private final Scheduler quartzScheduler;
     private final Gson gson;
 
-    public QuartzService(
-            QuartzConfiguration quartzConfiguration,
-            ApplicationContext applicationContext,
-            SchedulerRepository schedulerRepository,
-            Gson gson) {
-        this.quartzConfiguration = quartzConfiguration;
-        this.applicationContext = applicationContext;
-        this.schedulerRepository = schedulerRepository;
+    public QuartzService(Scheduler quartzScheduler, Gson gson) {
+        this.quartzScheduler = quartzScheduler;
         this.gson = gson;
     }
 
-    /**
-     * Initializes a single scheduler from a Scheduler entity.
-     *
-     * <p><strong>WARNING:</strong> This method is intended for internal use during service restart
-     * to restore scheduler persistence. <u>Do not use this method (`initializeScheduler`)
-     * in any other context</u>, especially in runtime job creation or updates, as it may lead to
-     * duplicate scheduler instances or inconsistent Quartz state.</p>
-     *
-     * @param workerScheduler the Scheduler entity from the database table worker_scheduler
-     * @return a Scheduler Mono that completes when the scheduler is initialized
-     */
-    public Scheduler initializeSchedulerOnStartUp(Scheduler workerScheduler) throws Exception {
+    public void startClientScheduleControl(ClientScheduleControl control) throws SchedulerException {
 
-        logger.info("Initializing scheduler: {}", workerScheduler.getName());
+        String jobGroup = control.getJobGroup();
 
-        // Step 1: Create and initialize the scheduler factory
-        SchedulerFactoryBean factory =
-                quartzConfiguration.createSchedulerFactory(applicationContext, workerScheduler.getName());
+        quartzScheduler.resumeJobs(GroupMatcher.jobGroupEquals(jobGroup));
 
-        // fully initialize the factory with properties set on the factory bean
-        factory.afterPropertiesSet();
-
-        // Step 2: Get the scheduler instance
-        var quartzScheduler = factory.getScheduler();
-
-        // Step 3: Bind to repository and configure state
-        schedulerRepository.bind(quartzScheduler);
-
-        if (workerScheduler.getSchedulerStatus().equals(SchedulerStatus.STARTED)) {
-            quartzScheduler.start();
-        } else if (workerScheduler.getSchedulerStatus().equals(SchedulerStatus.STANDBY)) {
-            quartzScheduler.standby();
-        }
-
-        logger.info("Scheduler is pushed to Quartz's SchedulerRepository: {}", workerScheduler.getName());
-        workerScheduler.setInstanceId(quartzScheduler.getSchedulerInstanceId());
-
-        return workerScheduler;
+        logger.debug("Resumed jobs for group: {}", jobGroup);
+        control.setSchedulerStatus(SchedulerStatus.STARTED);
     }
 
-    public Scheduler startScheduler(Scheduler workerScheduler) throws SchedulerException {
+    public void pauseClientScheduleControl(ClientScheduleControl control) throws SchedulerException {
 
-        // Get the scheduler from the repository
-        var quartzScheduler = schedulerRepository.lookup(workerScheduler.getName());
+        String jobGroup = control.getJobGroup();
 
-        if (quartzScheduler == null) throw new SchedulerException("Quartz scheduler not found");
+        quartzScheduler.pauseJobs(GroupMatcher.jobGroupEquals(jobGroup));
 
-        // Start the scheduler
-        quartzScheduler.start();
-        logger.debug("Started scheduler: {}", workerScheduler.getName());
-
-        // Update the Scheduler object
-        workerScheduler.setSchedulerStatus(SchedulerStatus.STARTED);
-
-        return workerScheduler;
+        logger.debug("Paused jobs for group: {}", jobGroup);
+        control.setSchedulerStatus(SchedulerStatus.STANDBY);
     }
 
-    public Scheduler pauseScheduler(Scheduler workerScheduler) throws SchedulerException {
+    public void shutdownClientScheduleControl(ClientScheduleControl control) throws SchedulerException {
 
-        var quartzScheduler = schedulerRepository.lookup(workerScheduler.getName());
+        String jobGroup = control.getJobGroup();
 
-        if (quartzScheduler == null) throw new SchedulerException("Quartz scheduler not found");
+        Set<JobKey> keys = quartzScheduler.getJobKeys(GroupMatcher.jobGroupEquals(jobGroup));
 
-        // Pause the scheduler
-        quartzScheduler.standby();
-        logger.debug("Paused scheduler: {}", workerScheduler.getName());
+        if (!keys.isEmpty()) quartzScheduler.deleteJobs(new ArrayList<>(keys));
 
-        // Update the Scheduler object
-        workerScheduler.setSchedulerStatus(SchedulerStatus.STANDBY);
-
-        return workerScheduler;
+        logger.debug("Deleted jobs for group (shutdown): {}", jobGroup);
+        control.setSchedulerStatus(SchedulerStatus.SHUTDOWN);
     }
 
-    public Scheduler shutdownScheduler(Scheduler workerScheduler) throws SchedulerException {
-        // Get the scheduler from the repository
-        var quartzScheduler = schedulerRepository.lookup(workerScheduler.getName());
-
-        if (quartzScheduler == null) throw new SchedulerException("Unable to shutdown the scheduler");
-
-        // Pause the scheduler
-        quartzScheduler.shutdown();
-        logger.debug("shutdown complete scheduler: {}", workerScheduler.getName());
-
-        // Update the Scheduler object
-        workerScheduler.setSchedulerStatus(SchedulerStatus.SHUTDOWN);
-
-        return workerScheduler;
-    }
-
-    /**
-     * Schedules a task in Quartz. The task must already be persisted and have an ID.
-     */
-    public Task initializeTask(Scheduler workerScheduler, Task task) throws SchedulerException {
+    public void initializeTask(Task task) throws SchedulerException {
         logger.info("Initializing job: {}", task.getName());
-
-        org.quartz.Scheduler qScheduler = schedulerRepository.lookup(workerScheduler.getName());
-        if (qScheduler == null)
-            throw new SchedulerException("Quartz scheduler not found: " + workerScheduler.getName());
 
         if (task.getId() == null)
             throw new SchedulerException("Task must be persisted before scheduling; task ID is required");
 
+        if (task.getJobGroup() == null)
+            throw new SchedulerException("Task must have clientCode to derive Quartz job group");
+
+        String jobGroup = task.getJobGroup();
+
         JobBuilder jobBuilder = JobBuilder.newJob(TaskExecutorJob.class)
-                .withIdentity(task.getName(), task.getGroupName())
+                .withIdentity(task.getName(), jobGroup)
                 .withDescription(task.getDescription())
                 .usingJobData(TaskExecutorJob.TASK_ID, task.getId().toString())
                 .usingJobData(
@@ -160,9 +93,7 @@ public class QuartzService {
 
         JobDetail jobDetail = jobBuilder.build();
 
-        // Define a Trigger (Simple or Cron)
-        TriggerBuilder<Trigger> triggerBuilder =
-                TriggerBuilder.newTrigger().withIdentity(task.getName(), task.getGroupName()); // Trigger name and group
+        TriggerBuilder<Trigger> triggerBuilder = TriggerBuilder.newTrigger().withIdentity(task.getName(), jobGroup);
 
         triggerBuilder.withSchedule(getJobSchedule(task));
 
@@ -176,38 +107,35 @@ public class QuartzService {
 
         Trigger trigger = triggerBuilder.build();
 
-        qScheduler.scheduleJob(jobDetail, trigger);
-        return task;
+        quartzScheduler.scheduleJob(jobDetail, trigger);
     }
 
-    public Task updateTask(Scheduler workerScheduler, Task task, TaskOperationType taskOperationType)
-            throws SchedulerException {
-        var qScheduler = schedulerRepository.lookup(workerScheduler.getName());
-        if (qScheduler == null)
-            throw new SchedulerException("Quartz scheduler not found: " + workerScheduler.getName());
+    public void updateTask(Task task, TaskOperationType taskOperationType) throws SchedulerException {
 
-        JobKey jobKey = new JobKey(task.getName(), task.getGroupName());
+        String jobGroup = task.getJobGroup();
+
+        if (jobGroup == null) throw new SchedulerException("Task must have clientCode to derive Quartz job group");
+        JobKey jobKey = new JobKey(task.getName(), jobGroup);
 
         switch (taskOperationType) {
             case CANCEL -> {
-                qScheduler.deleteJob(jobKey);
+                quartzScheduler.deleteJob(jobKey);
                 task.setTaskState(TaskState.COMPLETE);
             }
             case PAUSE -> {
-                qScheduler.pauseJob(jobKey);
+                quartzScheduler.pauseJob(jobKey);
                 task.setTaskState(TaskState.PAUSED);
             }
             case RESUME -> {
-                qScheduler.resumeJob(jobKey);
+                quartzScheduler.resumeJob(jobKey);
                 task.setTaskState(TaskState.NORMAL);
             }
             default -> throw new SchedulerException("un-authorized task operation");
         }
-
-        return task;
     }
 
     private ScheduleBuilder<? extends Trigger> getJobSchedule(Task task) {
+
         if (task.getTaskJobType().equals(TaskJobType.CRON))
             return CronScheduleBuilder.cronSchedule(task.getSchedule()).withMisfireHandlingInstructionFireAndProceed();
 

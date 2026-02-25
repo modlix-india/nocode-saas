@@ -11,12 +11,19 @@ import org.jooq.types.ULong;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class Scheduler extends AbstractUpdatableDTO<ULong, ULong> {
+public class ClientScheduleControl extends AbstractUpdatableDTO<ULong, ULong> {
 
     @Serial
-    private static final long serialVersionUID = 8014247343448800096L;
+    private static final long serialVersionUID = 8014247343448800097L;
 
+    private String appCode;
+    private String clientCode;
     private String name;
     private SchedulerStatus schedulerStatus;
-    private String instanceId;
+
+    public String getJobGroup() {
+        if (clientCode == null) return null;
+        if (appCode == null || appCode.isBlank()) return clientCode;
+        return appCode + "_" + clientCode;
+    }
 }

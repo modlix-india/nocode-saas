@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "security")
+@FeignClient(name = "security-ssl")
 public interface IFeignSecuritySSLService {
 
     @PostMapping("/api/security/ssl/internal/renew-certificates")

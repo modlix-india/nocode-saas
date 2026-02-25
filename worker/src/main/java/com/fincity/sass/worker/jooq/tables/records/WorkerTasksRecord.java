@@ -26,8 +26,8 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>worker.worker_tasks.ID</code>. Primary key, unique
-     * identifier for each task
+     * Setter for <code>worker.worker_tasks.ID</code>. Primary key and unique
+     * identifier for each task.
      */
     public WorkerTasksRecord setId(ULong value) {
         set(0, value);
@@ -35,15 +35,15 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.ID</code>. Primary key, unique
-     * identifier for each task
+     * Getter for <code>worker.worker_tasks.ID</code>. Primary key and unique
+     * identifier for each task.
      */
     public ULong getId() {
         return (ULong) get(0);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.APP_CODE</code>. App Code on which
+     * Setter for <code>worker.worker_tasks.APP_CODE</code>. App code on which
      * this task was created.
      */
     public WorkerTasksRecord setAppCode(String value) {
@@ -52,7 +52,7 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.APP_CODE</code>. App Code on which
+     * Getter for <code>worker.worker_tasks.APP_CODE</code>. App code on which
      * this task was created.
      */
     public String getAppCode() {
@@ -60,8 +60,8 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client Code who
-     * created this task.
+     * Setter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client code for
+     * the client who created this task.
      */
     public WorkerTasksRecord setClientCode(String value) {
         set(2, value);
@@ -69,15 +69,15 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client Code who
-     * created this task.
+     * Getter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client code for
+     * the client who created this task.
      */
     public String getClientCode() {
         return (String) get(2);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.NAME</code>. name of job
+     * Setter for <code>worker.worker_tasks.NAME</code>. Name of the job.
      */
     public WorkerTasksRecord setName(String value) {
         set(3, value);
@@ -85,346 +85,337 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.NAME</code>. name of job
+     * Getter for <code>worker.worker_tasks.NAME</code>. Name of the job.
      */
     public String getName() {
         return (String) get(3);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.SCHEDULER_ID</code>. Identifier for
-     * the scheduler. References worker_schedulers table
+     * Setter for <code>worker.worker_tasks.CLIENT_SCHEDULE_CONTROL_ID</code>.
+     * References the client schedule control row in
+     * worker_client_schedule_controls.
      */
-    public WorkerTasksRecord setSchedulerId(ULong value) {
+    public WorkerTasksRecord setClientScheduleControlId(ULong value) {
         set(4, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.SCHEDULER_ID</code>. Identifier for
-     * the scheduler. References worker_schedulers table
+     * Getter for <code>worker.worker_tasks.CLIENT_SCHEDULE_CONTROL_ID</code>.
+     * References the client schedule control row in
+     * worker_client_schedule_controls.
      */
-    public ULong getSchedulerId() {
+    public ULong getClientScheduleControlId() {
         return (ULong) get(4);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.GROUP_NAME</code>. job group name
+     * Setter for <code>worker.worker_tasks.DESCRIPTION</code>. Description of
+     * the job.
      */
-    public WorkerTasksRecord setGroupName(String value) {
+    public WorkerTasksRecord setDescription(String value) {
         set(5, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.GROUP_NAME</code>. job group name
+     * Getter for <code>worker.worker_tasks.DESCRIPTION</code>. Description of
+     * the job.
      */
-    public String getGroupName() {
+    public String getDescription() {
         return (String) get(5);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.DESCRIPTION</code>. description
-     * about the job
+     * Setter for <code>worker.worker_tasks.TASK_STATE</code>. Current task
+     * triggering state.
      */
-    public WorkerTasksRecord setDescription(String value) {
+    public WorkerTasksRecord setTaskState(TaskState value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.DESCRIPTION</code>. description
-     * about the job
+     * Getter for <code>worker.worker_tasks.TASK_STATE</code>. Current task
+     * triggering state.
      */
-    public String getDescription() {
-        return (String) get(6);
+    public TaskState getTaskState() {
+        return (TaskState) get(6);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.TASK_STATE</code>. Task triggering
-     * state.
+     * Setter for <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Type of the
+     * job.
      */
-    public WorkerTasksRecord setTaskState(TaskState value) {
+    public WorkerTasksRecord setTaskJobType(TaskJobType value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.TASK_STATE</code>. Task triggering
-     * state.
-     */
-    public TaskState getTaskState() {
-        return (TaskState) get(7);
-    }
-
-    /**
-     * Setter for <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Job type.
-     */
-    public WorkerTasksRecord setTaskJobType(TaskJobType value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Job type.
+     * Getter for <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Type of the
+     * job.
      */
     public TaskJobType getTaskJobType() {
-        return (TaskJobType) get(8);
+        return (TaskJobType) get(7);
     }
 
     /**
      * Setter for <code>worker.worker_tasks.JOB_DATA</code>.
      * FunctionExecutionSpec: functionName, functionNamespace, functionParams
-     * (Map)
+     * (Map).
      */
     public WorkerTasksRecord setJobData(Map value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
     /**
      * Getter for <code>worker.worker_tasks.JOB_DATA</code>.
      * FunctionExecutionSpec: functionName, functionNamespace, functionParams
-     * (Map)
+     * (Map).
      */
     public Map getJobData() {
-        return (Map) get(9);
+        return (Map) get(8);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.DURABLE</code>. if we want to keep
-     * job even if it does not have any trigger
+     * Setter for <code>worker.worker_tasks.DURABLE</code>. If true, the job is
+     * kept in the store even when it has no triggers.
      */
     public WorkerTasksRecord setDurable(Byte value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>worker.worker_tasks.DURABLE</code>. If true, the job is
+     * kept in the store even when it has no triggers.
+     */
+    public Byte getDurable() {
+        return (Byte) get(9);
+    }
+
+    /**
+     * Setter for <code>worker.worker_tasks.START_TIME</code>. Scheduled start
+     * time for the task.
+     */
+    public WorkerTasksRecord setStartTime(LocalDateTime value) {
         set(10, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.DURABLE</code>. if we want to keep
-     * job even if it does not have any trigger
+     * Getter for <code>worker.worker_tasks.START_TIME</code>. Scheduled start
+     * time for the task.
      */
-    public Byte getDurable() {
-        return (Byte) get(10);
+    public LocalDateTime getStartTime() {
+        return (LocalDateTime) get(10);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.START_TIME</code>. task start
-     * datetime
+     * Setter for <code>worker.worker_tasks.END_TIME</code>. Scheduled end time
+     * for the task.
      */
-    public WorkerTasksRecord setStartTime(LocalDateTime value) {
+    public WorkerTasksRecord setEndTime(LocalDateTime value) {
         set(11, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.START_TIME</code>. task start
-     * datetime
+     * Getter for <code>worker.worker_tasks.END_TIME</code>. Scheduled end time
+     * for the task.
      */
-    public LocalDateTime getStartTime() {
+    public LocalDateTime getEndTime() {
         return (LocalDateTime) get(11);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.END_TIME</code>. task end datetime
+     * Setter for <code>worker.worker_tasks.SCHEDULE</code>. Schedule expression
+     * for simple or cron jobs.
      */
-    public WorkerTasksRecord setEndTime(LocalDateTime value) {
+    public WorkerTasksRecord setSchedule(String value) {
         set(12, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.END_TIME</code>. task end datetime
+     * Getter for <code>worker.worker_tasks.SCHEDULE</code>. Schedule expression
+     * for simple or cron jobs.
      */
-    public LocalDateTime getEndTime() {
-        return (LocalDateTime) get(12);
+    public String getSchedule() {
+        return (String) get(12);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.SCHEDULE</code>. job schedule
-     * expression for simple/cron job
+     * Setter for <code>worker.worker_tasks.REPEAT_INTERVAL</code>. Number of
+     * times this job repeats; only applicable for simple jobs.
      */
-    public WorkerTasksRecord setSchedule(String value) {
+    public WorkerTasksRecord setRepeatInterval(Integer value) {
         set(13, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.SCHEDULE</code>. job schedule
-     * expression for simple/cron job
+     * Getter for <code>worker.worker_tasks.REPEAT_INTERVAL</code>. Number of
+     * times this job repeats; only applicable for simple jobs.
      */
-    public String getSchedule() {
-        return (String) get(13);
+    public Integer getRepeatInterval() {
+        return (Integer) get(13);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.REPEAT_INTERVAL</code>. total times
-     * this job will repeat, only applicable for simple jobs
+     * Setter for <code>worker.worker_tasks.RECOVERABLE</code>. If true, the job
+     * is re-run if the scheduler crashed before it finished.
      */
-    public WorkerTasksRecord setRepeatInterval(Integer value) {
+    public WorkerTasksRecord setRecoverable(Byte value) {
         set(14, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.REPEAT_INTERVAL</code>. total times
-     * this job will repeat, only applicable for simple jobs
+     * Getter for <code>worker.worker_tasks.RECOVERABLE</code>. If true, the job
+     * is re-run if the scheduler crashed before it finished.
      */
-    public Integer getRepeatInterval() {
-        return (Integer) get(14);
+    public Byte getRecoverable() {
+        return (Byte) get(14);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.RECOVERABLE</code>. re-run the job
-     * if the scheduler crashed before finishing
+     * Setter for <code>worker.worker_tasks.NEXT_FIRE_TIME</code>. Next
+     * scheduled execution time.
      */
-    public WorkerTasksRecord setRecoverable(Byte value) {
+    public WorkerTasksRecord setNextFireTime(LocalDateTime value) {
         set(15, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.RECOVERABLE</code>. re-run the job
-     * if the scheduler crashed before finishing
+     * Getter for <code>worker.worker_tasks.NEXT_FIRE_TIME</code>. Next
+     * scheduled execution time.
      */
-    public Byte getRecoverable() {
-        return (Byte) get(15);
+    public LocalDateTime getNextFireTime() {
+        return (LocalDateTime) get(15);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.NEXT_FIRE_TIME</code>. upcoming
-     * execution at
+     * Setter for <code>worker.worker_tasks.LAST_FIRE_TIME</code>. Last
+     * execution time.
      */
-    public WorkerTasksRecord setNextFireTime(LocalDateTime value) {
+    public WorkerTasksRecord setLastFireTime(LocalDateTime value) {
         set(16, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.NEXT_FIRE_TIME</code>. upcoming
-     * execution at
+     * Getter for <code>worker.worker_tasks.LAST_FIRE_TIME</code>. Last
+     * execution time.
      */
-    public LocalDateTime getNextFireTime() {
+    public LocalDateTime getLastFireTime() {
         return (LocalDateTime) get(16);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.LAST_FIRE_TIME</code>. last
-     * execution at
+     * Setter for <code>worker.worker_tasks.TASK_LAST_FIRE_STATUS</code>. Status
+     * of the last task execution.
      */
-    public WorkerTasksRecord setLastFireTime(LocalDateTime value) {
+    public WorkerTasksRecord setTaskLastFireStatus(TaskLastFireStatus value) {
         set(17, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.LAST_FIRE_TIME</code>. last
-     * execution at
+     * Getter for <code>worker.worker_tasks.TASK_LAST_FIRE_STATUS</code>. Status
+     * of the last task execution.
      */
-    public LocalDateTime getLastFireTime() {
-        return (LocalDateTime) get(17);
+    public TaskLastFireStatus getTaskLastFireStatus() {
+        return (TaskLastFireStatus) get(17);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.TASK_LAST_FIRE_STATUS</code>. Last
-     * task execution status.
+     * Setter for <code>worker.worker_tasks.LAST_FIRE_RESULT</code>. Result or
+     * log of the last execution.
      */
-    public WorkerTasksRecord setTaskLastFireStatus(TaskLastFireStatus value) {
+    public WorkerTasksRecord setLastFireResult(String value) {
         set(18, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.TASK_LAST_FIRE_STATUS</code>. Last
-     * task execution status.
+     * Getter for <code>worker.worker_tasks.LAST_FIRE_RESULT</code>. Result or
+     * log of the last execution.
      */
-    public TaskLastFireStatus getTaskLastFireStatus() {
-        return (TaskLastFireStatus) get(18);
+    public String getLastFireResult() {
+        return (String) get(18);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.LAST_FIRE_RESULT</code>. last
-     * execution log
+     * Setter for <code>worker.worker_tasks.CREATED_BY</code>. ID of the user
+     * who created this row.
      */
-    public WorkerTasksRecord setLastFireResult(String value) {
+    public WorkerTasksRecord setCreatedBy(ULong value) {
         set(19, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.LAST_FIRE_RESULT</code>. last
-     * execution log
+     * Getter for <code>worker.worker_tasks.CREATED_BY</code>. ID of the user
+     * who created this row.
      */
-    public String getLastFireResult() {
-        return (String) get(19);
+    public ULong getCreatedBy() {
+        return (ULong) get(19);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.CREATED_BY</code>. ID of the user
-     * who created this row
+     * Setter for <code>worker.worker_tasks.CREATED_AT</code>. Timestamp when
+     * this row was created.
      */
-    public WorkerTasksRecord setCreatedBy(ULong value) {
+    public WorkerTasksRecord setCreatedAt(LocalDateTime value) {
         set(20, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.CREATED_BY</code>. ID of the user
-     * who created this row
+     * Getter for <code>worker.worker_tasks.CREATED_AT</code>. Timestamp when
+     * this row was created.
      */
-    public ULong getCreatedBy() {
-        return (ULong) get(20);
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(20);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.CREATED_AT</code>. Time when this
-     * row is created
+     * Setter for <code>worker.worker_tasks.UPDATED_BY</code>. ID of the user
+     * who last updated this row.
      */
-    public WorkerTasksRecord setCreatedAt(LocalDateTime value) {
+    public WorkerTasksRecord setUpdatedBy(ULong value) {
         set(21, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.CREATED_AT</code>. Time when this
-     * row is created
+     * Getter for <code>worker.worker_tasks.UPDATED_BY</code>. ID of the user
+     * who last updated this row.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(21);
+    public ULong getUpdatedBy() {
+        return (ULong) get(21);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.UPDATED_BY</code>. ID of the user
-     * who last updated this row
+     * Setter for <code>worker.worker_tasks.UPDATED_AT</code>. Timestamp when
+     * this row was last updated.
      */
-    public WorkerTasksRecord setUpdatedBy(ULong value) {
+    public WorkerTasksRecord setUpdatedAt(LocalDateTime value) {
         set(22, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.UPDATED_BY</code>. ID of the user
-     * who last updated this row
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(22);
-    }
-
-    /**
-     * Setter for <code>worker.worker_tasks.UPDATED_AT</code>. Time when this
-     * row is last updated
-     */
-    public WorkerTasksRecord setUpdatedAt(LocalDateTime value) {
-        set(23, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>worker.worker_tasks.UPDATED_AT</code>. Time when this
-     * row is last updated
+     * Getter for <code>worker.worker_tasks.UPDATED_AT</code>. Timestamp when
+     * this row was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(23);
+        return (LocalDateTime) get(22);
     }
 
     // -------------------------------------------------------------------------
@@ -450,15 +441,14 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     /**
      * Create a detached, initialised WorkerTasksRecord
      */
-    public WorkerTasksRecord(ULong id, String appCode, String clientCode, String name, ULong schedulerId, String groupName, String description, TaskState taskState, TaskJobType taskJobType, Map jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, TaskLastFireStatus taskLastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public WorkerTasksRecord(ULong id, String appCode, String clientCode, String name, ULong clientScheduleControlId, String description, TaskState taskState, TaskJobType taskJobType, Map jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, TaskLastFireStatus taskLastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(WorkerTasks.WORKER_TASKS);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
         setName(name);
-        setSchedulerId(schedulerId);
-        setGroupName(groupName);
+        setClientScheduleControlId(clientScheduleControlId);
         setDescription(description);
         setTaskState(taskState);
         setTaskJobType(taskJobType);

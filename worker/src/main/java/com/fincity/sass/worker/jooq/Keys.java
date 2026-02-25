@@ -4,9 +4,9 @@
 package com.fincity.sass.worker.jooq;
 
 
-import com.fincity.sass.worker.jooq.tables.WorkerSchedulers;
+import com.fincity.sass.worker.jooq.tables.WorkerClientScheduleControls;
 import com.fincity.sass.worker.jooq.tables.WorkerTasks;
-import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulersRecord;
+import com.fincity.sass.worker.jooq.tables.records.WorkerClientScheduleControlsRecord;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
 
 import org.jooq.ForeignKey;
@@ -27,14 +27,14 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<WorkerSchedulersRecord> KEY_WORKER_SCHEDULERS_PRIMARY = Internal.createUniqueKey(WorkerSchedulers.WORKER_SCHEDULERS, DSL.name("KEY_worker_schedulers_PRIMARY"), new TableField[] { WorkerSchedulers.WORKER_SCHEDULERS.ID }, true);
-    public static final UniqueKey<WorkerSchedulersRecord> KEY_WORKER_SCHEDULERS_UK1_SCHEDULERS_NAME = Internal.createUniqueKey(WorkerSchedulers.WORKER_SCHEDULERS, DSL.name("KEY_worker_schedulers_UK1_SCHEDULERS_NAME"), new TableField[] { WorkerSchedulers.WORKER_SCHEDULERS.NAME }, true);
+    public static final UniqueKey<WorkerClientScheduleControlsRecord> KEY_WORKER_CLIENT_SCHEDULE_CONTROLS_PRIMARY = Internal.createUniqueKey(WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS, DSL.name("KEY_worker_client_schedule_controls_PRIMARY"), new TableField[] { WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS.ID }, true);
+    public static final UniqueKey<WorkerClientScheduleControlsRecord> KEY_WORKER_CLIENT_SCHEDULE_CONTROLS_UK1_CLIENT_SCHEDULE_CONTROLS_APP_CLIENT = Internal.createUniqueKey(WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS, DSL.name("KEY_worker_client_schedule_controls_UK1_CLIENT_SCHEDULE_CONTROLS_APP_CLIENT"), new TableField[] { WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS.APP_CODE, WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS.CLIENT_CODE }, true);
     public static final UniqueKey<WorkerTasksRecord> KEY_WORKER_TASKS_PRIMARY = Internal.createUniqueKey(WorkerTasks.WORKER_TASKS, DSL.name("KEY_worker_tasks_PRIMARY"), new TableField[] { WorkerTasks.WORKER_TASKS.ID }, true);
-    public static final UniqueKey<WorkerTasksRecord> KEY_WORKER_TASKS_UK1_TASKS_NAME_GROUP = Internal.createUniqueKey(WorkerTasks.WORKER_TASKS, DSL.name("KEY_worker_tasks_UK1_TASKS_NAME_GROUP"), new TableField[] { WorkerTasks.WORKER_TASKS.NAME, WorkerTasks.WORKER_TASKS.GROUP_NAME }, true);
+    public static final UniqueKey<WorkerTasksRecord> KEY_WORKER_TASKS_UK1_TASKS_NAME_APP_CLIENT = Internal.createUniqueKey(WorkerTasks.WORKER_TASKS, DSL.name("KEY_worker_tasks_UK1_TASKS_NAME_APP_CLIENT"), new TableField[] { WorkerTasks.WORKER_TASKS.NAME, WorkerTasks.WORKER_TASKS.APP_CODE, WorkerTasks.WORKER_TASKS.CLIENT_CODE }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<WorkerTasksRecord, WorkerSchedulersRecord> FK1_TASKS_SCHEDULER_ID = Internal.createForeignKey(WorkerTasks.WORKER_TASKS, DSL.name("FK1_TASKS_SCHEDULER_ID"), new TableField[] { WorkerTasks.WORKER_TASKS.SCHEDULER_ID }, Keys.KEY_WORKER_SCHEDULERS_PRIMARY, new TableField[] { WorkerSchedulers.WORKER_SCHEDULERS.ID }, true);
+    public static final ForeignKey<WorkerTasksRecord, WorkerClientScheduleControlsRecord> FK1_TASKS_CLIENT_SCHEDULE_CONTROL_ID = Internal.createForeignKey(WorkerTasks.WORKER_TASKS, DSL.name("FK1_TASKS_CLIENT_SCHEDULE_CONTROL_ID"), new TableField[] { WorkerTasks.WORKER_TASKS.CLIENT_SCHEDULE_CONTROL_ID }, Keys.KEY_WORKER_CLIENT_SCHEDULE_CONTROLS_PRIMARY, new TableField[] { WorkerClientScheduleControls.WORKER_CLIENT_SCHEDULE_CONTROLS.ID }, true);
 }

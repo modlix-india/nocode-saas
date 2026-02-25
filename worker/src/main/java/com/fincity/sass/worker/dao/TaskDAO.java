@@ -26,11 +26,12 @@ public class TaskDAO extends AbstractUpdatableDAO<WorkerTasksRecord, ULong, Task
                 .map(e -> e.into(this.pojoClass));
     }
 
-    public Task findByNameNGroup(String name, String groupName) {
+    public Task findByNameAndAppAndClient(String name, String appCode, String clientCode) {
         var record = this.dslContext
                 .selectFrom(WORKER_TASKS)
                 .where(WORKER_TASKS.NAME.eq(name))
-                .and(WORKER_TASKS.GROUP_NAME.eq(groupName))
+                .and(WORKER_TASKS.APP_CODE.eq(appCode))
+                .and(WORKER_TASKS.CLIENT_CODE.eq(clientCode))
                 .fetchOne();
         return record != null ? record.into(this.pojoClass) : null;
     }

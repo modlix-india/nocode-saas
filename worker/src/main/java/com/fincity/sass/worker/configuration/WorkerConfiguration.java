@@ -31,6 +31,7 @@ public class WorkerConfiguration extends AbstractJooqBaseConfiguration implement
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, IAuthenticationService authService) throws Exception {
-        return this.springSecurityFilterChain(http, authService, this.objectMapper, "/api/worker/schedulers/monitor");
+        return this.springSecurityFilterChain(
+                http, authService, this.objectMapper, "/api/worker/client-schedule-controls/monitor");
     }
 }

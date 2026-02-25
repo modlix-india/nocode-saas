@@ -1,164 +1,42 @@
 package com.fincity.sass.worker.configuration;
 
-import java.util.Properties;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.impl.SchedulerRepository;
 import org.quartz.spi.TriggerFiredBundle;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.support.TaskExecutorAdapter;
-import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
-import org.springframework.util.Assert;
 
 @Configuration
 @Slf4j
 public class QuartzConfiguration {
 
-    // Quartz property prefixes
-    private static final String QUARTZ_PREFIX = "org.quartz.";
-    private static final String JOBSTORE_PREFIX = QUARTZ_PREFIX + "jobStore.";
-    private static final String DATASOURCE_PREFIX = QUARTZ_PREFIX + "dataSource.quartzDS.";
-    private static final String THREADPOOL_PREFIX = QUARTZ_PREFIX + "threadPool.";
-
-    // Default values
-    private static final String DEFAULT_SCHEDULER_NAME = "defaultScheduler";
-    private static final int DEFAULT_THREAD_COUNT = 5;
-    private static final boolean DEFAULT_CLUSTERED = false;
-    private static final long DEFAULT_MISFIRE_THRESHOLD = 60000;
-    private static final String DEFAULT_MAX_CONNECTIONS = "5";
-
-    // JobStore class names
-    private static final String JOBSTORE_CLASS = "org.quartz.impl.jdbcjobstore.JobStoreTX";
-    private static final String JOBSTORE_DELEGATE_CLASS = "org.quartz.impl.jdbcjobstore.StdJDBCDelegate";
-    private static final String THREADPOOL_CLASS = "org.quartz.simpl.SimpleThreadPool";
-
-    // DataSource properties
-    private static final String DATASOURCE_PROVIDER = "hikaricp";
-    private static final String DATASOURCE_DRIVER = "com.mysql.cj.jdbc.Driver";
-    private static final String DATASOURCE_NAME = "quartzDS";
-
-    @Value("${worker.qdb.url}")
-    private String dbURL;
-
-    @Value("${worker.qdb.username}")
-    private String userName;
-
-    @Value("${worker.qdb.password}")
-    private String password;
-
-    @Value("${worker.quartz.thread-count:5}")
-    private int threadCount;
-
-    @Value("${worker.quartz.misfire-threshold:60000}")
-    private long misfireThreshold;
-
-    @Value("${worker.quartz.max-connections:5}")
-    private String maxConnections;
-
     @Value("${worker.quartz.virtual-threads:true}")
     private boolean useVirtualThreads;
 
     @Bean
-    public SchedulerRepository schedulerRepository() {
-        return SchedulerRepository.getInstance();
-    }
-
-    /**
-     * Creates the default scheduler factory bean with predefined configuration.
-     *
-     * @param applicationContext the Spring application context
-     * @return the default scheduler factory bean
-     */
-    @Primary
-    @Bean(name = "defaultSchedulerFactory")
-    public SchedulerFactoryBean defaultSchedulerFactoryBean(ApplicationContext applicationContext) {
-        log.debug("Creating default scheduler factory with name: {}", DEFAULT_SCHEDULER_NAME);
-        return createSchedulerFactory(applicationContext, DEFAULT_SCHEDULER_NAME);
-    }
-
-    /**
-     * Creates the default Quartz scheduler from the factory.
-     *
-     * @param factory the scheduler factory bean
-     * @return the Quartz scheduler
-     * @throws SchedulerException if an error occurs while getting the scheduler
-     */
-    @Bean(name = "defaultQuartzScheduler")
-    public Scheduler defaultScheduler(@Qualifier("defaultSchedulerFactory") SchedulerFactoryBean factory)
-            throws SchedulerException {
-        log.debug("Getting default Quartz scheduler from factory");
-        return factory.getScheduler();
-    }
-
-    /**
-     * Creates a Quartz scheduler factory with the specified configuration.
-     *
-     * @param applicationContext the Spring application context
-     * @param schedulerName the name of the scheduler
-     * @return a configured SchedulerFactoryBean
-     */
-    public SchedulerFactoryBean createSchedulerFactory(ApplicationContext applicationContext, String schedulerName) {
-
-        // Validate parameters
-        Assert.notNull(applicationContext, "ApplicationContext must not be null");
-        Assert.hasText(schedulerName, "Scheduler name must not be empty");
-
-        log.debug("Creating scheduler factory: name={}", schedulerName);
-
-        SchedulerFactoryBean schedulerFactory = new SchedulerFactoryBean();
-        Properties quartzProperties = new Properties();
-
-        // JobStore properties
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "class", JOBSTORE_CLASS);
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "driverDelegateClass", JOBSTORE_DELEGATE_CLASS);
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "useProperties", "true");
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "tablePrefix", "QRTZ_");
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "isClustered", String.valueOf(DEFAULT_CLUSTERED));
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "misfireThreshold", String.valueOf(misfireThreshold));
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "dataSource", DATASOURCE_NAME);
-
-        // DataSource properties
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "provider", DATASOURCE_PROVIDER);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "driver", DATASOURCE_DRIVER);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "URL", dbURL);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "user", userName);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "password", password);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "maxConnections", maxConnections);
-
-        // ThreadPool properties (used when not using virtual thread executor)
-        quartzProperties.setProperty(THREADPOOL_PREFIX + "class", THREADPOOL_CLASS);
-        quartzProperties.setProperty(THREADPOOL_PREFIX + "threadCount", String.valueOf(threadCount));
-
-        schedulerFactory.setQuartzProperties(quartzProperties);
-        schedulerFactory.setSchedulerName(schedulerName);
-
-        if (useVirtualThreads) {
-            schedulerFactory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
-            log.debug("Quartz configured to use virtual threads for job execution");
-        }
-
-        // Create and configure job factory
+    public AutowiringSpringBeanJobFactory quartzJobFactory(ApplicationContext applicationContext) {
         AutowiringSpringBeanJobFactory jobFactory = new AutowiringSpringBeanJobFactory();
         jobFactory.setApplicationContext(applicationContext);
-        schedulerFactory.setJobFactory(jobFactory);
-
-        log.debug("Scheduler factory created successfully: {}", schedulerName);
-        return schedulerFactory;
+        return jobFactory;
     }
 
-    /**
-     * Custom JobFactory that autowires job instances with Spring beans.
-     * This allows Quartz jobs to use Spring dependency injection.
-     */
+    @Bean
+    public SchedulerFactoryBeanCustomizer quartzSchedulerCustomizer(AutowiringSpringBeanJobFactory quartzJobFactory) {
+        return factory -> {
+            factory.setJobFactory(quartzJobFactory);
+            if (useVirtualThreads) {
+                factory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
+                log.info("Quartz configured to use virtual threads for job execution");
+            }
+        };
+    }
+
     private static class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory {
         private AutowireCapableBeanFactory beanFactory;
 
