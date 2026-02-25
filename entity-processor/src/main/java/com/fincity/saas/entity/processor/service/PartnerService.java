@@ -221,6 +221,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                             return super.createInternal(
                                             access,
                                             Partner.of(partnerRequest)
+                                                    .setManagerId(null)
                                                     .setPartnerVerificationStatus(
                                                             PartnerVerificationStatus.INVITATION_SENT));
                         })

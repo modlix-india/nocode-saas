@@ -47,6 +47,7 @@ public class Partner extends BaseUpdatableDto<Partner> {
     public Partner(Partner partner) {
         super(partner);
         this.clientId = partner.clientId;
+		this.managerId = partner.managerId;
         this.partnerVerificationStatus = partner.partnerVerificationStatus;
         this.dnc = partner.dnc;
     }
