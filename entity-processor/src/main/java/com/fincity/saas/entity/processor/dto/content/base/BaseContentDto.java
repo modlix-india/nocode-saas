@@ -61,4 +61,3 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BasePr
         return (T) this;
     }
 }
-

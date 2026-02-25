@@ -222,12 +222,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                             access,
                                             Partner.of(partnerRequest)
                                                     .setPartnerVerificationStatus(
-                                                            PartnerVerificationStatus.INVITATION_SENT))
-                                    .flatMap(created -> super.securityService
-                                            .createClientManager(
-                                                    access.getUser().getId(),
-                                                    partnerRequest.getClientId().toBigInteger())
-                                            .thenReturn(created));
+                                                            PartnerVerificationStatus.INVITATION_SENT));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.createPartner"));
     }
