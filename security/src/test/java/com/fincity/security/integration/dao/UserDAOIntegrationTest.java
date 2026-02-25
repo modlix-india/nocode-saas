@@ -12,12 +12,21 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.integration.AbstractIntegrationTest;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.testutil.TestDataFactory;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -1133,6 +1142,1386 @@ class UserDAOIntegrationTest extends AbstractIntegrationTest {
 			StepVerifier.create(userDAO.checkUserExistsForInvite(
 					SYSTEM_CLIENT_ID, null, null, "+1999999999"))
 					.assertNext(exists -> assertFalse(exists))
+					.verifyComplete();
+		}
+	}
+
+	// ========== NEW TEST CLASSES FOR UNCOVERED METHODS ==========
+
+	@Nested
+	@DisplayName("checkUserExists() null managingClientId error path")
+	class CheckUserExistsNullClientTests {
+
+		@Test
+		@DisplayName("null managingClientId should throw GenericException with CONFLICT status")
+		void nullManagingClientId_ThrowsConflict() {
+			StepVerifier.create(userDAO.checkUserExists(null, "someUser", null, null, "BUS"))
+					.expectErrorMatches(throwable -> throwable instanceof GenericException
+							&& ((GenericException) throwable).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+		}
+
+		@Test
+		@DisplayName("null managingClientId with email should also throw")
+		void nullManagingClientId_WithEmail_ThrowsConflict() {
+			StepVerifier.create(userDAO.checkUserExists(null, null, "test@test.com", null, null))
+					.expectErrorMatches(throwable -> throwable instanceof GenericException
+							&& ((GenericException) throwable).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+		}
+	}
+
+	@Nested
+	@DisplayName("checkUserExists() with email and phone")
+	class CheckUserExistsEmailPhoneTests {
+
+		@Test
+		@DisplayName("by email should return true when email matches")
+		void byEmail_ExistingEmail_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String email = "chkeml_" + ts + "@test.com";
+
+			StepVerifier.create(
+					insertTestClient("CHKEML", "Check Email", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, "chkeml_" + ts, email, "password123"))
+									.then(userDAO.checkUserExists(SYSTEM_CLIENT_ID, null, email, null, "BUS"))))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("by phone number should return true when phone matches")
+		void byPhone_ExistingPhone_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String phone = "+1" + ts.substring(ts.length() - 10);
+
+			StepVerifier.create(
+					insertTestClient("CHKPHN", "Check Phone", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(databaseClient.sql(
+											"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, PHONE_NUMBER, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, :email, :phone, 'Test', 'User', 'pass', false, 'ACTIVE')")
+											.bind("clientId", clientId.longValue())
+											.bind("userName", "chkphn_" + ts)
+											.bind("email", "chkphn_" + ts + "@test.com")
+											.bind("phone", phone)
+											.then())
+									.then(userDAO.checkUserExists(SYSTEM_CLIENT_ID, null, null, phone, "BUS"))))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with no typeCode should still work")
+		void noTypeCode_ExistingUser_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "chkntc_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("CHKNTC", "Check No Type", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"chkntc_" + ts + "@test.com", "password123"))
+									.then(userDAO.checkUserExists(SYSTEM_CLIENT_ID, userName, null, null, null))))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("deleted user should not be found")
+		void deletedUser_ReturnsFalse() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "chkdel_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("CHKDEL", "Check Delete", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"chkdel_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> databaseClient.sql(
+											"UPDATE security_user SET STATUS_CODE = 'DELETED' WHERE ID = :userId")
+											.bind("userId", userId.longValue())
+											.then())
+									.then(userDAO.checkUserExists(SYSTEM_CLIENT_ID, userName, null, null, "BUS"))))
+					.assertNext(exists -> assertFalse(exists))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("checkUserExistsExclude() additional branches")
+	class CheckUserExistsExcludeAdditionalTests {
+
+		@Test
+		@DisplayName("no typeCode filter should still work")
+		void noTypeCode_ExistingUser_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "excntc_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("EXCNTC", "Exclude No TC", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"excntc_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> userDAO.checkUserExistsExclude(
+											SYSTEM_CLIENT_ID, userName, null, null,
+											null, ULong.valueOf(999999)))))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("null exclude ID should still work")
+		void nullExcludeId_ExistingUser_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "excnul_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("EXCNUL", "Exclude Null", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"excnul_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> userDAO.checkUserExistsExclude(
+											SYSTEM_CLIENT_ID, userName, null, null,
+											"BUS", null))))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("setPassword() OTP type (default branch)")
+	class SetPasswordOtpTypeTests {
+
+		@Test
+		@DisplayName("setPassword with OTP type should return 0 (unsupported)")
+		void otpType_ReturnsZero() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "setotp_" + ts,
+							"setotp_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.setPassword(userId, ULong.valueOf(1),
+									"otpvalue", AuthenticationPasswordType.OTP)))
+					.assertNext(result -> assertEquals(0, result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersBy() PHONE_NUMBER identifier")
+	class GetUsersByPhoneTests {
+
+		@Test
+		@DisplayName("by phone with PHONE_NUMBER identifier should return matching user")
+		void byPhone_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String phone = "+1" + ts.substring(ts.length() - 10);
+
+			StepVerifier.create(
+					insertTestClient("GUBPH", "GetUsersBy Ph", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(databaseClient.sql(
+											"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, PHONE_NUMBER, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, :email, :phone, 'Test', 'User', 'pass', false, 'ACTIVE')")
+											.bind("clientId", clientId.longValue())
+											.bind("userName", "gubph_" + ts)
+											.bind("email", "gubph_" + ts + "@test.com")
+											.bind("phone", phone)
+											.then())
+									.thenReturn(clientId))
+							.flatMap(clientId -> databaseClient.sql(
+									"SELECT CODE FROM security_client WHERE ID = :id")
+									.bind("id", clientId.longValue())
+									.map(row -> row.get("CODE", String.class))
+									.one())
+							.flatMap(clientCode -> userDAO.getUsersBy(phone, null, clientCode,
+									null, AuthenticationIdentifierType.PHONE_NUMBER,
+									null, SecurityUserStatusCode.ACTIVE)))
+					.assertNext(users -> {
+						assertFalse(users.isEmpty());
+						assertEquals(phone, users.get(0).getPhoneNumber());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersBy() with appCode")
+	class GetUsersByWithAppCodeTests {
+
+		@Test
+		@DisplayName("with appCode should query through app join")
+		void withAppCode_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "gubapp_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("GUBAPP", "GetUsr App", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"gubapp_" + ts + "@test.com", "password123"))
+									.thenReturn(clientId))
+							.flatMap(clientId -> databaseClient.sql(
+									"SELECT CODE FROM security_client WHERE ID = :id")
+									.bind("id", clientId.longValue())
+									.map(row -> row.get("CODE", String.class))
+									.one())
+							.flatMap(clientCode -> userDAO.getUsersBy(userName, null, clientCode,
+									"appbuilder", AuthenticationIdentifierType.USER_NAME,
+									null, SecurityUserStatusCode.ACTIVE)))
+					.assertNext(users -> assertNotNull(users))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersBy() with clientStatusCode")
+	class GetUsersByWithClientStatusCodeTests {
+
+		@Test
+		@DisplayName("with ACTIVE client status should filter by client status")
+		void withActiveClientStatus_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "gubcsc_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("GUBCSC", "GetUsr CSC", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"gubcsc_" + ts + "@test.com", "password123"))
+									.thenReturn(clientId))
+							.flatMap(clientId -> databaseClient.sql(
+									"SELECT CODE FROM security_client WHERE ID = :id")
+									.bind("id", clientId.longValue())
+									.map(row -> row.get("CODE", String.class))
+									.one())
+							.flatMap(clientCode -> userDAO.getUsersBy(userName, null, clientCode,
+									null, AuthenticationIdentifierType.USER_NAME,
+									SecurityClientStatusCode.ACTIVE, SecurityUserStatusCode.ACTIVE)))
+					.assertNext(users -> {
+						assertFalse(users.isEmpty());
+						assertEquals(userName, users.get(0).getUserName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with INACTIVE client status should not return user from active client")
+		void withInactiveClientStatus_ReturnsEmpty() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "gubics_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("GUBICS", "GetUsr ICS", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"gubics_" + ts + "@test.com", "password123"))
+									.thenReturn(clientId))
+							.flatMap(clientId -> databaseClient.sql(
+									"SELECT CODE FROM security_client WHERE ID = :id")
+									.bind("id", clientId.longValue())
+									.map(row -> row.get("CODE", String.class))
+									.one())
+							.flatMap(clientCode -> userDAO.getUsersBy(userName, null, clientCode,
+									null, AuthenticationIdentifierType.USER_NAME,
+									SecurityClientStatusCode.INACTIVE, SecurityUserStatusCode.ACTIVE)))
+					.assertNext(users -> assertTrue(users.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersBy() with userId parameter")
+	class GetUsersByWithUserIdTests {
+
+		@Test
+		@DisplayName("with userId should filter by user ID")
+		void withUserId_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "gubuid_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("GUBUID", "GetUsr UID", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"gubuid_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> databaseClient.sql(
+											"SELECT CODE FROM security_client WHERE ID = :id")
+											.bind("id", clientId.longValue())
+											.map(row -> row.get("CODE", String.class))
+											.one()
+											.flatMap(clientCode -> userDAO.getUsersBy(null, userId,
+													clientCode, null,
+													AuthenticationIdentifierType.USER_NAME, null,
+													SecurityUserStatusCode.ACTIVE)))))
+					.assertNext(users -> {
+						assertFalse(users.isEmpty());
+						assertEquals(userName, users.get(0).getUserName());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersBy() with PLACEHOLDER username")
+	class GetUsersByPlaceholderTests {
+
+		@Test
+		@DisplayName("NONE placeholder username should be ignored in query")
+		void placeholderUserName_ReturnsBasedOnOtherConditions() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestClient("GUBPL", "GetUsr PH", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, "gubpl_" + ts,
+											"gubpl_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> databaseClient.sql(
+											"SELECT CODE FROM security_client WHERE ID = :id")
+											.bind("id", clientId.longValue())
+											.map(row -> row.get("CODE", String.class))
+											.one()
+											.flatMap(clientCode -> userDAO.getUsersBy("NONE", userId,
+													clientCode, null,
+													AuthenticationIdentifierType.USER_NAME, null,
+													SecurityUserStatusCode.ACTIVE)))))
+					.assertNext(users -> assertFalse(users.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getAllClientsBy() by userName")
+	class GetAllClientsByUserNameTests {
+
+		@Test
+		@DisplayName("by userName should return userId->clientId mapping")
+		void byUserName_ReturnsMapping() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "gacbu_" + ts;
+
+			StepVerifier.create(
+					insertTestClient("GACBU", "GetAllCl U", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, userName,
+											"gacbu_" + ts + "@test.com", "password123"))
+									.flatMap(userId -> databaseClient.sql(
+											"SELECT CODE FROM security_client WHERE ID = :id")
+											.bind("id", clientId.longValue())
+											.map(row -> row.get("CODE", String.class))
+											.one()
+											.flatMap(clientCode -> userDAO.getAllClientsBy(
+													userName, null, clientCode, null,
+													AuthenticationIdentifierType.USER_NAME,
+													SecurityUserStatusCode.ACTIVE))
+											.map(map -> {
+												assertFalse(map.isEmpty());
+												assertTrue(map.containsKey(userId));
+												assertEquals(clientId, map.get(userId));
+												return map;
+											}))))
+					.assertNext(map -> assertFalse(map.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("non-existent userName should return empty map")
+		void nonExistentUserName_ReturnsEmptyMap() {
+			StepVerifier.create(
+					insertTestClient("GACBN", "GetAllCl N", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.thenReturn(clientId))
+							.flatMap(clientId -> databaseClient.sql(
+									"SELECT CODE FROM security_client WHERE ID = :id")
+									.bind("id", clientId.longValue())
+									.map(row -> row.get("CODE", String.class))
+									.one())
+							.flatMap(clientCode -> userDAO.getAllClientsBy(
+									"nonexistent_user_xyz", null, clientCode, null,
+									AuthenticationIdentifierType.USER_NAME,
+									SecurityUserStatusCode.ACTIVE)))
+					.assertNext(map -> assertTrue(map.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersForNotification() with valid data")
+	class GetUsersForNotificationValidTests {
+
+		@Test
+		@DisplayName("with valid appCode and clientId should return users")
+		void validAppCodeAndClientId_ReturnsUsers() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "ntfusr_" + ts,
+							"ntfusr_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+									.map(row -> row.get("ID", Long.class))
+									.one()
+									.flatMap(appId -> databaseClient.sql(
+											"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+											.bind("appId", appId)
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(profileId -> databaseClient.sql(
+													"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+													.bind("profileId", profileId.longValue())
+													.bind("userId", userId.longValue())
+													.then()
+													.then(userDAO.getUsersForNotification(
+															List.of(userId.longValue()),
+															"appbuilder",
+															SYSTEM_CLIENT_ID.longValue(),
+															null))))))
+					.assertNext(users -> assertFalse(users.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with valid appCode and clientCode should return users")
+		void validAppCodeAndClientCode_ReturnsUsers() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "ntfcc_" + ts,
+							"ntfcc_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+									.map(row -> row.get("ID", Long.class))
+									.one()
+									.flatMap(appId -> databaseClient.sql(
+											"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+											.bind("appId", appId)
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(profileId -> databaseClient.sql(
+													"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+													.bind("profileId", profileId.longValue())
+													.bind("userId", userId.longValue())
+													.then()
+													.then(userDAO.getUsersForNotification(
+															List.of(userId.longValue()),
+															"appbuilder",
+															null,
+															"SYSTEM  "))))))
+					.assertNext(users -> assertNotNull(users))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with no userIds should return based on appCode filter")
+		void noUserIds_ReturnsBasedOnAppCode() {
+			StepVerifier.create(userDAO.getUsersForNotification(
+					null, "appbuilder", SYSTEM_CLIENT_ID.longValue(), null))
+					.assertNext(users -> assertNotNull(users))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersForEntityProcessor() with valid data")
+	class GetUsersForEntityProcessorValidTests {
+
+		@Test
+		@DisplayName("with valid appCode and userIds should return entity processor users")
+		void validAppCodeAndUserIds_ReturnsUsers() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "epusr_" + ts,
+							"epusr_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+									.map(row -> row.get("ID", Long.class))
+									.one()
+									.flatMap(appId -> databaseClient.sql(
+											"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+											.bind("appId", appId)
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(profileId -> databaseClient.sql(
+													"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+													.bind("profileId", profileId.longValue())
+													.bind("userId", userId.longValue())
+													.then()
+													.then(userDAO.getUsersForEntityProcessor(
+															List.of(userId.longValue()),
+															"appbuilder",
+															SYSTEM_CLIENT_ID.longValue(),
+															null))))))
+					.assertNext(users -> {
+						assertFalse(users.isEmpty());
+						assertNotNull(users.get(0).getId());
+						assertNotNull(users.get(0).getProfileIds());
+						assertFalse(users.get(0).getProfileIds().isEmpty());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with clientCode instead of clientId should work")
+		void withClientCode_ReturnsUsers() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "epcc_" + ts,
+							"epcc_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+									.map(row -> row.get("ID", Long.class))
+									.one()
+									.flatMap(appId -> databaseClient.sql(
+											"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+											.bind("appId", appId)
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(profileId -> databaseClient.sql(
+													"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+													.bind("profileId", profileId.longValue())
+													.bind("userId", userId.longValue())
+													.then()
+													.then(userDAO.getUsersForEntityProcessor(
+															List.of(userId.longValue()),
+															"appbuilder",
+															null,
+															"SYSTEM  "))))))
+					.assertNext(users -> assertNotNull(users))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("user with designation and role should populate all fields")
+		void userWithDesignationAndRole_PopulatesAllFields() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "epfull_" + ts,
+							"epfull_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"INSERT INTO security_designation (CLIENT_ID, NAME) VALUES (:clientId, :name)")
+									.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+									.bind("name", "TestDesg_" + ts)
+									.filter(s -> s.returnGeneratedValues("ID"))
+									.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+									.one()
+									.flatMap(desgId -> databaseClient.sql(
+											"UPDATE security_user SET DESIGNATION_ID = :desgId WHERE ID = :userId")
+											.bind("desgId", desgId.longValue())
+											.bind("userId", userId.longValue())
+											.then())
+									.then(databaseClient.sql(
+											"SELECT ID FROM security_v2_role WHERE NAME = 'Owner' LIMIT 1")
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(roleId -> databaseClient.sql(
+													"INSERT INTO security_v2_user_role (USER_ID, ROLE_ID) VALUES (:userId, :roleId)")
+													.bind("userId", userId.longValue())
+													.bind("roleId", roleId.longValue())
+													.then()))
+									.then(databaseClient.sql(
+											"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+											.map(row -> row.get("ID", Long.class))
+											.one()
+											.flatMap(appId -> databaseClient.sql(
+													"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+													.bind("appId", appId)
+													.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+													.one()
+													.flatMap(profileId -> databaseClient.sql(
+															"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+															.bind("profileId", profileId.longValue())
+															.bind("userId", userId.longValue())
+															.then()
+															.then(userDAO.getUsersForEntityProcessor(
+																	List.of(userId.longValue()),
+																	"appbuilder",
+																	SYSTEM_CLIENT_ID.longValue(),
+																	null)))))))
+					.assertNext(users -> {
+						assertFalse(users.isEmpty());
+						var user = users.get(0);
+						assertNotNull(user.getId());
+						assertNotNull(user.getDesignationId());
+						assertNotNull(user.getRoleId());
+						assertNotNull(user.getProfileIds());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUserForEntityProcessor() with valid data")
+	class GetUserForEntityProcessorValidTests {
+
+		@Test
+		@DisplayName("with valid userId and appCode should return single user")
+		void validUserIdAndAppCode_ReturnsSingleUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "epone_" + ts,
+							"epone_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+									.map(row -> row.get("ID", Long.class))
+									.one()
+									.flatMap(appId -> databaseClient.sql(
+											"SELECT ID FROM security_profile WHERE APP_ID = :appId LIMIT 1")
+											.bind("appId", appId)
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(profileId -> databaseClient.sql(
+													"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+													.bind("profileId", profileId.longValue())
+													.bind("userId", userId.longValue())
+													.then()
+													.then(userDAO.getUserForEntityProcessor(
+															userId, "appbuilder",
+															SYSTEM_CLIENT_ID.longValue(), null))))))
+					.assertNext(user -> {
+						assertNotNull(user);
+						assertNotNull(user.getId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("non-existent userId should return empty")
+		void nonExistentUser_ReturnsEmpty() {
+			StepVerifier.create(userDAO.getUserForEntityProcessor(
+					ULong.valueOf(999999), "appbuilder", SYSTEM_CLIENT_ID.longValue(), null))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUserForInvite() additional branches")
+	class GetUserForInviteAdditionalTests {
+
+		@Test
+		@DisplayName("by email should return user")
+		void byEmail_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String email = "inveml_" + ts + "@test.com";
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "inveml_" + ts, email, "password123")
+							.then(userDAO.getUserForInvite(SYSTEM_CLIENT_ID, null, email, null)))
+					.assertNext(user -> {
+						assertNotNull(user);
+						assertEquals(email, user.getEmailId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("by phone should return user when phone matches")
+		void byPhone_ReturnsUser() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String phone = "+1" + ts.substring(ts.length() - 10);
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, PHONE_NUMBER, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, :email, :phone, 'Test', 'User', 'pass', false, 'ACTIVE')")
+							.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+							.bind("userName", "invphn_" + ts)
+							.bind("email", "invphn_" + ts + "@test.com")
+							.bind("phone", phone)
+							.then()
+							.then(userDAO.getUserForInvite(SYSTEM_CLIENT_ID, null, null, phone)))
+					.assertNext(user -> {
+						assertNotNull(user);
+						assertEquals(phone, user.getPhoneNumber());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("PLACEHOLDER values should be ignored as search criteria")
+		void placeholderValues_Ignored() {
+			// When all identifiers are PLACEHOLDER ("NONE"), the only condition is CLIENT_ID.
+			// For a client with no users, this should return empty.
+			StepVerifier.create(
+					insertTestClient("PLCHLD", "Placeholder Test", "BUS")
+							.flatMap(clientId -> userDAO.getUserForInvite(
+									clientId, "NONE", "NONE", "NONE")))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("checkUserExistsForInvite() PLACEHOLDER handling")
+	class CheckUserExistsForInvitePlaceholderTests {
+
+		@Test
+		@DisplayName("PLACEHOLDER userName should be ignored")
+		void placeholderUserName_Ignored() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String email = "invpl_" + ts + "@test.com";
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "invpl_" + ts, email, "password123")
+							.then(userDAO.checkUserExistsForInvite(
+									SYSTEM_CLIENT_ID, "NONE", email, null)))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("by phone number should return true when phone matches")
+		void byPhone_ExistingPhone_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String phone = "+1" + ts.substring(ts.length() - 10);
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, PHONE_NUMBER, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, :email, :phone, 'Test', 'User', 'pass', false, 'ACTIVE')")
+							.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+							.bind("userName", "invph2_" + ts)
+							.bind("email", "invph2_" + ts + "@test.com")
+							.bind("phone", phone)
+							.then()
+							.then(userDAO.checkUserExistsForInvite(
+									SYSTEM_CLIENT_ID, null, null, phone)))
+					.assertNext(exists -> assertTrue(exists))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("updateUserStatusToActive() edge cases")
+	class UpdateUserStatusToActiveEdgeCaseTests {
+
+		@Test
+		@DisplayName("deleted user should not be activated")
+		void deletedUser_ReturnsFalse() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "actdel_" + ts,
+							"actdel_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"UPDATE security_user SET STATUS_CODE = 'DELETED' WHERE ID = :userId")
+									.bind("userId", userId.longValue())
+									.then()
+									.then(userDAO.updateUserStatusToActive(userId))))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("already active user should still return true")
+		void alreadyActiveUser_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "actact_" + ts,
+							"actact_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.updateUserStatusToActive(userId)))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("should reset all failed attempt counters")
+		void resetsAllCounters() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			LocalDateTime lockUntil = LocalDateTime.now().plusHours(1);
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "actcnt_" + ts,
+							"actcnt_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.increaseFailedAttempt(userId,
+									AuthenticationPasswordType.PASSWORD)
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.PIN))
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.OTP))
+									.then(userDAO.increaseResendAttempts(userId))
+									.then(userDAO.lockUser(userId, lockUntil, "test lock"))
+									.then(userDAO.updateUserStatusToActive(userId))
+									.then(databaseClient.sql(
+											"SELECT NO_FAILED_ATTEMPT, NO_PIN_FAILED_ATTEMPT, NO_OTP_FAILED_ATTEMPT, NO_OTP_RESEND_ATTEMPT, LOCKED_UNTIL, LOCKED_DUE_TO FROM security_user WHERE ID = :userId")
+											.bind("userId", userId.longValue())
+											.map(row -> {
+												assertEquals((short) 0,
+														row.get("NO_FAILED_ATTEMPT", Short.class));
+												assertEquals((short) 0,
+														row.get("NO_PIN_FAILED_ATTEMPT", Short.class));
+												assertEquals((short) 0,
+														row.get("NO_OTP_FAILED_ATTEMPT", Short.class));
+												assertEquals((short) 0,
+														row.get("NO_OTP_RESEND_ATTEMPT", Short.class));
+												assertNull(row.get("LOCKED_UNTIL", LocalDateTime.class));
+												assertNull(row.get("LOCKED_DUE_TO", String.class));
+												return true;
+											})
+											.one())))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUserIdsByClientId() for non-system client")
+	class GetUserIdsByClientIdNonSystemTests {
+
+		@Test
+		@DisplayName("business client should use hierarchy-based query")
+		void businessClient_ReturnsUsersViaHierarchy() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestClient("GUIDNB", "NonSys Cl", "BUS")
+							.flatMap(clientId -> insertClientHierarchy(clientId, SYSTEM_CLIENT_ID, null, null, null)
+									.then(insertTestUser(clientId, "guidnb_" + ts,
+											"guidnb_" + ts + "@test.com", "password123"))
+									.thenReturn(clientId))
+							.flatMap(clientId -> userDAO.getUserIdsByClientId(clientId, null)
+									.collectList()))
+					.assertNext(ids -> assertFalse(ids.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("non-existent client should return empty")
+		void nonExistentClient_ReturnsEmpty() {
+			StepVerifier.create(
+					userDAO.getUserIdsByClientId(ULong.valueOf(999999), null)
+							.collectList())
+					.assertNext(ids -> assertTrue(ids.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("readPageFilter() via DAO with security context")
+	class ReadPageFilterTests {
+
+		@Test
+		@DisplayName("with system auth should return paginated users")
+		void systemAuth_ReturnsPaginatedUsers() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, null)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertFalse(page.getContent().isEmpty());
+						assertTrue(page.getTotalElements() > 0);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with filter condition on userName should filter results")
+		void filterByUserName_ReturnsFilteredResults() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "rpfusr_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.make("userName", userName);
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, userName,
+							"rpfusr_" + ts + "@test.com", "password123")
+							.then(userDAO.readPageFilter(pageable, condition)
+									.contextWrite(ReactiveSecurityContextHolder
+											.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertEquals(1, page.getTotalElements());
+						assertEquals(userName, page.getContent().get(0).getUserName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with appId EQUALS filter should use filterConditionFilter")
+		void filterByAppIdEquals_UsesCustomFilter() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+							.map(row -> row.get("ID", Long.class))
+							.one()
+							.flatMap(appId -> {
+								FilterCondition condition = FilterCondition.make("appId", appId);
+								return userDAO.readPageFilter(pageable, condition)
+										.contextWrite(ReactiveSecurityContextHolder
+												.withAuthentication(systemAuth));
+							}))
+					.assertNext(page -> {
+						assertNotNull(page);
+						// Users with profile linked to appbuilder app
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with appCode EQUALS filter should use filterConditionFilter")
+		void filterByAppCodeEquals_UsesCustomFilter() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.make("appCode", "appbuilder");
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						// Users associated with appbuilder app
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with appId IN filter should use filterConditionFilter IN branch")
+		void filterByAppIdIn_UsesInBranch() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+							.map(row -> row.get("ID", Long.class))
+							.one()
+							.flatMap(appId -> {
+								FilterCondition condition = FilterCondition.of("appId", appId,
+										FilterConditionOperator.IN);
+								condition.setMultiValue(List.of(appId));
+								return userDAO.readPageFilter(pageable, condition)
+										.contextWrite(ReactiveSecurityContextHolder
+												.withAuthentication(systemAuth));
+							}))
+					.assertNext(page -> assertNotNull(page))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with appCode IN filter should use filterConditionFilter IN branch")
+		void filterByAppCodeIn_UsesInBranch() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.of("appCode", "appbuilder",
+					FilterConditionOperator.IN);
+			condition.setMultiValue(List.of("appbuilder"));
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> assertNotNull(page))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with negated appId filter should negate condition")
+		void filterByAppIdNegate_NegatesCondition() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"SELECT ID FROM security_app WHERE APP_CODE = 'appbuilder' LIMIT 1")
+							.map(row -> row.get("ID", Long.class))
+							.one()
+							.flatMap(appId -> {
+								FilterCondition condition = FilterCondition.make("appId", appId);
+								condition.setNegate(true);
+								return userDAO.readPageFilter(pageable, condition)
+										.contextWrite(ReactiveSecurityContextHolder
+												.withAuthentication(systemAuth));
+							}))
+					.assertNext(page -> assertNotNull(page))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with negated appCode filter should negate condition")
+		void filterByAppCodeNegate_NegatesCondition() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.make("appCode", "appbuilder");
+			condition.setNegate(true);
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> assertNotNull(page))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with non-EQUALS/IN operator on appId should return trueCondition")
+		void filterByAppIdLike_ReturnsTrueCondition() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.of("appId", "1",
+					FilterConditionOperator.LIKE);
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						// LIKE on appId returns trueCondition, so no filtering
+						assertTrue(page.getTotalElements() > 0);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with non-appId/appCode field should delegate to super")
+		void filterByRegularField_DelegatesToSuper() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(0, 10);
+
+			FilterCondition condition = FilterCondition.make("statusCode", "ACTIVE");
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getTotalElements() > 0);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("page beyond total should return empty content")
+		void pageBeyondTotal_ReturnsEmptyContent() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+			Pageable pageable = PageRequest.of(1000, 10);
+
+			StepVerifier.create(
+					userDAO.readPageFilter(pageable, null)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getContent().isEmpty());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("canBeUpdated() from parent class")
+	class CanBeUpdatedTests {
+
+		@Test
+		@DisplayName("existing user should be updatable with system auth")
+		void existingUser_ReturnsTrue() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "canupd_" + ts,
+							"canupd_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.canBeUpdated(userId)
+									.contextWrite(ReactiveSecurityContextHolder
+											.withAuthentication(systemAuth))))
+					.assertNext(canUpdate -> assertTrue(canUpdate))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("non-existent user should not be updatable")
+		void nonExistentUser_ReturnsFalse() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			StepVerifier.create(
+					userDAO.canBeUpdated(ULong.valueOf(999999))
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(canUpdate -> assertFalse(canUpdate))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getEmailsOfUsers() additional cases")
+	class GetEmailsOfUsersAdditionalTests {
+
+		@Test
+		@DisplayName("user with NONE email should be excluded")
+		void noneEmail_Excluded() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, 'NONE', 'Test', 'User', 'pass', false, 'ACTIVE')")
+							.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+							.bind("userName", "noneml_" + ts)
+							.filter(s -> s.returnGeneratedValues("ID"))
+							.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+							.one()
+							.flatMap(userId -> userDAO.getEmailsOfUsers(List.of(userId))))
+					.assertNext(emails -> assertTrue(emails.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("user with default email (no EMAIL_ID provided) should be excluded")
+		void nullEmail_Excluded() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					databaseClient.sql(
+							"INSERT INTO security_user (CLIENT_ID, USER_NAME, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, 'Test', 'User', 'pass', false, 'ACTIVE')")
+							.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+							.bind("userName", "nuleml_" + ts)
+							.filter(s -> s.returnGeneratedValues("ID"))
+							.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+							.one()
+							.flatMap(userId -> userDAO.getEmailsOfUsers(List.of(userId))))
+					.assertNext(emails -> assertTrue(emails.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("mix of valid and invalid users should return only valid emails")
+		void mixedUsers_ReturnsOnlyValid() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "mixeml1_" + ts,
+							"mixeml1_" + ts + "@test.com", "password123")
+							.flatMap(validUserId -> databaseClient.sql(
+									"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, 'NONE', 'Test', 'User', 'pass', false, 'ACTIVE')")
+									.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+									.bind("userName", "mixeml2_" + ts)
+									.filter(s -> s.returnGeneratedValues("ID"))
+									.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+									.one()
+									.flatMap(noneUserId -> databaseClient.sql(
+											"INSERT INTO security_user (CLIENT_ID, USER_NAME, EMAIL_ID, FIRST_NAME, LAST_NAME, PASSWORD, PASSWORD_HASHED, STATUS_CODE) VALUES (:clientId, :userName, :email, 'Test', 'User', 'pass', false, 'DELETED')")
+											.bind("clientId", SYSTEM_CLIENT_ID.longValue())
+											.bind("userName", "mixeml3_" + ts)
+											.bind("email", "mixeml3_" + ts + "@test.com")
+											.filter(s -> s.returnGeneratedValues("ID"))
+											.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+											.one()
+											.flatMap(deletedUserId -> userDAO.getEmailsOfUsers(
+													List.of(validUserId, noneUserId, deletedUserId))))))
+					.assertNext(emails -> {
+						assertEquals(1, emails.size());
+						assertTrue(emails.get(0).contains("mixeml1_"));
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("lockUser() additional verification")
+	class LockUserAdditionalTests {
+
+		@Test
+		@DisplayName("lockUser should set accountNonLocked to false and lockedUntil/lockedDueTo")
+		void lockUser_SetsAllFields() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			LocalDateTime lockUntil = LocalDateTime.now().plusHours(3);
+			String reason = "Test lock reason " + ts;
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "lockfld_" + ts,
+							"lockfld_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.lockUser(userId, lockUntil, reason)
+									.then(databaseClient.sql(
+											"SELECT ACCOUNT_NON_LOCKED, LOCKED_DUE_TO FROM security_user WHERE ID = :userId")
+											.bind("userId", userId.longValue())
+											.map(row -> {
+												assertEquals((byte) 0,
+														row.get("ACCOUNT_NON_LOCKED", Byte.class));
+												assertEquals(reason,
+														row.get("LOCKED_DUE_TO", String.class));
+												return true;
+											})
+											.one())))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("non-existent user lock should return false")
+		void nonExistentUser_ReturnsFalse() {
+			StepVerifier.create(userDAO.lockUser(ULong.valueOf(999999),
+					LocalDateTime.now().plusHours(1), "test"))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("canReportTo() circular reporting detection")
+	class CanReportToCircularTests {
+
+		@Test
+		@DisplayName("circular reporting chain should return false")
+		void circularReporting_ReturnsFalse() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			// A -> B -> (want to set B.reportingTo = A, which would create a circle)
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "circa_" + ts,
+							"circa_" + ts + "@test.com", "password123")
+							.flatMap(userA -> insertTestUser(SYSTEM_CLIENT_ID, "circb_" + ts,
+									"circb_" + ts + "@test.com", "password123")
+									.flatMap(userB -> databaseClient.sql(
+											"UPDATE security_user SET REPORTING_TO = :reportTo WHERE ID = :userId")
+											.bind("reportTo", userA.longValue())
+											.bind("userId", userB.longValue())
+											.then()
+											// Now try to make A report to B - would create circle
+											.then(userDAO.canReportTo(SYSTEM_CLIENT_ID, userB, userA)))))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("setPassword() verifies past password/pin records")
+	class SetPasswordPastRecordsTests {
+
+		@Test
+		@DisplayName("setPassword should create past_passwords record")
+		void setPassword_CreatesPastPasswordRecord() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "pstpwd_" + ts,
+							"pstpwd_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.setPassword(userId, ULong.valueOf(1),
+									"newPass123", AuthenticationPasswordType.PASSWORD)
+									.then(databaseClient.sql(
+											"SELECT COUNT(*) AS CNT FROM security_past_passwords WHERE USER_ID = :userId")
+											.bind("userId", userId.longValue())
+											.map(row -> row.get("CNT", Long.class))
+											.one())))
+					.assertNext(count -> assertTrue(count >= 1))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("setPin should create past_pins record")
+		void setPin_CreatesPastPinRecord() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "pstpin_" + ts,
+							"pstpin_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.setPassword(userId, ULong.valueOf(1),
+									"654321", AuthenticationPasswordType.PIN)
+									.then(databaseClient.sql(
+											"SELECT COUNT(*) AS CNT FROM security_past_pins WHERE USER_ID = :userId")
+											.bind("userId", userId.longValue())
+											.map(row -> row.get("CNT", Long.class))
+											.one())))
+					.assertNext(count -> assertTrue(count >= 1))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("addProfileToUser() with root profile resolution")
+	class AddProfileToUserRootProfileTests {
+
+		@Test
+		@DisplayName("duplicate profile assignment should be ignored (onDuplicateKeyIgnore)")
+		void duplicateAssignment_ReturnsZero() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "dupprof_" + ts,
+							"dupprof_" + ts + "@test.com", "password123")
+							.flatMap(userId -> databaseClient.sql(
+									"SELECT ID FROM security_profile WHERE NAME = 'Appbuilder Owner' LIMIT 1")
+									.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+									.one()
+									.flatMap(profileId -> userDAO.addProfileToUser(userId, profileId)
+											.then(userDAO.addProfileToUser(userId, profileId)))))
+					.assertNext(result -> assertEquals(0, result.intValue()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("increaseFailedAttempt() multiple increments")
+	class IncreaseFailedAttemptMultipleTests {
+
+		@Test
+		@DisplayName("multiple password fail increases should accumulate")
+		void multiplePasswordFails_Accumulate() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "mfpwd_" + ts,
+							"mfpwd_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.increaseFailedAttempt(userId,
+									AuthenticationPasswordType.PASSWORD)
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.PASSWORD))
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.PASSWORD))))
+					.assertNext(count -> assertEquals((short) 3, count))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("multiple PIN fail increases should accumulate")
+		void multiplePinFails_Accumulate() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "mfpin_" + ts,
+							"mfpin_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.increaseFailedAttempt(userId,
+									AuthenticationPasswordType.PIN)
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.PIN))))
+					.assertNext(count -> assertEquals((short) 2, count))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("multiple OTP fail increases should accumulate")
+		void multipleOtpFails_Accumulate() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			StepVerifier.create(
+					insertTestUser(SYSTEM_CLIENT_ID, "mfotp_" + ts,
+							"mfotp_" + ts + "@test.com", "password123")
+							.flatMap(userId -> userDAO.increaseFailedAttempt(userId,
+									AuthenticationPasswordType.OTP)
+									.then(userDAO.increaseFailedAttempt(userId,
+											AuthenticationPasswordType.OTP))))
+					.assertNext(count -> assertEquals((short) 2, count))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("getUsersForProfiles() with non-matching clientId")
+	class GetUsersForProfilesNonMatchingTests {
+
+		@Test
+		@DisplayName("non-matching clientId should return empty")
+		void nonMatchingClientId_ReturnsEmpty() {
+			StepVerifier.create(
+					databaseClient.sql(
+							"SELECT ID FROM security_profile WHERE NAME = 'Appbuilder Owner' LIMIT 1")
+							.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+							.one()
+							.flatMap(profileId -> userDAO.getUsersForProfiles(
+									List.of(profileId), ULong.valueOf(999999))))
+					.assertNext(users -> assertTrue(users.isEmpty()))
 					.verifyComplete();
 		}
 	}

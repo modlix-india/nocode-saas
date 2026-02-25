@@ -79,6 +79,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public static final String APP_PROP_URL_SUFFIX = "URL_SUFFIX";
     public static final String APP_PROP_URL = "URL";
 
+    public static final String APP_PROP_USER_CHECK = "USER_CHECK";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CLIENT = "NO_DUPLICATE_USER_CLIENT";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CUSTOMER = "NO_DUPLICATE_USER_CUSTOMER";
+    public static final String APP_PROP_USER_CHECK_NO_DUP_CONSUMER = "NO_DUPLICATE_USER_CONSUMER";
+    public static final String APP_PROP_USER_CHECK_DEFAULT = "NO_DUPLICATE_CHECK_REQUIRED";
+
     public static final String APP_ACCESS_TYPE = "appAccessType";
     public static final String APP_USAGE_TYPE = "appUsageType";
     public static final String APP_NAME = "appName";
@@ -636,9 +642,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getPropertiesWithClients"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
     public Mono<Boolean> updateProperty(AppProperty property) {
 
-        if (property.getAppId() == null || StringUtil.safeIsBlank(property.getName())) {
+        if (property.getAppId() == null || property.getClientId() == null
+                || StringUtil.safeIsBlank(property.getName())) {
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.MANDATORY_APP_ID_NAME);
         }
@@ -677,6 +685,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.updateProperty"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     public Mono<Boolean> deletePropertyById(ULong propertyId) {
 
         return FlatMapUtil.flatMapMono(
@@ -713,9 +722,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.deletePropertyById"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String name) {
 
-        if (appId == null) {
+        if (appId == null || clientId == null || StringUtil.safeIsBlank(name)) {
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.MANDATORY_APP_ID_CODE);
         }
@@ -920,7 +930,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 (ca, access) -> {
                     if (ca.isSystemClient())
-                        Mono.just(true);
+                        return Mono.just(true);
 
                     return this.clientService.isUserClientManageClient(ca, clientCode)
                             .filter(BooleanUtil::safeValueOf)

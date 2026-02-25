@@ -113,6 +113,17 @@ public class ClientController
                 .map(ResponseEntity::ok);
     }
 
+    @PostMapping("/internal/clientIdsOfManagers")
+    public Mono<ResponseEntity<List<ULong>>> getClientIdsOfManagers(@RequestBody List<BigInteger> managerIds) {
+        if (managerIds == null || managerIds.isEmpty()) {
+            return Mono.just(ResponseEntity.ok(List.of()));
+        }
+        List<ULong> uLongManagerIds = managerIds.stream().map(ULong::valueOf).toList();
+        return this.clientManagerService
+                .getClientIdsOfManagersInternal(uLongManagerIds)
+                .map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/validateClientCode")
     public Mono<ResponseEntity<Boolean>> validateClientCode(@RequestParam String clientCode) {
 

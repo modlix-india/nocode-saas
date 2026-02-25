@@ -50,6 +50,12 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	private ProfileService profileService;
 
 	@Mock
+	private AppService appService;
+
+	@Mock
+	private ClientHierarchyService clientHierarchyService;
+
+	@Mock
 	private UserInviteDAO dao;
 
 	private UserInviteService service;
@@ -63,7 +69,7 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new UserInviteService(msgService, clientService, authenticationService, userDao, soxLogService,
-				profileService);
+				profileService, appService, clientHierarchyService);
 
 		var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
 		daoField.setAccessible(true);
