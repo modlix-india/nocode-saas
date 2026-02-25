@@ -12,6 +12,5 @@ public interface IFeignEntityProcessor {
 
     @PostMapping(TICKETS_EXPIRATION_RUN_PATH)
     ExpireTicketsResult runTicketExpiration(
-            @RequestHeader("appCode") String appCode,
-            @RequestHeader("clientCode") String clientCode);
+            @RequestHeader("appCode") String appCode, @RequestHeader("clientCode") String clientCode);
 }

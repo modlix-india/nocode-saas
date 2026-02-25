@@ -21,9 +21,9 @@ public class TicketExpirationService {
     public String runExpiration(Task task) {
         String appCode = task.getAppCode();
         String clientCode = task.getClientCode();
-        if (appCode == null || appCode.isBlank() || clientCode == null || clientCode.isBlank()) {
+        if (appCode == null || appCode.isBlank() || clientCode == null || clientCode.isBlank())
             return "Error: task must have appCode and clientCode";
-        }
+
         logger.info("Executing ticket expiration for appCode={}, clientCode={}", appCode, clientCode);
         try {
             ExpireTicketsResult result = feignEntityProcessor.runTicketExpiration(appCode, clientCode);

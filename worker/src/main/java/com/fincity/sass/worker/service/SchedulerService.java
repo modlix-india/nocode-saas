@@ -30,10 +30,6 @@ public class SchedulerService
         this.messageResourceService = messageResourceService;
     }
 
-    /**
-     * Initializes all schedulers from the database when the application starts.
-     * This method is automatically called after the service is fully initialized.
-     */
     @PostConstruct
     public void initializeSchedulersFromDatabase() {
         log.info("Initializing schedulers from database...");
@@ -83,11 +79,11 @@ public class SchedulerService
 
     public Scheduler start(String schedulerName) {
         Scheduler ws = this.findByName(schedulerName);
-        if (ws == null) {
+        if (ws == null)
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         try {
             this.quartzService.startScheduler(ws);
         } catch (Exception e) {
@@ -102,11 +98,11 @@ public class SchedulerService
 
     public Scheduler pause(String schedulerName) {
         Scheduler ws = this.findByName(schedulerName);
-        if (ws == null) {
+        if (ws == null)
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         try {
             this.quartzService.pauseScheduler(ws);
         } catch (Exception e) {
@@ -121,11 +117,11 @@ public class SchedulerService
 
     public Scheduler shutdown(String schedulerName) {
         Scheduler ws = this.findByName(schedulerName);
-        if (ws == null) {
+        if (ws == null)
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         try {
             this.quartzService.shutdownScheduler(ws);
         } catch (Exception e) {
@@ -140,11 +136,11 @@ public class SchedulerService
 
     public Scheduler restore(String schedulerName) {
         Scheduler scheduler = findByName(schedulerName);
-        if (scheduler == null) {
+        if (scheduler == null)
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         try {
             this.quartzService.initializeSchedulerOnStartUp(scheduler);
         } catch (Exception e) {
@@ -160,9 +156,9 @@ public class SchedulerService
     @Override
     protected Scheduler updatableEntity(Scheduler entity) {
         Scheduler existing = this.read(entity.getId());
-        if (existing == null) {
+        if (existing == null)
             return null;
-        }
+
         existing.setName(entity.getName());
         existing.setSchedulerStatus(entity.getSchedulerStatus());
         return existing;

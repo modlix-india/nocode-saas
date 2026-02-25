@@ -31,15 +31,14 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
 
     @Override
     public Task create(Task task) {
-        if (task instanceof FunctionExecutionTask fet) {
-            fet.prepareForPersistence();
-        }
+        if (task instanceof FunctionExecutionTask fet) fet.prepareForPersistence();
+
         Scheduler scheduler = this.schedulerService.read(task.getSchedulerId());
-        if (scheduler == null) {
+        if (scheduler == null)
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         Task created = super.create(task);
         try {
             this.quartzService.initializeTask(scheduler, created);
@@ -84,17 +83,17 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
 
     private Task executeTaskOperation(ULong taskId, TaskOperationType operationType, String failureMessageKey) {
         Task task = read(taskId);
-        if (task == null) {
+        if (task == null)
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.TASK_NOT_FOUND));
-        }
+
         Scheduler scheduler = schedulerService.read(task.getSchedulerId());
-        if (scheduler == null) {
+        if (scheduler == null)
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
+
         try {
             quartzService.updateTask(scheduler, task, operationType);
         } catch (Exception e) {

@@ -20,10 +20,6 @@ public class SSLCertificateRenewalService {
         this.feignSecuritySSLService = feignSecuritySSLService;
     }
 
-    /**
-     * Renews expiring SSL certificates by calling the security service. Reads daysBeforeExpiry from
-     * task job data (default 30).
-     */
     public String renewExpiringCertificates(Task task) {
         int daysBeforeExpiry = getDaysBeforeExpiry(task);
         logger.info("Executing SSL certificate renewal for certificates expiring within {} days", daysBeforeExpiry);
