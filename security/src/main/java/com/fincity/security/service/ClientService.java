@@ -308,6 +308,13 @@ public class ClientService
                                         ULongUtil.valueOf(ca.getUser().getId()))
                                 .thenReturn(hClient);
 
+                    if (entity.getManagerId() != null)
+                        return this.clientManagerService
+                                .createInternal(hClient.getId(),
+                                        entity.getManagerId(),
+                                        ULongUtil.valueOf(ca.getUser().getId()))
+                                .thenReturn(hClient);
+
                     return Mono.just(hClient);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
     }

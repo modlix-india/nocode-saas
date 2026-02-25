@@ -46,6 +46,7 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private List<App> apps;
     private User createdByUser;
     private List<User> clientManagers;
+    private ULong managerId;
 
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {
