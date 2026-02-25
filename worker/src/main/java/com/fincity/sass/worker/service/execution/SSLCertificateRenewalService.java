@@ -32,13 +32,13 @@ public class SSLCertificateRenewalService extends AbstractExecutionService {
     }
 
     private int getDaysBeforeExpiry(Task task) {
-        if (task.getJobData() == null) {
+        if (task.getJobData() == null)
             return DEFAULT_DAYS_BEFORE_EXPIRY;
-        }
+
         Object value = task.getJobData().get(JOB_DATA_DAYS_BEFORE_EXPIRY);
-        if (value instanceof Number num) {
+        if (value instanceof Number num)
             return num.intValue();
-        }
+
         if (value instanceof String s) {
             try {
                 return Integer.parseInt(s);
