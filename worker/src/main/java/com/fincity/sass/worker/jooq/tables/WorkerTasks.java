@@ -4,7 +4,6 @@
 package com.fincity.sass.worker.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.sass.worker.enums.TaskJobType;
 import com.fincity.sass.worker.enums.TaskLastFireStatus;
 import com.fincity.sass.worker.enums.TaskState;
@@ -13,6 +12,7 @@ import com.fincity.sass.worker.jooq.Keys;
 import com.fincity.sass.worker.jooq.Worker;
 import com.fincity.sass.worker.jooq.tables.WorkerSchedulers.WorkerSchedulersPath;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
+import com.modlix.saas.commons2.jooq.convertor.jooq.converters.JSONtoClassConverter;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -75,21 +75,21 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
     public final TableField<WorkerTasksRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key, unique identifier for each task");
 
     /**
+     * The column <code>worker.worker_tasks.APP_CODE</code>. App Code on which
+     * this task was created.
+     */
+    public final TableField<WorkerTasksRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this task was created.");
+
+    /**
+     * The column <code>worker.worker_tasks.CLIENT_CODE</code>. Client Code who
+     * created this task.
+     */
+    public final TableField<WorkerTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this task.");
+
+    /**
      * The column <code>worker.worker_tasks.NAME</code>. name of job
      */
     public final TableField<WorkerTasksRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(255).nullable(false), this, "name of job");
-
-    /**
-     * The column <code>worker.worker_tasks.CLIENT_CODE</code>. Client code
-     * (e.g. tenant identifier, aligned with entity-processor)
-     */
-    public final TableField<WorkerTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code (e.g. tenant identifier, aligned with entity-processor)");
-
-    /**
-     * The column <code>worker.worker_tasks.APP_CODE</code>. Application code
-     * (e.g. app identifier, aligned with entity-processor)
-     */
-    public final TableField<WorkerTasksRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "Application code (e.g. app identifier, aligned with entity-processor)");
 
     /**
      * The column <code>worker.worker_tasks.SCHEDULER_ID</code>. Identifier for
@@ -117,7 +117,7 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
     /**
      * The column <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Job type.
      */
-    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("SIMPLE", SQLDataType.VARCHAR)), this, "Job type.", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
+    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(17).nullable(false).defaultValue(DSL.inline("SIMPLE", SQLDataType.VARCHAR)), this, "Job type.", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
 
     /**
      * The column <code>worker.worker_tasks.JOB_DATA</code>.
