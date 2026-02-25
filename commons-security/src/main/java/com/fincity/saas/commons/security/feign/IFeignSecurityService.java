@@ -62,6 +62,9 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.clientIdsOfManager:/api/security/clients/internal/clientIdsOfManager}")
     Mono<List<BigInteger>> getClientIdsOfManager(@RequestParam BigInteger managerId);
 
+    @PostMapping("${security.feign.clientIdsOfManagers:/api/security/clients/internal/clientIdsOfManagers}")
+    Mono<List<BigInteger>> getClientIdsOfManagers(@RequestBody List<BigInteger> managerIds);
+
     @PostMapping("${security.feign.createClientManager:/api/security/client-managers/{userId}/{clientId}}")
     Mono<Boolean> createClientManager(
             @PathVariable("userId") BigInteger userId, @PathVariable("clientId") BigInteger clientId);

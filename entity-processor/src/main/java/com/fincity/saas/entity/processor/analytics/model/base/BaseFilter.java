@@ -9,6 +9,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
@@ -27,6 +28,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private List<ULong> createdByIds;
     private List<ULong> assignedUserIds;
     private List<ULong> clientIds;
+    private List<ULong> clientManagerIds;
 
     private boolean includeZero;
     private boolean includePercentage;
@@ -70,6 +72,11 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
         return (T) this;
     }
 
+    public T setClientManagersByClientId(Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId) {
+        this.baseFieldData.setClientManagersByClientId(clientManagersByClientId);
+        return (T) this;
+    }
+
     public ReportOptions toReportOptions() {
 
         LocalDateTime startInTimezone = DatePair.convertUtcToTimezone(this.startDate, this.timezone);
@@ -108,5 +115,6 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
         private List<IdAndValue<ULong, String>> createdBys;
         private List<IdAndValue<ULong, String>> assignedUsers;
         private List<IdAndValue<ULong, String>> clients;
+        private Map<ULong, List<IdAndValue<ULong, String>>> clientManagersByClientId;
     }
 }
