@@ -628,6 +628,36 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(Record1::value1);
     }
 
+    /**
+     * BFS check: is targetUserId reachable from managerId via REPORTING_TO within clientId?
+     * Self-check (managerId == targetUserId) returns TRUE.
+     */
+    public Mono<Boolean> isUserInSubOrg(ULong clientId, ULong managerId, ULong targetUserId) {
+
+        if (managerId == null || targetUserId == null)
+            return Mono.just(Boolean.FALSE);
+
+        if (managerId.equals(targetUserId))
+            return Mono.just(Boolean.TRUE);
+
+        return Mono.just(List.of(managerId))
+                .expand(batch -> {
+                    if (batch.isEmpty()) return Mono.empty();
+                    return Flux.from(dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER)
+                            .where(SECURITY_USER.REPORTING_TO.in(batch)
+                                    .and(SECURITY_USER.CLIENT_ID.eq(clientId))
+                                    .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+                            .map(Record1::value1)
+                            .collectList();
+                })
+                .takeWhile(batch -> !batch.isEmpty())
+                .any(batch -> batch.contains(targetUserId))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isUserInSubOrg"));
+    }
+
     public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
         return Mono.from(this.dslContext
@@ -689,6 +719,25 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
+        if (fc.getField().startsWith("profile.")) {
+            String profileFieldName = fc.getField().substring(8);
+            String jooqFieldName = this.convertToJOOQFieldName(profileFieldName);
+            Field<?> profileField = SECURITY_PROFILE.field(jooqFieldName);
+
+            if (profileField == null)
+                return DSL.noCondition();
+
+            Condition profileCondition = this.buildProfileFieldCondition(profileField, fc);
+
+            return DSL.exists(
+                    DSL.select(DSL.value(1))
+                            .from(SECURITY_PROFILE_USER)
+                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                            .where(DSL.and(
+                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                    profileCondition)));
+        }
+
         if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
             return super.filterConditionFilter(fc, selectJoinStep);
 
@@ -731,6 +780,28 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                         .where(DSL.and(
                                 SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
                                 codeCondition)));
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Condition buildProfileFieldCondition(Field profileField, FilterCondition fc) {
+
+        return switch (fc.getOperator()) {
+            case EQUALS -> profileField.eq(this.fieldValue(profileField, fc.getValue()));
+            case LESS_THAN -> profileField.lt(this.fieldValue(profileField, fc.getValue()));
+            case GREATER_THAN -> profileField.gt(this.fieldValue(profileField, fc.getValue()));
+            case LESS_THAN_EQUAL -> profileField.le(this.fieldValue(profileField, fc.getValue()));
+            case GREATER_THAN_EQUAL -> profileField.ge(this.fieldValue(profileField, fc.getValue()));
+            case IN -> profileField.in(this.multiFieldValue(profileField, fc.getValue(), fc.getMultiValue()));
+            case LIKE -> profileField.like(fc.getValue().toString());
+            case STRING_LOOSE_EQUAL -> profileField.like("%" + fc.getValue() + "%");
+            case IS_TRUE -> profileField.isTrue();
+            case IS_FALSE -> profileField.isFalse();
+            case IS_NULL -> profileField.isNull();
+            case BETWEEN -> profileField.between(
+                    this.fieldValue(profileField, fc.getValue()),
+                    this.fieldValue(profileField, fc.getToValue()));
+            default -> DSL.noCondition();
+        };
     }
 
     private Condition buildUserFilterServerCondition(
