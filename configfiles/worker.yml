@@ -8,17 +8,6 @@ spring:
     password: ${worker.db.password}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # R2DBC for commons-core (CoreFunctionService)
-  r2dbc:
-    url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
-    username: ${core.db.username:root}
-    password: ${core.db.password:Vishwas123#}
-    pool:
-      initial-size: 2
-      max-size: 4
-      max-idle-time: 30m
-      validation-query: SELECT 1
-
   flyway:
     enabled: true
     driver-class-name: com.mysql.cj.jdbc.Driver

@@ -1,8 +1,10 @@
 package com.fincity.sass.worker.configuration;
 
 import java.util.concurrent.Executors;
-import lombok.extern.slf4j.Slf4j;
+
 import org.quartz.spi.TriggerFiredBundle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
@@ -13,10 +15,11 @@ import org.springframework.core.task.support.TaskExecutorAdapter;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 
 @Configuration
-@Slf4j
 public class QuartzConfiguration {
 
-    @Value("${worker.quartz.virtual-threads:true}")
+	private final Logger logger = LoggerFactory.getLogger(getClass());
+
+	@Value("${worker.quartz.virtual-threads:true}")
     private boolean useVirtualThreads;
 
     @Bean
@@ -32,7 +35,7 @@ public class QuartzConfiguration {
             factory.setJobFactory(quartzJobFactory);
             if (useVirtualThreads) {
                 factory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
-                log.info("Quartz configured to use virtual threads for job execution");
+	            logger.info("Quartz configured to use virtual threads for job execution");
             }
         };
     }
