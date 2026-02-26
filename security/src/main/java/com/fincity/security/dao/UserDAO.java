@@ -628,6 +628,36 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(Record1::value1);
     }
 
+    /**
+     * BFS check: is targetUserId reachable from managerId via REPORTING_TO within clientId?
+     * Self-check (managerId == targetUserId) returns TRUE.
+     */
+    public Mono<Boolean> isUserInSubOrg(ULong clientId, ULong managerId, ULong targetUserId) {
+
+        if (managerId == null || targetUserId == null)
+            return Mono.just(Boolean.FALSE);
+
+        if (managerId.equals(targetUserId))
+            return Mono.just(Boolean.TRUE);
+
+        return Mono.just(List.of(managerId))
+                .expand(batch -> {
+                    if (batch.isEmpty()) return Mono.empty();
+                    return Flux.from(dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER)
+                            .where(SECURITY_USER.REPORTING_TO.in(batch)
+                                    .and(SECURITY_USER.CLIENT_ID.eq(clientId))
+                                    .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+                            .map(Record1::value1)
+                            .collectList();
+                })
+                .takeWhile(batch -> !batch.isEmpty())
+                .any(batch -> batch.contains(targetUserId))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isUserInSubOrg"));
+    }
+
     public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
         return Mono.from(this.dslContext
