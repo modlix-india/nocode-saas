@@ -39,6 +39,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -46,6 +47,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -98,6 +100,8 @@ public class ProductWalkInFormService
                 gson,
                 self::getWalkInFromUsers));
 
+        Schema mapSchema = Schema.ofObject("Map");
+
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
                 "GetWalkInTickets",
@@ -106,9 +110,10 @@ public class ProductWalkInFormService
                 EntityProcessorArgSpec.identity("productId"),
                 ClassSchema.ArgSpec.ofRef("phoneNumber", PhoneNumber.class, classSchema),
                 "result",
-                Schema.ofArray("result", Schema.ofRef("EntityProcessor.DTO.Ticket")),
+                Schema.ofArray("result", mapSchema),
                 gson,
-                self::getWalkInTickets));
+                (appCode, clientCode, productId, phoneNumber) -> self.getWalkInTickets(
+                        appCode, clientCode, productId, phoneNumber, List.of(), new LinkedMultiValueMap<>())));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
@@ -235,27 +240,45 @@ public class ProductWalkInFormService
                 });
     }
 
-    public Mono<Ticket> getWalkInTicket(
-            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+    public Mono<Map<String, Object>> getWalkInTicket(
+            String appCode,
+            String clientCode,
+            Identity productId,
+            PhoneNumber phoneNumber,
+            List<String> fields,
+            MultiValueMap<String, String> queryParams) {
 
         if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
-        return this.resolveProduct(access, productId)
-                .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null))
+        return FlatMapUtil.flatMapMono(
+                        () -> this.resolveProduct(access, productId),
+                        product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null),
+                        (product, ticket) ->
+                                this.ticketService.readEager(access, ticket.getIdentity(), fields, queryParams))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTicket"));
     }
 
-    public Mono<List<Ticket>> getWalkInTickets(
-            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+    public Mono<List<Map<String, Object>>> getWalkInTickets(
+            String appCode,
+            String clientCode,
+            Identity productId,
+            PhoneNumber phoneNumber,
+            List<String> fields,
+            MultiValueMap<String, String> queryParams) {
 
         if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
-        return this.resolveProduct(access, productId)
-                .flatMap(product -> this.ticketService.getTickets(access, product.getT1(), phoneNumber, null))
+        return FlatMapUtil.flatMapMono(
+                        () -> this.resolveProduct(access, productId),
+                        product -> this.ticketService.getTickets(access, product.getT1(), phoneNumber, null),
+                        (product, tickets) -> Flux.fromIterable(tickets)
+                                .flatMap(ticket ->
+                                        this.ticketService.readEager(access, ticket.getIdentity(), fields, queryParams))
+                                .collectList())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTickets"));
     }
 
