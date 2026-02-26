@@ -49,12 +49,14 @@ import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -805,6 +807,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
         return this.getTickets(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTickets"));
+    }
+
+    public Mono<Map<String, Object>> readEager(
+            ProcessorAccess access, Identity identity, List<String> fields, MultiValueMap<String, String> queryParams) {
+
+        return this.dao
+                .readByIdentityAndAppCodeAndClientCodeEager(identity, access, fields, queryParams)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readEager"));
     }
 
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
