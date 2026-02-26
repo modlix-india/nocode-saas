@@ -48,6 +48,10 @@ class UserDAOIntegrationTest extends AbstractIntegrationTest {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_v2_user_role WHERE USER_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_profile_user WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_profile_role WHERE PROFILE_ID IN (SELECT ID FROM security_profile WHERE CLIENT_ID > 1)").then())
+				.then(databaseClient.sql("DELETE FROM security_profile WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_app_access WHERE APP_ID IN (SELECT ID FROM security_app WHERE CLIENT_ID > 1)").then())
+				.then(databaseClient.sql("DELETE FROM security_app WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_past_passwords WHERE USER_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_past_pins WHERE USER_ID > 1").then())
 				.then(databaseClient.sql("UPDATE security_user SET DESIGNATION_ID = NULL, REPORTING_TO = NULL WHERE ID > 1").then())
@@ -2211,6 +2215,259 @@ class UserDAOIntegrationTest extends AbstractIntegrationTest {
 					.assertNext(page -> {
 						assertNotNull(page);
 						assertTrue(page.getContent().isEmpty());
+					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("readPageFilter() with profile.* field filters")
+	class ReadPageFilterProfileFieldTests {
+
+		private Mono<ULong> insertTestProfile(ULong clientId, ULong appId, String name) {
+			return databaseClient.sql(
+					"INSERT INTO security_profile (CLIENT_ID, APP_ID, NAME) VALUES (:clientId, :appId, :name)")
+					.bind("clientId", clientId.longValue())
+					.bind("appId", appId.longValue())
+					.bind("name", name)
+					.filter(s -> s.returnGeneratedValues("ID"))
+					.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+					.one();
+		}
+
+		private Mono<Void> linkUserToProfile(ULong userId, ULong profileId) {
+			return databaseClient.sql(
+					"INSERT INTO security_profile_user (PROFILE_ID, USER_ID) VALUES (:profileId, :userId)")
+					.bind("profileId", profileId.longValue())
+					.bind("userId", userId.longValue())
+					.then();
+		}
+
+		@Test
+		@DisplayName("profile.name EQUALS should filter users by profile name")
+		void filterByProfileNameEquals() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profileName = "TestProfile_" + ts;
+			String userName = "profnm_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.make("profile.name", profileName);
+
+			StepVerifier.create(
+					insertTestClient("PF" + ts.substring(ts.length() - 6), "ProfFilter Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "pfa" + ts.substring(ts.length() - 5), "PF App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profileName)
+											.flatMap(profileId -> insertTestUser(clientId, userName,
+													userName + "@test.com", "password123")
+													.flatMap(userId -> linkUserToProfile(userId, profileId)
+															.thenReturn(userId)))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertEquals(1, page.getTotalElements());
+						assertEquals(userName, page.getContent().get(0).getUserName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.name STRING_LOOSE_EQUAL should filter with LIKE %value%")
+		void filterByProfileNameLooseEqual() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profileName = "LooseProfile_" + ts;
+			String userName = "profloose_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.of("profile.name", "LooseProfile",
+					FilterConditionOperator.STRING_LOOSE_EQUAL);
+
+			StepVerifier.create(
+					insertTestClient("PL" + ts.substring(ts.length() - 6), "ProfLoose Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "pla" + ts.substring(ts.length() - 5), "PL App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profileName)
+											.flatMap(profileId -> insertTestUser(clientId, userName,
+													userName + "@test.com", "password123")
+													.flatMap(userId -> linkUserToProfile(userId, profileId)
+															.thenReturn(userId)))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getTotalElements() >= 1);
+						assertTrue(page.getContent().stream()
+								.anyMatch(u -> u.getUserName().equals(userName)));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.name IN should filter users by multiple profile names")
+		void filterByProfileNameIn() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profName1 = "InProf1_" + ts;
+			String profName2 = "InProf2_" + ts;
+			String user1 = "profin1_" + ts;
+			String user2 = "profin2_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.of("profile.name", profName1 + "," + profName2,
+					FilterConditionOperator.IN);
+
+			StepVerifier.create(
+					insertTestClient("PI" + ts.substring(ts.length() - 6), "ProfIn Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "pia" + ts.substring(ts.length() - 5), "PI App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profName1)
+											.flatMap(pid1 -> insertTestProfile(clientId, appId, profName2)
+													.flatMap(pid2 -> insertTestUser(clientId, user1,
+															user1 + "@test.com", "password123")
+															.flatMap(uid1 -> linkUserToProfile(uid1, pid1)
+																	.then(insertTestUser(clientId, user2,
+																			user2 + "@test.com", "password123"))
+																	.flatMap(uid2 -> linkUserToProfile(uid2, pid2)
+																			.thenReturn(uid2)))))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertEquals(2, page.getTotalElements());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.name LIKE should filter with pattern matching")
+		void filterByProfileNameLike() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profileName = "LikeProf_" + ts;
+			String userName = "proflike_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.of("profile.name", "LikeProf_%",
+					FilterConditionOperator.LIKE);
+
+			StepVerifier.create(
+					insertTestClient("PK" + ts.substring(ts.length() - 6), "ProfLike Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "pka" + ts.substring(ts.length() - 5), "PK App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profileName)
+											.flatMap(profileId -> insertTestUser(clientId, userName,
+													userName + "@test.com", "password123")
+													.flatMap(userId -> linkUserToProfile(userId, profileId)
+															.thenReturn(userId)))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getTotalElements() >= 1);
+						assertTrue(page.getContent().stream()
+								.anyMatch(u -> u.getUserName().equals(userName)));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.name with negate should exclude matching users")
+		void filterByProfileNameNegate() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profileName = "NegateProf_" + ts;
+			String userName = "profneg_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.make("profile.name", profileName);
+			fc.setNegate(true);
+
+			StepVerifier.create(
+					insertTestClient("PN" + ts.substring(ts.length() - 6), "ProfNeg Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "pna" + ts.substring(ts.length() - 5), "PN App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profileName)
+											.flatMap(profileId -> insertTestUser(clientId, userName,
+													userName + "@test.com", "password123")
+													.flatMap(userId -> linkUserToProfile(userId, profileId)
+															.thenReturn(userId)))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						// The user with the matching profile should be excluded
+						assertTrue(page.getContent().stream()
+								.noneMatch(u -> u.getUserName().equals(userName)));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.nonExistentField should return noCondition (all users)")
+		void filterByNonExistentProfileField() {
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.make("profile.nonExistentField", "value");
+
+			StepVerifier.create(
+					userDAO.readPageFilter(PageRequest.of(0, 10), fc)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
+					.assertNext(page -> {
+						assertNotNull(page);
+						// noCondition means no filtering applied
+						assertTrue(page.getTotalElements() > 0);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("profile.appId EQUALS should filter users by profile's app ID")
+		void filterByProfileAppIdEquals() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String userName = "profapp_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			StepVerifier.create(
+					insertTestClient("PA" + ts.substring(ts.length() - 6), "ProfAppId Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "paa" + ts.substring(ts.length() - 5), "PA App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, "AppIdProf_" + ts)
+											.flatMap(profileId -> insertTestUser(clientId, userName,
+													userName + "@test.com", "password123")
+													.flatMap(userId -> linkUserToProfile(userId, profileId)
+															.thenReturn(appId)))))
+							.flatMap(appId -> {
+								FilterCondition fc = FilterCondition.make("profile.appId", appId);
+								return userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+										.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
+							}))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertTrue(page.getTotalElements() >= 1);
+						assertTrue(page.getContent().stream()
+								.anyMatch(u -> u.getUserName().equals(userName)));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("user without any profile should not appear in profile.name filter")
+		void userWithoutProfile_NotReturned() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String profileName = "NoLinkProf_" + ts;
+			String linkedUser = "linked_" + ts;
+			String unlinkedUser = "unlinked_" + ts;
+			var systemAuth = TestDataFactory.createSystemAuth();
+
+			FilterCondition fc = FilterCondition.make("profile.name", profileName);
+
+			StepVerifier.create(
+					insertTestClient("NL" + ts.substring(ts.length() - 6), "NoLink Client", "BUS")
+							.flatMap(clientId -> insertTestApp(clientId, "nla" + ts.substring(ts.length() - 5), "NL App")
+									.flatMap(appId -> insertTestProfile(clientId, appId, profileName)
+											.flatMap(profileId -> insertTestUser(clientId, linkedUser,
+													linkedUser + "@test.com", "password123")
+													.flatMap(uid -> linkUserToProfile(uid, profileId))
+													.then(insertTestUser(clientId, unlinkedUser,
+															unlinkedUser + "@test.com", "password123")))))
+							.then(userDAO.readPageFilter(PageRequest.of(0, 100), fc)
+									.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))))
+					.assertNext(page -> {
+						assertNotNull(page);
+						assertEquals(1, page.getTotalElements());
+						assertEquals(linkedUser, page.getContent().get(0).getUserName());
 					})
 					.verifyComplete();
 		}
