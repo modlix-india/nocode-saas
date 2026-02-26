@@ -149,6 +149,49 @@ public class ClientManagerService
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Boolean> updateManager(ULong clientId, ULong oldManagerId, ULong newManagerId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.userService.readInternal(newManagerId),
+
+                (ca, newManager) -> {
+
+                    if (newManager.getClientId().equals(clientId))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.HIERARCHY_ERROR, "Client manager");
+
+                    return Mono.just(Boolean.TRUE);
+                },
+
+                (ca, newManager, validated) -> this.checkAccess(newManager.getClientId()),
+
+                (ca, newManager, validated, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.deleteByClientIdAndManagerId(clientId, oldManagerId);
+                },
+
+                (ca, newManager, validated, hasAccess, deleted) -> this.dao.createIfNotExists(clientId, newManagerId,
+                        ULongUtil.valueOf(ca.getUser().getId())),
+
+                (ca, newManager, validated, hasAccess, deleted, created) -> this.evictCacheForUserAndClient(
+                        oldManagerId, clientId)
+                        .then(this.evictCacheForUserAndClient(newManagerId, clientId))
+                        .thenReturn(Boolean.TRUE))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.updateManager"))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager UPDATE"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     public Mono<Boolean> delete(ULong userId, ULong clientId) {
 
         return FlatMapUtil.flatMapMono(
