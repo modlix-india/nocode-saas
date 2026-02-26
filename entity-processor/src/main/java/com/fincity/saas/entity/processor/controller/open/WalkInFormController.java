@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.controller.open;
 
-import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -11,7 +11,9 @@ import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.form.ProductWalkInFormService;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,28 +64,34 @@ public class WalkInFormController {
     }
 
     @GetMapping(PATH_ID + "/ticket")
-    public Mono<ResponseEntity<Ticket>> getWalkInTicket(
+    public Mono<ResponseEntity<Map<String, Object>>> getWalkInTicket(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @PathVariable(PATH_VARIABLE_ID) final Identity productId,
-            @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber) {
+            @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber,
+            ServerHttpRequest request) {
+
+        List<String> fields = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.productWalkInFormService
-                .getWalkInTicket(appCode, clientCode, productId, phoneNumber)
+                .getWalkInTicket(appCode, clientCode, productId, phoneNumber, fields, request.getQueryParams())
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @GetMapping(PATH_ID + "/tickets")
-    public Mono<ResponseEntity<List<Ticket>>> getWalkInTickets(
+    public Mono<ResponseEntity<List<Map<String, Object>>>> getWalkInTickets(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @PathVariable(PATH_VARIABLE_ID) final Identity productId,
-            @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber) {
+            @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber,
+            ServerHttpRequest request) {
+
+        List<String> fields = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.productWalkInFormService
-                .getWalkInTickets(appCode, clientCode, productId, phoneNumber)
+                .getWalkInTickets(appCode, clientCode, productId, phoneNumber, fields, request.getQueryParams())
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
