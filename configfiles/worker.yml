@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: worker
+
+  datasource:
+    url: ${worker.db.url}
+    username: ${worker.db.username}
+    password: ${worker.db.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  flyway:
+    enabled: true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${worker.db.flyway.url}
+    user: ${worker.db.username}
+    password: ${worker.db.password}
+
+  boot:
+    admin:
+      client:
+        instance:
+          name: worker
+
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+
+  cloud:
+    gateway:
+      routes:
+        - id: worker
+          uri: lb://worker
+          predicates:
+            - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/*/api/worker/**,
+
+  # Quartz is configured only in QuartzConfiguration (worker.db + worker.quartz)
+  # Quartz configuration (Boot-native way)
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    auto-startup: true
+    overwrite-existing-jobs: true
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceName: workerScheduler
+            instanceId: AUTO
+
+          jobStore:
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+            tablePrefix: QRTZ_
+            isClustered: true
+            clusterCheckinInterval: 20000
+            misfireThreshold: 60000
+
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 5
+
+worker:
+  quartz:
+    thread-count: 5
+    misfire-threshold: 60000
+    max-connections: 5
+    virtual-threads: true
+  task-execution:
+    timeout-minutes: 5
+    max-result-length: 2000
+
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: wor

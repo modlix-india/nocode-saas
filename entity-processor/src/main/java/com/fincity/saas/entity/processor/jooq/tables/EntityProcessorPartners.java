@@ -110,7 +110,7 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
      * <code>entity_processor.entity_processor_partners.MANAGER_ID</code>.
      * Partner manager user Id.
      */
-    public final TableField<EntityProcessorPartnersRecord, ULong> MANAGER_ID = createField(DSL.name("MANAGER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Partner manager user Id.");
+    public final TableField<EntityProcessorPartnersRecord, ULong> MANAGER_ID = createField(DSL.name("MANAGER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Partner manager user Id.");
 
     /**
      * The column

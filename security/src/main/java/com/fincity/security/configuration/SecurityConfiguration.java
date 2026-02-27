@@ -94,6 +94,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
                 "/api/security/applications/applyAppCodePrefix",
 
                 "/api/security/ssl/token/**",
+                "/api/security/ssl/internal/renew-certificates",
 
                 "/api/security/applications/dependencies",
 

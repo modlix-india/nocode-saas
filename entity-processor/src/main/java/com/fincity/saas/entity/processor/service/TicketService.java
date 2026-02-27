@@ -214,6 +214,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     this.productService.getEntityName());
 
+        if (ticket.getId() == null) {
+            ticket.setExpiredOn(null);
+            ticket.setIsExpiredFlag(Boolean.FALSE);
+        }
+
         return FlatMapUtil.flatMapMono(
                         () -> this.setAssignmentAndStage(ticket, access),
                         aTicket -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
@@ -316,6 +321,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
                     existing.setTag(ticket.getTag());
+                    existing.setIsExpiredFlag(ticket.getIsExpiredFlag());
+                    existing.setExpiredOn(ticket.getExpiredOn());
 
                     return Mono.just(existing);
                 })
