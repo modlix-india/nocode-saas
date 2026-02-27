@@ -322,7 +322,7 @@ public class ProductWalkInFormService
                                             access, created.getT1().getAssignedUserId()),
                                     (created, uAccess) -> this.activityService
                                             .acWalkIn(uAccess, created.getT1(), ticketRequest.getComment())
-                                            .then(this.activityService.acStageStatus(
+                                            .then(this.activityService.acWalkinStageStatus(
                                                     uAccess,
                                                     created.getT1(),
                                                     null,
