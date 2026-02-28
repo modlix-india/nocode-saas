@@ -37,6 +37,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -296,18 +297,25 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
             String forwardedPort) {
 
         String authHeader = request.getHeaders().getFirst("Authorization");
+        MultiValueMap<String, String> params = getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef);
 
         return FlatMapUtil.flatMapMono(
 
                 () -> switch (request.getMethod().toString()) {
                     case "GET" -> iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode,
                             clientCode, kiRunFxDef.getNamespace(),
-                            kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
+                            kiRunFxDef.getName(), params);
 
-                    case "POST", "PUT", "PATCH", "DELETE" ->
-                        iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode, clientCode,
+                    case "POST", "PUT", "PATCH", "DELETE" -> {
+                        JsonObject newJsonObject = jsonObject == null ? new JsonObject() : jsonObject;
+                        params.forEach((key, value) -> {
+                            if (value != null && !value.isEmpty())
+                                newJsonObject.add(key, new JsonPrimitive(value.getFirst()));
+                        });
+                        yield iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode, clientCode,
                                 kiRunFxDef.getNamespace(),
-                                kiRunFxDef.getName(), jsonObject.toString());
+                                kiRunFxDef.getName(), newJsonObject.toString());
+                    }
 
                     default -> Mono.empty();
                 },
