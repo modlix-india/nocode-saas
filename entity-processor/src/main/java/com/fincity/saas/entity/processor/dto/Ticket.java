@@ -5,6 +5,7 @@ import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
@@ -60,6 +61,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsMap.put(Fields.stage, EntitySeries.STAGE.getTable());
         this.relationsMap.put(Fields.status, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
+        this.relationsResolverMap.put(ClientFieldResolver.class, BaseProcessorDto.Fields.clientId);
         this.relationsMap.put(Fields.campaignId, EntitySeries.CAMPAIGN.getTable());
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
