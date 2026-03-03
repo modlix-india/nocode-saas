@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.stream.Stream;
 
 import javax.security.auth.x500.X500Principal;
 
@@ -207,12 +208,6 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 				});
 	}
 
-	/**
-	 * Finds certificates expiring within the given number of days that are eligible for
-	 * auto-renewal. Returns candidate info (urlId, domains, organization) from certificate
-	 * and request for creating a new certificate request. Let's Encrypt requires a fresh
-	 * request for each renewal.
-	 */
 	public Flux<SSLCertificateRenewalCandidate> findExpiringCertificatesForRenewal(int daysBeforeExpiry) {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime expiryThreshold = now.plusDays(daysBeforeExpiry);
@@ -233,7 +228,7 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 						SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.greaterThan(now))))
 				.map(r -> new SSLCertificateRenewalCandidate()
 						.setUrlId(r.get(SECURITY_SSL_CERTIFICATE.URL_ID))
-						.setDomainNames(List.of(r.get(SECURITY_SSL_CERTIFICATE.DOMAINS).split(",")).stream()
+						.setDomainNames(Stream.of(r.get(SECURITY_SSL_CERTIFICATE.DOMAINS).split(","))
 								.map(String::trim)
 								.filter(s -> !s.isBlank())
 								.toList())
