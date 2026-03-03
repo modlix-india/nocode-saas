@@ -73,6 +73,8 @@ import com.fincity.security.dto.SSLRequest;
 import com.fincity.security.model.SSLCertificateConfiguration;
 import com.fincity.security.model.SSLCertificateOrder;
 import com.fincity.security.model.SSLCertificateOrderRequest;
+import com.fincity.security.model.SSLCertificateRenewalCandidate;
+import com.fincity.security.model.SSLCertificateRenewalResult;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
@@ -300,6 +302,138 @@ public class SSLCertificateService {
             .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
             .subscribeOn(Schedulers.boundedElastic())
             .map(e -> true);
+    }
+
+    public Mono<Boolean> createCertificateInternal(ULong requestId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.requestDao.readById(requestId),
+                request -> this.loginAndGetOrder(request),
+                (request, order) -> {
+                    try {
+                        order.update();
+                        PemReader reader = new PemReader(new StringReader(request.getCsr()));
+                        PKCS10CertificationRequest csr =
+                                new PKCS10CertificationRequest(reader.readPemObject().getContent());
+                        order.execute(csr.getEncoded());
+                        int attempts = 10;
+                        while (order.getStatus() != Status.VALID && attempts-- > 0) {
+                            if (order.getStatus() == Status.INVALID) {
+                                break;
+                            }
+                            Thread.sleep(3000L); // NO SONAR
+                            order.update();
+                        }
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        return Mono.error(ex);
+                    } catch (AcmeException | IOException ex) {
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+                                SecurityMessageResourceService.LETS_ENCRYPT_ISSUE,
+                                ex.getMessage());
+                    }
+                    return Mono.just(order.getCertificate());
+                },
+                (request, order, certificate) -> this.certificateDao.create(request, certificate))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateInternal"))
+                .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+                .subscribeOn(Schedulers.boundedElastic())
+                .map(e -> true);
+    }
+
+    public Mono<SSLCertificateRenewalResult> renewExpiringCertificates(int daysBeforeExpiry) {
+        SSLCertificateRenewalResult result = new SSLCertificateRenewalResult();
+        return this.certificateDao
+                .findExpiringCertificatesForRenewal(daysBeforeExpiry)
+                .flatMap(candidate -> renewSingleCertificate(candidate, result))
+                .then(Mono.just(result))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewExpiringCertificates"));
+    }
+
+    private Mono<Void> renewSingleCertificate(SSLCertificateRenewalCandidate candidate, SSLCertificateRenewalResult result) {
+        SSLCertificateOrderRequest orderRequest = new SSLCertificateOrderRequest()
+                .setUrlId(candidate.getUrlId())
+                .setDomainNames(candidate.getDomainNames())
+                .setOrganizationName(candidate.getOrganizationName())
+                .setValidityInMonths(candidate.getValidityInMonths());
+
+        return this.requestDao
+                .deleteByURLId(candidate.getUrlId())
+                .then(this.createCertificateRequestInternal(orderRequest))
+                .flatMap(order -> {
+                    boolean allHttp = order.getChallenges() != null
+                            && order.getChallenges().stream()
+                                    .allMatch(c -> Http01Challenge.TYPE.equals(c.getChallengeType()));
+                    if (!allHttp) {
+                        result.setFailedCount(result.getFailedCount() + 1);
+                        result.addError("URL " + candidate.getUrlId() + ": DNS challenge required, skipping (HTTP-only for auto-renewal)");
+                        logger.info("Skipping renewal for URL {} - DNS challenge required", candidate.getUrlId());
+                        return Mono.empty();
+                    }
+                    return triggerAllChallengesAndCreateCertificate(order, result, candidate.getUrlId());
+                })
+                .onErrorResume(err -> {
+                    result.setFailedCount(result.getFailedCount() + 1);
+                    result.addError("URL " + candidate.getUrlId() + ": " + err.getMessage());
+                    logger.error("Failed to renew SSL certificate for URL {}: {}", candidate.getUrlId(), err.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    private Mono<Void> triggerAllChallengesAndCreateCertificate(
+            SSLCertificateOrder order, SSLCertificateRenewalResult result, ULong urlId) {
+        return Flux.fromIterable(order.getChallenges())
+                .flatMap(challenge -> this.triggerChallengeInternal(challenge, order.getRequest()))
+                .then(this.createCertificateInternal(order.getRequest().getId()))
+                .doOnSuccess(success -> {
+                    if (Boolean.TRUE.equals(success)) {
+                        result.setRenewedCount(result.getRenewedCount() + 1);
+                        logger.info("Successfully renewed SSL certificate for URL {}", urlId);
+                    }
+                })
+                .then();
+    }
+
+    public Mono<SSLCertificateOrder> createCertificateRequestInternal(SSLCertificateOrderRequest request) {
+        if (request.getUrlId() == null
+                || request.getDomainNames() == null
+                || request.getDomainNames().isEmpty()
+                || request.getDomainNames().stream().anyMatch(String::isBlank)) {
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.BAD_CERT_REQUEST);
+        }
+        return FlatMapUtil.flatMapMono(
+                () -> makeRecord(request).flatMap(this.requestDao::create),
+                sslRequest -> this.createChallenges(sslRequest),
+                (sslRequest, challenges) -> Mono.just(new SSLCertificateOrder()
+                        .setRequest(sslRequest)
+                        .setChallenges(challenges)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateRequestInternal"))
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<Boolean> triggerChallengeInternal(SSLChallenge challenge, SSLRequest request) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.loginAndGetOrder(request),
+                order -> {
+                    Tuple2<Authorization, Challenge> authChallenge = this.findChallengeAndAuthorization(order, challenge);
+                    if (authChallenge == null) {
+                        return Mono.error(new IllegalStateException("Challenge not found for domain: " + challenge.getDomain()));
+                    }
+                    try {
+                        Tuple2<String, String> tup = this.triggerChallenge(authChallenge.getT1(), authChallenge.getT2());
+                        if (!Status.VALID.toString().equals(tup.getT1())) {
+                            return Mono.error(new IllegalStateException("Challenge failed: " + tup.getT2()));
+                        }
+                        return this.challengeDao.updateStatus(challenge.getId(), tup.getT1(), tup.getT2());
+                    } catch (AcmeException | InterruptedException e) {
+                        return Mono.error(e);
+                    }
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .map(x -> true);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")

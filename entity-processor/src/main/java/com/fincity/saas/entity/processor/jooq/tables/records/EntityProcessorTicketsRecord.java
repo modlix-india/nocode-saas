@@ -429,11 +429,51 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_tickets.IS_EXPIRED</code>. Flag
+     * to indicate if ticket is expired due to no activity within configured
+     * days.
+     */
+    public EntityProcessorTicketsRecord setIsExpired(Boolean value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.IS_EXPIRED</code>. Flag
+     * to indicate if ticket is expired due to no activity within configured
+     * days.
+     */
+    public Boolean getIsExpired() {
+        return (Boolean) get(22);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.EXPIRED_ON</code>.
+     * Timestamp when the ticket was marked as expired.
+     */
+    public EntityProcessorTicketsRecord setExpiredOn(LocalDateTime value) {
+        set(23, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.EXPIRED_ON</code>.
+     * Timestamp when the ticket was marked as expired.
+     */
+    public LocalDateTime getExpiredOn() {
+        return (LocalDateTime) get(23);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
      * client who created this ticket.
      */
     public EntityProcessorTicketsRecord setClientId(ULong value) {
-        set(22, value);
+        set(24, value);
         return this;
     }
 
@@ -443,7 +483,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public ULong getClientId() {
-        return (ULong) get(22);
+        return (ULong) get(24);
     }
 
     /**
@@ -452,7 +492,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public EntityProcessorTicketsRecord setMetaData(Map value) {
-        set(23, value);
+        set(25, value);
         return this;
     }
 
@@ -462,7 +502,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public Map getMetaData() {
-        return (Map) get(23);
+        return (Map) get(25);
     }
 
     /**
@@ -471,7 +511,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(24, value);
+        set(26, value);
         return this;
     }
 
@@ -481,7 +521,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(24);
+        return (ULong) get(26);
     }
 
     /**
@@ -490,7 +530,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(25, value);
+        set(27, value);
         return this;
     }
 
@@ -500,7 +540,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(25);
+        return (LocalDateTime) get(27);
     }
 
     /**
@@ -509,7 +549,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(26, value);
+        set(28, value);
         return this;
     }
 
@@ -519,7 +559,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(26);
+        return (ULong) get(28);
     }
 
     /**
@@ -528,7 +568,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(27, value);
+        set(29, value);
         return this;
     }
 
@@ -538,7 +578,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(27);
+        return (LocalDateTime) get(29);
     }
 
     // -------------------------------------------------------------------------
@@ -564,7 +604,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Tag tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Tag tag, Boolean dnc, Boolean tempActive, Boolean isActive, Boolean isExpired, LocalDateTime expiredOn, ULong clientId, Map metaData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -589,6 +629,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setDnc(dnc);
         setTempActive(tempActive);
         setIsActive(isActive);
+        setIsExpired(isExpired);
+        setExpiredOn(expiredOn);
         setClientId(clientId);
         setMetaData(metaData);
         setCreatedBy(createdBy);

@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketExRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
@@ -79,6 +80,12 @@ public class Tables {
      * <code>entity_processor.entity_processor_product_ticket_c_rules</code>.
      */
     public static final EntityProcessorProductTicketCRules ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES = EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_ticket_ex_rules</code>.
+     */
+    public static final EntityProcessorProductTicketExRules ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES = EntityProcessorProductTicketExRules.ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES;
 
     /**
      * The table

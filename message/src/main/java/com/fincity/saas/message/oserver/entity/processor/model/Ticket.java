@@ -2,6 +2,7 @@ package com.fincity.saas.message.oserver.entity.processor.model;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
@@ -29,4 +30,6 @@ public class Ticket implements Serializable {
     private String subSource;
     private BigInteger campaignId;
     private Boolean dnc;
+    private Boolean isExpiredFlag;
+    private LocalDateTime expiredOn;
 }

@@ -221,6 +221,21 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.IS_EXPIRED</code>. Flag
+     * to indicate if ticket is expired due to no activity within configured
+     * days.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> IS_EXPIRED = createField(DSL.name("IS_EXPIRED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to indicate if ticket is expired due to no activity within configured days.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.EXPIRED_ON</code>.
+     * Timestamp when the ticket was marked as expired.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> EXPIRED_ON = createField(DSL.name("EXPIRED_ON"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the ticket was marked as expired.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
      * client who created this ticket.
      */
