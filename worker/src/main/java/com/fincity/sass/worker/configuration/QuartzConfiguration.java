@@ -1,7 +1,6 @@
 package com.fincity.sass.worker.configuration;
 
 import java.util.concurrent.Executors;
-
 import org.quartz.spi.TriggerFiredBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +16,9 @@ import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 @Configuration
 public class QuartzConfiguration {
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	@Value("${worker.quartz.virtual-threads:true}")
+    @Value("${worker.quartz.virtual-threads:true}")
     private boolean useVirtualThreads;
 
     @Bean
@@ -35,12 +34,12 @@ public class QuartzConfiguration {
             factory.setJobFactory(quartzJobFactory);
             if (useVirtualThreads) {
                 factory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
-	            logger.info("Quartz configured to use virtual threads for job execution");
+                logger.info("Quartz configured to use virtual threads for job execution");
             }
         };
     }
 
-    private static class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory {
+    public static class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory {
         private AutowireCapableBeanFactory beanFactory;
 
         @Override

@@ -38,6 +38,14 @@ schedular:
     flyway:
       url: jdbc:mysql://localhost:3306/schedular
 
+worker:
+  db:
+    url: jdbc:mysql://localhost:3306/worker?serverTimezone=UTC
+    username: root
+    password: Vishwas123#
+    flyway:
+      url: jdbc:mysql://localhost:3306/worker
+
 ui:
   mongo:
     uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
