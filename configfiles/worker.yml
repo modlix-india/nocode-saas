@@ -34,8 +34,6 @@ spring:
           predicates:
             - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/*/api/worker/**,
 
-  # Quartz is configured only in QuartzConfiguration (worker.db + worker.quartz)
-  # Quartz configuration (Boot-native way)
   quartz:
     job-store-type: jdbc
     jdbc:
