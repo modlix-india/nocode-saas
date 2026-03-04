@@ -3,6 +3,8 @@ package com.fincity.security.dao;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -14,6 +16,8 @@ import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
@@ -36,6 +40,7 @@ import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
+import static com.fincity.security.jooq.tables.SecurityClientManager.SECURITY_CLIENT_MANAGER;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
@@ -53,6 +58,12 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong, Client> {
+
+    private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+
+    @Lazy
+    @Autowired
+    private ClientManagerDAO clientManagerDAO;
 
     protected ClientDAO() {
         super(Client.class, SECURITY_CLIENT, SECURITY_CLIENT.ID);
@@ -114,15 +125,57 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
         return super.filter(condition, selectJoinStep)
                 .flatMap(cond -> SecurityContextUtil.getUsersContextAuthentication()
-                        .map(ca -> {
+                        .flatMap(ca -> {
 
                             if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-                                return cond;
+                                return Mono.just(cond);
 
                             ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                            Condition hierarchyCond = ClientHierarchyDAO.getManageClientCondition(clientId);
 
-                            return DSL.and(cond, ClientHierarchyDAO.getManageClientCondition(clientId));
+                            if (SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()))
+                                return Mono.just(DSL.and(cond, hierarchyCond));
+
+                            ULong userId = ULong.valueOf(ca.getUser().getId());
+
+                            return getSubOrgManagedClientIds(clientId, userId)
+                                    .map(managedIds -> {
+
+                                        if (managedIds.isEmpty())
+                                            return DSL.and(cond, DSL.falseCondition());
+
+                                        return DSL.and(cond, hierarchyCond,
+                                                SECURITY_CLIENT.ID.in(managedIds));
+                                    });
                         }));
+    }
+
+    private Mono<List<ULong>> getSubOrgManagedClientIds(ULong clientId, ULong userId) {
+
+        return getSubOrgUserIds(clientId, userId)
+                .flatMap(subOrgIds -> {
+                    if (subOrgIds.isEmpty())
+                        return Mono.just(List.<ULong>of());
+                    return this.clientManagerDAO.getClientIdsOfManagers(subOrgIds);
+                });
+    }
+
+    private Mono<List<ULong>> getSubOrgUserIds(ULong clientId, ULong userId) {
+
+        Set<ULong> visited = ConcurrentHashMap.newKeySet();
+
+        return Flux.just(userId)
+                .expandDeep(id -> {
+                    if (!visited.add(id))
+                        return Flux.empty();
+                    return Flux.from(this.dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER)
+                            .where(SECURITY_USER.REPORTING_TO.eq(id)
+                                    .and(SECURITY_USER.CLIENT_ID.eq(clientId))))
+                            .map(Record1::value1);
+                })
+                .collectList();
     }
 
     public Mono<Client> readInternal(ULong id) {

@@ -718,18 +718,35 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                     return this.userSubOrgService.getCurrentUserSubOrg()
                             .collectList()
-                            .flatMap(subOrgIds -> {
-                                AbstractCondition subOrgCond = new FilterCondition()
-                                        .setField("id")
-                                        .setOperator(FilterConditionOperator.IN)
-                                        .setMultiValue(subOrgIds);
-                                AbstractCondition merged = (condition == null)
-                                        ? subOrgCond
-                                        : ComplexCondition.and(subOrgCond, condition);
-                                return super.readPageFilter(pageable, merged);
-                            });
+                            .flatMap(subOrgIds -> this.clientManagerService
+                                    .getClientIdsOfManagersInternal(subOrgIds)
+                                    .map(managedClientIds -> buildVisibilityCondition(
+                                            subOrgIds, managedClientIds, condition)))
+                            .flatMap(merged -> super.readPageFilter(pageable, merged));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.readPageFilter"));
+    }
+
+    private AbstractCondition buildVisibilityCondition(List<ULong> subOrgIds,
+            List<ULong> managedClientIds, AbstractCondition condition) {
+
+        AbstractCondition subOrgCond = new FilterCondition()
+                .setField("id")
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(subOrgIds);
+
+        AbstractCondition visibleCond;
+        if (managedClientIds == null || managedClientIds.isEmpty()) {
+            visibleCond = subOrgCond;
+        } else {
+            AbstractCondition managedClientCond = new FilterCondition()
+                    .setField("clientId")
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(managedClientIds);
+            visibleCond = ComplexCondition.or(subOrgCond, managedClientCond);
+        }
+
+        return condition == null ? visibleCond : ComplexCondition.and(visibleCond, condition);
     }
 
     public Mono<Page<User>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
