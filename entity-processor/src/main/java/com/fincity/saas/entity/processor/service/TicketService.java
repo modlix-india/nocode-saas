@@ -40,6 +40,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.message.TicketMessageService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
@@ -83,6 +84,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final CampaignService campaignService;
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
+    private final TicketMessageService ticketMessageService;
 
     @Autowired
     @Lazy
@@ -100,6 +102,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy CampaignService campaignService,
             @Lazy PartnerService partnerService,
             ProductCommService productCommService,
+            TicketMessageService ticketMessageService,
             Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
@@ -112,6 +115,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.campaignService = campaignService;
         this.partnerService = partnerService;
         this.productCommService = productCommService;
+        this.ticketMessageService = ticketMessageService;
         this.gson = gson;
     }
 
@@ -352,7 +356,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, isDuplicate, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
-                                this.activityService.acCreate(created).thenReturn(created))
+                                this.activityService
+                                        .acCreate(access, created, null)
+                                        .then(this.ticketMessageService.sendOnTicketCreate(access, created))
+                                        .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 

@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs.EntityProcessorProductMessageConfigsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
@@ -352,6 +353,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         return _fk3StagesParentLevel_1;
     }
 
+    private transient EntityProcessorProductMessageConfigsPath _fk2PmcStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_message_configs</code>
+     * table, via the <code>FK2_PMC_STAGE_ID</code> key
+     */
+    public EntityProcessorProductMessageConfigsPath fk2PmcStageId() {
+        if (_fk2PmcStageId == null)
+            _fk2PmcStageId = new EntityProcessorProductMessageConfigsPath(this, null, Keys.FK2_PMC_STAGE_ID.getInverseKey());
+
+        return _fk2PmcStageId;
+    }
+
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk2ProductTemplateWalkInFormsStageId;
 
     /**
@@ -407,6 +422,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK2_TDR_MSID.getInverseKey());
 
         return _entityProcessorTicketDuplicationRules;
+    }
+
+    private transient EntityProcessorProductMessageConfigsPath _fk3PmcStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_message_configs</code>
+     * table, via the <code>FK3_PMC_STATUS_ID</code> key
+     */
+    public EntityProcessorProductMessageConfigsPath fk3PmcStatusId() {
+        if (_fk3PmcStatusId == null)
+            _fk3PmcStatusId = new EntityProcessorProductMessageConfigsPath(this, null, Keys.FK3_PMC_STATUS_ID.getInverseKey());
+
+        return _fk3PmcStatusId;
     }
 
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk3ProductTemplateWalkInFormsStatusId;

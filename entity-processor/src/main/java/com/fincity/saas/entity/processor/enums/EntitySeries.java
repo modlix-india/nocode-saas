@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
+import com.fincity.saas.entity.processor.dto.product.ProductMessageConfig;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
@@ -53,7 +54,9 @@ public enum EntitySeries implements EnumType {
     PRODUCT_WALK_IN_FORMS("PRODUCT_WALK_IN_FORMS", "Product Walk In Forms", 29, "ProductWalkInForms"),
     TICKET_DUPLICATION_RULES("TICKET_DUPLICATION_RULES", "Ticket Duplication Rules", 30, "TicketDuplicationRule"),
     TICKET_PE_DUPLICATION_RULES(
-            "TICKET_PE_DUPLICATION_RULES", "Ticket Pe Duplication Rules", 31, "TicketPeDuplicationRule");
+            "TICKET_PE_DUPLICATION_RULES", "Ticket Pe Duplication Rules", 31, "TicketPeDuplicationRule"),
+	PRODUCT_MESSAGE_CONFIGS(
+        "PRODUCT_MESSAGE_CONFIGS", "Product Message Configs", 32, "ProductMessageConfig");
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -155,6 +158,10 @@ public enum EntitySeries implements EnumType {
             TABLE_MAP.put(
                     TICKET_PE_DUPLICATION_RULES,
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES);
+	        TABLE_MAP.put(
+			        PRODUCT_MESSAGE_CONFIGS,
+			        EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS);
+
         }
 
         static Table<?> get(EntitySeries series) {
@@ -186,6 +193,7 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(PRODUCT_WALK_IN_FORMS, ProductWalkInForm.class);
             CLASS_MAP.put(TICKET_DUPLICATION_RULES, TicketDuplicationRule.class);
             CLASS_MAP.put(TICKET_PE_DUPLICATION_RULES, TicketPeDuplicationRule.class);
+	        CLASS_MAP.put(PRODUCT_MESSAGE_CONFIGS, ProductMessageConfig.class);
         }
 
         static Class<?> get(EntitySeries series) {

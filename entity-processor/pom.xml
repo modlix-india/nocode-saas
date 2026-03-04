@@ -42,6 +42,7 @@
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
+        <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <!-- open source -->
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
         <package.o.jakarta.mail.version>2.0.2</package.o.jakarta.mail.version>
@@ -166,6 +167,11 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mq</artifactId>
+            <version>${package.i.saas-commons-mq-version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -358,6 +364,12 @@
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.Tag</userType>
                                             <includeExpression>.*\.TAG</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.MessageChannelType</userType>
+                                            <includeExpression>.*\.MESSAGE_CHANNEL_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
