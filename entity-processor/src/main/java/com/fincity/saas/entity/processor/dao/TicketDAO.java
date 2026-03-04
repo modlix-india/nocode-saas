@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -221,6 +222,42 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                     .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)));
                             return Tuples.of(Tuples.of(recordQuery, countQuery), tuple.getT2());
                         }));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<List<ULong>> readDistinctAssignedUserIds(
+            AbstractCondition condition,
+            String timezone,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        SelectJoinStep<Record> baseQuery = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+                dslContext.selectDistinct(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID)
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        Mono<SelectJoinStep<Record>> queryMono;
+
+        if (subQueryConditions != null && !subQueryConditions.isEmpty()) {
+            AbstractCondition activityCondition = subQueryConditions.get(SUBQUERY_ALIAS);
+            if (activityCondition != null && !activityCondition.isEmpty()) {
+                queryMono = this.buildActivitiesSubqueryTable(activityCondition)
+                        .map(subqueryTable -> (SelectJoinStep<Record>) baseQuery
+                                .join(subqueryTable)
+                                .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))));
+            } else {
+                queryMono = Mono.just(baseQuery);
+            }
+        } else {
+            queryMono = Mono.just(baseQuery);
+        }
+
+        return queryMono.flatMap(query ->
+                this.filter(condition, query, timezone)
+                        .flatMap(jCondition -> Flux.from(query.where(jCondition.and(this.isActiveTrue())))
+                                .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID))
+                                .filter(Objects::nonNull)
+                                .collectList()));
     }
 
     @SuppressWarnings("unchecked")
