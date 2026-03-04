@@ -716,10 +716,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (!isSameClientNonOwner(ca, ULong.valueOf(ca.getUser().getClientId())))
                         return super.readPageFilter(pageable, condition);
 
+                    ULong ownClientId = ULong.valueOf(ca.getUser().getClientId());
                     return this.userSubOrgService.getCurrentUserSubOrg()
                             .collectList()
                             .flatMap(subOrgIds -> this.clientManagerService
                                     .getClientIdsOfManagersInternal(subOrgIds)
+                                    .map(managedClientIds -> managedClientIds.stream()
+                                            .filter(id -> !id.equals(ownClientId))
+                                            .toList())
                                     .map(managedClientIds -> buildVisibilityCondition(
                                             subOrgIds, managedClientIds, condition)))
                             .flatMap(merged -> super.readPageFilter(pageable, merged));
@@ -768,13 +772,18 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, clientId) -> this.clientService
                         .getClientTypeNCodeNClientLevel(clientId)
                         .map(Tuple2::getT1),
-                (ca, clientId, clientType) -> switch (clientType) {
-                    case "INDV" -> this.clientHierarchyService
-                            .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
-                            .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
-                                    managingClientId, userName, emailId, phoneNumber, "INDV", key));
-                    case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
-                    default -> Mono.empty();
+                (ca, clientId, clientType) -> {
+                    if (userName == null && emailId == null && phoneNumber == null)
+                        return Mono.just(Boolean.FALSE);
+
+                    return switch (clientType) {
+                        case "INDV" -> this.clientHierarchyService
+                                .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
+                                .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
+                                        managingClientId, userName, emailId, phoneNumber, "INDV", key));
+                        case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
+                        default -> Mono.empty();
+                    };
                 },
                 (ca, clientId, clientType, userExists) -> {
                     if (Boolean.TRUE.equals(userExists))

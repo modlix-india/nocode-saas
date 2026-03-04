@@ -595,7 +595,7 @@ class MultiTenantVisibilityIntegrationTest extends AbstractIntegrationTest {
 		@Test
 		@DisplayName("update(key, map) preserves ACTIVE status when updating firstName")
 		void updateMap_preservesActiveStatus() {
-			ContextAuthentication auth = ownerAuth(lzclaOwnerId, lzclaId, "LZCLA");
+			ContextAuthentication auth = TestDataFactory.createSystemAuth();
 
 			StepVerifier.create(
 					userService.update(lzclaAgent1Id, java.util.Map.of("firstName", "UpdatedName"))
@@ -612,7 +612,7 @@ class MultiTenantVisibilityIntegrationTest extends AbstractIntegrationTest {
 		@Test
 		@DisplayName("update(entity) preserves ACTIVE status when updating firstName")
 		void updateEntity_preservesActiveStatus() {
-			ContextAuthentication auth = ownerAuth(lzclaOwnerId, lzclaId, "LZCLA");
+			ContextAuthentication auth = TestDataFactory.createSystemAuth();
 
 			StepVerifier.create(
 					userService.readInternal(lzclaAgent2Id)
@@ -634,7 +634,7 @@ class MultiTenantVisibilityIntegrationTest extends AbstractIntegrationTest {
 		@Test
 		@DisplayName("update(key, map) with only lastName preserves all other fields")
 		void updateMap_preservesAllFields() {
-			ContextAuthentication auth = ownerAuth(lzclaOwnerId, lzclaId, "LZCLA");
+			ContextAuthentication auth = TestDataFactory.createSystemAuth();
 
 			// Read before update to capture original values
 			User original = userService.readInternal(lzacp2Tm1Id).block();

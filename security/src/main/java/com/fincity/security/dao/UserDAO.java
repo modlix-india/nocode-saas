@@ -111,12 +111,16 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                             return getSubOrgManagedClientIds(clientId, userId)
                                     .map(managedClientIds -> {
 
-                                        if (managedClientIds.isEmpty())
+                                        List<ULong> externalManagedIds = managedClientIds.stream()
+                                                .filter(id -> !id.equals(clientId))
+                                                .toList();
+
+                                        if (externalManagedIds.isEmpty())
                                             return DSL.and(cond, SECURITY_USER.CLIENT_ID.eq(clientId));
 
                                         return DSL.and(cond, hierarchyCond,
                                                 SECURITY_USER.CLIENT_ID.eq(clientId)
-                                                        .or(SECURITY_USER.CLIENT_ID.in(managedClientIds)));
+                                                        .or(SECURITY_USER.CLIENT_ID.in(externalManagedIds)));
                                     });
                         }));
     }
