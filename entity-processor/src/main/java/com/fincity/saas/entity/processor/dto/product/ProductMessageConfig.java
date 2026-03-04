@@ -20,34 +20,34 @@ import org.jooq.types.ULong;
 @IgnoreGeneration
 public class ProductMessageConfig extends BaseUpdatableDto<ProductMessageConfig> {
 
-	@Serial
-	private static final long serialVersionUID = 3294737603455853726L;
+    @Serial
+    private static final long serialVersionUID = 3294737603455853726L;
 
-	private ULong productId;
-	private ULong stageId;
-	private ULong statusId;
+    private ULong productId;
+    private ULong stageId;
+    private ULong statusId;
 
-	private MessageChannelType channel;
-	private Integer order;
+    private MessageChannelType channel;
+    private Integer order;
 
-	private ULong messageTemplateId;
+    private ULong messageTemplateId;
 
-	public ProductMessageConfig() {
-		super();
-	}
+    public ProductMessageConfig() {
+        super();
+    }
 
-	public ProductMessageConfig(ProductMessageConfig other) {
-		super(other);
-		this.productId = other.productId;
-		this.stageId = other.stageId;
-		this.statusId = other.statusId;
-		this.channel = other.channel;
-		this.order = other.order;
-		this.messageTemplateId = other.messageTemplateId;
-	}
+    public ProductMessageConfig(ProductMessageConfig other) {
+        super(other);
+        this.productId = other.productId;
+        this.stageId = other.stageId;
+        this.statusId = other.statusId;
+        this.channel = other.channel;
+        this.order = other.order;
+        this.messageTemplateId = other.messageTemplateId;
+    }
 
-	@Override
-	public EntitySeries getEntitySeries() {
-		return EntitySeries.PRODUCT_MESSAGE_CONFIGS;
-	}
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT_MESSAGE_CONFIGS;
+    }
 }

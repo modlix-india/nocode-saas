@@ -355,11 +355,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, isDuplicate, pTicket) -> super.create(access, pTicket),
                         (access, productIdentity, isDuplicate, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
-                        (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
-                                this.activityService
-                                        .acCreate(access, created, null)
-                                        .then(this.ticketMessageService.sendOnTicketCreate(access, created))
-                                        .thenReturn(created))
+                        (access, productIdentity, isDuplicate, pTicket, created, noteCreated) -> this.activityService
+                                .acCreate(access, created, null)
+                                .then(this.ticketMessageService.sendOnTicketCreate(access, created))
+                                .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 

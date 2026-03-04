@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service.product;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -13,10 +12,8 @@ import com.fincity.saas.entity.processor.dto.product.ProductMessageConfig;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.MessageChannelType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductMessageConfigsRecord;
-import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -56,22 +53,6 @@ public class ProductMessageConfigService
     private void init() {
 
         this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductMessageConfig.class, classSchema, gson));
-
-        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductMessageConfig.class)
-                + "."
-                + ProductMessageConfig.class.getSimpleName();
-
-        this.functions.add(AbstractServiceFunction.createServiceFunction(
-                NAMESPACE,
-                "GetConfigs",
-                EntityProcessorArgSpec.identity("productId"),
-                EntityProcessorArgSpec.identity("stageId"),
-                EntityProcessorArgSpec.identity("statusId"),
-                ClassSchema.ArgSpec.ofRef("channel", MessageChannelType.class, classSchema),
-                "result",
-                Schema.ofArray("result", Schema.ofRef(dtoSchemaRef)),
-                gson,
-                (productId, stageId, statusId, channel) -> self.getConfigs(productId, stageId, statusId, channel)));
     }
 
     @Override
@@ -89,25 +70,53 @@ public class ProductMessageConfigService
         return EntitySeries.PRODUCT_MESSAGE_CONFIGS;
     }
 
-    public Mono<List<ProductMessageConfig>> getConfigs(
-            ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, MessageChannelType channel) {
+    @Override
+    protected Mono<ProductMessageConfig> create(ProcessorAccess access, ProductMessageConfig entity) {
+        return super.create(access, entity)
+                .flatMap(created -> this.evictCache(created).thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.create"));
+    }
 
-        return this.dao
-                .getConfigs(access, productId, stageId, statusId, channel)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs"));
+    @Override
+    protected Mono<Boolean> evictCache(ProductMessageConfig entity) {
+        return Mono.zip(
+                        super.evictCache(entity),
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getConfigsCacheKey(
+                                        entity.getAppCode(),
+                                        entity.getClientCode(),
+                                        entity.getProductId(),
+                                        entity.getStageId(),
+                                        entity.getStatusId(),
+                                        entity.getChannel())))
+                .map(tuple -> tuple.getT1() && tuple.getT2());
+    }
+
+    private String getConfigsCacheKey(
+            String appCode,
+            String clientCode,
+            ULong productId,
+            ULong stageId,
+            ULong statusId,
+            MessageChannelType channel) {
+        return super.getCacheKey(
+                appCode, clientCode, productId, stageId, statusId, channel != null ? channel.getLiteral() : null);
     }
 
     public Mono<List<ProductMessageConfig>> getConfigs(
-            Identity productId, Identity stageId, Identity statusId, MessageChannelType channel) {
+            ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, MessageChannelType channel) {
 
-        return this.hasAccess()
-                .flatMap(access -> this.getConfigs(
-                        access,
-                        productId.getULongId(),
-                        stageId.getULongId(),
-                        statusId != null && !statusId.isNull() ? statusId.getULongId() : null,
-                        channel))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs[Identity]"));
+        return this.cacheService
+                .cacheValueOrGet(
+                        this.getCacheName(),
+                        () -> this.dao
+                                .getConfigs(access, productId, stageId, statusId, channel)
+                                .contextWrite(
+                                        Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs")),
+                        this.getConfigsCacheKey(
+                                access.getAppCode(), access.getClientCode(), productId, stageId, statusId, channel))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs"));
     }
 
     @Override

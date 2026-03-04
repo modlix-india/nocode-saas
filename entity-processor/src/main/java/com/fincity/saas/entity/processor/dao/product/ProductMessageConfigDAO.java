@@ -12,9 +12,9 @@ import com.fincity.saas.entity.processor.enums.MessageChannelType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductMessageConfigsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-import org.jooq.types.ULong;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -29,11 +29,7 @@ public class ProductMessageConfigDAO
     }
 
     public Mono<List<ProductMessageConfig>> getConfigs(
-            ProcessorAccess access,
-            ULong productId,
-            ULong stageId,
-            ULong statusId,
-            MessageChannelType channel) {
+            ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, MessageChannelType channel) {
 
         return FlatMapUtil.flatMapMono(
                 () -> this.getConfigCondition(access, productId, stageId, statusId, channel),
@@ -47,11 +43,7 @@ public class ProductMessageConfigDAO
     }
 
     private Mono<AbstractCondition> getConfigCondition(
-            ProcessorAccess access,
-            ULong productId,
-            ULong stageId,
-            ULong statusId,
-            MessageChannelType channel) {
+            ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, MessageChannelType channel) {
 
         AbstractCondition condition = ComplexCondition.and(
                 FilterCondition.make(ProductMessageConfig.Fields.productId, productId),
@@ -62,4 +54,3 @@ public class ProductMessageConfigDAO
         return super.processorAccessCondition(condition, access);
     }
 }
-

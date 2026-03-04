@@ -21,8 +21,7 @@ public class TicketMessageService {
     private final Map<MessageChannelType, TicketChannelMessageService> channelServiceMap;
 
     public TicketMessageService(
-            ProductMessageConfigService configService,
-            List<TicketChannelMessageService> channelServices) {
+            ProductMessageConfigService configService, List<TicketChannelMessageService> channelServices) {
         this.configService = configService;
         this.channelServiceMap = new EnumMap<>(MessageChannelType.class);
         channelServices.forEach(svc -> this.channelServiceMap.put(svc.getChannel(), svc));
@@ -38,7 +37,7 @@ public class TicketMessageService {
         return this.configService
                 .getConfigs(access, ticket.getProductId(), ticket.getStage(), ticket.getStatus(), channel)
                 .flatMapMany(Flux::fromIterable)
-                .flatMap(config -> this.dispatch(access, ticket, config))
+                .flatMap(cfg -> this.dispatch(access, ticket, cfg))
                 .then()
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketMessageService.sendOnTicketCreate"));
@@ -50,4 +49,3 @@ public class TicketMessageService {
         return svc.sendOnTicketCreate(access, ticket, config);
     }
 }
-

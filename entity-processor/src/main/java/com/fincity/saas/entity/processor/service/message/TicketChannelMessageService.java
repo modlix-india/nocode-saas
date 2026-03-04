@@ -12,4 +12,3 @@ public interface TicketChannelMessageService {
 
     Mono<Void> sendOnTicketCreate(ProcessorAccess access, Ticket ticket, ProductMessageConfig config);
 }
-
