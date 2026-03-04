@@ -1,7 +1,5 @@
 package com.fincity.saas.message.service.base;
 
-import org.springframework.http.HttpStatus;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -12,7 +10,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.service.MessageResourceService;
-
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public interface IMessageAccessService {
@@ -45,8 +43,7 @@ public interface IMessageAccessService {
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             MessageResourceService.PHONE_NUMBER_REQUIRED);
 
-        if (ca.isAuthenticated())
-            return Mono.just(MessageAccess.of(ca));
+        if (ca.isAuthenticated()) return Mono.just(MessageAccess.of(ca));
 
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
@@ -59,9 +56,13 @@ public interface IMessageAccessService {
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         MessageResourceService.FORBIDDEN_APP_ACCESS,
                                         acTup.getT2())),
-                (acTup, hasAppAccess) -> this.getSecurityService().getClientByCode(acTup.getT2()).map(Client::getId)
+                (acTup, hasAppAccess) -> this.getSecurityService()
+                        .getClientByCode(acTup.getT2())
+                        .map(Client::getId)
                         .flatMap(clientId -> this.getSecurityService()
-                                .isUserClientManageClient(ca.getUrlAppCode(), ca.getUser().getId(),
+                                .isUserClientManageClient(
+                                        ca.getUrlAppCode(),
+                                        ca.getUser().getId(),
                                         ca.getUser().getClientId(),
                                         clientId))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Declarable;
+import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -20,12 +22,6 @@ public class MessagingRabbitConfig {
     @Value("${entity.processor.whatsapp.mq.dlx:whatsapp.dlx}")
     private String dlxName;
 
-    @Value("${entity.processor.whatsapp.mq.failure.dlx:whatsapp.failure.dlx}")
-    private String failureDlxName;
-
-    @Value("${entity.processor.whatsapp.mq.failure.dlq:whatsapp.failure.dlq}")
-    private String failureDlqName;
-
     @Value("${entity.processor.whatsapp.mq.holding.count:5}")
     private int holdingQueueCount;
 
@@ -39,10 +35,7 @@ public class MessagingRabbitConfig {
 
     @Bean
     public Queue whatsappOutbox() {
-        return QueueBuilder.durable(outboxQueueName)
-                .withArgument("x-dead-letter-exchange", failureDlxName)
-                .withArgument("x-dead-letter-routing-key", outboxQueueName)
-                .build();
+        return QueueBuilder.durable(outboxQueueName).build();
     }
 
     @Bean
@@ -51,35 +44,20 @@ public class MessagingRabbitConfig {
     }
 
     @Bean
-    public List<Queue> whatsappHoldingQueues() {
-        List<Queue> queues = new ArrayList<>(holdingQueueCount);
+    public Declarables whatsappHoldingQueues() {
+        List<Declarable> declarable = new ArrayList<>(holdingQueueCount);
 
         for (int i = 0; i < holdingQueueCount; i++) {
             long ttl = i * delayStepMs;
             String queueName = "whatsapp.hold." + i;
 
-            queues.add(QueueBuilder.durable(queueName)
+            declarable.add(QueueBuilder.durable(queueName)
                     .withArgument("x-message-ttl", ttl)
                     .withArgument("x-dead-letter-exchange", dlxName)
                     .withArgument("x-dead-letter-routing-key", outboxQueueName)
                     .build());
         }
 
-        return queues;
-    }
-
-    @Bean
-    public DirectExchange whatsappFailureDlx() {
-        return new DirectExchange(failureDlxName);
-    }
-
-    @Bean
-    public Queue whatsappFailureDlq() {
-        return QueueBuilder.durable(failureDlqName).build();
-    }
-
-    @Bean
-    public Binding whatsappFailureDlqBinding(Queue whatsappFailureDlq, DirectExchange whatsappFailureDlx) {
-        return BindingBuilder.bind(whatsappFailureDlq).to(whatsappFailureDlx).with(outboxQueueName);
+        return new Declarables(declarable);
     }
 }
