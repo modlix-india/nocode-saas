@@ -95,10 +95,28 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                     () -> this.addUserIds(originalCondition, access),
                     uCondition -> this.processOnlyUserCondition(uCondition, access));
 
-        if (!existingClientConditions.isEmpty())
+        if (!existingClientConditions.isEmpty()) {
+
+            if (access.isHasBpAccess()) {
+                List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
+                AbstractCondition clientCondition = this.updateClientConditions(existingClientConditions, managingClientIds);
+
+                return FlatMapUtil.flatMapMono(
+                                () -> originalCondition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
+                                conditionWithoutClient -> {
+                                    AbstractCondition combined =
+                                            conditionWithoutClient != null && !this.isEmptyCondition(conditionWithoutClient)
+                                                    ? ComplexCondition.and(conditionWithoutClient, clientCondition)
+                                                    : clientCondition;
+                                    return super.processorAccessCondition(combined, access);
+                                })
+                        .switchIfEmpty(super.processorAccessCondition(clientCondition, access));
+            }
+
             return FlatMapUtil.flatMapMono(
                     () -> this.addClientIds(originalCondition, access),
                     cCondition -> super.processorAccessCondition(cCondition, access));
+        }
 
         return FlatMapUtil.flatMapMono(
                 () -> this.addUserIds(originalCondition, access),
