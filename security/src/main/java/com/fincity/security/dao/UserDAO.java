@@ -1,5 +1,17 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.*;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.*;
+import static com.fincity.security.jooq.tables.SecurityClient.*;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
+import static com.fincity.security.jooq.tables.SecurityPastPins.*;
+import static com.fincity.security.jooq.tables.SecurityProfile.*;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.*;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.*;
+import static com.fincity.security.jooq.tables.SecurityUser.*;
+import static com.fincity.security.jooq.tables.SecurityV2Role.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -27,13 +39,13 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -43,22 +55,11 @@ import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import com.fincity.security.jooq.tables.SecurityClient;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import com.fincity.security.jooq.tables.SecurityDesignation;
-import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
-import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
 import com.fincity.security.jooq.tables.SecurityProfile;
-import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
-import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
-import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
 import com.fincity.security.jooq.tables.SecurityUser;
-import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
-import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -700,7 +701,8 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     }
 
     /**
-     * BFS check: is targetUserId reachable from managerId via REPORTING_TO within clientId?
+     * BFS check: is targetUserId reachable from managerId via REPORTING_TO within
+     * clientId?
      * Self-check (managerId == targetUserId) returns TRUE.
      */
     public Mono<Boolean> isUserInSubOrg(ULong clientId, ULong managerId, ULong targetUserId) {
@@ -713,7 +715,8 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
 
         return Mono.just(List.of(managerId))
                 .expand(batch -> {
-                    if (batch.isEmpty()) return Mono.empty();
+                    if (batch.isEmpty())
+                        return Mono.empty();
                     return Flux.from(dslContext
                             .select(SECURITY_USER.ID)
                             .from(SECURITY_USER)
@@ -790,51 +793,52 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
-        if (fc.getField().startsWith("profile.")) {
-            String profileFieldName = fc.getField().substring(8);
-            String jooqFieldName = this.convertToJOOQFieldName(profileFieldName);
-            Field<?> profileField = SECURITY_PROFILE.field(jooqFieldName);
+        if (fc.getField() != null) {
+            if (fc.getField().startsWith("profile.")) {
+                String profileFieldName = fc.getField().substring(8);
+                String jooqFieldName = this.convertToJOOQFieldName(profileFieldName);
+                Field<?> profileField = SECURITY_PROFILE.field(jooqFieldName);
 
-            if (profileField == null)
-                return DSL.noCondition();
+                if (profileField == null)
+                    return DSL.noCondition();
 
-            Condition profileCondition = this.buildProfileFieldCondition(profileField, fc);
+                Condition profileCondition = this.buildProfileFieldCondition(profileField, fc);
 
-            return DSL.exists(
-                    DSL.select(DSL.value(1))
-                            .from(SECURITY_PROFILE_USER)
-                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
-                            .where(DSL.and(
-                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                    profileCondition)));
+                return DSL.exists(
+                        DSL.select(DSL.value(1))
+                                .from(SECURITY_PROFILE_USER)
+                                .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                                .where(DSL.and(
+                                        SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                        profileCondition)));
+            }
+
+            if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
+                return super.filterConditionFilter(fc, selectJoinStep);
+
+            if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
+                return DSL.trueCondition();
+
+            if (fc.getField().equals("appId")) {
+
+                Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS
+                        ? SECURITY_PROFILE.APP_ID
+                                .eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue())))
+                        : SECURITY_PROFILE.APP_ID
+                                .in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+
+                if (fc.isNegate())
+                    idCondition = DSL.not(idCondition);
+
+                return DSL.exists(
+                        DSL.select(DSL.value(1))
+                                .from(SECURITY_PROFILE_USER)
+                                .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                                .where(DSL.and(
+                                        SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                        idCondition)));
+            }
         }
-
-        if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
-            return super.filterConditionFilter(fc, selectJoinStep);
-
-        if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
-            return DSL.trueCondition();
-
-        if (fc.getField().equals("appId")) {
-
-            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS
-                    ? SECURITY_PROFILE.APP_ID
-                            .eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue())))
-                    : SECURITY_PROFILE.APP_ID
-                            .in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
-
-            if (fc.isNegate())
-                idCondition = DSL.not(idCondition);
-
-            return DSL.exists(
-                    DSL.select(DSL.value(1))
-                            .from(SECURITY_PROFILE_USER)
-                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
-                            .where(DSL.and(
-                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                    idCondition)));
-        }
-
         Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS
                 ? SECURITY_APP.APP_CODE.eq(fc.getValue().toString())
                 : SECURITY_APP.APP_CODE

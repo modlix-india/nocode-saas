@@ -294,6 +294,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
+        if (fc.getField() == null)
+            return super.filterConditionFilter(fc, selectJoinStep);
+
         if (fc.getField().startsWith("user.")) {
             String userFieldName = fc.getField().substring(5);
             String jooqFieldName = this.convertToJOOQFieldName(userFieldName);
