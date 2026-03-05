@@ -95,28 +95,10 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                     () -> this.addUserIds(originalCondition, access),
                     uCondition -> this.processOnlyUserCondition(uCondition, access));
 
-        if (!existingClientConditions.isEmpty()) {
-
-            if (access.isHasBpAccess()) {
-                List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
-                AbstractCondition clientCondition = this.updateClientConditions(existingClientConditions, managingClientIds);
-
-                return FlatMapUtil.flatMapMono(
-                                () -> originalCondition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
-                                conditionWithoutClient -> {
-                                    AbstractCondition combined =
-                                            conditionWithoutClient != null && !this.isEmptyCondition(conditionWithoutClient)
-                                                    ? ComplexCondition.and(conditionWithoutClient, clientCondition)
-                                                    : clientCondition;
-                                    return super.processorAccessCondition(combined, access);
-                                })
-                        .switchIfEmpty(super.processorAccessCondition(clientCondition, access));
-            }
-
+        if (!existingClientConditions.isEmpty())
             return FlatMapUtil.flatMapMono(
                     () -> this.addClientIds(originalCondition, access),
-                    cCondition -> super.processorAccessCondition(cCondition, access));
-        }
+                    cCondition -> this.processOnlyClientCondition(cCondition, access));
 
         return FlatMapUtil.flatMapMono(
                 () -> this.addUserIds(originalCondition, access),
@@ -132,6 +114,18 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                                 conditionWithoutClient != null ? conditionWithoutClient : userProcessedCondition,
                                 access))
                 .switchIfEmpty(super.processorAccessCondition(userProcessedCondition, access));
+    }
+
+    private Mono<AbstractCondition> processOnlyClientCondition(
+            AbstractCondition clientProcessedCondition, ProcessorAccess access) {
+
+        String userField = this.getUserField(access);
+        return FlatMapUtil.flatMapMono(
+                        () -> clientProcessedCondition.removeConditionWithField(userField),
+                        conditionWithoutUser -> super.processorAccessCondition(
+                                conditionWithoutUser != null ? conditionWithoutUser : clientProcessedCondition,
+                                access))
+                .switchIfEmpty(super.processorAccessCondition(clientProcessedCondition, access));
     }
 
     private Mono<AbstractCondition> processUserAndClientConditions(
