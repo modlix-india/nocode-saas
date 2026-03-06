@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
@@ -61,6 +62,12 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_product_comms</code>.
      */
     public static final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_message_configs</code>.
+     */
+    public static final EntityProcessorProductMessageConfigs ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS = EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS;
 
     /**
      * The table

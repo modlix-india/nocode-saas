@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
@@ -75,6 +76,12 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_product_comms</code>.
      */
     public final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_message_configs</code>.
+     */
+    public final EntityProcessorProductMessageConfigs ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS = EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS;
 
     /**
      * The table
@@ -177,6 +184,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
             EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS,
+            EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS,
             EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
             EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES,

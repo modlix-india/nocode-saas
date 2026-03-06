@@ -42,3 +42,16 @@ management:
 redis:
   cache:
     prefix: epro
+
+entity:
+  processor:
+    whatsapp:
+      mq:
+        exchange: whatsapp.templates
+        outbox: whatsapp.outbox
+        dlx: whatsapp.dlx
+        holding:
+          count: 5
+        delay:
+          step:
+            ms: 30000
