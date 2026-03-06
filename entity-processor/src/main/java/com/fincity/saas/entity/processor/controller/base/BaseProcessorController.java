@@ -1,16 +1,8 @@
 package com.fincity.saas.entity.processor.controller.base;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-import com.fincity.saas.entity.processor.eager.EagerUtil;
-import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import java.util.List;
 import java.util.Map;
+
 import org.jooq.UpdatableRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,14 +14,21 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.ConditionUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
+import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
-public abstract class BaseProcessorController<
-                R extends UpdatableRecord<R>,
-                D extends BaseProcessorDto<D>,
-                O extends BaseProcessorDAO<R, D>,
-                S extends BaseProcessorService<R, D, O>>
+public abstract class BaseProcessorController<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>, S extends BaseProcessorService<R, D, O>>
         extends BaseUpdatableController<R, D, O, S> {
 
     public static final String TIMEZONE_HEADER = "x-tmz";
@@ -116,7 +115,7 @@ public abstract class BaseProcessorController<
                         .map(ResponseEntity::ok);
     }
 
-    private String extractTimezone(ServerHttpRequest request) {
+    protected String extractTimezone(ServerHttpRequest request) {
         return request.getHeaders().getFirst(TIMEZONE_HEADER);
     }
 }
