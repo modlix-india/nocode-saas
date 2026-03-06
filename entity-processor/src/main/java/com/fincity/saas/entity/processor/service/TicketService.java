@@ -340,13 +340,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         access -> Mono.zip(
                                 this.productService.readByIdentity(access, ticketRequest.getProductId()),
                                 this.getDnc(access, ticketRequest)),
-                        (access, productIdentity) -> this.checkDuplicate(
-                                access,
-                                productIdentity.getT1().getId(),
-                                ticketRequest.getPhoneNumber(),
-                                ticketRequest.getEmail(),
-                                ticketRequest.getSource(),
-                                ticketRequest.getSubSource()),
+                        (access, productIdentity) -> {
+                            if (!productIdentity.getT1().isActive())
+                                return this.msgService.<Boolean>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return this.checkDuplicate(
+                                    access,
+                                    productIdentity.getT1().getId(),
+                                    ticketRequest.getPhoneNumber(),
+                                    ticketRequest.getEmail(),
+                                    ticketRequest.getSource(),
+                                    ticketRequest.getSubSource());
+                        },
                         (access, productIdentity, isDuplicate) -> Mono.just(
                                 ticket.setProductId(productIdentity.getT1().getId())
                                         .setDnc(productIdentity.getT2())),
@@ -380,8 +386,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         this.campaignService.getEntityName(),
                                         cTicketRequest.getCampaignDetails().getCampaignId())),
                         campaign -> this.productService.readById(access, campaign.getProductId()),
-                        (campaign, product) ->
-                                Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId())),
+                        (campaign, product) -> {
+                            if (!product.isActive())
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId()));
+                        },
                         (campaign, product, ticket) -> this.checkDuplicate(
                                 access,
                                 campaign.getProductId(),
@@ -418,7 +429,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         () -> this.productService.readByCode(access, productCode),
-                        product -> Mono.just(Ticket.of(cTicketRequest)),
+                        product -> {
+                            if (!product.isActive())
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return Mono.just(Ticket.of(cTicketRequest));
+                        },
                         (product, ticket) -> this.checkDuplicate(
                                 access,
                                 product.getId(),
@@ -446,12 +463,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.readByIdentity(access, request.getProductId()),
-                product -> this.stageService
-                        .getParentChild(
-                                access, product.getProductTemplateId(), request.getStageId(), request.getStatusId())
-                        .switchIfEmpty(this.msgService.throwMessage(
+                product -> {
+                    if (!product.isActive())
+                        return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.STAGE_MISSING)),
+                                ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                    return this.stageService
+                            .getParentChild(
+                                    access, product.getProductTemplateId(), request.getStageId(), request.getStatusId())
+                            .switchIfEmpty(this.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                    ProcessorMessageResourceService.STAGE_MISSING));
+                },
                 (product, stageStatusEntity) -> request.getClientId() != null
                         ? this.securityService
                                 .getClientById(request.getClientId().toBigInteger())

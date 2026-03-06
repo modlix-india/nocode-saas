@@ -36,7 +36,7 @@ public class ClientManagerService
         extends AbstractJOOQDataService<SecurityClientManagerRecord, ULong, ClientManager, ClientManagerDAO> {
 
     private static final String CACHE_NAME_CLIENT_MANAGER = "clientManager";
-    private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+    private static final String AUTHORIZED_ROLE = "Authorities.ROLE_Owner or Authorities.ROLE_ClientManager";
 
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;
@@ -69,7 +69,7 @@ public class ClientManagerService
 
                     if (contextUserClientId.equals(targetUserClientId))
                         return Mono.just(
-                                SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+                                SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, ca.getAuthorities()));
 
                     return this.clientHierarchyService.isClientBeingManagedBy(contextUserClientId, targetUserClientId);
                 });
@@ -183,8 +183,9 @@ public class ClientManagerService
                 (ca, newManager, validated, hasAccess, deleted) -> this.dao.createIfNotExists(clientId, newManagerId,
                         ULongUtil.valueOf(ca.getUser().getId())),
 
-                (ca, newManager, validated, hasAccess, deleted, created) -> this.evictCacheForUserAndClient(
-                        oldManagerId, clientId)
+                (ca, newManager, validated, hasAccess, deleted, created) -> (oldManagerId != null
+                        ? this.evictCacheForUserAndClient(oldManagerId, clientId)
+                        : Mono.just(Boolean.TRUE))
                         .then(this.evictCacheForUserAndClient(newManagerId, clientId))
                         .thenReturn(Boolean.TRUE))
 
@@ -220,12 +221,54 @@ public class ClientManagerService
                         SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager DELETE"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Integer> migrateClientManagersFrom(ULong fromUid, ULong toUid) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> {
+                    if (fromUid.equals(toUid))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.HIERARCHY_ERROR, "Client manager migration");
+
+                    return this.userService.readInternal(fromUid);
+                },
+
+                (ca, fromUser) -> this.userService.readInternal(toUid),
+
+                (ca, fromUser, toUser) -> this.checkAccess(fromUser.getClientId()),
+
+                (ca, fromUser, toUser, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.getClientIdsOfManager(fromUid);
+                },
+
+                (ca, fromUser, toUser, hasAccess, clientIds) -> this.dao
+                        .migrateManagerAssignments(fromUid, toUid, ULongUtil.valueOf(ca.getUser().getId())),
+
+                (ca, fromUser, toUser, hasAccess, clientIds, migrated) -> Flux.fromIterable(clientIds)
+                        .flatMap(clientId -> this.evictCacheForUserAndClient(fromUid, clientId)
+                                .then(this.evictCacheForUserAndClient(toUid, clientId)))
+                        .then(Mono.just(migrated)))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.migrateClientManagersFrom"))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager MIGRATE"));
+    }
+
     public Mono<Boolean> isUserClientManager(ContextAuthentication ca, ULong targetClientId) {
 
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
-        if (SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()))
+        if (SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, ca.getAuthorities()))
             return Mono.just(Boolean.TRUE);
 
         if (userClientId.equals(targetClientId))
@@ -241,7 +284,7 @@ public class ClientManagerService
         return this.userService.getUserAuthorities(appCode, userClientId, userId)
                 .flatMap(list -> {
 
-                    if (SecurityContextUtil.hasAuthority(OWNER_ROLE, list))
+                    if (SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, list))
                         return Mono.just(Boolean.TRUE);
 
                     if (userClientId.equals(targetClientId))
