@@ -55,7 +55,7 @@ public class ClientManagerController {
 
     @PostMapping("/{clientId}")
     public Mono<ResponseEntity<Boolean>> updateManager(@PathVariable ULong clientId,
-            @RequestParam ULong oldManagerId, @RequestParam ULong newManagerId) {
+            @RequestParam(required = false) ULong oldManagerId, @RequestParam ULong newManagerId) {
         return service.updateManager(clientId, oldManagerId, newManagerId)
                 .map(ResponseEntity::ok);
     }
