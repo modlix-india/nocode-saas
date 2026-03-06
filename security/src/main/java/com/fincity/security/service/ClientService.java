@@ -322,7 +322,25 @@ public class ClientService
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
     @Override
     public Mono<Client> read(ULong id) {
-        return super.read(id);
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> super.read(id),
+
+                (ca, client) -> {
+                    if (ca.isSystemClient())
+                        return Mono.just(client);
+
+                    return this.isUserClientManageClient(ca, client.getId())
+                            .flatMap(managed -> Boolean.TRUE.equals(managed)
+                                    ? Mono.just(client)
+                                    : this.securityMessageResourceService.<Client>throwMessage(
+                                            msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                            SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client READ"));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.read"));
     }
 
     public Mono<Client> readInternal(ULong id) {
@@ -342,17 +360,47 @@ public class ClientService
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     @Override
     public Mono<Client> update(Client entity) {
-        return super.update(entity).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, entity.getId())
-                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
-                .map(x -> e));
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.isUserClientManageClient(ca, entity.getId())
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                (ca, managed) -> super.update(entity)
+                        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, entity.getId())
+                                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
+                                .map(x -> e)))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.update"))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client UPDATE"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     @Override
     public Mono<Client> update(ULong key, Map<String, Object> fields) {
-        return super.update(key, fields).flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, e.getId())
-                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
-                .map(x -> e));
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.isUserClientManageClient(ca, key)
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                (ca, managed) -> super.update(key, fields)
+                        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, e.getId())
+                                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
+                                .map(x -> e)))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.update"))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client UPDATE"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_DELETE')")

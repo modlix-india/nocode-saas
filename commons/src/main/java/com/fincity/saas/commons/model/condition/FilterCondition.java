@@ -21,6 +21,7 @@ public class FilterCondition extends AbstractCondition {
     private static final long serialVersionUID = -4542270694019365457L;
 
     private String field;
+    private FieldExpression fieldExpr;
     private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
     private Object value; // NOSONAR
     private Object toValue; // NOSONAR
@@ -36,6 +37,7 @@ public class FilterCondition extends AbstractCondition {
     public FilterCondition(FilterCondition condition) {
         super();
         this.field = condition.getField();
+        this.fieldExpr = condition.getFieldExpr();
         this.operator = condition.getOperator();
         this.value = CloneUtil.cloneObject(condition.getValue());
         this.toValue = CloneUtil.cloneObject(condition.getToValue());
@@ -43,6 +45,10 @@ public class FilterCondition extends AbstractCondition {
         this.isValueField = condition.isValueField();
         this.isToValueField = condition.isToValueField();
         this.matchOperator = condition.getMatchOperator();
+    }
+
+    public boolean hasFieldExpr() {
+        return fieldExpr != null && fieldExpr.isValid();
     }
 
     public static FilterCondition make(String field, Object value) {

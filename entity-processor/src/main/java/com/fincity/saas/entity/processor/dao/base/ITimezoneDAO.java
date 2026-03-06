@@ -130,6 +130,9 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
     default Condition filterConditionFilter(
             FilterCondition fc, SelectJoinStep<Record> selectJoinStep, String timezone) { // NO SONAR
         IEagerDAO<?> eagerDao = (IEagerDAO<?>) this;
+
+        if (fc.getField() == null) return DSL.noCondition();
+
         Field field = eagerDao.getField(fc.getField(), selectJoinStep); // NO SONAR
 
         if (field == null) return DSL.noCondition();

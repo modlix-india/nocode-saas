@@ -201,24 +201,27 @@ public class DesignationService
 
         if (fetchParentDesignation)
             designationFlux = designationFlux
-                    .filter(designation -> designation.getParentDesignationId() != null
-                            && designation.getParentDesignationId().intValue() != 0)
-                    .flatMap(designation -> this.readInternal(designation.getParentDesignationId())
-                            .map(designation::setParentDesignation));
+                    .flatMap(designation -> designation.getParentDesignationId() != null
+                            && designation.getParentDesignationId().intValue() != 0
+                                    ? this.readInternal(designation.getParentDesignationId())
+                                            .map(designation::setParentDesignation)
+                                    : Mono.just(designation));
 
         if (fetchNextDesignation)
             designationFlux = designationFlux
-                    .filter(designation -> designation.getNextDesignationId() != null
-                            && designation.getNextDesignationId().intValue() != 0)
-                    .flatMap(designation -> this.readInternal(designation.getNextDesignationId())
-                            .map(designation::setNextDesignation));
+                    .flatMap(designation -> designation.getNextDesignationId() != null
+                            && designation.getNextDesignationId().intValue() != 0
+                                    ? this.readInternal(designation.getNextDesignationId())
+                                            .map(designation::setNextDesignation)
+                                    : Mono.just(designation));
 
         if (fetchDepartment)
             designationFlux = designationFlux
-                    .filter(designation -> designation.getDepartmentId() != null
-                            && designation.getDepartmentId().intValue() != 0)
-                    .flatMap(designation -> this.departmentService.readInternal(designation.getDepartmentId())
-                            .map(designation::setDepartment));
+                    .flatMap(designation -> designation.getDepartmentId() != null
+                            && designation.getDepartmentId().intValue() != 0
+                                    ? this.departmentService.readInternal(designation.getDepartmentId())
+                                            .map(designation::setDepartment)
+                                    : Mono.just(designation));
 
         return designationFlux.collectList();
     }

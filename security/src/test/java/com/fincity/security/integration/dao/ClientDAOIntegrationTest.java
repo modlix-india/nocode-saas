@@ -1098,14 +1098,15 @@ class ClientDAOIntegrationTest extends AbstractIntegrationTest {
 									.flatMap(childId -> insertClientHierarchy(childId, ULong.valueOf(1), busId, null, null)
 											.thenReturn(busId)))
 							.flatMap(busId -> {
+								// Owner auth needed — non-owners without client_manager entries see nothing
 								ContextAuthentication busAuth = TestDataFactory.createBusinessAuth(
-										busId, busCode, List.of("Authorities.Client_READ", "Authorities.Logged_IN"));
+										busId, busCode, List.of("Authorities.ROLE_Owner", "Authorities.Client_READ", "Authorities.Logged_IN"));
 								return clientDAO.readPageFilter(PageRequest.of(0, 100), null)
 										.contextWrite(ReactiveSecurityContextHolder.withAuthentication(busAuth));
 							}))
 					.assertNext(page -> {
 						assertNotNull(page);
-						// Business client should only see clients it manages in its hierarchy
+						// Owner sees own client + child in hierarchy
 						assertTrue(page.getTotalElements() >= 1);
 					})
 					.verifyComplete();

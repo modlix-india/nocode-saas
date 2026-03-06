@@ -54,7 +54,12 @@ public class AbstractConditionDeserializer extends StdDeserializer<AbstractCondi
         }
 
         TreeNode fieldNode = node.get("field");
-        if (StringUtil.safeIsBlank(fieldNode) || !(fieldNode instanceof TextNode)) {
+        TreeNode fieldExprNode = node.get("fieldExpr");
+
+        boolean hasField = fieldNode != null && !StringUtil.safeIsBlank(fieldNode) && fieldNode instanceof TextNode;
+        boolean hasFieldExpr = fieldExprNode != null && fieldExprNode.size() > 0;
+
+        if (!hasField && !hasFieldExpr) {
             if (node.size() == 0) return null;
             throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid condition");
         }
