@@ -40,6 +40,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FieldExpression;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.condition.GroupCondition;
@@ -322,7 +323,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     @SuppressWarnings({"rawtypes"})
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
-        Field field = this.getField(fc.getField(), selectJoinStep);
+        Field field;
+
+        if (fc.hasFieldExpr()) {
+            field = this.resolveFieldExpression(fc.getFieldExpr(), selectJoinStep);
+        } else {
+            field = this.getField(fc.getField(), selectJoinStep);
+        }
 
         if (field == null) return DSL.noCondition();
 
@@ -336,6 +343,49 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 fc.getMultiValue(),
                 fc.getField(),
                 selectJoinStep);
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Field<String> resolveFieldExpression(FieldExpression expr, SelectJoinStep<Record> selectJoinStep) {
+
+        if (expr == null || !expr.isValid())
+            return null;
+
+        List<Field> resolvedFields = new ArrayList<>();
+        for (String fieldName : expr.getFields()) {
+            Field f = this.getField(fieldName, selectJoinStep);
+            if (f == null)
+                return null;
+            resolvedFields.add(f);
+        }
+
+        return switch (expr.getFunction()) {
+            case CONCAT -> {
+                if (expr.getSeparator() != null && !expr.getSeparator().isEmpty()) {
+                    List<Field<?>> withSeparators = new ArrayList<>();
+                    for (int i = 0; i < resolvedFields.size(); i++) {
+                        if (i > 0)
+                            withSeparators.add(DSL.val(expr.getSeparator()));
+                        withSeparators.add(resolvedFields.get(i).cast(String.class));
+                    }
+                    yield DSL.concat(withSeparators.toArray(new Field[0]));
+                }
+                yield DSL.concat(resolvedFields.stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new));
+            }
+            case UPPER -> DSL.upper(resolvedFields.getFirst().cast(String.class));
+            case LOWER -> DSL.lower(resolvedFields.getFirst().cast(String.class));
+            case TRIM -> DSL.trim(resolvedFields.getFirst().cast(String.class));
+            case COALESCE -> {
+                Field<String> first = resolvedFields.getFirst().cast(String.class);
+                @SuppressWarnings("unchecked")
+                Field<String>[] rest = resolvedFields.subList(1, resolvedFields.size()).stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new);
+                yield DSL.coalesce(first, rest);
+            }
+        };
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

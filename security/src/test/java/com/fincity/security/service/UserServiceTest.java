@@ -1158,6 +1158,10 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
+			User user = new User();
+			user.setId(USER_ID);
+			user.setClientId(SYSTEM_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
 			when(dao.updateUserStatusToActive(USER_ID)).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.unblockUser(USER_ID))
@@ -1212,6 +1216,10 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
+			User user = new User();
+			user.setId(ULong.valueOf(1));
+			user.setClientId(SYSTEM_CLIENT_ID);
+			when(dao.readById(ULong.valueOf(1))).thenReturn(Mono.just(user));
 			when(dao.updateUserStatusToActive(ULong.valueOf(1))).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.unblockUser(null))
