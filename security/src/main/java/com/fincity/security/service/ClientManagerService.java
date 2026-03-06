@@ -183,8 +183,9 @@ public class ClientManagerService
                 (ca, newManager, validated, hasAccess, deleted) -> this.dao.createIfNotExists(clientId, newManagerId,
                         ULongUtil.valueOf(ca.getUser().getId())),
 
-                (ca, newManager, validated, hasAccess, deleted, created) -> this.evictCacheForUserAndClient(
-                        oldManagerId, clientId)
+                (ca, newManager, validated, hasAccess, deleted, created) -> (oldManagerId != null
+                        ? this.evictCacheForUserAndClient(oldManagerId, clientId)
+                        : Mono.just(Boolean.TRUE))
                         .then(this.evictCacheForUserAndClient(newManagerId, clientId))
                         .thenReturn(Boolean.TRUE))
 
