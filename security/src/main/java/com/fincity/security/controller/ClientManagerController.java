@@ -65,4 +65,12 @@ public class ClientManagerController {
         return service.delete(uid, clientId)
                 .map(ResponseEntity::ok);
     }
+
+    @PostMapping("/migrateTo/{uid}")
+    public Mono<ResponseEntity<Integer>> migrateClientManagersFrom(@PathVariable ULong uid,
+            @RequestParam ULong fromUid) {
+        return service.migrateClientManagersFrom(fromUid, uid)
+                .map(ResponseEntity::ok);
+    }
+
 }
