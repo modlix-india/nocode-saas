@@ -1,6 +1,7 @@
 package com.fincity.security.service;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,8 +26,6 @@ import com.fincity.security.dao.ClientManagerDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
-
-import java.util.List;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -174,6 +173,10 @@ public class ClientManagerService
                     if (!Boolean.TRUE.equals(hasAccess))
                         return Mono.empty();
 
+                    if (oldManagerId == null) {
+                        return Mono.just(0);
+                    }
+
                     return this.dao.deleteByClientIdAndManagerId(clientId, oldManagerId);
                 },
 
@@ -257,7 +260,7 @@ public class ClientManagerService
     public Mono<Integer> createInternal(ULong clientId, ULong managerId, ULong createdBy) {
         return this.dao.createIfNotExists(clientId, managerId, createdBy);
     }
-  
+
     public Mono<List<ULong>> getClientIdsOfManagerInternal(ULong managerId) {
         return this.dao
                 .getClientIdsOfManager(managerId)
