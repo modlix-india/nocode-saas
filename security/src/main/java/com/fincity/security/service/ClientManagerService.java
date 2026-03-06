@@ -220,6 +220,48 @@ public class ClientManagerService
                         SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager DELETE"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Integer> migrateClientManagersFrom(ULong fromUid, ULong toUid) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> {
+                    if (fromUid.equals(toUid))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.HIERARCHY_ERROR, "Client manager migration");
+
+                    return this.userService.readInternal(fromUid);
+                },
+
+                (ca, fromUser) -> this.userService.readInternal(toUid),
+
+                (ca, fromUser, toUser) -> this.checkAccess(fromUser.getClientId()),
+
+                (ca, fromUser, toUser, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.getClientIdsOfManager(fromUid);
+                },
+
+                (ca, fromUser, toUser, hasAccess, clientIds) -> this.dao
+                        .migrateManagerAssignments(fromUid, toUid, ULongUtil.valueOf(ca.getUser().getId())),
+
+                (ca, fromUser, toUser, hasAccess, clientIds, migrated) -> Flux.fromIterable(clientIds)
+                        .flatMap(clientId -> this.evictCacheForUserAndClient(fromUid, clientId)
+                                .then(this.evictCacheForUserAndClient(toUid, clientId)))
+                        .then(Mono.just(migrated)))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.migrateClientManagersFrom"))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager MIGRATE"));
+    }
+
     public Mono<Boolean> isUserClientManager(ContextAuthentication ca, ULong targetClientId) {
 
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
