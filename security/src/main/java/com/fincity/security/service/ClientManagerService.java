@@ -36,7 +36,7 @@ public class ClientManagerService
         extends AbstractJOOQDataService<SecurityClientManagerRecord, ULong, ClientManager, ClientManagerDAO> {
 
     private static final String CACHE_NAME_CLIENT_MANAGER = "clientManager";
-    private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+    private static final String AUTHORIZED_ROLE = "Authorities.ROLE_Owner or Authorities.ROLE_ClientManager";
 
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;
@@ -69,7 +69,7 @@ public class ClientManagerService
 
                     if (contextUserClientId.equals(targetUserClientId))
                         return Mono.just(
-                                SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+                                SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, ca.getAuthorities()));
 
                     return this.clientHierarchyService.isClientBeingManagedBy(contextUserClientId, targetUserClientId);
                 });
@@ -268,7 +268,7 @@ public class ClientManagerService
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
-        if (SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()))
+        if (SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, ca.getAuthorities()))
             return Mono.just(Boolean.TRUE);
 
         if (userClientId.equals(targetClientId))
@@ -284,7 +284,7 @@ public class ClientManagerService
         return this.userService.getUserAuthorities(appCode, userClientId, userId)
                 .flatMap(list -> {
 
-                    if (SecurityContextUtil.hasAuthority(OWNER_ROLE, list))
+                    if (SecurityContextUtil.hasAuthority(AUTHORIZED_ROLE, list))
                         return Mono.just(Boolean.TRUE);
 
                     if (userClientId.equals(targetClientId))
