@@ -188,7 +188,13 @@ public class ProductWalkInFormService
     protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
         return productService
                 .readByIdentity(access, productId)
-                .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()))
+                .flatMap(product -> {
+                    if (!product.isActive())
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                    return Mono.just(Tuples.of(product.getId(), product.getProductTemplateId()));
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.resolveProduct"));
     }
 
