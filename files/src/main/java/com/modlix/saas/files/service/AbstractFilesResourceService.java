@@ -1,5 +1,7 @@
 package com.modlix.saas.files.service;
 
+import static com.modlix.saas.files.service.FileSystemService.*;
+
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -64,7 +66,6 @@ import com.modlix.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.modlix.saas.files.model.DownloadOptions;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
-import static com.modlix.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.modlix.saas.files.util.FileExtensionUtil;
 import com.modlix.saas.files.util.ImageTransformUtil;
 import com.modlix.saas.files.util.RangeDownloadUtil;
@@ -975,6 +976,11 @@ public abstract class AbstractFilesResourceService {
 
     private void downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
             String resourcePath, HttpServletRequest request, HttpServletResponse response) {
+
+        if (fileDetail == null) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            return;
+        }
 
         long fileMillis = fileDetail.getLastModifiedTime();
         String fileETag = "\"" +

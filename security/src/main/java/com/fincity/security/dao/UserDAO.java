@@ -1,5 +1,17 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityApp.*;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.*;
+import static com.fincity.security.jooq.tables.SecurityClient.*;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
+import static com.fincity.security.jooq.tables.SecurityPastPins.*;
+import static com.fincity.security.jooq.tables.SecurityProfile.*;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.*;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.*;
+import static com.fincity.security.jooq.tables.SecurityUser.*;
+import static com.fincity.security.jooq.tables.SecurityV2Role.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -7,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -25,11 +39,13 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -39,22 +55,11 @@ import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import com.fincity.security.jooq.tables.SecurityClient;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import com.fincity.security.jooq.tables.SecurityDesignation;
-import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
-import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
 import com.fincity.security.jooq.tables.SecurityProfile;
-import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
-import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
-import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
 import com.fincity.security.jooq.tables.SecurityUser;
-import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
-import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -68,18 +73,85 @@ import reactor.util.context.Context;
 @Component
 public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
 
+    private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+
     private final PasswordEncoder encoder;
     private final ClientDAO clientDAO;
+    private final ClientManagerDAO clientManagerDAO;
 
-    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao) {
+    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao, ClientManagerDAO clientManagerDAO) {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
         this.encoder = encoder;
         this.clientDAO = clientDao;
+        this.clientManagerDAO = clientManagerDAO;
     }
 
     @Override
     protected Field<ULong> getClientIDField() {
         return SECURITY_USER.CLIENT_ID;
+    }
+
+    @Override
+    public Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
+
+        return baseFilter(condition, selectJoinStep)
+                .flatMap(cond -> SecurityContextUtil.getUsersContextAuthentication()
+                        .flatMap(ca -> {
+
+                            if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+                                return Mono.just(cond);
+
+                            ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                            Condition hierarchyCond = ClientHierarchyDAO.getManageClientCondition(clientId);
+
+                            if (SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()))
+                                return Mono.just(DSL.and(cond, hierarchyCond));
+
+                            ULong userId = ULong.valueOf(ca.getUser().getId());
+
+                            return getSubOrgManagedClientIds(clientId, userId)
+                                    .map(managedClientIds -> {
+
+                                        List<ULong> externalManagedIds = managedClientIds.stream()
+                                                .filter(id -> !id.equals(clientId))
+                                                .toList();
+
+                                        if (externalManagedIds.isEmpty())
+                                            return DSL.and(cond, SECURITY_USER.CLIENT_ID.eq(clientId));
+
+                                        return DSL.and(cond, hierarchyCond,
+                                                SECURITY_USER.CLIENT_ID.eq(clientId)
+                                                        .or(SECURITY_USER.CLIENT_ID.in(externalManagedIds)));
+                                    });
+                        }));
+    }
+
+    private Mono<List<ULong>> getSubOrgManagedClientIds(ULong clientId, ULong userId) {
+
+        return getSubOrgUserIds(clientId, userId)
+                .flatMap(subOrgIds -> {
+                    if (subOrgIds.isEmpty())
+                        return Mono.just(List.<ULong>of());
+                    return this.clientManagerDAO.getClientIdsOfManagers(subOrgIds);
+                });
+    }
+
+    private Mono<List<ULong>> getSubOrgUserIds(ULong clientId, ULong userId) {
+
+        Set<ULong> visited = ConcurrentHashMap.newKeySet();
+
+        return Flux.just(userId)
+                .expandDeep(id -> {
+                    if (!visited.add(id))
+                        return Flux.empty();
+                    return Flux.from(this.dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER)
+                            .where(SECURITY_USER.REPORTING_TO.eq(id)
+                                    .and(SECURITY_USER.CLIENT_ID.eq(clientId))))
+                            .map(Record1::value1);
+                })
+                .collectList();
     }
 
     public Mono<ULong> getUserClientId(ULong userId) {
@@ -628,6 +700,38 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(Record1::value1);
     }
 
+    /**
+     * BFS check: is targetUserId reachable from managerId via REPORTING_TO within
+     * clientId?
+     * Self-check (managerId == targetUserId) returns TRUE.
+     */
+    public Mono<Boolean> isUserInSubOrg(ULong clientId, ULong managerId, ULong targetUserId) {
+
+        if (managerId == null || targetUserId == null)
+            return Mono.just(Boolean.FALSE);
+
+        if (managerId.equals(targetUserId))
+            return Mono.just(Boolean.TRUE);
+
+        return Mono.just(List.of(managerId))
+                .expand(batch -> {
+                    if (batch.isEmpty())
+                        return Mono.empty();
+                    return Flux.from(dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER)
+                            .where(SECURITY_USER.REPORTING_TO.in(batch)
+                                    .and(SECURITY_USER.CLIENT_ID.eq(clientId))
+                                    .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+                            .map(Record1::value1)
+                            .collectList();
+                })
+                .takeWhile(batch -> !batch.isEmpty())
+                .any(batch -> batch.contains(targetUserId))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.isUserInSubOrg"));
+    }
+
     public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
         return Mono.from(this.dslContext
@@ -689,32 +793,52 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
-        if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
-            return super.filterConditionFilter(fc, selectJoinStep);
+        if (fc.getField() != null) {
+            if (fc.getField().startsWith("profile.")) {
+                String profileFieldName = fc.getField().substring(8);
+                String jooqFieldName = this.convertToJOOQFieldName(profileFieldName);
+                Field<?> profileField = SECURITY_PROFILE.field(jooqFieldName);
 
-        if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
-            return DSL.trueCondition();
+                if (profileField == null)
+                    return DSL.noCondition();
 
-        if (fc.getField().equals("appId")) {
+                Condition profileCondition = this.buildProfileFieldCondition(profileField, fc);
 
-            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS
-                    ? SECURITY_PROFILE.APP_ID
-                            .eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue())))
-                    : SECURITY_PROFILE.APP_ID
-                            .in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+                return DSL.exists(
+                        DSL.select(DSL.value(1))
+                                .from(SECURITY_PROFILE_USER)
+                                .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                                .where(DSL.and(
+                                        SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                        profileCondition)));
+            }
 
-            if (fc.isNegate())
-                idCondition = DSL.not(idCondition);
+            if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
+                return super.filterConditionFilter(fc, selectJoinStep);
 
-            return DSL.exists(
-                    DSL.select(DSL.value(1))
-                            .from(SECURITY_PROFILE_USER)
-                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
-                            .where(DSL.and(
-                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                    idCondition)));
+            if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
+                return DSL.trueCondition();
+
+            if (fc.getField().equals("appId")) {
+
+                Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS
+                        ? SECURITY_PROFILE.APP_ID
+                                .eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue())))
+                        : SECURITY_PROFILE.APP_ID
+                                .in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+
+                if (fc.isNegate())
+                    idCondition = DSL.not(idCondition);
+
+                return DSL.exists(
+                        DSL.select(DSL.value(1))
+                                .from(SECURITY_PROFILE_USER)
+                                .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                                .where(DSL.and(
+                                        SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                        idCondition)));
+            }
         }
-
         Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS
                 ? SECURITY_APP.APP_CODE.eq(fc.getValue().toString())
                 : SECURITY_APP.APP_CODE
@@ -731,6 +855,28 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                         .where(DSL.and(
                                 SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
                                 codeCondition)));
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Condition buildProfileFieldCondition(Field profileField, FilterCondition fc) {
+
+        return switch (fc.getOperator()) {
+            case EQUALS -> profileField.eq(this.fieldValue(profileField, fc.getValue()));
+            case LESS_THAN -> profileField.lt(this.fieldValue(profileField, fc.getValue()));
+            case GREATER_THAN -> profileField.gt(this.fieldValue(profileField, fc.getValue()));
+            case LESS_THAN_EQUAL -> profileField.le(this.fieldValue(profileField, fc.getValue()));
+            case GREATER_THAN_EQUAL -> profileField.ge(this.fieldValue(profileField, fc.getValue()));
+            case IN -> profileField.in(this.multiFieldValue(profileField, fc.getValue(), fc.getMultiValue()));
+            case LIKE -> profileField.like(fc.getValue().toString());
+            case STRING_LOOSE_EQUAL -> profileField.like("%" + fc.getValue() + "%");
+            case IS_TRUE -> profileField.isTrue();
+            case IS_FALSE -> profileField.isFalse();
+            case IS_NULL -> profileField.isNull();
+            case BETWEEN -> profileField.between(
+                    this.fieldValue(profileField, fc.getValue()),
+                    this.fieldValue(profileField, fc.getToValue()));
+            default -> DSL.noCondition();
+        };
     }
 
     private Condition buildUserFilterServerCondition(

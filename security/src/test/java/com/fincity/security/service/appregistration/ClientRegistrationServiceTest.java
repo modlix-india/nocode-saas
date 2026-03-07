@@ -289,6 +289,332 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		void register_AuthenticatedNonOwner_SetsCreatingUserAsManager() {
+			ContextAuthentication ca = createAuthenticatedContext();
+			setupSecurityContext(ca);
+
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			ServerHttpRequest request = createMockRequest();
+			ServerHttpResponse response = mock(ServerHttpResponse.class);
+
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			Client createdClient = TestDataFactory.createIndividualClient(NEW_CLIENT_ID, "TESTCLIENT50");
+			User createdUser = TestDataFactory.createActiveUser(NEW_USER_ID, NEW_CLIENT_ID);
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, APP_CODE);
+			app.setAppUsageType(SecurityAppAppUsageType.B2C);
+
+			// preRegisterCheck chain
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkIndividualClientUser(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+			when(appService.getAppByCode(APP_CODE)).thenReturn(Mono.just(app));
+			when(clientService.getClientBy(CLIENT_CODE)).thenReturn(Mono.just(
+					TestDataFactory.createBusinessClient(SYSTEM_CLIENT_ID, CLIENT_CODE)));
+			when(clientService.getClientLevelType(any(ULong.class), eq(APP_ID)))
+					.thenReturn(Mono.just(ClientLevelType.OWNER));
+			when(appService.getProperties(any(ULong.class), eq(APP_ID), isNull(), eq(AppService.APP_PROP_URL_SUFFIX)))
+					.thenReturn(Mono.just(Map.of()));
+
+			AppProperty regProp = new AppProperty();
+			regProp.setValue(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION);
+			when(appService.getProperties(any(ULong.class), isNull(), eq(APP_CODE), eq(AppService.APP_PROP_REG_TYPE)))
+					.thenReturn(Mono.just(Map.of(SYSTEM_CLIENT_ID,
+							Map.of(AppService.APP_PROP_REG_TYPE, regProp))));
+
+			// registerClient chain
+			when(dao.getValidClientCode(anyString())).thenReturn(Mono.just("TESTCLIENT50"));
+			when(clientService.createForRegistration(any(Client.class), any(ULong.class)))
+					.thenReturn(Mono.just(createdClient));
+			when(clientHierarchyService.create(any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(new ClientHierarchy()));
+			when(clientManagerService.createInternal(any(ULong.class), any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(1));
+			when(clientService.addClientRegistrationObjects(any(), any(), any(), any()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(appService.addClientAccessAfterRegistration(anyString(), any(ULong.class), any(Client.class)))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			// registerUser chain
+			when(userService.createForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(createdUser));
+
+			TokenObject tokenObj = TestDataFactory.createTokenObject(ULong.valueOf(1), NEW_USER_ID, "test-token",
+					java.time.LocalDateTime.now().plusMinutes(30));
+			when(userService.makeOneTimeToken(any(), any(), any(), any()))
+					.thenReturn(Mono.just(tokenObj));
+			when(appRegistrationDAO.getFileAccessForRegistration(any(), any(), any(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(clientUrlService.getAppUrl(anyString(), anyString()))
+					.thenReturn(Mono.just(""));
+			when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
+
+			AuthenticationResponse authResp = new AuthenticationResponse();
+			authResp.setAccessToken("access-token");
+			when(authenticationService.authenticate(any(), any(ServerHttpRequest.class),
+					any(ServerHttpResponse.class)))
+					.thenReturn(Mono.just(authResp));
+			when(appService.getAppIdsForAdditionalAppRegistration(anyString(), anyString(), any(Client.class)))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.register(req, request, response))
+					.assertNext(regResponse -> {
+						assertNotNull(regResponse);
+						assertTrue(regResponse.getCreated());
+					})
+					.verifyComplete();
+
+			// Non-owner user should automatically become the manager
+			verify(clientManagerService).createInternal(eq(NEW_CLIENT_ID), eq(USER_ID), eq(USER_ID));
+		}
+
+		@Test
+		void register_AuthenticatedOwner_WithManagerId_SetsProvidedManager() {
+			ULong managerId = ULong.valueOf(99);
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(USER_ID, SYSTEM_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN", "Authorities.Client_CREATE", "Authorities.ROLE_Owner"));
+			ca.setAuthenticated(true);
+			ca.setUrlAppCode(APP_CODE);
+			ca.setUrlClientCode(CLIENT_CODE);
+			setupSecurityContext(ca);
+
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			req.setManagerId(managerId);
+			ServerHttpRequest request = createMockRequest();
+			ServerHttpResponse response = mock(ServerHttpResponse.class);
+
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			Client createdClient = TestDataFactory.createIndividualClient(NEW_CLIENT_ID, "TESTCLIENT50");
+			User createdUser = TestDataFactory.createActiveUser(NEW_USER_ID, NEW_CLIENT_ID);
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, APP_CODE);
+			app.setAppUsageType(SecurityAppAppUsageType.B2C);
+
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkIndividualClientUser(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+			when(appService.getAppByCode(APP_CODE)).thenReturn(Mono.just(app));
+			when(clientService.getClientBy(CLIENT_CODE)).thenReturn(Mono.just(
+					TestDataFactory.createBusinessClient(SYSTEM_CLIENT_ID, CLIENT_CODE)));
+			when(clientService.getClientLevelType(any(ULong.class), eq(APP_ID)))
+					.thenReturn(Mono.just(ClientLevelType.OWNER));
+			when(appService.getProperties(any(ULong.class), eq(APP_ID), isNull(), eq(AppService.APP_PROP_URL_SUFFIX)))
+					.thenReturn(Mono.just(Map.of()));
+
+			AppProperty regProp = new AppProperty();
+			regProp.setValue(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION);
+			when(appService.getProperties(any(ULong.class), isNull(), eq(APP_CODE), eq(AppService.APP_PROP_REG_TYPE)))
+					.thenReturn(Mono.just(Map.of(SYSTEM_CLIENT_ID,
+							Map.of(AppService.APP_PROP_REG_TYPE, regProp))));
+
+			when(dao.getValidClientCode(anyString())).thenReturn(Mono.just("TESTCLIENT50"));
+			when(clientService.createForRegistration(any(Client.class), any(ULong.class)))
+					.thenReturn(Mono.just(createdClient));
+			when(clientHierarchyService.create(any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(new ClientHierarchy()));
+			when(clientManagerService.createInternal(any(ULong.class), any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(1));
+			when(clientService.addClientRegistrationObjects(any(), any(), any(), any()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(appService.addClientAccessAfterRegistration(anyString(), any(ULong.class), any(Client.class)))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			when(userService.createForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(createdUser));
+
+			TokenObject tokenObj = TestDataFactory.createTokenObject(ULong.valueOf(1), NEW_USER_ID, "test-token",
+					java.time.LocalDateTime.now().plusMinutes(30));
+			when(userService.makeOneTimeToken(any(), any(), any(), any()))
+					.thenReturn(Mono.just(tokenObj));
+			when(appRegistrationDAO.getFileAccessForRegistration(any(), any(), any(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(clientUrlService.getAppUrl(anyString(), anyString()))
+					.thenReturn(Mono.just(""));
+			when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
+
+			AuthenticationResponse authResp = new AuthenticationResponse();
+			authResp.setAccessToken("access-token");
+			when(authenticationService.authenticate(any(), any(ServerHttpRequest.class),
+					any(ServerHttpResponse.class)))
+					.thenReturn(Mono.just(authResp));
+			when(appService.getAppIdsForAdditionalAppRegistration(anyString(), anyString(), any(Client.class)))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.register(req, request, response))
+					.assertNext(regResponse -> {
+						assertNotNull(regResponse);
+						assertTrue(regResponse.getCreated());
+					})
+					.verifyComplete();
+
+			// Owner with managerId should set the provided manager
+			verify(clientManagerService).createInternal(eq(NEW_CLIENT_ID), eq(managerId), eq(USER_ID));
+		}
+
+		@Test
+		void register_AuthenticatedOwner_WithoutManagerId_NoManagerSet() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(USER_ID, SYSTEM_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN", "Authorities.Client_CREATE", "Authorities.ROLE_Owner"));
+			ca.setAuthenticated(true);
+			ca.setUrlAppCode(APP_CODE);
+			ca.setUrlClientCode(CLIENT_CODE);
+			setupSecurityContext(ca);
+
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			// No managerId set
+			ServerHttpRequest request = createMockRequest();
+			ServerHttpResponse response = mock(ServerHttpResponse.class);
+
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			Client createdClient = TestDataFactory.createIndividualClient(NEW_CLIENT_ID, "TESTCLIENT50");
+			User createdUser = TestDataFactory.createActiveUser(NEW_USER_ID, NEW_CLIENT_ID);
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, APP_CODE);
+			app.setAppUsageType(SecurityAppAppUsageType.B2C);
+
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkIndividualClientUser(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+			when(appService.getAppByCode(APP_CODE)).thenReturn(Mono.just(app));
+			when(clientService.getClientBy(CLIENT_CODE)).thenReturn(Mono.just(
+					TestDataFactory.createBusinessClient(SYSTEM_CLIENT_ID, CLIENT_CODE)));
+			when(clientService.getClientLevelType(any(ULong.class), eq(APP_ID)))
+					.thenReturn(Mono.just(ClientLevelType.OWNER));
+			when(appService.getProperties(any(ULong.class), eq(APP_ID), isNull(), eq(AppService.APP_PROP_URL_SUFFIX)))
+					.thenReturn(Mono.just(Map.of()));
+
+			AppProperty regProp = new AppProperty();
+			regProp.setValue(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION);
+			when(appService.getProperties(any(ULong.class), isNull(), eq(APP_CODE), eq(AppService.APP_PROP_REG_TYPE)))
+					.thenReturn(Mono.just(Map.of(SYSTEM_CLIENT_ID,
+							Map.of(AppService.APP_PROP_REG_TYPE, regProp))));
+
+			when(dao.getValidClientCode(anyString())).thenReturn(Mono.just("TESTCLIENT50"));
+			when(clientService.createForRegistration(any(Client.class), any(ULong.class)))
+					.thenReturn(Mono.just(createdClient));
+			when(clientHierarchyService.create(any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(new ClientHierarchy()));
+			when(clientService.addClientRegistrationObjects(any(), any(), any(), any()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(appService.addClientAccessAfterRegistration(anyString(), any(ULong.class), any(Client.class)))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			when(userService.createForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(createdUser));
+
+			TokenObject tokenObj = TestDataFactory.createTokenObject(ULong.valueOf(1), NEW_USER_ID, "test-token",
+					java.time.LocalDateTime.now().plusMinutes(30));
+			when(userService.makeOneTimeToken(any(), any(), any(), any()))
+					.thenReturn(Mono.just(tokenObj));
+			when(appRegistrationDAO.getFileAccessForRegistration(any(), any(), any(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(clientUrlService.getAppUrl(anyString(), anyString()))
+					.thenReturn(Mono.just(""));
+			when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
+
+			AuthenticationResponse authResp = new AuthenticationResponse();
+			authResp.setAccessToken("access-token");
+			when(authenticationService.authenticate(any(), any(ServerHttpRequest.class),
+					any(ServerHttpResponse.class)))
+					.thenReturn(Mono.just(authResp));
+			when(appService.getAppIdsForAdditionalAppRegistration(anyString(), anyString(), any(Client.class)))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.register(req, request, response))
+					.assertNext(regResponse -> {
+						assertNotNull(regResponse);
+						assertTrue(regResponse.getCreated());
+					})
+					.verifyComplete();
+
+			// Owner without managerId should NOT set any manager
+			verify(clientManagerService, never()).createInternal(any(), any(), any());
+		}
+
+		@Test
+		void register_Unauthenticated_NoManagerSet() {
+			ContextAuthentication ca = createUnauthenticatedContext();
+			setupSecurityContext(ca);
+
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			ServerHttpRequest request = createMockRequest();
+			ServerHttpResponse response = mock(ServerHttpResponse.class);
+
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			Client createdClient = TestDataFactory.createIndividualClient(NEW_CLIENT_ID, "TESTCLIENT50");
+			User createdUser = TestDataFactory.createActiveUser(NEW_USER_ID, NEW_CLIENT_ID);
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, APP_CODE);
+			app.setAppUsageType(SecurityAppAppUsageType.B2C);
+
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkIndividualClientUser(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+			when(appService.getAppByCode(APP_CODE)).thenReturn(Mono.just(app));
+			when(clientService.getClientBy(CLIENT_CODE)).thenReturn(Mono.just(
+					TestDataFactory.createBusinessClient(SYSTEM_CLIENT_ID, CLIENT_CODE)));
+			when(clientService.getClientLevelType(any(ULong.class), eq(APP_ID)))
+					.thenReturn(Mono.just(ClientLevelType.OWNER));
+			when(appService.getProperties(any(ULong.class), eq(APP_ID), isNull(), eq(AppService.APP_PROP_URL_SUFFIX)))
+					.thenReturn(Mono.just(Map.of()));
+
+			AppProperty regProp = new AppProperty();
+			regProp.setValue(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION);
+			when(appService.getProperties(any(ULong.class), isNull(), eq(APP_CODE), eq(AppService.APP_PROP_REG_TYPE)))
+					.thenReturn(Mono.just(Map.of(SYSTEM_CLIENT_ID,
+							Map.of(AppService.APP_PROP_REG_TYPE, regProp))));
+
+			when(dao.getValidClientCode(anyString())).thenReturn(Mono.just("TESTCLIENT50"));
+			when(clientService.createForRegistration(any(Client.class), any(ULong.class)))
+					.thenReturn(Mono.just(createdClient));
+			when(clientHierarchyService.create(any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(new ClientHierarchy()));
+			when(clientService.addClientRegistrationObjects(any(), any(), any(), any()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(appService.addClientAccessAfterRegistration(anyString(), any(ULong.class), any(Client.class)))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			when(userService.createForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(createdUser));
+
+			TokenObject tokenObj = TestDataFactory.createTokenObject(ULong.valueOf(1), NEW_USER_ID, "test-token",
+					java.time.LocalDateTime.now().plusMinutes(30));
+			when(userService.makeOneTimeToken(any(), any(), any(), any()))
+					.thenReturn(Mono.just(tokenObj));
+			when(appRegistrationDAO.getFileAccessForRegistration(any(), any(), any(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(clientUrlService.getAppUrl(anyString(), anyString()))
+					.thenReturn(Mono.just(""));
+			when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
+
+			AuthenticationResponse authResp = new AuthenticationResponse();
+			authResp.setAccessToken("access-token");
+			when(authenticationService.authenticate(any(), any(ServerHttpRequest.class),
+					any(ServerHttpResponse.class)))
+					.thenReturn(Mono.just(authResp));
+			when(appService.getAppIdsForAdditionalAppRegistration(anyString(), anyString(), any(Client.class)))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.register(req, request, response))
+					.assertNext(regResponse -> {
+						assertNotNull(regResponse);
+						assertTrue(regResponse.getCreated());
+					})
+					.verifyComplete();
+
+			// Unauthenticated registration should NOT set any manager
+			verify(clientManagerService, never()).createInternal(any(), any(), any());
+		}
+
+		@Test
 		void register_ExistingUser_ThrowsError() {
 			ContextAuthentication ca = createUnauthenticatedContext();
 			setupSecurityContext(ca);

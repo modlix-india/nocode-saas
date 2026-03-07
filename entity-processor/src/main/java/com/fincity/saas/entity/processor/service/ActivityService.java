@@ -335,6 +335,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acStageStatus"));
     }
 
+    public Mono<Void> acWalkinStageStatus(ProcessorAccess access, Ticket ticket, String comment, ULong oldStageId) {
+
+        return Mono.when(
+                        this.acStatusCreate(access, ticket, comment),
+                        this.acStageUpdate(access, ticket, comment, oldStageId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acStageStatus"));
+    }
+
     private Mono<Void> acStatusCreate(ProcessorAccess access, Ticket ticket, String comment) {
 
         if (ticket.getStatus() == null) return Mono.empty();

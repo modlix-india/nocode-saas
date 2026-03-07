@@ -21,6 +21,7 @@ import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppl
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public class TicketCallService implements IRepositoryProvider {
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final TicketService ticketService;
     private final ProductCommService productCommService;
+    private final ProductService productService;
     private final IFeignMessageService messageService;
     private final ProcessorMessageResourceService msgService;
     private final ActivityService activityService;
@@ -56,12 +58,14 @@ public class TicketCallService implements IRepositoryProvider {
     public TicketCallService(
             TicketService ticketService,
             ProductCommService productCommService,
+            ProductService productService,
             IFeignMessageService messageService,
             ProcessorMessageResourceService msgService,
             ActivityService activityService,
             Gson gson) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
+        this.productService = productService;
         this.messageService = messageService;
         this.msgService = msgService;
         this.activityService = activityService;
@@ -166,16 +170,23 @@ public class TicketCallService implements IRepositoryProvider {
 
         logger.info("Creating new ticket for productId: {}, from: {}", productId, from.getNumber());
 
-        return ticketService
-                .create(
-                        access,
-                        new Ticket()
-                                .setName("New Customer")
-                                .setDialCode(from.getCountryCode())
-                                .setPhoneNumber(from.getNumber())
-                                .setProductId(productId)
-                                .setSource(source)
-                                .setSubSource(subSource))
+        return this.productService
+                .readById(access, productId)
+                .flatMap(product -> {
+                    if (!product.isActive())
+                        return this.msgService.<Ticket>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                    return ticketService.create(
+                            access,
+                            new Ticket()
+                                    .setName("New Customer")
+                                    .setDialCode(from.getCountryCode())
+                                    .setPhoneNumber(from.getNumber())
+                                    .setProductId(productId)
+                                    .setSource(source)
+                                    .setSubSource(subSource));
+                })
                 .doOnNext(ticket ->
                         logger.info("Created new ticket - ticketId: {}, productId: {}", ticket.getId(), productId))
                 .switchIfEmpty(this.msgService.throwMessage(

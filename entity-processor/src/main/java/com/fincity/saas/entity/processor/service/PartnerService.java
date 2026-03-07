@@ -219,11 +219,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                         BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
 
                             return super.createInternal(
-                                            access,
-                                            Partner.of(partnerRequest)
-                                                    .setManagerId(null)
-                                                    .setPartnerVerificationStatus(
-                                                            PartnerVerificationStatus.INVITATION_SENT));
+                                    access,
+                                    Partner.of(partnerRequest)
+                                            .setManagerId(null)
+                                            .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.createPartner"));
     }

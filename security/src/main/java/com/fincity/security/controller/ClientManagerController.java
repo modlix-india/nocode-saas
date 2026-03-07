@@ -55,7 +55,7 @@ public class ClientManagerController {
 
     @PostMapping("/{clientId}")
     public Mono<ResponseEntity<Boolean>> updateManager(@PathVariable ULong clientId,
-            @RequestParam ULong oldManagerId, @RequestParam ULong newManagerId) {
+            @RequestParam(required = false) ULong oldManagerId, @RequestParam ULong newManagerId) {
         return service.updateManager(clientId, oldManagerId, newManagerId)
                 .map(ResponseEntity::ok);
     }
@@ -65,4 +65,12 @@ public class ClientManagerController {
         return service.delete(uid, clientId)
                 .map(ResponseEntity::ok);
     }
+
+    @PostMapping("/migrateTo/{uid}")
+    public Mono<ResponseEntity<Integer>> migrateClientManagersFrom(@PathVariable ULong uid,
+            @RequestParam ULong fromUid) {
+        return service.migrateClientManagersFrom(fromUid, uid)
+                .map(ResponseEntity::ok);
+    }
+
 }

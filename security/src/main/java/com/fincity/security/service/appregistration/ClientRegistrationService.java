@@ -533,14 +533,24 @@ public class ClientRegistrationService {
                                 .create(loggedInFromClientId, createdClient.getId()),
 
                         (isVerified, app, c, createdClient, clientHierarchy) -> {
-                            if (request.getManagerId() != null && ca.isAuthenticated()
-                                    && SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
-                                            ca.getAuthorities()))
+                            if (!ca.isAuthenticated())
+                                return Mono.just(Boolean.TRUE);
+
+                            if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
+                                    ca.getAuthorities()))
+                                return this.clientManagerService
+                                        .createInternal(createdClient.getId(),
+                                                ULongUtil.valueOf(ca.getUser().getId()),
+                                                ULongUtil.valueOf(ca.getUser().getId()))
+                                        .thenReturn(Boolean.TRUE);
+
+                            if (request.getManagerId() != null)
                                 return this.clientManagerService
                                         .createInternal(createdClient.getId(),
                                                 request.getManagerId(),
                                                 ULongUtil.valueOf(ca.getUser().getId()))
                                         .thenReturn(Boolean.TRUE);
+
                             return Mono.just(Boolean.TRUE);
                         },
 

@@ -10,8 +10,10 @@ import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
@@ -49,12 +51,14 @@ import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -336,13 +340,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         access -> Mono.zip(
                                 this.productService.readByIdentity(access, ticketRequest.getProductId()),
                                 this.getDnc(access, ticketRequest)),
-                        (access, productIdentity) -> this.checkDuplicate(
-                                access,
-                                productIdentity.getT1().getId(),
-                                ticketRequest.getPhoneNumber(),
-                                ticketRequest.getEmail(),
-                                ticketRequest.getSource(),
-                                ticketRequest.getSubSource()),
+                        (access, productIdentity) -> {
+                            if (!productIdentity.getT1().isActive())
+                                return this.msgService.<Boolean>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return this.checkDuplicate(
+                                    access,
+                                    productIdentity.getT1().getId(),
+                                    ticketRequest.getPhoneNumber(),
+                                    ticketRequest.getEmail(),
+                                    ticketRequest.getSource(),
+                                    ticketRequest.getSubSource());
+                        },
                         (access, productIdentity, isDuplicate) -> Mono.just(
                                 ticket.setProductId(productIdentity.getT1().getId())
                                         .setDnc(productIdentity.getT2())),
@@ -376,8 +386,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         this.campaignService.getEntityName(),
                                         cTicketRequest.getCampaignDetails().getCampaignId())),
                         campaign -> this.productService.readById(access, campaign.getProductId()),
-                        (campaign, product) ->
-                                Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId())),
+                        (campaign, product) -> {
+                            if (!product.isActive())
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId()));
+                        },
                         (campaign, product, ticket) -> this.checkDuplicate(
                                 access,
                                 campaign.getProductId(),
@@ -414,7 +429,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         () -> this.productService.readByCode(access, productCode),
-                        product -> Mono.just(Ticket.of(cTicketRequest)),
+                        product -> {
+                            if (!product.isActive())
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return Mono.just(Ticket.of(cTicketRequest));
+                        },
                         (product, ticket) -> this.checkDuplicate(
                                 access,
                                 product.getId(),
@@ -442,12 +463,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.readByIdentity(access, request.getProductId()),
-                product -> this.stageService
-                        .getParentChild(
-                                access, product.getProductTemplateId(), request.getStageId(), request.getStatusId())
-                        .switchIfEmpty(this.msgService.throwMessage(
+                product -> {
+                    if (!product.isActive())
+                        return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.STAGE_MISSING)),
+                                ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                    return this.stageService
+                            .getParentChild(
+                                    access, product.getProductTemplateId(), request.getStageId(), request.getStatusId())
+                            .switchIfEmpty(this.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                    ProcessorMessageResourceService.STAGE_MISSING));
+                },
                 (product, stageStatusEntity) -> request.getClientId() != null
                         ? this.securityService
                                 .getClientById(request.getClientId().toBigInteger())
@@ -798,6 +825,28 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
         return this.getTickets(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTickets"));
+    }
+
+    public Mono<Map<String, Object>> readEager(
+            ProcessorAccess access, Identity identity, List<String> fields, MultiValueMap<String, String> queryParams) {
+
+        return this.dao
+                .readByIdentityAndAppCodeAndClientCodeEager(identity, access, fields, queryParams)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readEager"));
+    }
+
+    public Mono<List<User>> readTicketUsers(Query query, String timezone) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.dao.processorAccessCondition(query.getCondition(), access),
+                        (access, pCondition) -> this.dao.readDistinctAssignedUserIds(
+                                pCondition, timezone, query.getSubQueryConditions()),
+                        (access, pCondition, userIds) -> {
+                            if (userIds.isEmpty()) return Mono.just(List.<User>of());
+                            return this.securityService.getUsersInternal(
+                                    userIds.stream().map(ULong::toBigInteger).toList(), null);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readTicketUsers"));
     }
 
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {

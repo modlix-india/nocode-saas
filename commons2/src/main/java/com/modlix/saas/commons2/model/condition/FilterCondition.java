@@ -18,6 +18,7 @@ public class FilterCondition extends AbstractCondition {
     private static final long serialVersionUID = -4542270694019365457L;
 
     private String field;
+    private FieldExpression fieldExpr;
     private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
     private Object value; // NOSONAR
     private Object toValue; // NOSONAR
@@ -25,6 +26,10 @@ public class FilterCondition extends AbstractCondition {
     private boolean isValueField = false;
     private boolean isToValueField = false;
     private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
+
+    public boolean hasFieldExpr() {
+        return fieldExpr != null && fieldExpr.isValid();
+    }
 
     public static FilterCondition make(String field, Object value) {
         return new FilterCondition().setField(field).setValue(value);

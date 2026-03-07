@@ -278,6 +278,11 @@ public class TestDataFactory {
 		return createContextAuthentication(ULong.valueOf(10), clientId, clientCode, "BUS", true, authorities);
 	}
 
+	public static ContextAuthentication createBusinessAuth(ULong userId, ULong clientId, String clientCode,
+			List<String> authorities) {
+		return createContextAuthentication(userId, clientId, clientCode, "BUS", true, authorities);
+	}
+
 	// --- AuthenticationRequest ---
 
 	public static AuthenticationRequest createAuthenticationRequest(String userName, String password) {

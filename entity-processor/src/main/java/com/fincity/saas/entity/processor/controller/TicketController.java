@@ -1,5 +1,21 @@
 package com.fincity.saas.entity.processor.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.controller.base.BaseProcessorController;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -15,16 +31,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -87,4 +94,11 @@ public class TicketController
                 .readByIdentity(ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)
                 .map(ResponseEntity::ok);
     }
+
+    @PostMapping("/users/query")
+    public Mono<ResponseEntity<List<User>>> tiketsUserQuery(@RequestBody Query query, ServerHttpRequest request) {
+        String timezone = this.extractTimezone(request);
+        return this.service.readTicketUsers(query, timezone).map(ResponseEntity::ok);
+    }
+
 }

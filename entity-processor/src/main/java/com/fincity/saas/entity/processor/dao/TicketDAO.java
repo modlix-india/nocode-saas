@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -169,8 +170,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         if (tableFields.contains(Ticket.Fields.productTemplateId))
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
 
-        if (tableFields.contains(Ticket.Fields.latestTaskDueDate))
-            list.add(latestTaskDueDate);
+        if (tableFields.contains(Ticket.Fields.latestTaskDueDate)) list.add(latestTaskDueDate);
 
         return list;
     }
@@ -222,6 +222,42 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                     .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)));
                             return Tuples.of(Tuples.of(recordQuery, countQuery), tuple.getT2());
                         }));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<List<ULong>> readDistinctAssignedUserIds(
+            AbstractCondition condition,
+            String timezone,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        SelectJoinStep<Record> baseQuery = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+                dslContext.selectDistinct(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID)
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        Mono<SelectJoinStep<Record>> queryMono;
+
+        if (subQueryConditions != null && !subQueryConditions.isEmpty()) {
+            AbstractCondition activityCondition = subQueryConditions.get(SUBQUERY_ALIAS);
+            if (activityCondition != null && !activityCondition.isEmpty()) {
+                queryMono = this.buildActivitiesSubqueryTable(activityCondition)
+                        .map(subqueryTable -> (SelectJoinStep<Record>) baseQuery
+                                .join(subqueryTable)
+                                .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))));
+            } else {
+                queryMono = Mono.just(baseQuery);
+            }
+        } else {
+            queryMono = Mono.just(baseQuery);
+        }
+
+        return queryMono.flatMap(query ->
+                this.filter(condition, query, timezone)
+                        .flatMap(jCondition -> Flux.from(query.where(jCondition.and(this.isActiveTrue())))
+                                .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID))
+                                .filter(Objects::nonNull)
+                                .collectList()));
     }
 
     @SuppressWarnings("unchecked")
@@ -292,6 +328,9 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
 
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
+        if (access.getUser() == null && access.getUserInherit() == null)
+            return Mono.just(super.addAppCodeAndClientCode(condition, access));
+
         return FlatMapUtil.flatMapMono(
                         () -> this.productTicketRuRuleService
                                 .getUserReadConditions(access)
@@ -306,13 +345,19 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     private Field<LocalDateTime> getLatestTaskDueDateField() {
-        return dslContext.select(ENTITY_PROCESSOR_TASKS.DUE_DATE)
+        return dslContext
+                .select(ENTITY_PROCESSOR_TASKS.DUE_DATE)
                 .from(ENTITY_PROCESSOR_TASKS)
                 .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
                 .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
                 .orderBy(
-                        DSL.field(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime())).desc(),
-                        DSL.if_(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()), ENTITY_PROCESSOR_TASKS.DUE_DATE, DSL.inline((LocalDateTime) null)).asc(),
+                        DSL.field(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
+                                .desc(),
+                        DSL.if_(
+                                        ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()),
+                                        ENTITY_PROCESSOR_TASKS.DUE_DATE,
+                                        DSL.inline((LocalDateTime) null))
+                                .asc(),
                         ENTITY_PROCESSOR_TASKS.DUE_DATE.desc())
                 .limit(DSL.inline(1))
                 .asField("LATEST_TASK_DUE_DATE");

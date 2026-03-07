@@ -4,6 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -90,8 +92,14 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> this.productService.readByIdentity(access, campaignRequest.getProductId()),
-                        (access, product) -> super.createInternal(
-                                access, Campaign.of(campaignRequest).setProductId(product.getId())))
+                        (access, product) -> {
+                            if (!product.isActive())
+                                return this.msgService.<Campaign>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                            return super.createInternal(
+                                    access, Campaign.of(campaignRequest).setProductId(product.getId()));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.createRequest[CampaignRequest]"));
     }
 

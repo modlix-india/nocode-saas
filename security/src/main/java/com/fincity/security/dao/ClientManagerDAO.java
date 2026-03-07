@@ -113,6 +113,25 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .collectList();
     }
 
+    public Mono<Integer> migrateManagerAssignments(ULong fromManagerId, ULong toManagerId, ULong createdBy) {
+
+        return Mono.from(this.dslContext
+                .insertInto(SECURITY_CLIENT_MANAGER)
+                .columns(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID,
+                        SECURITY_CLIENT_MANAGER.CREATED_BY)
+                .select(this.dslContext
+                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID,
+                                org.jooq.impl.DSL.val(toManagerId),
+                                org.jooq.impl.DSL.val(createdBy))
+                        .from(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                .onDuplicateKeyIgnore())
+                .flatMap(inserted -> Mono.from(this.dslContext
+                        .deleteFrom(SECURITY_CLIENT_MANAGER)
+                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                        .map(deleted -> inserted + deleted));
+    }
+
     public Mono<ULong> getLatestManagerIdForClient(ULong clientId) {
         return Mono.from(this.dslContext
                         .select(SECURITY_CLIENT_MANAGER.MANAGER_ID)

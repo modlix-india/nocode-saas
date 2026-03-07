@@ -44,7 +44,9 @@ class UserServiceExtendedIntegrationTest extends AbstractIntegrationTest {
 	void tearDown() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_v2_user_role WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_v2_role WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_profile_user WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_profile WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client_manager WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_past_passwords WHERE USER_ID > 1").then())
@@ -53,6 +55,8 @@ class UserServiceExtendedIntegrationTest extends AbstractIntegrationTest {
 				.then(databaseClient.sql(
 						"UPDATE security_user SET DESIGNATION_ID = NULL, REPORTING_TO = NULL WHERE ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_app_access WHERE ID > 0").then())
+				.then(databaseClient.sql("DELETE FROM security_app WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
 				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
 				.block();

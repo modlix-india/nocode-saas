@@ -56,6 +56,10 @@ public abstract class AbstractUpdatableClientCheckDAO<
         return ClientCheckDAOHelper.applyClientFilter(condition);
     }
 
+    protected Mono<Condition> baseFilter(AbstractCondition abstractCondition, SelectJoinStep<Record> selectJoinStep) {
+        return super.filter(abstractCondition, selectJoinStep);
+    }
+
     public Mono<Boolean> canBeUpdated(I id) {
         return this.getSelectJointStep()
                 .map(Tuple2::getT2)

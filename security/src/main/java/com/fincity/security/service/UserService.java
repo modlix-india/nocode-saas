@@ -54,7 +54,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
-import com.fincity.security.dto.App;
+
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
@@ -179,6 +179,68 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Boolean> canAccessClientForUserOperation(ULong clientId) {
         return SecurityContextUtil.getUsersContextAuthentication()
                 .flatMap(ca -> this.clientService.isUserClientManageClient(ca, clientId));
+    }
+
+    /**
+     * Returns true when the caller is a non-owner member of the SAME client as
+     * targetClientId. System clients, owners, and cross-client callers return false
+     * (those paths are already handled by canAccessClientForUserOperation).
+     */
+    private boolean isSameClientNonOwner(ContextAuthentication ca, ULong targetClientId) {
+        if (ca.isSystemClient()) return false;
+        if (!ULong.valueOf(ca.getUser().getClientId()).equals(targetClientId)) return false;
+        return !SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner", ca.getAuthorities());
+    }
+
+    /**
+     * For a non-owner same-client caller: check if targetUserId is in caller's sub-org,
+     * then run the supplied action. Otherwise emit empty (triggers forbidden switchIfEmpty).
+     */
+    private <T> Mono<T> checkSubOrgAndRun(
+            ContextAuthentication ca, ULong clientId, ULong targetUserId, Mono<T> action) {
+        if (!isSameClientNonOwner(ca, clientId))
+            return action;
+
+        ULong callerId = ULong.valueOf(ca.getUser().getId());
+        if (callerId.equals(targetUserId))
+            return action;  // self: always allowed
+
+        return this.dao.isUserInSubOrg(clientId, callerId, targetUserId)
+                .flatMap(inSubOrg -> Boolean.TRUE.equals(inSubOrg) ? action : Mono.empty());
+    }
+
+    /** Validates designation and reportingTo when access is denied — throws BadRequest if invalid. */
+    private Mono<User> validateCreateDesignationAndReporting(User entity) {
+        return Mono.zip(
+                this.designationService.canAssignDesignation(entity.getClientId(), entity.getDesignationId()),
+                this.userSubOrgService.canReportTo(entity.getClientId(), entity.getReportingTo(), null))
+                .flatMap(e -> {
+                    if (!BooleanUtil.safeValueOf(e.getT1()))
+                        return this.securityMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
+                    if (!BooleanUtil.safeValueOf(e.getT2()))
+                        return this.securityMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.USER_REPORTING_ERROR);
+                    return Mono.<User>empty();
+                });
+    }
+
+    /** For a managed client: validates sub-org for non-owner same-client callers with reportingTo set. */
+    private Mono<User> checkCreateSubOrg(ContextAuthentication ca, User entity) {
+        if (!isSameClientNonOwner(ca, entity.getClientId()) || entity.getReportingTo() == null)
+            return Mono.just(entity);
+
+        return this.dao.isUserInSubOrg(
+                        entity.getClientId(),
+                        ULong.valueOf(ca.getUser().getId()),
+                        entity.getReportingTo())
+                .flatMap(inSubOrg -> Boolean.TRUE.equals(inSubOrg)
+                        ? Mono.just(entity)
+                        : this.securityMessageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.USER_REPORTING_ERROR));
     }
 
     public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(
@@ -359,29 +421,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.canAccessClientForUserOperation(entity.getClientId()),
-                            canAccess -> {
-                                if (Boolean.TRUE.equals(canAccess)) {
-                                    return Mono.just(entity);
-                                }
-                                return Mono.zip(
-                                        this.designationService.canAssignDesignation(
-                                                entity.getClientId(), entity.getDesignationId()),
-                                        this.userSubOrgService.canReportTo(
-                                                entity.getClientId(), entity.getReportingTo(), null))
-                                        .flatMap(e -> {
-                                            if (!BooleanUtil.safeValueOf(e.getT1()))
-                                                return this.securityMessageResourceService.throwMessage(
-                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                                        SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
-
-                                            if (!BooleanUtil.safeValueOf(e.getT2()))
-                                                return this.securityMessageResourceService.throwMessage(
-                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                                        SecurityMessageResourceService.USER_REPORTING_ERROR);
-
-                                            return Mono.empty();
-                                        });
-                            });
+                            canAccess -> Boolean.TRUE.equals(canAccess)
+                                    ? this.checkCreateSubOrg(ca, entity)
+                                    : this.validateCreateDesignationAndReporting(entity));
                 },
                 (ca, user) -> checkUserIdentificationKeys(entity),
                 (ca, user, isValid) -> this.getPasswordEntities(user),
@@ -668,7 +710,47 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
     @Override
     public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return super.readPageFilter(pageable, condition);
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (!isSameClientNonOwner(ca, ULong.valueOf(ca.getUser().getClientId())))
+                        return super.readPageFilter(pageable, condition);
+
+                    ULong ownClientId = ULong.valueOf(ca.getUser().getClientId());
+                    return this.userSubOrgService.getCurrentUserSubOrg()
+                            .collectList()
+                            .flatMap(subOrgIds -> this.clientManagerService
+                                    .getClientIdsOfManagersInternal(subOrgIds)
+                                    .map(managedClientIds -> managedClientIds.stream()
+                                            .filter(id -> !id.equals(ownClientId))
+                                            .toList())
+                                    .map(managedClientIds -> buildVisibilityCondition(
+                                            subOrgIds, managedClientIds, condition)))
+                            .flatMap(merged -> super.readPageFilter(pageable, merged));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.readPageFilter"));
+    }
+
+    private AbstractCondition buildVisibilityCondition(List<ULong> subOrgIds,
+            List<ULong> managedClientIds, AbstractCondition condition) {
+
+        AbstractCondition subOrgCond = new FilterCondition()
+                .setField("id")
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(subOrgIds);
+
+        AbstractCondition visibleCond;
+        if (managedClientIds == null || managedClientIds.isEmpty()) {
+            visibleCond = subOrgCond;
+        } else {
+            AbstractCondition managedClientCond = new FilterCondition()
+                    .setField("clientId")
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(managedClientIds);
+            visibleCond = ComplexCondition.or(subOrgCond, managedClientCond);
+        }
+
+        return condition == null ? visibleCond : ComplexCondition.and(visibleCond, condition);
     }
 
     public Mono<Page<User>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
@@ -690,21 +772,26 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, clientId) -> this.clientService
                         .getClientTypeNCodeNClientLevel(clientId)
                         .map(Tuple2::getT1),
-                (ca, clientId, clientType) -> switch (clientType) {
-                    case "INDV" -> this.clientHierarchyService
-                            .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
-                            .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
-                                    managingClientId, userName, emailId, phoneNumber, "INDV", key));
-                    case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
-                    default -> Mono.empty();
+                (ca, clientId, clientType) -> {
+                    if (userName == null && emailId == null && phoneNumber == null)
+                        return Mono.just(Boolean.FALSE);
+
+                    return switch (clientType) {
+                        case "INDV" -> this.clientHierarchyService
+                                .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
+                                .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
+                                        managingClientId, userName, emailId, phoneNumber, "INDV", key));
+                        case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
+                        default -> Mono.empty();
+                    };
                 },
                 (ca, clientId, clientType, userExists) -> {
-                    if (Boolean.TRUE.equals(userExists)) {
+                    if (Boolean.TRUE.equals(userExists))
                         return Mono.empty();
-                    }
+
                     return this.canAccessClientForUserOperation(clientId)
                             .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
-                                    ? super.update(key, fields)
+                                    ? this.checkSubOrgAndRun(ca, clientId, key, super.update(key, fields))
                                     : Mono.empty());
                 },
                 (ca, clientId, clientType, userExists, updated) -> updated != null
@@ -742,12 +829,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     default -> Mono.empty();
                 },
                 (ca, clientType, userExists) -> {
-                    if (Boolean.TRUE.equals(userExists)) {
+                    if (Boolean.TRUE.equals(userExists))
                         return Mono.empty();
-                    }
+
                     return this.canAccessClientForUserOperation(entity.getClientId())
                             .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
-                                    ? super.update(entity)
+                                    ? this.checkSubOrgAndRun(
+                                            ca, entity.getClientId(), entity.getId(), super.update(entity))
                                     : Mono.empty());
                 },
                 (ca, clientType, userExists, updated) -> updated != null
@@ -802,13 +890,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 ca -> this.read(id),
                 (ca, user) -> this.canAccessClientForUserOperation(user.getClientId()),
                 (ca, user, canAccess) -> {
-                    if (!Boolean.TRUE.equals(canAccess)) {
+                    if (!Boolean.TRUE.equals(canAccess))
                         return this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user")
                                 .cast(Integer.class);
-                    }
-                    user.setStatusCode(SecurityUserStatusCode.DELETED);
-                    return this.update(user)
-                            .flatMap(e -> this.evictCache(e.getId(), e.getClientId()).map(x -> 1));
+
+                    Mono<Integer> doDelete = Mono.fromSupplier(() -> {
+                        user.setStatusCode(SecurityUserStatusCode.DELETED);
+                        return user;
+                    }).flatMap(u -> this.update(u)
+                            .flatMap(e -> this.evictCache(e.getId(), e.getClientId()).map(x -> 1)));
+
+                    return this.<Integer>checkSubOrgAndRun(ca, user.getClientId(), id, doDelete)
+                            .switchIfEmpty(this.forbiddenError(
+                                    SecurityMessageResourceService.FORBIDDEN_UPDATE, "user")
+                                    .cast(Integer.class));
                 })
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user")
                         .cast(Integer.class));
@@ -824,15 +919,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         : clientService
                                 .isUserClientManageClient(ca, user.getClientId())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                (ca, user, isManaged) -> this.dao
-                        .removeRoleForUser(userId, roleId)
-                        .map(val -> {
-                            boolean removed = val > 0;
-                            if (removed)
-                                super.unAssignLog(userId, UNASSIGNED_ROLE);
-
-                            return removed;
-                        }),
+                (ca, user, isManaged) -> this.<Boolean>checkSubOrgAndRun(ca, user.getClientId(), userId,
+                        this.dao.removeRoleForUser(userId, roleId)
+                                .map(val -> {
+                                    boolean removed = val > 0;
+                                    if (removed)
+                                        super.unAssignLog(userId, UNASSIGNED_ROLE);
+                                    return removed;
+                                })),
                 (ca, user, isManaged, removed) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
@@ -858,14 +952,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     (ca, user, sysOrManaged) -> this.profileService
                             .hasAccessToRoles(user.getClientId(), Set.of(roleId))
                             .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                    (ca, user, sysOrManaged, roleApplicable) -> this.dao
-                            .addRoleToUser(userId, roleId)
-                            .map(e -> {
-                                if (Boolean.TRUE.equals(e))
-                                    super.assignLog(userId, ASSIGNED_ROLE + roleId);
-
-                                return e;
-                            }),
+                    (ca, user, sysOrManaged, roleApplicable) -> this.<Boolean>checkSubOrgAndRun(
+                            ca, user.getClientId(), userId,
+                            this.dao.addRoleToUser(userId, roleId)
+                                    .map(e -> {
+                                        if (Boolean.TRUE.equals(e))
+                                            super.assignLog(userId, ASSIGNED_ROLE + roleId);
+                                        return e;
+                                    })),
                     (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this
                             .evictCache(userId, user.getClientId()).<Boolean>map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
@@ -886,7 +980,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, user, sysManaged) -> profileService
                         .hasAccessToProfiles(user.getClientId(), Set.of(profileId))
                         .filter(BooleanUtil::safeValueOf),
-                (ca, user, sysManaged, profileAccess) -> this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
+                (ca, user, sysManaged, profileAccess) -> this.<Boolean>checkSubOrgAndRun(
+                        ca, user.getClientId(), userId,
+                        this.dao.addProfileToUser(userId, profileId).map(e -> e != 0)),
                 (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
@@ -904,7 +1000,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, user) -> clientService
                         .isUserClientManageClient(ca, user.getClientId())
                         .filter(BooleanUtil::safeValueOf),
-                (ca, user, sysManaged) -> this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
+                (ca, user, sysManaged) -> this.<Boolean>checkSubOrgAndRun(
+                        ca, user.getClientId(), userId,
+                        this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0)),
                 (ca, user, sysManaged, profileRemoved) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
@@ -1402,10 +1500,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.FALSE.equals(managed))
                         return Mono.empty();
 
-                    return user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE)
-                            ? Mono.just(Boolean.TRUE)
-                            : super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
-                                    .map(x -> Boolean.TRUE);
+                    if (user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE))
+                        return Mono.just(Boolean.TRUE);
+
+                    return this.<Boolean>checkSubOrgAndRun(ca, user.getClientId(), user.getId(),
+                            super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
+                                    .map(x -> Boolean.TRUE));
                 },
                 (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
                         .<Boolean>map(x -> updated))
@@ -1429,10 +1529,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.FALSE.equals(managed))
                         return Mono.empty();
 
-                    return user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE)
-                            ? Mono.just(Boolean.TRUE)
-                            : super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
-                                    .map(x -> Boolean.TRUE);
+                    if (user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE))
+                        return Mono.just(Boolean.TRUE);
+
+                    return this.<Boolean>checkSubOrgAndRun(ca, user.getClientId(), user.getId(),
+                            super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
+                                    .map(x -> Boolean.TRUE));
                 },
                 (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
                         .<Boolean>map(x -> updated))
@@ -1452,8 +1554,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         : this.dao
                                 .readById(id)
                                 .flatMap(e -> this.clientService.isUserClientManageClient(ca, e.getClientId())),
-                (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
-                        : this.unlockUserInternal(id))
+                (ca, id, sysOrManaged) -> {
+                    if (Boolean.FALSE.equals(sysOrManaged))
+                        return Mono.empty();
+
+                    return this.dao.readById(id)
+                            .flatMap(user -> this.<Boolean>checkSubOrgAndRun(
+                                    ca, user.getClientId(), id,
+                                    this.unlockUserInternal(id)));
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.unblockUser"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1552,7 +1661,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                 : Mono.just(user)),
-                (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
+                (ca, user, sysOrManaged, validUser) -> this.<User>checkSubOrgAndRun(
+                        ca, user.getClientId(), userId,
+                        super.update(user.setDesignationId(designationId))),
 
                 (ca, user, sysOrManaged, validUser, updated) -> this.evictCache(
                         updated.getId(), updated.getClientId())

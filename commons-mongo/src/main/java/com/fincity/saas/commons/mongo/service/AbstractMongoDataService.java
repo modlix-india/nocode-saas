@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -22,6 +23,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FieldExpression;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.LogUtil;
@@ -111,7 +113,13 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 	private Mono<Criteria> filterConditionFilter(FilterCondition fc) {// NOSONAR
 		// in order to cover all operators this kind of check is essential
 
-		if (fc == null || fc.getField() == null)
+		if (fc == null)
+			return Mono.empty();
+
+		if (fc.hasFieldExpr())
+			return filterConditionWithFieldExpr(fc);
+
+		if (fc.getField() == null)
 			return Mono.empty();
 
 		Criteria crit = Criteria.where(fc.getField());
@@ -169,6 +177,113 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 			default -> Mono.empty();
 		};
 
+	}
+
+	private Mono<Criteria> filterConditionWithFieldExpr(FilterCondition fc) { // NOSONAR
+
+		FieldExpression expr = fc.getFieldExpr();
+		if (expr == null || !expr.isValid())
+			return Mono.empty();
+
+		Object computedField = buildMongoFieldExpression(expr);
+
+		return buildMongoExprCondition(computedField, fc);
+	}
+
+	private Object buildMongoFieldExpression(FieldExpression expr) {
+
+		List<String> fields = expr.getFields();
+
+		return switch (expr.getFunction()) {
+			case CONCAT -> {
+				List<Object> concatArgs = new ArrayList<>();
+				for (int i = 0; i < fields.size(); i++) {
+					if (i > 0 && expr.getSeparator() != null && !expr.getSeparator().isEmpty())
+						concatArgs.add(expr.getSeparator());
+					concatArgs.add("$" + fields.get(i));
+				}
+				yield new Document("$concat", concatArgs);
+			}
+			case UPPER -> new Document("$toUpper", "$" + fields.getFirst());
+			case LOWER -> new Document("$toLower", "$" + fields.getFirst());
+			case TRIM -> new Document("$trim", new Document("input", "$" + fields.getFirst()));
+			case COALESCE -> buildNestedIfNull(fields.stream().map(f -> (Object) ("$" + f)).toList());
+		};
+	}
+
+	private Object buildNestedIfNull(List<Object> args) {
+
+		if (args.size() == 1)
+			return args.getFirst();
+
+		if (args.size() == 2)
+			return new Document("$ifNull", args);
+
+		return new Document("$ifNull",
+				List.of(args.getFirst(), buildNestedIfNull(args.subList(1, args.size()))));
+	}
+
+	private Mono<Criteria> buildMongoExprCondition(Object computedField, FilterCondition fc) { // NOSONAR
+
+		if (fc.getOperator() == IS_NULL)
+			return Mono.just(Criteria.where("$expr").is(
+					new Document(fc.isNegate() ? "$ne" : "$eq", List.of(computedField, null))));
+
+		if (fc.getOperator() == IS_TRUE)
+			return Mono.just(Criteria.where("$expr").is(
+					new Document(fc.isNegate() ? "$ne" : "$eq", List.of(computedField, true))));
+
+		if (fc.getOperator() == IS_FALSE)
+			return Mono.just(Criteria.where("$expr").is(
+					new Document(fc.isNegate() ? "$ne" : "$eq", List.of(computedField, false))));
+
+		if (fc.getOperator() == IN) {
+			if (fc.getValue() == null && (fc.getMultiValue() == null || fc.getMultiValue().isEmpty()))
+				return Mono.empty();
+
+			List<?> values = this.multiFieldValue(fc.getValue(), fc.getMultiValue());
+			Document inDoc = new Document("$in", List.of(computedField, values));
+			return Mono.just(Criteria.where("$expr").is(
+					fc.isNegate() ? new Document("$not", inDoc) : inDoc));
+		}
+
+		if (fc.getValue() == null)
+			return Mono.empty();
+
+		if (fc.getOperator() == BETWEEN && fc.getToValue() != null) {
+			Document betweenDoc = new Document("$and", List.of(
+					new Document("$gte", List.of(computedField, fc.getValue())),
+					new Document("$lte", List.of(computedField, fc.getToValue()))));
+			return Mono.just(Criteria.where("$expr").is(
+					fc.isNegate() ? new Document("$not", betweenDoc) : betweenDoc));
+		}
+
+		if (fc.getOperator() == LIKE || fc.getOperator() == STRING_LOOSE_EQUAL) {
+			String pattern = fc.getValue().toString();
+
+			Document regexDoc = new Document("$regexMatch",
+					new Document("input", computedField)
+							.append("regex", pattern)
+							.append("options", "i"));
+
+			return Mono.just(Criteria.where("$expr").is(
+					fc.isNegate() ? new Document("$not", regexDoc) : regexDoc));
+		}
+
+		String mongoOp = switch (fc.getOperator()) {
+			case EQUALS -> fc.isNegate() ? "$ne" : "$eq";
+			case GREATER_THAN -> fc.isNegate() ? "$lte" : "$gt";
+			case GREATER_THAN_EQUAL -> fc.isNegate() ? "$lt" : "$gte";
+			case LESS_THAN -> fc.isNegate() ? "$gte" : "$lt";
+			case LESS_THAN_EQUAL -> fc.isNegate() ? "$gt" : "$lte";
+			default -> null;
+		};
+
+		if (mongoOp != null)
+			return Mono.just(Criteria.where("$expr").is(
+					new Document(mongoOp, List.of(computedField, fc.getValue()))));
+
+		return Mono.empty();
 	}
 
 	private List<?> multiFieldValue(Object objValue, List<?> values) {
