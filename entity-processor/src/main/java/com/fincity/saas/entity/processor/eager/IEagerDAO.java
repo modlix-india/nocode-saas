@@ -238,7 +238,6 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
                 Condition joinCondition = fieldInMainTable.eq(idFieldInRelatedTable);
                 recordQuery = recordQuery.leftJoin(aliasedTable).on(joinCondition);
-                countQuery = countQuery.leftJoin(aliasedTable).on(joinCondition);
             }
 
             return Tuples.of(Tuples.of(recordQuery, countQuery), relations);
