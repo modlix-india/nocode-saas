@@ -194,7 +194,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .setActorId(access.getUserId());
         this.updateActivityIds(activity, mutableContext, action.isDelete());
         return this.createInternal(access, activity)
-                .then()
+                .then(this.ticketService.resetExpiresOn(access, ticketId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createActivityForTicket"));
     }
 
