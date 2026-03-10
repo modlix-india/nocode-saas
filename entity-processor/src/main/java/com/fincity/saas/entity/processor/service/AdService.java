@@ -40,6 +40,8 @@ public class AdService extends BaseUpdatableService<EntityProcessorAdsRecord, Ad
 
     public Mono<Ad> readOrCreate(ProcessorAccess access, String adId, String adName, ULong adsetDbId, ULong campaignDbId) {
 
+        if (adId == null) return Mono.empty();
+
         return super.cacheService
                 .cacheValueOrGet(
                         this.getCacheName(),
