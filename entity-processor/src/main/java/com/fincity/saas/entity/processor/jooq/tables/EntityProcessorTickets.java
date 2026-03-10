@@ -207,6 +207,13 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, ULong> AD_ID = createField(DSL.name("AD_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ad Id related to this ticket.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.EXPIRES_ON</code>. Ticket
+     * expiration datetime. Expired when EXPIRES_ON &lt; NOW().
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> EXPIRES_ON = createField(DSL.name("EXPIRES_ON"), SQLDataType.LOCALDATETIME(0), this, "Ticket expiration datetime. Expired when EXPIRES_ON < NOW().");
+
+    /**
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
      * Deal Tag - HOT / WARM / COLD
      */
@@ -346,7 +353,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP);
     }
 
     @Override
