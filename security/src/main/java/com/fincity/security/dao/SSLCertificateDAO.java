@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityClient.*;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
 import static com.fincity.security.jooq.tables.SecuritySslCertificate.*;
+import static com.fincity.security.jooq.tables.SecuritySslRequest.SECURITY_SSL_REQUEST;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -33,6 +34,7 @@ import com.fincity.security.dto.SSLCertificate;
 import com.fincity.security.dto.SSLRequest;
 import com.fincity.security.jooq.tables.records.SecuritySslCertificateRecord;
 import com.fincity.security.model.SSLCertificateConfiguration;
+import com.fincity.security.model.SSLCertificateRenewalCandidate;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -203,5 +205,32 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 
 					return Mono.just(Long.toString(cLast > uLast ? cLast : uLast));
 				});
+	}
+
+	public Flux<SSLCertificateRenewalCandidate> findExpiringCertificatesForRenewal(int daysBeforeExpiry) {
+
+		LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+		LocalDateTime threshold = now.plusDays(daysBeforeExpiry);
+
+		return Flux.from(this.dslContext
+				.select(SECURITY_SSL_CERTIFICATE.URL_ID,
+						SECURITY_SSL_CERTIFICATE.DOMAINS,
+						SECURITY_SSL_CERTIFICATE.ORGANIZATION,
+						SECURITY_SSL_REQUEST.VALIDITY)
+				.from(SECURITY_SSL_CERTIFICATE)
+				.innerJoin(SECURITY_SSL_REQUEST)
+				.on(SECURITY_SSL_CERTIFICATE.URL_ID.eq(SECURITY_SSL_REQUEST.URL_ID))
+				.where(DSL.and(
+						SECURITY_SSL_CERTIFICATE.CURRENT.eq(ByteUtil.ONE),
+						SECURITY_SSL_CERTIFICATE.ISSUER.likeIgnoreCase("%let%encrypt%"),
+						SECURITY_SSL_CERTIFICATE.CSR.isNotNull(),
+						SECURITY_SSL_CERTIFICATE.EXPIRY_DATE.between(now, threshold),
+						SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.isNotNull(),
+						SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.greaterThan(now))))
+				.map(e -> new SSLCertificateRenewalCandidate()
+						.setUrlId(e.get(SECURITY_SSL_CERTIFICATE.URL_ID))
+						.setDomainNames(List.of(e.get(SECURITY_SSL_CERTIFICATE.DOMAINS).split(",")))
+						.setOrganizationName(e.get(SECURITY_SSL_CERTIFICATE.ORGANIZATION))
+						.setValidityInMonths(e.get(SECURITY_SSL_REQUEST.VALIDITY).intValue()));
 	}
 }

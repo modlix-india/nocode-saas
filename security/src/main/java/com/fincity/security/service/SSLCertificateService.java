@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -73,6 +75,8 @@ import com.fincity.security.dto.SSLRequest;
 import com.fincity.security.model.SSLCertificateConfiguration;
 import com.fincity.security.model.SSLCertificateOrder;
 import com.fincity.security.model.SSLCertificateOrderRequest;
+import com.fincity.security.model.SSLCertificateRenewalCandidate;
+import com.fincity.security.model.SSLCertificateRenewalResult;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
@@ -692,5 +696,173 @@ public class SSLCertificateService {
             .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
             .subscribeOn(Schedulers.boundedElastic())
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.deleteCertificate"));
+    }
+
+    public Mono<SSLCertificateRenewalResult> renewExpiringCertificates(int daysBeforeExpiry) {
+
+        SSLCertificateRenewalResult result = new SSLCertificateRenewalResult();
+
+        return this.certificateDao.findExpiringCertificatesForRenewal(daysBeforeExpiry)
+            .concatMap(candidate -> this.renewSingleCertificate(candidate, result))
+            .then(Mono.just(result))
+            .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
+            .flatMap(cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewExpiringCertificates"))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<Void> renewSingleCertificate(SSLCertificateRenewalCandidate candidate,
+                                               SSLCertificateRenewalResult result) {
+
+        SSLCertificateOrderRequest orderRequest = new SSLCertificateOrderRequest()
+            .setUrlId(candidate.getUrlId())
+            .setDomainNames(candidate.getDomainNames())
+            .setOrganizationName(candidate.getOrganizationName())
+            .setValidityInMonths(candidate.getValidityInMonths());
+
+        return FlatMapUtil.<Boolean, SSLRequest, List<SSLChallenge>, Boolean>flatMapMono(
+
+                // Step 1: Delete existing request for this URL if any
+                () -> this.requestDao.deleteByURLId(candidate.getUrlId())
+                    .defaultIfEmpty(false),
+
+                // Step 2: Create new SSL request with CSR
+                deleted -> makeRecord(orderRequest).flatMap(this.requestDao::create),
+
+                // Step 3: Create challenges
+                (deleted, sslRequest) -> this.createChallenges(sslRequest),
+
+                // Step 4: Verify all challenges are http-01, validate tokens, trigger, and create cert
+                (deleted, sslRequest, challenges) -> {
+
+                    boolean allHttp01 = challenges.stream()
+                        .allMatch(ch -> Http01Challenge.TYPE.equals(ch.getChallengeType()));
+
+                    if (!allHttp01) {
+                        result.setFailedCount(result.getFailedCount() + 1);
+                        result.addError("URL ID " + candidate.getUrlId()
+                            + ": Skipped - not all challenges are http-01");
+                        return Mono.<Boolean>empty();
+                    }
+
+                    return this.validateAndTriggerAllChallenges(sslRequest, challenges)
+                        .flatMap(triggered -> this.createCertificateInternal(sslRequest.getId()));
+                }
+
+            )
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewSingleCertificate"))
+            .doOnSuccess(v -> {
+                if (v != null) {
+                    result.setRenewedCount(result.getRenewedCount() + 1);
+                    logger.info("Successfully renewed certificate for URL ID: {}", candidate.getUrlId());
+                }
+            })
+            .onErrorResume(ex -> {
+                result.setFailedCount(result.getFailedCount() + 1);
+                result.addError("URL ID " + candidate.getUrlId() + ": " + ex.getMessage());
+                logger.error("Failed to renew certificate for URL ID: {}", candidate.getUrlId(), ex);
+                return Mono.empty();
+            })
+            .then();
+    }
+
+    private Mono<Boolean> validateAndTriggerAllChallenges(SSLRequest sslRequest,
+                                                           List<SSLChallenge> challenges) {
+
+        return Flux.fromIterable(challenges)
+            .concatMap(challenge -> this.validateHttpChallengeToken(challenge)
+                .flatMap(valid -> {
+                    if (Boolean.FALSE.equals(valid)) {
+                        return Mono.<Boolean>error(new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "HTTP challenge token not accessible for domain: " + challenge.getDomain()));
+                    }
+                    return this.triggerChallenge(challenge, sslRequest);
+                }))
+            .then(Mono.just(true));
+    }
+
+    private Mono<Boolean> validateHttpChallengeToken(SSLChallenge challenge) {
+
+        String tokenUrl = "http://" + challenge.getDomain()
+            + "/.well-known/acme-challenge/" + challenge.getToken();
+
+        return Mono.fromCallable(() -> {
+
+                HttpURLConnection conn = null;
+                try {
+                    conn = (HttpURLConnection) new URL(tokenUrl).openConnection(); // NOSONAR
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+                    conn.setInstanceFollowRedirects(true);
+
+                    int responseCode = conn.getResponseCode();
+                    return responseCode >= 200 && responseCode < 400;
+                } catch (Exception ex) {
+                    logger.warn("HTTP challenge validation failed for {}: {}", tokenUrl, ex.getMessage());
+                    return false;
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
+            })
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMap(accessible -> {
+                if (!accessible) {
+                    String failedReason = "HTTP challenge token not accessible at: " + tokenUrl;
+                    return this.challengeDao.updateStatus(challenge.getId(), "FAILED", failedReason)
+                        .thenReturn(false);
+                }
+                return Mono.just(true);
+            });
+    }
+
+    private Mono<Boolean> createCertificateInternal(ULong requestId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.requestDao.readById(requestId),
+
+                request -> this.loginAndGetOrder(request),
+
+                (request, order) -> {
+
+                    try {
+
+                        order.update();
+
+                        PemReader reader = new PemReader(new StringReader(request.getCsr()));
+                        PKCS10CertificationRequest csr = new PKCS10CertificationRequest(reader.readPemObject()
+                            .getContent());
+
+                        order.execute(csr.getEncoded());
+
+                        int attempts = 10;
+                        while (order.getStatus() != Status.VALID && attempts-- > 0) {
+
+                            if (order.getStatus() == Status.INVALID) {
+                                break;
+                            }
+
+                            Thread.sleep(3000L); // NOSONAR
+
+                            order.update();
+                        }
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    } catch (AcmeException | IOException ex) {
+                        return this.msgService.throwMessage(
+                            msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex),
+                            SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, ex.getMessage());
+                    }
+
+                    return Mono.just(order.getCertificate());
+                },
+
+                (request, order, certificate) -> this.certificateDao.create(request, certificate)
+
+            )
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateInternal"))
+            .subscribeOn(Schedulers.boundedElastic())
+            .map(e -> true);
     }
 }
