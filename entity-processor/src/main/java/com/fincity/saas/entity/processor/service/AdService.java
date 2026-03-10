@@ -5,8 +5,10 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.AdDAO;
 import com.fincity.saas.entity.processor.dto.Ad;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -60,5 +62,10 @@ public class AdService extends BaseUpdatableService<EntityProcessorAdsRecord, Ad
 
                         super.getCacheKey(access.getAppCode(), access.getClientCode(), adId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AdService.readOrCreate"));
+    }
+
+    public Mono<List<IdAndValue<ULong, String>>> listIdAndName(List<ULong> campaignIds, List<ULong> adsetIds) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.listIdAndName(access, campaignIds, adsetIds));
     }
 }
