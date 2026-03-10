@@ -790,20 +790,32 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                () -> this.createTicketBucketConditionsWithoutDate(access, ticketBucketFilter)
                         .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> {
+
+                    Condition activityCondition = this.buildActivityCondition(
+                            ticketBucketFilter.getStartDate(),
+                            ticketBucketFilter.getEndDate(),
+                            ticketBucketFilter.getStageIds());
+
                     SelectConditionStep<?> query = this.dslContext
-                            .select(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, clientIdAsString, DSL.count(this.idField))
+                            .select(
+                                    ENTITY_PROCESSOR_TICKETS.PRODUCT_ID,
+                                    clientIdAsString,
+                                    DSL.countDistinct(this.idField))
                             .from(this.table)
-                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+                            .join(ENTITY_PROCESSOR_ACTIVITIES)
+                            .on(this.idField.eq(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()))
+                            .and(activityCondition);
 
                     return Flux.from(query.groupBy(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, clientIdAsString))
                             .map(rec -> new PerValueCount()
                                     .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID))
                                     .setGroupedValue(rec.get(clientIdAsString))
-                                    .setCount(rec.get(DSL.count(this.idField)).longValue()));
+                                    .setCount(rec.get(DSL.countDistinct(this.idField)).longValue()));
                 });
     }
 
@@ -813,25 +825,34 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
         String timezone = ticketBucketFilter.getTimezone();
         Field<LocalDateTime> dateGroupField =
-                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE, timezone);
         Field<LocalDateTime> groupByDateField =
-                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
+                DSL.min(ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                () -> this.createTicketBucketConditionsWithoutDate(access, ticketBucketFilter)
                         .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> {
+
+                    Condition activityCondition = this.buildActivityCondition(
+                            ticketBucketFilter.getStartDate(),
+                            ticketBucketFilter.getEndDate(),
+                            ticketBucketFilter.getStageIds());
+
                     SelectConditionStep<?> query = this.dslContext
-                            .select(clientIdAsString, groupByDateField, DSL.count(this.idField))
+                            .select(clientIdAsString, groupByDateField, DSL.countDistinct(this.idField))
                             .from(this.table)
-                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+                            .join(ENTITY_PROCESSOR_ACTIVITIES)
+                            .on(this.idField.eq(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()))
+                            .and(activityCondition);
 
                     return Flux.from(query.groupBy(clientIdAsString, dateGroupField))
                             .map(rec -> new PerDateCount()
                                     .setDate(rec.get(groupByDateField))
                                     .setGroupedValue(rec.get(clientIdAsString))
-                                    .setCount(rec.get(DSL.count(this.idField)).longValue()));
+                                    .setCount(rec.get(DSL.countDistinct(this.idField)).longValue()));
                 });
     }
 
