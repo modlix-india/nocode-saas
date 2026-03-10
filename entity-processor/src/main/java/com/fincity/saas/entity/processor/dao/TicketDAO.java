@@ -8,8 +8,11 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.condition.HavingCondition;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -332,16 +335,42 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             return Mono.just(super.addAppCodeAndClientCode(condition, access));
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.productTicketRuRuleService
-                                .getUserReadConditions(access)
-                                .map(rCondition ->
-                                        condition != null ? ComplexCondition.and(condition, rCondition) : rCondition),
-                        rCondition -> Mono.just(super.addAppCodeAndClientCode(rCondition, access)),
-                        (rCondition, readCondition) -> super.processorAccessCondition(condition, access),
-                        (rCondition, readCondition, baseCondition) -> readCondition == null
-                                ? Mono.just(baseCondition)
-                                : Mono.just(ComplexCondition.or(baseCondition, readCondition)))
+                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
+                        ruleCondition -> {
+                            AbstractCondition rawAccess = this.buildRawUserClientAccess(access);
+                            AbstractCondition combinedAccess = ComplexCondition.or(rawAccess, ruleCondition);
+                            AbstractCondition full = condition != null && !condition.isEmpty()
+                                    ? ComplexCondition.and(condition, combinedAccess)
+                                    : combinedAccess;
+                            return Mono.just(super.addAppCodeAndClientCode(full, access));
+                        })
                 .switchIfEmpty(super.processorAccessCondition(condition, access));
+    }
+
+    private AbstractCondition buildRawUserClientAccess(ProcessorAccess access) {
+
+        String userField = access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
+        List<ULong> subOrg = access.getUserInherit().getSubOrg();
+
+        AbstractCondition userCondition = new FilterCondition()
+                .setField(userField)
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(subOrg);
+
+        if (access.isOutsideUser()) {
+            return ComplexCondition.and(
+                    FilterCondition.make(BaseProcessorDto.Fields.clientId, access.getUser().getClientId()),
+                    userCondition);
+        }
+
+        if (!access.isHasBpAccess()) return userCondition;
+
+        AbstractCondition clientCondition = new FilterCondition()
+                .setField(BaseProcessorDto.Fields.clientId)
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(access.getUserInherit().getManagingClientIds());
+
+        return ComplexCondition.or(clientCondition, userCondition);
     }
 
     private Field<LocalDateTime> getLatestTaskDueDateField() {
