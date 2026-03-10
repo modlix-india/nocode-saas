@@ -83,6 +83,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final TaskService taskService;
     private final NoteService noteService;
     private final CampaignService campaignService;
+    private final AdsetService adsetService;
+    private final AdService adService;
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
 
@@ -100,6 +102,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
             @Lazy CampaignService campaignService,
+            @Lazy AdsetService adsetService,
+            @Lazy AdService adService,
             @Lazy PartnerService partnerService,
             ProductCommService productCommService,
             Gson gson) {
@@ -112,6 +116,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.taskService = taskService;
         this.noteService = noteService;
         this.campaignService = campaignService;
+        this.adsetService = adsetService;
+        this.adService = adService;
         this.partnerService = partnerService;
         this.productCommService = productCommService;
         this.gson = gson;
@@ -391,7 +397,23 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 return this.msgService.<Ticket>throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
-                            return Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId()));
+
+                            Ticket ticket = Ticket.of(cTicketRequest).setCampaignId(campaign.getId());
+
+                            CampaignTicketRequest.CampaignDetails details = cTicketRequest.getCampaignDetails();
+                            if (details == null || details.getAdSetId() == null) return Mono.just(ticket);
+
+                            return this.adsetService
+                                    .readOrCreate(access, details.getAdSetId(), details.getAdSetName(), campaign.getId())
+                                    .flatMap(adset -> {
+                                        ticket.setAdsetId(adset.getId());
+
+                                        return this.adService
+                                                .readOrCreate(access, details.getAdId(), details.getAdName(),
+                                                        adset.getId(), campaign.getId())
+                                                .map(ad -> ticket.setAdId(ad.getId()))
+                                                .defaultIfEmpty(ticket);
+                                    });
                         },
                         (campaign, product, ticket) -> this.checkDuplicate(
                                 access,

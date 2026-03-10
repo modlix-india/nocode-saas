@@ -47,6 +47,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String source;
     private String subSource;
     private ULong campaignId;
+    private ULong adsetId;
+    private ULong adId;
     private Boolean dnc = Boolean.FALSE;
     private Tag tag;
     private Map<String, Object> metaData;
@@ -63,6 +65,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
         this.relationsResolverMap.put(ClientFieldResolver.class, BaseProcessorDto.Fields.clientId);
         this.relationsMap.put(Fields.campaignId, EntitySeries.CAMPAIGN.getTable());
+        this.relationsMap.put(Fields.adsetId, EntitySeries.ADSET.getTable());
+        this.relationsMap.put(Fields.adId, EntitySeries.AD.getTable());
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
@@ -79,6 +83,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.source = ticket.source;
         this.subSource = ticket.subSource;
         this.campaignId = ticket.campaignId;
+        this.adsetId = ticket.adsetId;
+        this.adId = ticket.adId;
         this.dnc = ticket.dnc;
         this.tag = ticket.tag;
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
