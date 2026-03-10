@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.entity.processor.dto.Ad;
 import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Adset;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Partner;
@@ -57,6 +59,8 @@ public enum EntitySeries implements EnumType {
             "TICKET_PE_DUPLICATION_RULES", "Ticket Pe Duplication Rules", 31, "TicketPeDuplicationRule"),
     PRODUCT_TICKET_EX_RULES(
             "PRODUCT_TICKET_EX_RULES", "Product Ticket Expiration Rules", 32, "ProductTicketExRule");
+    ADSET("ADSET", "Adset", 32, "Adset"),
+    AD("AD", "Ad", 33, "Ad");
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -77,6 +81,8 @@ public enum EntitySeries implements EnumType {
             Map.entry(TICKET_DUPLICATION_RULES, "TicketDuplicationRules"),
             Map.entry(TICKET_PE_DUPLICATION_RULES, "TicketPeDuplicationRules"),
             Map.entry(PRODUCT_TICKET_EX_RULES, "ProductTicketExRule"));
+            Map.entry(ADSET, "Adset"),
+            Map.entry(AD, "Ad"));
 
     private final String literal;
     private final String displayName;
@@ -162,6 +168,8 @@ public enum EntitySeries implements EnumType {
             TABLE_MAP.put(
                     PRODUCT_TICKET_EX_RULES,
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES);
+            TABLE_MAP.put(ADSET, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_ADSETS);
+            TABLE_MAP.put(AD, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_ADS);
         }
 
         static Table<?> get(EntitySeries series) {
@@ -194,6 +202,8 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(TICKET_DUPLICATION_RULES, TicketDuplicationRule.class);
             CLASS_MAP.put(TICKET_PE_DUPLICATION_RULES, TicketPeDuplicationRule.class);
             CLASS_MAP.put(PRODUCT_TICKET_EX_RULES, ProductTicketExRule.class);
+            CLASS_MAP.put(ADSET, Adset.class);
+            CLASS_MAP.put(AD, Ad.class);
         }
 
         static Class<?> get(EntitySeries series) {

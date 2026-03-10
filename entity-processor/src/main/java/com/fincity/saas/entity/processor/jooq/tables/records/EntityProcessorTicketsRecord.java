@@ -356,11 +356,47 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     }
 
     /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.ADSET_ID</code>. Adset Id
+     * related to this ticket.
+     */
+    public EntityProcessorTicketsRecord setAdsetId(ULong value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.ADSET_ID</code>. Adset Id
+     * related to this ticket.
+     */
+    public ULong getAdsetId() {
+        return (ULong) get(18);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tickets.AD_ID</code>.
+     * Ad Id related to this ticket.
+     */
+    public EntityProcessorTicketsRecord setAdId(ULong value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.AD_ID</code>.
+     * Ad Id related to this ticket.
+     */
+    public ULong getAdId() {
+        return (ULong) get(19);
+    }
+
+    /**
      * Setter for <code>entity_processor.entity_processor_tickets.TAG</code>.
      * Deal Tag - HOT / WARM / COLD
      */
     public EntityProcessorTicketsRecord setTag(Tag value) {
-        set(18, value);
+        set(20, value);
         return this;
     }
 
@@ -369,7 +405,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Deal Tag - HOT / WARM / COLD
      */
     public Tag getTag() {
-        return (Tag) get(18);
+        return (Tag) get(20);
     }
 
     /**
@@ -377,7 +413,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Not Call flag for this ticket.
      */
     public EntityProcessorTicketsRecord setDnc(Boolean value) {
-        set(19, value);
+        set(21, value);
         return this;
     }
 
@@ -386,7 +422,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Not Call flag for this ticket.
      */
     public Boolean getDnc() {
-        return (Boolean) get(19);
+        return (Boolean) get(21);
     }
 
     /**
@@ -395,7 +431,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public EntityProcessorTicketsRecord setTempActive(Boolean value) {
-        set(20, value);
+        set(22, value);
         return this;
     }
 
@@ -405,7 +441,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(20);
+        return (Boolean) get(22);
     }
 
     /**
@@ -414,7 +450,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public EntityProcessorTicketsRecord setIsActive(Boolean value) {
-        set(21, value);
+        set(23, value);
         return this;
     }
 
@@ -424,7 +460,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(21);
+        return (Boolean) get(23);
     }
 
     /**
@@ -433,7 +469,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public EntityProcessorTicketsRecord setClientId(ULong value) {
-        set(22, value);
+        set(24, value);
         return this;
     }
 
@@ -443,7 +479,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public ULong getClientId() {
-        return (ULong) get(22);
+        return (ULong) get(24);
     }
 
     /**
@@ -452,7 +488,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public EntityProcessorTicketsRecord setMetaData(Map value) {
-        set(23, value);
+        set(25, value);
         return this;
     }
 
@@ -462,7 +498,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public Map getMetaData() {
-        return (Map) get(23);
+        return (Map) get(25);
     }
 
     /**
@@ -619,6 +655,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setSource(source);
         setSubSource(subSource);
         setCampaignId(campaignId);
+        setAdsetId(adsetId);
+        setAdId(adId);
         setTag(tag);
         setDnc(dnc);
         setTempActive(tempActive);

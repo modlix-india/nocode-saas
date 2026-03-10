@@ -5,6 +5,8 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -51,6 +53,16 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_activities</code>.
      */
     public final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_ads</code>.
+     */
+    public final EntityProcessorAds ENTITY_PROCESSOR_ADS = EntityProcessorAds.ENTITY_PROCESSOR_ADS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_adsets</code>.
+     */
+    public final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
 
     /**
      * The table <code>entity_processor.entity_processor_campaigns</code>.
@@ -179,6 +191,8 @@ public class EntityProcessor extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
+            EntityProcessorAds.ENTITY_PROCESSOR_ADS,
+            EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
