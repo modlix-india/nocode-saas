@@ -390,7 +390,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Condition buildConditionForField( // NOSONAR
+    protected Condition buildConditionForField( // NOSONAR
             Field field,
             FilterConditionOperator operator,
             boolean isValueField,

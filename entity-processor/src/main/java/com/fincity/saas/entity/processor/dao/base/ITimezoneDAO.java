@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dao.base;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FieldExpression;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
@@ -131,6 +132,29 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             FilterCondition fc, SelectJoinStep<Record> selectJoinStep, String timezone) { // NO SONAR
         IEagerDAO<?> eagerDao = (IEagerDAO<?>) this;
 
+        if (fc.hasFieldExpr()) {
+            Field field = this.resolveFieldExpressionForTimezone(fc.getFieldExpr(), eagerDao, selectJoinStep);
+            if (field == null) return DSL.noCondition();
+
+            return switch (fc.getOperator()) {
+                case EQUALS -> field.eq(this.fieldValue(field, fc.getValue(), timezone));
+                case GREATER_THAN -> field.gt(this.fieldValue(field, fc.getValue(), timezone));
+                case GREATER_THAN_EQUAL -> field.ge(this.fieldValue(field, fc.getValue(), timezone));
+                case LESS_THAN -> field.lt(this.fieldValue(field, fc.getValue(), timezone));
+                case LESS_THAN_EQUAL -> field.le(this.fieldValue(field, fc.getValue(), timezone));
+                case IS_FALSE -> field.isFalse();
+                case IS_TRUE -> field.isTrue();
+                case IS_NULL -> field.isNull();
+                case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue(), timezone));
+                case LIKE -> field.like(fc.getValue().toString());
+                case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
+                case BETWEEN -> field.between(
+                        this.fieldValue(field, fc.getValue(), timezone),
+                        this.fieldValue(field, fc.getToValue(), timezone));
+                default -> DSL.noCondition();
+            };
+        }
+
         if (fc.getField() == null) return DSL.noCondition();
 
         Field field = eagerDao.getField(fc.getField(), selectJoinStep); // NO SONAR
@@ -185,6 +209,50 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             case LIKE -> field.like(fc.getValue().toString());
             case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
             default -> DSL.noCondition();
+        };
+    }
+
+    @SuppressWarnings("rawtypes")
+    private Field<String> resolveFieldExpressionForTimezone(
+            FieldExpression expr, IEagerDAO<?> eagerDao, SelectJoinStep<Record> selectJoinStep) {
+
+        if (expr == null || !expr.isValid())
+            return null;
+
+        List<Field> resolvedFields = new ArrayList<>();
+        for (String fieldName : expr.getFields()) {
+            Field f = eagerDao.getField(fieldName, selectJoinStep);
+            if (f == null)
+                return null;
+            resolvedFields.add(f);
+        }
+
+        return switch (expr.getFunction()) {
+            case CONCAT -> {
+                if (expr.getSeparator() != null && !expr.getSeparator().isEmpty()) {
+                    List<Field<?>> withSeparators = new ArrayList<>();
+                    for (int i = 0; i < resolvedFields.size(); i++) {
+                        if (i > 0)
+                            withSeparators.add(DSL.val(expr.getSeparator()));
+                        withSeparators.add(resolvedFields.get(i).cast(String.class));
+                    }
+                    yield DSL.concat(withSeparators.toArray(new Field[0]));
+                }
+                yield DSL.concat(resolvedFields.stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new));
+            }
+            case UPPER -> DSL.upper(resolvedFields.getFirst().cast(String.class));
+            case LOWER -> DSL.lower(resolvedFields.getFirst().cast(String.class));
+            case TRIM -> DSL.trim(resolvedFields.getFirst().cast(String.class));
+            case COALESCE -> {
+                Field<String> first = resolvedFields.getFirst().cast(String.class);
+                @SuppressWarnings("unchecked")
+                Field<String>[] rest = resolvedFields.subList(1, resolvedFields.size()).stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new);
+                yield DSL.coalesce(first, rest);
+            }
         };
     }
 

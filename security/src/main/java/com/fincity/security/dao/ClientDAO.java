@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FieldExpression;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -294,6 +296,29 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
+        if (fc.hasFieldExpr()) {
+
+            boolean hasUserField = fc.getFieldExpr().getFields().stream()
+                    .anyMatch(f -> f.startsWith("user."));
+
+            if (!hasUserField)
+                return super.filterConditionFilter(fc, selectJoinStep);
+
+            Field<String> exprField = this.resolveFieldExpressionWithVirtualFields(
+                    fc.getFieldExpr(), selectJoinStep, "user.", SECURITY_USER);
+            if (exprField == null)
+                return DSL.noCondition();
+
+            Condition condition = this.buildConditionForField(
+                    exprField, fc.getOperator(), fc.isValueField(), fc.isToValueField(),
+                    fc.getValue(), fc.getToValue(), fc.getMultiValue(), fc.getField(), selectJoinStep);
+
+            return SECURITY_CLIENT.ID.in(
+                    DSL.select(SECURITY_USER.CLIENT_ID)
+                            .from(SECURITY_USER)
+                            .where(condition));
+        }
+
         if (fc.getField() == null)
             return super.filterConditionFilter(fc, selectJoinStep);
 
@@ -361,6 +386,58 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP_ACCESS)
                         .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
                         .where(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(appCodeCondition))));
+    }
+
+    @SuppressWarnings("rawtypes")
+    private Field<String> resolveFieldExpressionWithVirtualFields(
+            FieldExpression expr, SelectJoinStep<Record> selectJoinStep,
+            String virtualPrefix, org.jooq.Table<?> virtualTable) {
+
+        if (expr == null || !expr.isValid())
+            return null;
+
+        List<Field> resolvedFields = new ArrayList<>();
+        for (String fieldName : expr.getFields()) {
+            Field f;
+            if (fieldName.startsWith(virtualPrefix)) {
+                String actualName = fieldName.substring(virtualPrefix.length());
+                String jooqFieldName = this.convertToJOOQFieldName(actualName);
+                f = virtualTable.field(jooqFieldName);
+            } else {
+                f = this.getField(fieldName, selectJoinStep);
+            }
+            if (f == null)
+                return null;
+            resolvedFields.add(f);
+        }
+
+        return switch (expr.getFunction()) {
+            case CONCAT -> {
+                if (expr.getSeparator() != null && !expr.getSeparator().isEmpty()) {
+                    List<Field<?>> withSeparators = new ArrayList<>();
+                    for (int i = 0; i < resolvedFields.size(); i++) {
+                        if (i > 0)
+                            withSeparators.add(DSL.val(expr.getSeparator()));
+                        withSeparators.add(resolvedFields.get(i).cast(String.class));
+                    }
+                    yield DSL.concat(withSeparators.toArray(new Field[0]));
+                }
+                yield DSL.concat(resolvedFields.stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new));
+            }
+            case UPPER -> DSL.upper(resolvedFields.getFirst().cast(String.class));
+            case LOWER -> DSL.lower(resolvedFields.getFirst().cast(String.class));
+            case TRIM -> DSL.trim(resolvedFields.getFirst().cast(String.class));
+            case COALESCE -> {
+                Field<String> first = resolvedFields.getFirst().cast(String.class);
+                @SuppressWarnings("unchecked")
+                Field<String>[] rest = resolvedFields.subList(1, resolvedFields.size()).stream()
+                        .map(f -> f.cast(String.class))
+                        .toArray(Field[]::new);
+                yield DSL.coalesce(first, rest);
+            }
+        };
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
