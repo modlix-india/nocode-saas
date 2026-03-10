@@ -235,6 +235,18 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.IS_EXPIRED</code>.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> IS_EXPIRED = createField(DSL.name("IS_EXPIRED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.EXPIRED_ON</code>.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> EXPIRED_ON = createField(DSL.name("EXPIRED_ON"), SQLDataType.LOCALDATETIME(0), this, "");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
@@ -333,7 +345,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE);
     }
 
     @Override
