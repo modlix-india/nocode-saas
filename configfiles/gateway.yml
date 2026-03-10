@@ -49,6 +49,10 @@ spring:
           uri: lb://ai
           predicates:
             - Path=/api/ai/**, /*/api/ai/**, /*/*/api/ai/**, /*/*/*/api/ai/**, /*/*/*/*/api/ai/**, /*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/*/*/api/ai/**,
+        - id: worker
+          uri: lb://worker
+          predicates:
+            - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**,
         - id: ui
           uri: lb://ui
           predicates:

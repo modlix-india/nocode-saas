@@ -45,6 +45,9 @@ if [ "$1" == "jooq" ]; then
     echo "Building files..."
     cd ../files
     mvn clean install -Pjooq
+    echo "Building worker..."
+    cd ../worker
+    mvn clean install -Pjooq
     echo "Building message..."
     cd ../message
     mvn clean install -Pjooq
@@ -120,6 +123,10 @@ mvn $@
 
 echo "Building files..."
 cd ../files
+mvn $@
+
+echo "Building worker..."
+cd ../worker
 mvn $@
 
 echo "Building entity-processor..."

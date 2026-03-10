@@ -19,7 +19,7 @@ files:
   resources:
     endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
     accessKeyId: 2229a18802734bc30a8419a2e622187c
-    secretAccessKey: 70f021767a550c7b4fa5a3d356c730f7098eeb23834ea6b52b91a9df751f736d
+    secretAccessKey: xxxxxx
     bucketPrefix: local
 
 multi:
@@ -37,6 +37,14 @@ schedular:
     password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/schedular
+
+worker:
+  db:
+    url: jdbc:mysql://localhost:3306/worker?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/worker
 
 ui:
   mongo:
@@ -101,11 +109,16 @@ ai:
     url: http://localhost:8080
   files:
     url: http://localhost:8080
+  gateway:
+    url: http://localhost:8080
   llm:
     provider: anthropic
   secrets:
     openaiAPIKey: xxxxxx
     anthropicAPIKey: xxxxxx
+    googleAPIKey: xxxxxx
+    deepSeekAPIKey: xxxxxx
+  componentCatalogUrl: https://apps.local.modlix.com/component-catalog.json
   db:
     url: jdbc:mysql://localhost:3306/ai?serverTimezone=UTC
     username: root
