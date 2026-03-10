@@ -35,7 +35,7 @@ REMOTE_PORT=3306
 # --- Local DB Config ---
 LOCAL_USER="root"
 LOCAL_PASS="Kiran@123"
-LOCAL_HOST="localhost"
+LOCAL_HOST="127.0.0.1"
 LOCAL_PORT=3306
 
 # --- Databases to copy ---
@@ -109,11 +109,11 @@ for DB in "${DATABASES[@]}"; do
 
     echo "   [${DB}] Dropping and recreating database..."
     mysql -h "${LOCAL_HOST}" -P ${LOCAL_PORT} -u "${LOCAL_USER}" -p"${LOCAL_PASS}" \
-        -e "DROP DATABASE IF EXISTS \`${DB}\`; CREATE DATABASE \`${DB}\`;" 2>/dev/null
+        -e "DROP DATABASE IF EXISTS \`${DB}\`; CREATE DATABASE \`${DB}\`;"
 
     echo "   [${DB}] Importing..."
     if gunzip -c "${DUMP_FILE}" | mysql -h "${LOCAL_HOST}" -P ${LOCAL_PORT} -u "${LOCAL_USER}" -p"${LOCAL_PASS}" \
-        "${DB}" 2>/dev/null; then
+        "${DB}"; then
         echo "   [${DB}] Import complete."
     else
         echo "   WARNING: Failed to import ${DB}"
@@ -121,15 +121,15 @@ for DB in "${DATABASES[@]}"; do
     fi
 done
 
-# --- Reset passwords and PINs in security_users ---
+# --- Reset passwords and PINs in security_user ---
 echo ""
-echo ">> Resetting passwords and PINs in security.security_users..."
-mysql -h "${LOCAL_HOST}" -P ${LOCAL_PORT} -u "${LOCAL_USER}" -p"${LOCAL_PASS}" security 2>/dev/null <<'SQL'
-UPDATE security_users
+echo ">> Resetting passwords and PINs in security.security_user..."
+mysql -h "${LOCAL_HOST}" -P ${LOCAL_PORT} -u "${LOCAL_USER}" -p"${LOCAL_PASS}" security <<'SQL'
+UPDATE security_user
 SET password = 'Pass@1234', password_hashed = 0
 WHERE password IS NOT NULL AND password != '';
 
-UPDATE security_users
+UPDATE security_user
 SET pin = '000000', pin_hashed = 0
 WHERE pin IS NOT NULL AND pin != '';
 SQL
