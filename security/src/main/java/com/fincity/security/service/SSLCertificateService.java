@@ -351,38 +351,66 @@ public class SSLCertificateService {
                             AbstractMessageService.OBJECT_NOT_FOUND);
                     }
 
-                    String chError = null;
-                    String chStatus = null;
+                    Authorization auth = authChallengeTup.getT1();
+                    Challenge ch = authChallengeTup.getT2();
 
-                    try {
+                    Tuple2<String, String> newTokens = this.resolveTokenFromChallenge(auth, ch, challenge);
 
-                        Tuple2<String, String> tup = this.triggerChallenge(authChallengeTup.getT1(),
-                            authChallengeTup.getT2());
-                        chStatus = tup.getT1();
-                        if (!tup.getT2()
-                            .isBlank())
-                            chError = tup.getT2();
-                    } catch (AcmeException e) {
-                        return this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-                            SecurityMessageResourceService.TRIGGER_FAILED);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread()
-                            .interrupt();
+                    boolean tokensChanged = !newTokens.getT1().equals(challenge.getToken())
+                        || !newTokens.getT2().equals(challenge.getAuthorization());
+
+                    if (tokensChanged) {
+                        logger.info("Challenge tokens changed for domain: {}, updating DB before triggering",
+                            challenge.getDomain());
                     }
 
-                    try {
-                        order.update();
-                    } catch (AcmeException e) {
-                        return this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-                            SecurityMessageResourceService.TRIGGER_FAILED);
-                    }
-
-                    return this.challengeDao.updateStatus(challenge.getId(), chStatus, chError);
+                    return (tokensChanged
+                            ? this.challengeDao.updateTokenAndAuthorization(challenge.getId(), newTokens.getT1(), newTokens.getT2())
+                            : Mono.just(true))
+                        .flatMap(updated -> this.triggerAndUpdateStatus(auth, ch, order, challenge));
                 })
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.readRequestByURLId"))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.triggerChallenge"))
             .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Tuple2<String, String> resolveTokenFromChallenge(Authorization auth, Challenge ch, SSLChallenge stored) {
+
+        if (ch instanceof Http01Challenge hch)
+            return Tuples.of(hch.getToken(), hch.getAuthorization());
+
+        if (ch instanceof Dns01Challenge dch)
+            return Tuples.of(Dns01Challenge.toRRName(auth.getIdentifier().getDomain()), dch.getDigest());
+
+        return Tuples.of(stored.getToken(), stored.getAuthorization());
+    }
+
+    private Mono<Boolean> triggerAndUpdateStatus(Authorization auth, Challenge ch, Order order, SSLChallenge challenge) {
+
+        String chError = null;
+        String chStatus = null;
+
+        try {
+            Tuple2<String, String> tup = this.triggerChallenge(auth, ch);
+            chStatus = tup.getT1();
+            if (!tup.getT2().isBlank())
+                chError = tup.getT2();
+        } catch (AcmeException e) {
+            return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                SecurityMessageResourceService.TRIGGER_FAILED);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+
+        try {
+            order.update();
+        } catch (AcmeException e) {
+            return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                SecurityMessageResourceService.TRIGGER_FAILED);
+        }
+
+        return this.challengeDao.updateStatus(challenge.getId(), chStatus, chError);
     }
 
     private Tuple2<Authorization, Challenge> findChallengeAndAuthorization(Order order, SSLChallenge challenge) {
@@ -410,14 +438,25 @@ public class SSLCertificateService {
         String chStatus;
         String chError = "";
 
+        // Check if the authorization is already invalid before triggering
+        Status preStatus = auth.getStatus();
+        logger.info("Pre-trigger auth status: {}, challenge status: {}, domain: {}, type: {}",
+            preStatus, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType());
+
+        if (preStatus == Status.INVALID) {
+            chStatus = preStatus.toString();
+            chError = "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.";
+            logger.error("Authorization was already INVALID before triggering. Domain: {}", auth.getIdentifier().getDomain());
+            return Tuples.of(chStatus, chError);
+        }
+
         ch.trigger();
-        int count = 2;
+        int count = 10;
         Status status;
 
-        while ((status = auth.getStatus()) != Status.VALID && count > 0) {
+        while ((status = auth.getStatus()) != Status.VALID && status != Status.INVALID && count > 0) {
 
-            // Because of network issue we retry automatically.
-            Thread.sleep(3000L); // NOSONAR
+            Thread.sleep(5000L); // NOSONAR
             auth.update();
             count--;
         }
@@ -425,6 +464,9 @@ public class SSLCertificateService {
         chStatus = status.toString();
 
         if (status != Status.VALID) {
+            // Update challenge to get the real status and error from ACME server
+            try { ch.update(); } catch (AcmeException ignored) { /* best effort */ }
+
             String errorDetail = ch.getError()
                 .map(this::formatProblemDetail)
                 .orElse("No error detail returned by ACME server");
