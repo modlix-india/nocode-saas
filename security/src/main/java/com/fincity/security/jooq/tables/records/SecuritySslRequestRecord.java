@@ -157,11 +157,28 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
     }
 
     /**
+     * Setter for <code>security.security_ssl_request.ORDER_URL</code>. ACME
+     * order URL to reuse across trigger attempts
+     */
+    public SecuritySslRequestRecord setOrderUrl(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_ssl_request.ORDER_URL</code>. ACME
+     * order URL to reuse across trigger attempts
+     */
+    public String getOrderUrl() {
+        return (String) get(8);
+    }
+
+    /**
      * Setter for <code>security.security_ssl_request.UPDATED_BY</code>. ID of
      * the user who updated this row
      */
     public SecuritySslRequestRecord setUpdatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -170,7 +187,7 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
      * the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -178,7 +195,7 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
      * when this row is updated
      */
     public SecuritySslRequestRecord setUpdatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -187,7 +204,7 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
      * when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -213,7 +230,7 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
     /**
      * Create a detached, initialised SecuritySslRequestRecord
      */
-    public SecuritySslRequestRecord(ULong id, ULong urlId, String domains, String organization, String crtKey, String csr, UInteger validity, String failedReason, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecuritySslRequestRecord(ULong id, ULong urlId, String domains, String organization, String crtKey, String csr, UInteger validity, String failedReason, String orderUrl, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecuritySslRequest.SECURITY_SSL_REQUEST);
 
         setId(id);
@@ -224,6 +241,7 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
         setCsr(csr);
         setValidity(validity);
         setFailedReason(failedReason);
+        setOrderUrl(orderUrl);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
