@@ -7,15 +7,16 @@ import com.modlix.saas.worker.enums.TaskOperationType;
 import com.modlix.saas.worker.jooq.tables.records.WorkerTasksRecord;
 import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.jooq.service.AbstractJOOQUpdatableDataService;
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
-public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRecord, ULong, Task, TaskDAO> {
+public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRecord, ULong, Task, TaskDAO>
+        implements SmartInitializingSingleton {
 
     private final ClientScheduleControlService clientScheduleControlService;
     private final QuartzService quartzService;
@@ -30,8 +31,8 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
         this.messageResourceService = messageResourceService;
     }
 
-    @PostConstruct
-    public void initializeTasksFromDatabase() {
+    @Override
+    public void afterSingletonsInstantiated() {
         logger.info("Initializing seeded tasks from database...");
         List<Task> tasks = this.dao.findAllNormalTasks();
         for (Task task : tasks) {

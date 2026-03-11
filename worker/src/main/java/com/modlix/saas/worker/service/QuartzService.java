@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Set;
 import org.quartz.CronScheduleBuilder;
+import org.quartz.CronTrigger;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
@@ -19,6 +20,7 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +107,30 @@ public class QuartzService {
 
         Trigger trigger = triggerBuilder.build();
 
+        JobKey jobKey = new JobKey(task.getName(), jobGroup);
+        if (quartzScheduler.checkExists(jobKey)) {
+            quartzScheduler.addJob(jobDetail, true);
+
+            TriggerKey triggerKey = new TriggerKey(task.getName(), jobGroup);
+            Trigger existing = quartzScheduler.getTrigger(triggerKey);
+
+            boolean scheduleChanged = existing instanceof CronTrigger existingCron
+                    && !existingCron.getCronExpression().equals(task.getSchedule());
+
+            if (scheduleChanged) {
+                Trigger updatedTrigger = TriggerBuilder.newTrigger()
+                        .withIdentity(triggerKey)
+                        .forJob(jobKey)
+                        .withSchedule(CronScheduleBuilder.cronSchedule(task.getSchedule())
+                                .withMisfireHandlingInstructionDoNothing())
+                        .build();
+                quartzScheduler.rescheduleJob(triggerKey, updatedTrigger);
+                logger.info("Rescheduled job with updated cron: {}", task.getName());
+            } else {
+                logger.info("Job already exists with same schedule, skipping: {}", task.getName());
+            }
+            return;
+        }
         quartzScheduler.scheduleJob(jobDetail, trigger);
     }
 

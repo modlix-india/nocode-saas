@@ -1,5 +1,6 @@
 package com.modlix.saas.worker.configuration;
 
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import javax.sql.DataSource;
 import org.quartz.spi.TriggerFiredBundle;
@@ -22,6 +23,12 @@ public class QuartzConfiguration {
     @Value("${worker.quartz.virtual-threads:true}")
     private boolean useVirtualThreads;
 
+    @Value("${worker.quartz.instance-id:AUTO}")
+    private String instanceId;
+
+    @Value("${worker.quartz.cluster-checkin-interval:15000}")
+    private String clusterCheckinInterval;
+
     @Bean
     public AutowiringSpringBeanJobFactory quartzJobFactory(ApplicationContext applicationContext) {
         AutowiringSpringBeanJobFactory jobFactory = new AutowiringSpringBeanJobFactory();
@@ -37,6 +44,14 @@ public class QuartzConfiguration {
             factory.setDataSource(dataSource);
             factory.setWaitForJobsToCompleteOnShutdown(true);
             factory.setOverwriteExistingJobs(true);
+
+            Properties quartzProperties = new Properties();
+            quartzProperties.setProperty("org.quartz.jobStore.isClustered", "true");
+            quartzProperties.setProperty("org.quartz.jobStore.clusterCheckinInterval", clusterCheckinInterval);
+            quartzProperties.setProperty("org.quartz.jobStore.tablePrefix", "QRTZ_");
+            quartzProperties.setProperty("org.quartz.scheduler.instanceId", instanceId);
+            factory.setQuartzProperties(quartzProperties);
+
             if (useVirtualThreads) {
                 factory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
                 logger.info("Quartz configured to use virtual threads for job execution");
