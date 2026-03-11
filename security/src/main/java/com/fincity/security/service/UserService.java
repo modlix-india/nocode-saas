@@ -442,7 +442,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     return this.appService.getAppByCode(appCode)
                             .flatMap(app -> this.validateUserCheckProperty(
                                     app.getId(), user.getClientId(),
-                                    user.getUserName(), user.getEmailId(), user.getPhoneNumber()))
+                                    user.getUserName(), user.getEmailId(), user.getPhoneNumber(),
+                                    null))
                             .defaultIfEmpty(true);
                 },
                 (ca, user, isValid, pass, passValid, isAvailable, userCheckValid) -> this.dao.create(user),
@@ -527,7 +528,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     private Mono<Boolean> validateUserCheckProperty(
             ULong appId, ULong clientId,
-            String userName, String emailId, String phoneNumber) {
+            String userName, String emailId, String phoneNumber,
+            ULong excludeUserId) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -628,7 +630,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                                 return this.dao.checkUserExistsUnderManagingClient(
                                         parentId, directChildren, grandChildren,
-                                        userName, emailId, phoneNumber, null)
+                                        userName, emailId, phoneNumber, excludeUserId)
                                         .flatMap(exists -> {
                                             if (Boolean.TRUE.equals(exists))
                                                 return this.securityMessageResourceService.throwMessage(
@@ -789,12 +791,29 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.TRUE.equals(userExists))
                         return Mono.empty();
 
-                    return this.canAccessClientForUserOperation(clientId)
-                            .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
-                                    ? this.checkSubOrgAndRun(ca, clientId, key, super.update(key, fields))
-                                    : Mono.empty());
+                    if (userName == null && emailId == null && phoneNumber == null)
+                        return Mono.just(true);
+
+                    String appCode = ca.getUrlAppCode();
+                    if (StringUtil.safeIsBlank(appCode))
+                        return Mono.just(true);
+
+                    return this.appService.getAppByCode(appCode)
+                            .flatMap(app -> this.dao.readById(key).flatMap(existingUser -> {
+                                String effUserName = userName != null ? userName : existingUser.getUserName();
+                                String effEmailId = emailId != null ? emailId : existingUser.getEmailId();
+                                String effPhone = phoneNumber != null ? phoneNumber : existingUser.getPhoneNumber();
+                                return this.validateUserCheckProperty(
+                                        app.getId(), clientId, effUserName, effEmailId, effPhone, key);
+                            }))
+                            .defaultIfEmpty(true);
                 },
-                (ca, clientId, clientType, userExists, updated) -> updated != null
+                (ca, clientId, clientType, userExists, userCheckValid) -> this
+                        .canAccessClientForUserOperation(clientId)
+                        .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
+                                ? this.checkSubOrgAndRun(ca, clientId, key, super.update(key, fields))
+                                : Mono.empty()),
+                (ca, clientId, clientType, userExists, userCheckValid, updated) -> updated != null
                         ? this.evictCache(updated.getId(), updated.getClientId()).<User>map(evicted -> updated)
                         : super.update(key, fields)
                                 .flatMap(updatedUser -> this.evictCache(updatedUser.getId(), updatedUser.getClientId())
@@ -833,13 +852,31 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.TRUE.equals(userExists))
                         return Mono.empty();
 
-                    return this.canAccessClientForUserOperation(entity.getClientId())
-                            .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
-                                    ? this.checkSubOrgAndRun(
-                                            ca, entity.getClientId(), entity.getId(), super.update(entity))
-                                    : Mono.empty());
+                    boolean identifierChanged = !Objects.equals(existingUser.getUserName(), entity.getUserName())
+                            || !Objects.equals(existingUser.getEmailId(), entity.getEmailId())
+                            || !Objects.equals(existingUser.getPhoneNumber(), entity.getPhoneNumber());
+
+                    if (!identifierChanged)
+                        return Mono.just(true);
+
+                    String appCode = ca.getUrlAppCode();
+                    if (StringUtil.safeIsBlank(appCode))
+                        return Mono.just(true);
+
+                    return this.appService.getAppByCode(appCode)
+                            .flatMap(app -> this.validateUserCheckProperty(
+                                    app.getId(), entity.getClientId(),
+                                    entity.getUserName(), entity.getEmailId(),
+                                    entity.getPhoneNumber(), entity.getId()))
+                            .defaultIfEmpty(true);
                 },
-                (ca, existingUser, clientType, userExists, updated) -> updated != null
+                (ca, existingUser, clientType, userExists, userCheckValid) -> this
+                        .canAccessClientForUserOperation(entity.getClientId())
+                        .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
+                                ? this.checkSubOrgAndRun(
+                                        ca, entity.getClientId(), entity.getId(), super.update(entity))
+                                : Mono.empty()),
+                (ca, existingUser, clientType, userExists, userCheckValid, updated) -> updated != null
                         ? this.evictCache(updated.getId(), updated.getClientId())
                                 .flatMap(evicted -> this.evictManagerCachesIfChanged(
                                         updated.getClientId(), existingUser.getReportingTo(), updated.getReportingTo()))
@@ -1380,7 +1417,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .map(userExists -> Boolean.FALSE),
                 userExists -> this.validateUserCheckProperty(
                         appId, user.getClientId(),
-                        user.getUserName(), user.getEmailId(), user.getPhoneNumber()),
+                        user.getUserName(), user.getEmailId(), user.getPhoneNumber(),
+                        null),
                 (userExists, userCheckValid) -> this.dao.create(user),
                 (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(
