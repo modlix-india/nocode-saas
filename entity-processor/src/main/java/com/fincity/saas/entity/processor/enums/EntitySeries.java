@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.entity.processor.dto.Ad;
 import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Adset;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Partner;
@@ -53,7 +55,9 @@ public enum EntitySeries implements EnumType {
     PRODUCT_WALK_IN_FORMS("PRODUCT_WALK_IN_FORMS", "Product Walk In Forms", 29, "ProductWalkInForms"),
     TICKET_DUPLICATION_RULES("TICKET_DUPLICATION_RULES", "Ticket Duplication Rules", 30, "TicketDuplicationRule"),
     TICKET_PE_DUPLICATION_RULES(
-            "TICKET_PE_DUPLICATION_RULES", "Ticket Pe Duplication Rules", 31, "TicketPeDuplicationRule");
+            "TICKET_PE_DUPLICATION_RULES", "Ticket Pe Duplication Rules", 31, "TicketPeDuplicationRule"),
+    ADSET("ADSET", "Adset", 32, "Adset"),
+    AD("AD", "Ad", 33, "Ad");
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -72,7 +76,9 @@ public enum EntitySeries implements EnumType {
             Map.entry(PRODUCT_TEMPLATE_WALK_IN_FORMS, "ProductTemplateWalkInForms"),
             Map.entry(PRODUCT_WALK_IN_FORMS, "ProductWalkInForms"),
             Map.entry(TICKET_DUPLICATION_RULES, "TicketDuplicationRules"),
-            Map.entry(TICKET_PE_DUPLICATION_RULES, "TicketPeDuplicationRules"));
+            Map.entry(TICKET_PE_DUPLICATION_RULES, "TicketPeDuplicationRules"),
+            Map.entry(ADSET, "Adset"),
+            Map.entry(AD, "Ad"));
 
     private final String literal;
     private final String displayName;
@@ -155,6 +161,8 @@ public enum EntitySeries implements EnumType {
             TABLE_MAP.put(
                     TICKET_PE_DUPLICATION_RULES,
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES);
+            TABLE_MAP.put(ADSET, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_ADSETS);
+            TABLE_MAP.put(AD, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_ADS);
         }
 
         static Table<?> get(EntitySeries series) {
@@ -186,6 +194,8 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(PRODUCT_WALK_IN_FORMS, ProductWalkInForm.class);
             CLASS_MAP.put(TICKET_DUPLICATION_RULES, TicketDuplicationRule.class);
             CLASS_MAP.put(TICKET_PE_DUPLICATION_RULES, TicketPeDuplicationRule.class);
+            CLASS_MAP.put(ADSET, Adset.class);
+            CLASS_MAP.put(AD, Ad.class);
         }
 
         static Class<?> get(EntitySeries series) {
