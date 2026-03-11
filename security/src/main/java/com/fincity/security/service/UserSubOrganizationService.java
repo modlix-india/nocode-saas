@@ -183,9 +183,21 @@ public class UserSubOrganizationService
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user reporting manager"));
     }
 
+    public Mono<Boolean> evictManagerCaches(ULong clientId, ULong oldManagerId, ULong newManagerId) {
+
+        if (oldManagerId == null && newManagerId == null)
+            return Mono.just(Boolean.TRUE);
+
+        return Flux.fromIterable(List.of(oldManagerId, newManagerId))
+                .filter(Objects::nonNull)
+                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
+                .then(Mono.just(Boolean.TRUE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictManagerCaches"));
+    }
+
     private Mono<User> evictHierarchyCaches(User updatedUser, ULong oldReportingTo, ULong newReportingTo) {
 
-        if (oldReportingTo == null || newReportingTo == null)
+        if (oldReportingTo == null && newReportingTo == null)
             return Mono.just(updatedUser);
 
         return Flux.fromIterable(List.of(oldReportingTo, newReportingTo))

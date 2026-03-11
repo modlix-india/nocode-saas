@@ -2244,6 +2244,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			entity.setUserName("existinguser");
 			entity.setEmailId("existing@test.com");
 
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(entity));
+
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
 
@@ -2268,6 +2270,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			entity.setUserName("existinguser");
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(entity));
 
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("INDV", CLIENT_CODE, "CLIENT")));
@@ -2298,6 +2302,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			entity.setUserName("updateduser");
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(entity));
 
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
