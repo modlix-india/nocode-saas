@@ -257,7 +257,7 @@ public class SSLCertificateService {
 
                 () -> this.requestDao.readById(requestId),
 
-                this::loginAndGetOrder,
+                this::loginAndBindOrder,
 
                 (request, order) -> {
 
@@ -340,7 +340,7 @@ public class SSLCertificateService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.loginAndGetOrder(request),
+                () -> this.loginAndBindOrder(request),
 
                 order -> {
 
@@ -608,16 +608,25 @@ public class SSLCertificateService {
 
                 () -> this.challengeDao.deleteAllForRequest(sslRequest.getId()),
 
-                deleted -> loginAndGetOrder(sslRequest),
+                deleted -> loginAndCreateNewOrder(sslRequest),
 
-                (deleted, finOrder) -> Flux.fromIterable(finOrder.getAuthorizations())
+                (deleted, finOrder) -> this.requestDao.updateOrderUrl(sslRequest.getId(),
+                    finOrder.getLocation().toString())
+                    .thenReturn(finOrder),
+
+                (deleted, finOrder, order) -> Flux.fromIterable(order.getAuthorizations())
                     .map(auth -> makeSSLChallenge(sslRequest, auth))
                     .flatMap(this.challengeDao::create)
                     .collectList())
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createChallenges"));
     }
 
-    private Mono<Order> loginAndGetOrder(SSLRequest sslRequest) {
+    private Login getLogin() throws MalformedURLException, URISyntaxException {
+
+        return new Session(this.sessionURL).login(new URI(this.accountURL).toURL(), accountKeyPair);
+    }
+
+    private Mono<Order> loginAndCreateNewOrder(SSLRequest sslRequest) {
 
         if (StringUtil.safeIsBlank(this.sessionURL) || StringUtil.safeIsBlank(this.accountURL)
             || StringUtil.safeIsBlank(this.accountKey)) {
@@ -625,10 +634,9 @@ public class SSLCertificateService {
                 SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
         }
 
-        Session session = new Session(this.sessionURL);
         Login login;
         try {
-            login = session.login(new URI(this.accountURL).toURL(), accountKeyPair);
+            login = getLogin();
         } catch (MalformedURLException | URISyntaxException e) {
             return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
                 SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
@@ -650,6 +658,41 @@ public class SSLCertificateService {
         }
 
         return Mono.just(order);
+    }
+
+    private Mono<Order> loginAndBindOrder(SSLRequest sslRequest) {
+
+        if (StringUtil.safeIsBlank(this.sessionURL) || StringUtil.safeIsBlank(this.accountURL)
+            || StringUtil.safeIsBlank(this.accountKey)) {
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
+        }
+
+        return this.requestDao.getOrderUrl(sslRequest.getId())
+            .flatMap(orderUrl -> {
+
+                if (StringUtil.safeIsBlank(orderUrl)) {
+                    logger.warn("No stored order URL for request {}, creating new order", sslRequest.getId());
+                    return this.loginAndCreateNewOrder(sslRequest);
+                }
+
+                Login login;
+                try {
+                    login = getLogin();
+                } catch (MalformedURLException | URISyntaxException e) {
+                    return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                        SecurityMessageResourceService.LETS_ENCRYPT_CREDENTIALS);
+                }
+
+                try {
+                    Order order = login.bindOrder(new URI(orderUrl).toURL());
+                    order.update();
+                    return Mono.just(order);
+                } catch (Exception e) {
+                    logger.warn("Failed to bind to stored order URL {}, creating new order: {}", orderUrl, e.getMessage());
+                    return this.loginAndCreateNewOrder(sslRequest);
+                }
+            });
     }
 
     private SSLChallenge makeSSLChallenge(SSLRequest sslRequest, Authorization auth) {
