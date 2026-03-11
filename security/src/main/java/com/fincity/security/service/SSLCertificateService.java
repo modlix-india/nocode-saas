@@ -340,9 +340,16 @@ public class SSLCertificateService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.loginAndBindOrder(request),
+                // Use loginAndCreateNewOrder — ACME server returns the existing pending
+                // order for the same domains, giving us properly-constructed auth objects
+                // where auth.update() works correctly for polling.
+                () -> this.loginAndCreateNewOrder(request),
 
                 order -> {
+
+                    // Save the order URL in case it changed
+                    this.requestDao.updateOrderUrl(request.getId(), order.getLocation().toString())
+                        .subscribe();
 
                     var authChallengeTup = this.findChallengeAndAuthorization(order, challenge);
 
@@ -354,6 +361,7 @@ public class SSLCertificateService {
                     Authorization auth = authChallengeTup.getT1();
                     Challenge ch = authChallengeTup.getT2();
 
+                    // Sync tokens to DB if the ACME server returned different tokens
                     Tuple2<String, String> newTokens = this.resolveTokenFromChallenge(auth, ch, challenge);
 
                     boolean tokensChanged = !newTokens.getT1().equals(challenge.getToken())
@@ -390,8 +398,7 @@ public class SSLCertificateService {
         String chStatus = null;
 
         try {
-            Tuple2<String, String> tup = this.triggerChallenge(auth, ch, order, challenge.getDomain(),
-                challenge.getChallengeType());
+            Tuple2<String, String> tup = this.triggerChallenge(auth, ch);
             chStatus = tup.getT1();
             if (!tup.getT2().isBlank())
                 chError = tup.getT2();
@@ -433,94 +440,49 @@ public class SSLCertificateService {
         return null;
     }
 
-    private Tuple2<String, String> triggerChallenge(Authorization auth, Challenge ch, Order order,
-        String domain, String challengeType) throws AcmeException, InterruptedException {
+    private Tuple2<String, String> triggerChallenge(Authorization auth, Challenge ch)
+        throws AcmeException, InterruptedException {
 
-        // Check if the authorization is already valid before triggering
+        String chStatus;
+        String chError = "";
+
+        // Check if already valid/invalid before triggering
         Status preStatus = auth.getStatus();
         logger.info("Pre-trigger auth status: {}, challenge status: {}, domain: {}, type: {}",
-            preStatus, ch.getStatus(), domain, ch.getType());
+            preStatus, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType());
 
         if (preStatus == Status.VALID)
             return Tuples.of(preStatus.toString(), "");
 
         if (preStatus == Status.INVALID) {
-            logger.error("Authorization was already INVALID before triggering. Domain: {}", domain);
+            logger.error("Authorization was already INVALID before triggering. Domain: {}", auth.getIdentifier().getDomain());
             return Tuples.of(preStatus.toString(),
                 "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.");
         }
 
         ch.trigger();
+        int count = 2;
+        Status status;
 
-        Status status = this.pollAuthorizationStatus(order, domain);
-
-        if (status == Status.VALID)
-            return Tuples.of(status.toString(), "");
-
-        String chError = this.buildChallengeErrorDetail(order, domain, challengeType, status);
-
-        logger.error("Challenge validation failed — Domain: {}, Challenge type: {}, Error: {}",
-            domain, challengeType, chError);
-
-        return Tuples.of(status.toString(), chError);
-    }
-
-    private Status pollAuthorizationStatus(Order order, String domain)
-        throws AcmeException, InterruptedException {
-
-        Status status = Status.PENDING;
-
-        for (int i = 0; i < 5; i++) {
+        while ((status = auth.getStatus()) != Status.VALID && status != Status.INVALID && count > 0) {
 
             Thread.sleep(3000L); // NOSONAR
-
-            order.update();
-            Authorization freshAuth = this.findAuthorizationForDomain(order, domain);
-
-            if (freshAuth != null) {
-                status = freshAuth.getStatus();
-                logger.info("Poll attempt {}: auth status = {} for domain: {}", i + 1, status, domain);
-            }
-
-            if (status == Status.VALID || status == Status.INVALID)
-                break;
+            auth.update();
+            count--;
         }
 
-        return status;
-    }
+        chStatus = status.toString();
 
-    private Authorization findAuthorizationForDomain(Order order, String domain) {
-
-        for (Authorization a : order.getAuthorizations()) {
-            if (a.getIdentifier().getDomain().equals(domain))
-                return a;
-        }
-        return null;
-    }
-
-    private String buildChallengeErrorDetail(Order order, String domain, String challengeType, Status authStatus) {
-
-        String challengeTypeToFind = challengeType.equals(Http01Challenge.TYPE) ? Http01Challenge.TYPE
-            : Dns01Challenge.TYPE;
-
-        Challenge freshCh = null;
-        try {
-            Authorization freshAuth = this.findAuthorizationForDomain(order, domain);
-            if (freshAuth != null)
-                freshCh = freshAuth.findChallenge(challengeTypeToFind).orElse(null);
-        } catch (Exception ignored) { /* best effort */ }
-
-        String freshChStatus = "UNKNOWN";
-        String errorDetail = "No error detail returned by ACME server";
-
-        if (freshCh != null) {
-            freshChStatus = freshCh.getStatus().toString();
-            errorDetail = freshCh.getError()
+        if (status != Status.VALID) {
+            chError = ch.getError()
                 .map(this::formatProblemDetail)
-                .orElse(errorDetail);
+                .orElse("Unknown error");
+
+            logger.error("Challenge validation failed — Authorization status: {}, Domain: {}, Error: {}",
+                status, auth.getIdentifier().getDomain(), chError);
         }
 
-        return "Authorization status: " + authStatus + " | Challenge status: " + freshChStatus + " | " + errorDetail;
+        return Tuples.of(chStatus, chError);
     }
 
     private String formatProblemDetail(Problem problem) {
