@@ -41,6 +41,7 @@ public class SSLChallengeDAO extends AbstractUpdatableDAO<SecuritySslChallengeRe
 		return Mono.from(this.dslContext.update(SECURITY_SSL_CHALLENGE)
 				.set(SECURITY_SSL_CHALLENGE.STATUS, chStatus)
 				.set(SECURITY_SSL_CHALLENGE.FAILED_REASON, chError)
+				.set(SECURITY_SSL_CHALLENGE.LAST_VALIDATED_AT, java.time.LocalDateTime.now())
 				.where(SECURITY_SSL_CHALLENGE.ID.eq(id)))
 				.map(e -> true);
 	}
