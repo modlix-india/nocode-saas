@@ -39,6 +39,7 @@ import org.shredzone.acme4j.Login;
 import org.shredzone.acme4j.Order;
 import org.shredzone.acme4j.Session;
 import org.shredzone.acme4j.Status;
+import org.shredzone.acme4j.Problem;
 import org.shredzone.acme4j.challenge.Challenge;
 import org.shredzone.acme4j.challenge.Dns01Challenge;
 import org.shredzone.acme4j.challenge.Http01Challenge;
@@ -274,13 +275,25 @@ public class SSLCertificateService {
                         while (order.getStatus() != Status.VALID && attempts-- > 0) {
 
                             if (order.getStatus() == Status.INVALID) {
-                                break;
+                                String diagnostics = this.buildOrderDiagnostics(order);
+                                logger.error("Order is INVALID for domains [{}] — {}", request.getDomains(), diagnostics);
+                                return this.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                                    SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, diagnostics);
                             }
 
                             // Because of network issue we will retry automatically.
                             Thread.sleep(3000L); // NO SONAR
 
                             order.update();
+                        }
+
+                        if (order.getStatus() != Status.VALID) {
+                            String diagnostics = this.buildOrderDiagnostics(order);
+                            logger.error("Order timed out with status {} for domains [{}] — {}", order.getStatus(), request.getDomains(), diagnostics);
+                            return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                                SecurityMessageResourceService.LETS_ENCRYPT_ISSUE, diagnostics);
                         }
                     } catch (InterruptedException ex) {
 
@@ -412,16 +425,66 @@ public class SSLCertificateService {
         chStatus = status.toString();
 
         if (status != Status.VALID) {
-            logger.error("Status is : {}", status);
-            logger.error("Challenge is : {}", ch);
-            logger.error("Error is : {}", ch.getError());
+            String errorDetail = ch.getError()
+                .map(this::formatProblemDetail)
+                .orElse("No error detail returned by ACME server");
 
-            chError = ch.getError()
-                .map(Object::toString)
-                .orElse("Unknown error");
+            logger.error("Challenge validation failed — Authorization status: {}, Challenge status: {}, Domain: {}, Challenge type: {}, Error: {}",
+                status, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType(), errorDetail);
+
+            chError = "Authorization status: " + status + " | Challenge status: " + ch.getStatus() + " | " + errorDetail;
         }
 
         return Tuples.of(chStatus, chError);
+    }
+
+    private String formatProblemDetail(Problem problem) {
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("Type: ").append(problem.getType());
+
+        problem.getTitle().ifPresent(title -> sb.append(" | Title: ").append(title));
+
+        problem.getDetail().ifPresent(detail -> sb.append(" | Detail: ").append(detail));
+
+        List<Problem> subProblems = problem.getSubProblems();
+        if (!subProblems.isEmpty()) {
+            sb.append(" | Sub-problems: [");
+            for (int i = 0; i < subProblems.size(); i++) {
+                Problem sub = subProblems.get(i);
+                if (i > 0) sb.append("; ");
+                sb.append("{");
+                sub.getIdentifier().ifPresent(id -> sb.append("domain: ").append(id.getDomain()).append(", "));
+                sb.append("type: ").append(sub.getType());
+                sub.getDetail().ifPresent(detail -> sb.append(", detail: ").append(detail));
+                sb.append("}");
+            }
+            sb.append("]");
+        }
+
+        return sb.toString();
+    }
+
+    private String buildOrderDiagnostics(Order order) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Order status: ").append(order.getStatus());
+
+        order.getError().ifPresent(problem ->
+            sb.append(" | Order error: ").append(formatProblemDetail(problem)));
+
+        for (Authorization auth : order.getAuthorizations()) {
+            sb.append(" | Auth [").append(auth.getIdentifier().getDomain()).append("]: status=").append(auth.getStatus());
+
+            for (Challenge ch : auth.getChallenges()) {
+                sb.append(", challenge(").append(ch.getType()).append(")=").append(ch.getStatus());
+                ch.getError().ifPresent(problem ->
+                    sb.append(" error=").append(formatProblemDetail(problem)));
+            }
+        }
+
+        return sb.toString();
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
