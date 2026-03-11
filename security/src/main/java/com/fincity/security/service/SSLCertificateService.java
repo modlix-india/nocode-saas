@@ -451,12 +451,12 @@ public class SSLCertificateService {
         }
 
         ch.trigger();
-        int count = 10;
+        int count = 3;
         Status status;
 
         while ((status = auth.getStatus()) != Status.VALID && status != Status.INVALID && count > 0) {
 
-            Thread.sleep(5000L); // NOSONAR
+            Thread.sleep(3000L); // NOSONAR
             auth.update();
             count--;
         }
