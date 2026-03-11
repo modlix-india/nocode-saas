@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecuritySslRequest.SECURITY_SSL_REQUEST;
 
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -40,5 +41,20 @@ public class SSLRequestDAO extends AbstractUpdatableDAO<SecuritySslRequestRecord
 		return Mono.from(this.dslContext.deleteFrom(SECURITY_SSL_REQUEST)
 				.where(SECURITY_SSL_REQUEST.URL_ID.eq(urlId)))
 				.map(e -> e == 1);
+	}
+
+	public Mono<Boolean> updateOrderUrl(ULong id, String orderUrl) {
+		return Mono.from(this.dslContext.update(SECURITY_SSL_REQUEST)
+				.set(DSL.field("ORDER_URL", String.class), orderUrl)
+				.where(SECURITY_SSL_REQUEST.ID.eq(id)))
+				.map(e -> true);
+	}
+
+	public Mono<String> getOrderUrl(ULong id) {
+		return Mono.from(this.dslContext.select(DSL.field("ORDER_URL", String.class))
+				.from(SECURITY_SSL_REQUEST)
+				.where(SECURITY_SSL_REQUEST.ID.eq(id)))
+				.map(Record1::value1)
+				.defaultIfEmpty("");
 	}
 }
