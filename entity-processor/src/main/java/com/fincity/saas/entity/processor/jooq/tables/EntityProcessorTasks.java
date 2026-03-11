@@ -341,7 +341,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASKS_IDX0_TASKS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASKS_IDX0_TASKS_AC_CC, Indexes.ENTITY_PROCESSOR_TASKS_IDX1_TASKS_AC_CC_CES_CREATED_BY, Indexes.ENTITY_PROCESSOR_TASKS_IDX2_TASKS_AC_CC_CES_TICKET_ID);
     }
 
     @Override

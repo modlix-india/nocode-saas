@@ -73,6 +73,7 @@ import com.fincity.security.dto.SSLRequest;
 import com.fincity.security.model.SSLCertificateConfiguration;
 import com.fincity.security.model.SSLCertificateOrder;
 import com.fincity.security.model.SSLCertificateOrderRequest;
+import com.fincity.security.model.SSLCertificateRenewalResult;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
@@ -246,16 +247,18 @@ public class SSLCertificateService {
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     public Mono<Boolean> createCertificate(ULong requestId) {
+        return this.createCertificateInternal(requestId);
+    }
+
+    private Mono<Boolean> createCertificateInternal(ULong requestId) {
 
         return FlatMapUtil.flatMapMono(
 
                 () -> this.requestDao.readById(requestId),
 
-                request -> this.clientUrlService.read(request.getUrlId()),
+                this::loginAndGetOrder,
 
-                (request, clientUrl) -> this.loginAndGetOrder(request),
-
-                (request, clientUrl, order) -> {
+                (request, order) -> {
 
                     try {
 
@@ -292,10 +295,10 @@ public class SSLCertificateService {
                     return Mono.just(order.getCertificate());
                 },
 
-                (request, clientUrl, order, certificate) -> this.certificateDao.create(request, certificate)
+                (request, order, certificate) -> this.certificateDao.create(request, certificate)
 
             )
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificate"))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createCertificateInternal"))
             .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_CERTIFICATE))
             .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
             .subscribeOn(Schedulers.boundedElastic())
@@ -693,4 +696,147 @@ public class SSLCertificateService {
             .subscribeOn(Schedulers.boundedElastic())
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.deleteCertificate"));
     }
+
+    public Mono<SSLCertificateRenewalResult> renewExpiringCertificates(int daysBeforeExpiry) {
+
+        return this.certificateDao.readExpiringCertificates(daysBeforeExpiry)
+            .flatMapMany(Flux::fromIterable)
+            .flatMap(cert -> this.renewSingleCertificate(cert)
+                .onErrorResume(e -> {
+                    logger.error("Failed to renew certificate for urlId {}: {}", cert.getUrlId(), e.getMessage(), e);
+                    return Mono.just(new SingleRenewalOutcome(false,
+                        "urlId=" + cert.getUrlId() + ": " + e.getMessage()));
+                }), 1)
+            .collectList()
+            .map(outcomes -> {
+                SSLCertificateRenewalResult result = new SSLCertificateRenewalResult();
+                for (SingleRenewalOutcome o : outcomes) {
+                    if (o.renewed()) result.setRenewedCount(result.getRenewedCount() + 1);
+                    else {
+                        result.setFailedCount(result.getFailedCount() + 1);
+                        if (o.error() != null) result.getErrors().add(o.error());
+                    }
+                }
+                return result;
+            })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewExpiringCertificates"))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<SingleRenewalOutcome> renewSingleCertificate(SSLCertificate cert) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.requestDao.readByURLId(cert.getUrlId()),
+
+                request -> this.challengeDao.readChallengesByRequestId(request.getId()),
+
+                (request, challenges) -> {
+                    boolean allHttp01 = !challenges.isEmpty()
+                        && challenges.stream().allMatch(c -> Http01Challenge.TYPE.equals(c.getChallengeType()));
+
+                    if (allHttp01)
+                        return this.renewHttp01Certificate(cert, request);
+                    else
+                        return this.createNewChallengesForNonHttp01(cert, request);
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewSingleCertificate"));
+    }
+
+    private Mono<SingleRenewalOutcome> renewHttp01Certificate(SSLCertificate cert, SSLRequest existingRequest) {
+
+        return this.attemptRenewalWithRequest(existingRequest)
+            .onErrorResume(e -> {
+                logger.warn("Renewal with existing request failed for urlId {}, trying with new request: {}",
+                    cert.getUrlId(), e.getMessage());
+                return this.attemptRenewalWithNewRequest(cert, existingRequest);
+            });
+    }
+
+    private Mono<SingleRenewalOutcome> attemptRenewalWithRequest(SSLRequest request) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.createChallenges(request),
+
+                challenges -> {
+                    boolean allValid = challenges.stream()
+                        .allMatch(c -> Status.VALID.toString().equalsIgnoreCase(c.getStatus()));
+
+                    if (allValid)
+                        return Mono.just(challenges);
+
+                    return Flux.fromIterable(challenges)
+                        .filter(c -> !Status.VALID.toString().equalsIgnoreCase(c.getStatus()))
+                        .flatMap(c -> this.triggerChallenge(c, request).thenReturn(c))
+                        .then(this.challengeDao.readChallengesByRequestId(request.getId()));
+                },
+
+                (challenges, updatedChallenges) -> {
+                    boolean allValid = updatedChallenges.stream()
+                        .allMatch(c -> Status.VALID.toString().equalsIgnoreCase(c.getStatus()));
+
+                    if (allValid)
+                        return this.createCertificateInternal(request.getId())
+                            .map(success -> new SingleRenewalOutcome(true, null));
+
+                    return Mono.just(new SingleRenewalOutcome(false,
+                        "urlId=" + request.getUrlId() + ": challenges not all valid after trigger"));
+                })
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.attemptRenewalWithRequest"))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<SingleRenewalOutcome> attemptRenewalWithNewRequest(SSLCertificate cert, SSLRequest existingRequest) {
+
+        SSLCertificateOrderRequest orderRequest = new SSLCertificateOrderRequest()
+            .setUrlId(cert.getUrlId())
+            .setDomainNames(List.of(existingRequest.getDomains().split(",")))
+            .setOrganizationName(existingRequest.getOrganization())
+            .setValidityInMonths(existingRequest.getValidity());
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.requestDao.deleteByURLId(cert.getUrlId()),
+
+                deleted -> this.makeRecord(orderRequest).flatMap(this.requestDao::create),
+
+                (deleted, newRequest) -> this.attemptRenewalWithRequest(newRequest))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.attemptRenewalWithNewRequest"))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<SingleRenewalOutcome> createNewChallengesForNonHttp01(SSLCertificate cert, SSLRequest existingRequest) {
+
+        return this.createChallenges(existingRequest)
+            .<SingleRenewalOutcome>map(challenges -> new SingleRenewalOutcome(false, null))
+            .onErrorResume(e -> {
+                logger.warn("Challenge creation with existing request failed for urlId {}, trying with new request: {}",
+                    cert.getUrlId(), e.getMessage());
+                return this.createNewRequestWithChallenges(cert, existingRequest);
+            });
+    }
+
+    private Mono<SingleRenewalOutcome> createNewRequestWithChallenges(SSLCertificate cert, SSLRequest existingRequest) {
+
+        SSLCertificateOrderRequest orderRequest = new SSLCertificateOrderRequest()
+            .setUrlId(cert.getUrlId())
+            .setDomainNames(List.of(existingRequest.getDomains().split(",")))
+            .setOrganizationName(existingRequest.getOrganization())
+            .setValidityInMonths(existingRequest.getValidity());
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.requestDao.deleteByURLId(cert.getUrlId()),
+
+                deleted -> this.makeRecord(orderRequest).flatMap(this.requestDao::create),
+
+                (deleted, newRequest) -> this.createChallenges(newRequest),
+
+                (deleted, newRequest, challenges) -> Mono.just(new SingleRenewalOutcome(false, null)))
+            .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.createNewRequestWithChallenges"))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private record SingleRenewalOutcome(boolean renewed, String error) {}
 }

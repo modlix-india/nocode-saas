@@ -29,6 +29,7 @@ import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.TokenService;
 import com.fincity.security.testutil.TestWebSecurityConfig;
 
 import reactor.core.publisher.Mono;
@@ -45,6 +46,9 @@ class AuthenticationControllerTest {
 
     @MockitoBean
     private ClientService clientService;
+
+    @MockitoBean
+    private TokenService tokenService;
 
     private AuthenticationResponse sampleAuthResponse;
     private ContextUser sampleContextUser;
@@ -583,6 +587,83 @@ class AuthenticationControllerTest {
                     .expectStatus().is5xxServerError();
 
             verify(authenticationService).revoke(eq(false), any());
+        }
+    }
+
+    // ==================== POST /api/security/internal/tokens/cleanup ====================
+
+    @Nested
+    @DisplayName("POST /api/security/internal/tokens/cleanup")
+    class CleanupTokensTests {
+
+        @Test
+        @DisplayName("Should return 200 with cleanup counts using default unusedDays")
+        void cleanupTokens_DefaultDays_Returns200() {
+
+            when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(5));
+            when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(3));
+
+            webTestClient.post()
+                    .uri("/api/security/internal/tokens/cleanup")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.expiredTokensRemoved").isEqualTo(5)
+                    .jsonPath("$.unusedTokensRemoved").isEqualTo(3);
+
+            verify(tokenService).cleanupExpiredTokens();
+            verify(tokenService).cleanupUnusedTokens(90);
+        }
+
+        @Test
+        @DisplayName("Should pass custom unusedDays parameter to service")
+        void cleanupTokens_CustomDays_PassesParameter() {
+
+            when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(2));
+            when(tokenService.cleanupUnusedTokens(30)).thenReturn(Mono.just(10));
+
+            webTestClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/security/internal/tokens/cleanup")
+                            .queryParam("unusedDays", "30")
+                            .build())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.expiredTokensRemoved").isEqualTo(2)
+                    .jsonPath("$.unusedTokensRemoved").isEqualTo(10);
+
+            verify(tokenService).cleanupUnusedTokens(30);
+        }
+
+        @Test
+        @DisplayName("Should return 200 with zero counts when nothing to clean")
+        void cleanupTokens_NothingToClean_ReturnsZeros() {
+
+            when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(0));
+            when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(0));
+
+            webTestClient.post()
+                    .uri("/api/security/internal/tokens/cleanup")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.expiredTokensRemoved").isEqualTo(0)
+                    .jsonPath("$.unusedTokensRemoved").isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("Should return 500 when service throws unexpected error")
+        void cleanupTokens_ServiceError_Returns500() {
+
+            when(tokenService.cleanupExpiredTokens())
+                    .thenReturn(Mono.error(new RuntimeException("DB connection failed")));
+            when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(0));
+
+            webTestClient.post()
+                    .uri("/api/security/internal/tokens/cleanup")
+                    .exchange()
+                    .expectStatus().is5xxServerError();
         }
     }
 }

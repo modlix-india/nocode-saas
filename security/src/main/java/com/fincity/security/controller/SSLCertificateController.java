@@ -35,6 +35,7 @@ import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dto.SSLCertificate;
 import com.fincity.security.model.SSLCertificateConfiguration;
 import com.fincity.security.model.SSLCertificateOrder;
+import com.fincity.security.model.SSLCertificateRenewalResult;
 import com.fincity.security.model.SSLCertificateOrderRequest;
 import com.fincity.security.service.SSLCertificateService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -192,6 +193,23 @@ public class SSLCertificateController {
 
         return this.service.getToken(token)
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/renew-certificates")
+    public Mono<ResponseEntity<SSLCertificateRenewalResult>> renewExpiringCertificates(
+            @RequestParam(value = "daysBeforeExpiry", defaultValue = "30") int daysBeforeExpiry) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                        SecurityMessageResourceService.ONLY_SYS_USER_CERTS),
+
+                (ca, validUser) -> this.service.renewExpiringCertificates(daysBeforeExpiry))
+            .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/certificates")

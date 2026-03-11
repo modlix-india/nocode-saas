@@ -55,6 +55,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
 
     private ULong productTemplateId = null;
     private LocalDateTime latestTaskDueDate;
+    private LocalDateTime expiresOn;
 
     public Ticket() {
         super();
@@ -90,6 +91,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
         this.productTemplateId = ticket.productTemplateId;
         this.latestTaskDueDate = ticket.latestTaskDueDate;
+        this.expiresOn = ticket.expiresOn;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
@@ -187,6 +189,11 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TICKET;
+    }
+
+    @JsonIgnore
+    public boolean isExpired() {
+        return this.expiresOn != null && this.expiresOn.isBefore(LocalDateTime.now());
     }
 
     public Ticket setSource(String source) {

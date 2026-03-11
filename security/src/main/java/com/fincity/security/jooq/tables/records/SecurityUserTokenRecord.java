@@ -118,11 +118,28 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
     }
 
     /**
+     * Setter for <code>security.security_user_token.LAST_USED_AT</code>. Last
+     * time the token was used
+     */
+    public SecurityUserTokenRecord setLastUsedAt(LocalDateTime value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_token.LAST_USED_AT</code>. Last
+     * time the token was used
+     */
+    public LocalDateTime getLastUsedAt() {
+        return (LocalDateTime) get(6);
+    }
+
+    /**
      * Setter for <code>security.security_user_token.CREATED_BY</code>. ID of
      * the user who created this row
      */
     public SecurityUserTokenRecord setCreatedBy(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -131,7 +148,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -139,7 +156,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * when this row is created
      */
     public SecurityUserTokenRecord setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -148,7 +165,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(8);
     }
 
     // -------------------------------------------------------------------------
@@ -174,7 +191,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
     /**
      * Create a detached, initialised SecurityUserTokenRecord
      */
-    public SecurityUserTokenRecord(ULong id, ULong userId, String token, String partToken, LocalDateTime expiresAt, String ipAddress, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityUserTokenRecord(ULong id, ULong userId, String token, String partToken, LocalDateTime expiresAt, String ipAddress, LocalDateTime lastUsedAt, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityUserToken.SECURITY_USER_TOKEN);
 
         setId(id);
@@ -183,6 +200,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
         setPartToken(partToken);
         setExpiresAt(expiresAt);
         setIpAddress(ipAddress);
+        setLastUsedAt(lastUsedAt);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();

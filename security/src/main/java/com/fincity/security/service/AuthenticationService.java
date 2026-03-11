@@ -687,7 +687,10 @@ public class AuthenticationService implements IAuthenticationService {
                             .filter(e -> e.getToken().equals(bearerToken))
                             .take(1)
                             .single(),
-                    token -> this.makeSpringAuthentication(appCode, request, claims, token),
+                    token -> Mono.zip(
+                            this.makeSpringAuthentication(appCode, request, claims, token),
+                            tokenService.updateLastUsedAt(token.getId()))
+                            .map(reactor.util.function.Tuple2::getT1),
                     (token, ca) -> {
                         if (claims.isOneTime())
                             return tokenService.delete(token.getId()).map(e -> ca);

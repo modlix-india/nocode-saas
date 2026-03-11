@@ -95,6 +95,12 @@ public class SecurityUserToken extends TableImpl<SecurityUserTokenRecord> {
     public final TableField<SecurityUserTokenRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(50).nullable(false), this, "User IP from where he logged in");
 
     /**
+     * The column <code>security.security_user_token.LAST_USED_AT</code>. Last
+     * time the token was used
+     */
+    public final TableField<SecurityUserTokenRecord, LocalDateTime> LAST_USED_AT = createField(DSL.name("LAST_USED_AT"), SQLDataType.LOCALDATETIME(0), this, "Last time the token was used");
+
+    /**
      * The column <code>security.security_user_token.CREATED_BY</code>. ID of
      * the user who created this row
      */
