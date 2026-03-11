@@ -340,9 +340,16 @@ public class SSLCertificateService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.loginAndBindOrder(request),
+                // Use loginAndCreateNewOrder — ACME server returns the existing pending
+                // order for the same domains, giving us properly-constructed auth objects
+                // where auth.update() works correctly for polling.
+                () -> this.loginAndCreateNewOrder(request),
 
                 order -> {
+
+                    // Save the order URL in case it changed
+                    this.requestDao.updateOrderUrl(request.getId(), order.getLocation().toString())
+                        .subscribe();
 
                     var authChallengeTup = this.findChallengeAndAuthorization(order, challenge);
 
@@ -354,6 +361,7 @@ public class SSLCertificateService {
                     Authorization auth = authChallengeTup.getT1();
                     Challenge ch = authChallengeTup.getT2();
 
+                    // Sync tokens to DB if the ACME server returned different tokens
                     Tuple2<String, String> newTokens = this.resolveTokenFromChallenge(auth, ch, challenge);
 
                     boolean tokensChanged = !newTokens.getT1().equals(challenge.getToken())
@@ -438,25 +446,27 @@ public class SSLCertificateService {
         String chStatus;
         String chError = "";
 
-        // Check if the authorization is already invalid before triggering
+        // Check if already valid/invalid before triggering
         Status preStatus = auth.getStatus();
         logger.info("Pre-trigger auth status: {}, challenge status: {}, domain: {}, type: {}",
             preStatus, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType());
 
+        if (preStatus == Status.VALID)
+            return Tuples.of(preStatus.toString(), "");
+
         if (preStatus == Status.INVALID) {
-            chStatus = preStatus.toString();
-            chError = "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.";
             logger.error("Authorization was already INVALID before triggering. Domain: {}", auth.getIdentifier().getDomain());
-            return Tuples.of(chStatus, chError);
+            return Tuples.of(preStatus.toString(),
+                "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.");
         }
 
         ch.trigger();
-        int count = 10;
+        int count = 2;
         Status status;
 
         while ((status = auth.getStatus()) != Status.VALID && status != Status.INVALID && count > 0) {
 
-            Thread.sleep(5000L); // NOSONAR
+            Thread.sleep(3000L); // NOSONAR
             auth.update();
             count--;
         }
@@ -464,17 +474,12 @@ public class SSLCertificateService {
         chStatus = status.toString();
 
         if (status != Status.VALID) {
-            // Update challenge to get the real status and error from ACME server
-            try { ch.update(); } catch (AcmeException ignored) { /* best effort */ }
-
-            String errorDetail = ch.getError()
+            chError = ch.getError()
                 .map(this::formatProblemDetail)
-                .orElse("No error detail returned by ACME server");
+                .orElse("Unknown error");
 
-            logger.error("Challenge validation failed — Authorization status: {}, Challenge status: {}, Domain: {}, Challenge type: {}, Error: {}",
-                status, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType(), errorDetail);
-
-            chError = "Authorization status: " + status + " | Challenge status: " + ch.getStatus() + " | " + errorDetail;
+            logger.error("Challenge validation failed — Authorization status: {}, Domain: {}, Error: {}",
+                status, auth.getIdentifier().getDomain(), chError);
         }
 
         return Tuples.of(chStatus, chError);
