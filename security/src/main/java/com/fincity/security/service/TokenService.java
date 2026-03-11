@@ -48,4 +48,16 @@ public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecor
         return this.evictTokensOfUser(ulId)
                 .flatMap(e -> this.dao.deleteAllTokens(ulId));
     }
+
+    public Mono<Integer> updateLastUsedAt(ULong tokenId) {
+        return this.dao.updateLastUsedAt(tokenId);
+    }
+
+    public Mono<Integer> cleanupExpiredTokens() {
+        return this.dao.deleteExpiredTokens();
+    }
+
+    public Mono<Integer> cleanupUnusedTokens(int unusedDays) {
+        return this.dao.deleteUnusedTokens(unusedDays);
+    }
 }

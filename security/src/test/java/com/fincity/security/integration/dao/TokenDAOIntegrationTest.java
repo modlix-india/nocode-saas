@@ -45,14 +45,20 @@ class TokenDAOIntegrationTest extends AbstractIntegrationTest {
 
 	private Mono<ULong> insertTokenViaSQL(ULong userId, String token, String partToken, String ipAddress,
 			LocalDateTime expiresAt) {
-		return databaseClient.sql(
-				"INSERT INTO security_user_token (USER_ID, TOKEN, PART_TOKEN, IP_ADDRESS, EXPIRES_AT) VALUES (:userId, :token, :partToken, :ip, :expiresAt)")
+		return insertTokenViaSQL(userId, token, partToken, ipAddress, expiresAt, null);
+	}
+
+	private Mono<ULong> insertTokenViaSQL(ULong userId, String token, String partToken, String ipAddress,
+			LocalDateTime expiresAt, LocalDateTime lastUsedAt) {
+		String sql = "INSERT INTO security_user_token (USER_ID, TOKEN, PART_TOKEN, IP_ADDRESS, EXPIRES_AT, LAST_USED_AT) VALUES (:userId, :token, :partToken, :ip, :expiresAt, :lastUsedAt)";
+		var spec = databaseClient.sql(sql)
 				.bind("userId", userId.longValue())
 				.bind("token", token)
 				.bind("partToken", partToken)
 				.bind("ip", ipAddress)
-				.bind("expiresAt", expiresAt)
-				.filter(s -> s.returnGeneratedValues("ID"))
+				.bind("expiresAt", expiresAt);
+		spec = lastUsedAt != null ? spec.bind("lastUsedAt", lastUsedAt) : spec.bindNull("lastUsedAt", LocalDateTime.class);
+		return spec.filter(s -> s.returnGeneratedValues("ID"))
 				.map(row -> ULong.valueOf(row.get("ID", Long.class)))
 				.one();
 	}
@@ -210,6 +216,153 @@ class TokenDAOIntegrationTest extends AbstractIntegrationTest {
 						assertNotNull(tokens);
 						assertTrue(tokens.isEmpty());
 					})
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("UpdateLastUsedAt")
+	class UpdateLastUsedAtTests {
+
+		@Test
+		@DisplayName("should update LAST_USED_AT for existing token")
+		void updateLastUsedAt_ExistingToken_UpdatesTimestamp() {
+			String uniqueToken = "lastused-token-" + UUID.randomUUID();
+
+			Mono<TokenObject> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "lastuseruser",
+					"lastuseruser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, uniqueToken, "part-lu", "127.0.0.1",
+							LocalDateTime.now().plusHours(1)))
+					.flatMap(tokenId -> tokenDAO.updateLastUsedAt(tokenId)
+							.then(tokenDAO.readById(tokenId)));
+
+			StepVerifier.create(pipeline)
+					.assertNext(tokenObj -> {
+						assertNotNull(tokenObj);
+						assertNotNull(tokenObj.getLastUsedAt());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("should return 0 for non-existent token")
+		void updateLastUsedAt_NonExistent_ReturnsZero() {
+			ULong nonExistentId = ULong.valueOf(999999);
+
+			StepVerifier.create(tokenDAO.updateLastUsedAt(nonExistentId))
+					.assertNext(count -> assertEquals(0, count))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("DeleteExpiredTokens")
+	class DeleteExpiredTokensTests {
+
+		@Test
+		@DisplayName("should delete only expired tokens")
+		void deleteExpiredTokens_OnlyDeletesExpired() {
+			Mono<List<String>> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "expuser",
+					"expuser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, "expired-" + UUID.randomUUID(), "part-exp",
+							"127.0.0.1", LocalDateTime.now().minusHours(1))
+							.then(insertTokenViaSQL(userId, "valid-" + UUID.randomUUID(), "part-val",
+									"127.0.0.1", LocalDateTime.now().plusHours(1)))
+							.thenReturn(userId))
+					.flatMap(userId -> tokenDAO.deleteExpiredTokens()
+							.flatMap(count -> {
+								assertEquals(1, count);
+								return tokenDAO.getTokensOfId(userId).collectList();
+							}));
+
+			StepVerifier.create(pipeline)
+					.assertNext(tokens -> {
+						assertEquals(1, tokens.size());
+						assertTrue(tokens.getFirst().startsWith("valid-"));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("should return 0 when no tokens are expired")
+		void deleteExpiredTokens_NoneExpired_ReturnsZero() {
+			Mono<Integer> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "noexpuser",
+					"noexpuser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, "active-" + UUID.randomUUID(), "part-act",
+							"127.0.0.1", LocalDateTime.now().plusHours(1)))
+					.then(tokenDAO.deleteExpiredTokens());
+
+			StepVerifier.create(pipeline)
+					.assertNext(count -> assertEquals(0, count))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	@DisplayName("DeleteUnusedTokens")
+	class DeleteUnusedTokensTests {
+
+		@Test
+		@DisplayName("should delete tokens with LAST_USED_AT older than cutoff")
+		void deleteUnusedTokens_DeletesOldUsed() {
+			LocalDateTime oldUsage = LocalDateTime.now().minusDays(100);
+			LocalDateTime recentUsage = LocalDateTime.now().minusDays(10);
+
+			Mono<List<String>> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "unuseduser",
+					"unuseduser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, "old-used-" + UUID.randomUUID(), "part-old",
+							"127.0.0.1", LocalDateTime.now().plusHours(1), oldUsage)
+							.then(insertTokenViaSQL(userId, "recent-used-" + UUID.randomUUID(), "part-rec",
+									"127.0.0.1", LocalDateTime.now().plusHours(1), recentUsage))
+							.thenReturn(userId))
+					.flatMap(userId -> tokenDAO.deleteUnusedTokens(90)
+							.flatMap(count -> {
+								assertEquals(1, count);
+								return tokenDAO.getTokensOfId(userId).collectList();
+							}));
+
+			StepVerifier.create(pipeline)
+					.assertNext(tokens -> {
+						assertEquals(1, tokens.size());
+						assertTrue(tokens.getFirst().startsWith("recent-used-"));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("should not delete tokens with NULL LAST_USED_AT")
+		void deleteUnusedTokens_IgnoresNullLastUsedAt() {
+			Mono<List<String>> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "nullluuser",
+					"nullluuser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, "null-lu-" + UUID.randomUUID(), "part-null",
+							"127.0.0.1", LocalDateTime.now().plusHours(1), null)
+							.thenReturn(userId))
+					.flatMap(userId -> tokenDAO.deleteUnusedTokens(90)
+							.flatMap(count -> {
+								assertEquals(0, count);
+								return tokenDAO.getTokensOfId(userId).collectList();
+							}));
+
+			StepVerifier.create(pipeline)
+					.assertNext(tokens -> {
+						assertEquals(1, tokens.size());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("should not delete tokens used within the cutoff period")
+		void deleteUnusedTokens_KeepsRecentlyUsed() {
+			LocalDateTime recentUsage = LocalDateTime.now().minusDays(5);
+
+			Mono<Integer> pipeline = insertTestUser(SYSTEM_CLIENT_ID, "recentuser",
+					"recentuser@test.com", "password123")
+					.flatMap(userId -> insertTokenViaSQL(userId, "recent-" + UUID.randomUUID(), "part-recent",
+							"127.0.0.1", LocalDateTime.now().plusHours(1), recentUsage))
+					.then(tokenDAO.deleteUnusedTokens(90));
+
+			StepVerifier.create(pipeline)
+					.assertNext(count -> assertEquals(0, count))
 					.verifyComplete();
 		}
 	}

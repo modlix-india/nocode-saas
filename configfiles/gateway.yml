@@ -41,6 +41,10 @@ spring:
           uri: lb://message
           predicates:
             - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**,
+        - id: worker
+          uri: lb://worker
+          predicates:
+            - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**,
         - id: entity-collector
           uri: lb://entity-collector
           predicates:

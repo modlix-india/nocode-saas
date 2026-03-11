@@ -1,0 +1,77 @@
+package com.modlix.saas.worker.configuration;
+
+import java.util.Properties;
+import java.util.concurrent.Executors;
+import javax.sql.DataSource;
+import org.quartz.spi.TriggerFiredBundle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.support.TaskExecutorAdapter;
+import org.springframework.scheduling.quartz.SpringBeanJobFactory;
+
+@Configuration
+public class QuartzConfiguration {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Value("${worker.quartz.virtual-threads:true}")
+    private boolean useVirtualThreads;
+
+    @Value("${worker.quartz.instance-id:AUTO}")
+    private String instanceId;
+
+    @Value("${worker.quartz.cluster-checkin-interval:15000}")
+    private String clusterCheckinInterval;
+
+    @Bean
+    public AutowiringSpringBeanJobFactory quartzJobFactory(ApplicationContext applicationContext) {
+        AutowiringSpringBeanJobFactory jobFactory = new AutowiringSpringBeanJobFactory();
+        jobFactory.setApplicationContext(applicationContext);
+        return jobFactory;
+    }
+
+    @Bean
+    public SchedulerFactoryBeanCustomizer quartzSchedulerCustomizer(
+            AutowiringSpringBeanJobFactory quartzJobFactory, DataSource dataSource) {
+        return factory -> {
+            factory.setJobFactory(quartzJobFactory);
+            factory.setDataSource(dataSource);
+            factory.setWaitForJobsToCompleteOnShutdown(true);
+            factory.setOverwriteExistingJobs(true);
+
+            Properties quartzProperties = new Properties();
+            quartzProperties.setProperty("org.quartz.jobStore.isClustered", "true");
+            quartzProperties.setProperty("org.quartz.jobStore.clusterCheckinInterval", clusterCheckinInterval);
+            quartzProperties.setProperty("org.quartz.jobStore.tablePrefix", "QRTZ_");
+            quartzProperties.setProperty("org.quartz.scheduler.instanceId", instanceId);
+            factory.setQuartzProperties(quartzProperties);
+
+            if (useVirtualThreads) {
+                factory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
+                logger.info("Quartz configured to use virtual threads for job execution");
+            }
+        };
+    }
+
+    public static class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory {
+        private AutowireCapableBeanFactory beanFactory;
+
+        @Override
+        public void setApplicationContext(final ApplicationContext context) {
+            this.beanFactory = context.getAutowireCapableBeanFactory();
+        }
+
+        @Override
+        protected Object createJobInstance(final TriggerFiredBundle bundle) throws Exception {
+            final Object job = super.createJobInstance(bundle);
+            this.beanFactory.autowireBean(job);
+            return job;
+        }
+    }
+}
