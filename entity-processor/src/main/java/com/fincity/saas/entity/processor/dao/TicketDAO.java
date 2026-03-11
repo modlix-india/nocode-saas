@@ -163,10 +163,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         List<Field<?>> list = super.getMainTableBaseFields(tableFields, queryParams);
 
         Field<LocalDateTime> latestTaskDueDate = this.getLatestTaskDueDateField();
+        Field<String> latestComment = this.getLatestCommentField();
 
         if (tableFields == null || tableFields.isEmpty()) {
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
             list.add(latestTaskDueDate);
+            list.add(latestComment);
             return list;
         }
 
@@ -174,6 +176,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
 
         if (tableFields.contains(Ticket.Fields.latestTaskDueDate)) list.add(latestTaskDueDate);
+        
+        if (tableFields.contains(Ticket.Fields.latestComment)) list.add(latestComment);
 
         return list;
     }
@@ -319,6 +323,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .select(Arrays.asList(table.fields()))
                         .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID)
                         .select(this.getLatestTaskDueDateField())
+                        .select(this.getLatestCommentField())
                         .from(table)
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
@@ -390,5 +395,16 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         ENTITY_PROCESSOR_TASKS.DUE_DATE.desc())
                 .limit(DSL.inline(1))
                 .asField("LATEST_TASK_DUE_DATE");
+    }
+
+    private Field<String> getLatestCommentField() {
+        return dslContext
+                .select(ENTITY_PROCESSOR_ACTIVITIES.COMMENT)
+                .from(ENTITY_PROCESSOR_ACTIVITIES)
+                .where(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                .and(ENTITY_PROCESSOR_ACTIVITIES.COMMENT.isNotNull())
+                .orderBy(ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE.desc())
+                .limit(DSL.inline(1))
+                .asField("LATEST_COMMENT");
     }
 }
