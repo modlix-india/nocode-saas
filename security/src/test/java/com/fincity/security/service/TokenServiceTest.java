@@ -183,4 +183,88 @@ class TokenServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	@Nested
+	class UpdateLastUsedAtTests {
+
+		@Test
+		void updateLastUsedAt_Success_ReturnsOne() {
+			when(dao.updateLastUsedAt(TOKEN_ID)).thenReturn(Mono.just(1));
+
+			StepVerifier.create(service.updateLastUsedAt(TOKEN_ID))
+					.assertNext(result -> assertEquals(1, result))
+					.verifyComplete();
+
+			verify(dao).updateLastUsedAt(TOKEN_ID);
+		}
+
+		@Test
+		void updateLastUsedAt_TokenNotFound_ReturnsZero() {
+			ULong nonExistentId = ULong.valueOf(9999);
+			when(dao.updateLastUsedAt(nonExistentId)).thenReturn(Mono.just(0));
+
+			StepVerifier.create(service.updateLastUsedAt(nonExistentId))
+					.assertNext(result -> assertEquals(0, result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	class CleanupExpiredTokensTests {
+
+		@Test
+		void cleanupExpiredTokens_DeletesExpired_ReturnsCount() {
+			when(dao.deleteExpiredTokens()).thenReturn(Mono.just(5));
+
+			StepVerifier.create(service.cleanupExpiredTokens())
+					.assertNext(result -> assertEquals(5, result))
+					.verifyComplete();
+
+			verify(dao).deleteExpiredTokens();
+		}
+
+		@Test
+		void cleanupExpiredTokens_NoneExpired_ReturnsZero() {
+			when(dao.deleteExpiredTokens()).thenReturn(Mono.just(0));
+
+			StepVerifier.create(service.cleanupExpiredTokens())
+					.assertNext(result -> assertEquals(0, result))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
+	class CleanupUnusedTokensTests {
+
+		@Test
+		void cleanupUnusedTokens_DeletesUnused_ReturnsCount() {
+			when(dao.deleteUnusedTokens(90)).thenReturn(Mono.just(3));
+
+			StepVerifier.create(service.cleanupUnusedTokens(90))
+					.assertNext(result -> assertEquals(3, result))
+					.verifyComplete();
+
+			verify(dao).deleteUnusedTokens(90);
+		}
+
+		@Test
+		void cleanupUnusedTokens_NoneUnused_ReturnsZero() {
+			when(dao.deleteUnusedTokens(30)).thenReturn(Mono.just(0));
+
+			StepVerifier.create(service.cleanupUnusedTokens(30))
+					.assertNext(result -> assertEquals(0, result))
+					.verifyComplete();
+		}
+
+		@Test
+		void cleanupUnusedTokens_CustomDays_PassesDaysToDao() {
+			when(dao.deleteUnusedTokens(7)).thenReturn(Mono.just(10));
+
+			StepVerifier.create(service.cleanupUnusedTokens(7))
+					.assertNext(result -> assertEquals(10, result))
+					.verifyComplete();
+
+			verify(dao).deleteUnusedTokens(7);
+		}
+	}
 }

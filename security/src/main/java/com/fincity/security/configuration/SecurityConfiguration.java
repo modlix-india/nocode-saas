@@ -69,6 +69,10 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/internal/securityContextAuthentication",
 
+                "/api/security/internal/tokens/cleanup",
+
+                "/api/security/ssl/internal/renew-certificates",
+
                 "/api/security/users/findUserClients",
 
                 "/api/security/users/reset/password/otp/generate",

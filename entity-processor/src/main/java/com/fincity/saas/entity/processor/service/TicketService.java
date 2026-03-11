@@ -45,6 +45,7 @@ import com.fincity.saas.entity.processor.service.content.TaskService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
+import com.fincity.saas.entity.processor.service.product.ProductTicketExRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
@@ -87,6 +88,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final AdService adService;
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
+
+    private ProductTicketExRuleService productTicketExRuleService;
+
+    @Autowired
+    @Lazy
+    public void setProductTicketExRuleService(ProductTicketExRuleService productTicketExRuleService) {
+        this.productTicketExRuleService = productTicketExRuleService;
+    }
 
     @Autowired
     @Lazy
@@ -222,10 +231,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     this.productService.getEntityName());
 
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.setAssignmentAndStage(ticket, access),
                         aTicket -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
-                        this::updateTicketFromOwner)
+                        this::updateTicketFromOwner,
+                        (aTicket, owner, oTicket) -> this.computeAndSetExpiresOn(access, oTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
@@ -318,6 +328,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
         return super.updatableEntity(ticket)
                 .flatMap(existing -> {
+                    if (existing.isExpired())
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.TICKET_EXPIRED);
+
                     existing.setEmail(ticket.getEmail());
                     existing.setAssignedUserId(ticket.getAssignedUserId());
                     existing.setStage(ticket.getStage());
@@ -918,6 +933,52 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             .thenReturn(uTicket));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
+    }
+
+    private Mono<Ticket> computeAndSetExpiresOn(ProcessorAccess access, Ticket ticket) {
+
+        if (ticket.getSource() == null || ticket.getProductId() == null) return Mono.just(ticket);
+
+        return this.productTicketExRuleService
+                .computeExpiresOn(access, ticket.getProductId(), ticket.getSource())
+                .map(ticket::setExpiresOn)
+                .defaultIfEmpty(ticket)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.computeAndSetExpiresOn"));
+    }
+
+    public Mono<Void> resetExpiresOn(ProcessorAccess access, ULong ticketId) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                        () -> this.readById(access, ticketId),
+                        ticket -> {
+                            if (ticket == null) return Mono.empty();
+
+                            if (ticket.isExpired()
+                                    && (access.getUser() == null
+                                            || !com.fincity.saas.commons.security.util.SecurityContextUtil
+                                                    .hasAuthority(
+                                                            com.fincity.saas.entity.processor.constant
+                                                                    .BusinessPartnerConstant.OWNER_ROLE,
+                                                            access.getUser().getAuthorities())))
+                                return this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        ProcessorMessageResourceService.TICKET_EXPIRED);
+
+                            if (ticket.getSource() == null || ticket.getProductId() == null)
+                                return Mono.just(ticket);
+
+                            return this.productTicketExRuleService
+                                    .computeExpiresOn(access, ticket.getProductId(), ticket.getSource())
+                                    .map(ticket::setExpiresOn)
+                                    .defaultIfEmpty(ticket);
+                        },
+                        (ticket, updatedTicket) -> {
+                            Ticket toSave = updatedTicket != null ? updatedTicket : ticket;
+                            if (toSave == null) return Mono.empty();
+                            return super.updateInternal(access, toSave);
+                        })
+                .then()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.resetExpiresOn"));
     }
 
     @Override
