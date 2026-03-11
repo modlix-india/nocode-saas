@@ -807,10 +807,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> this.clientService
+                ca -> this.dao.readById(entity.getId()),
+                (ca, existingUser) -> this.clientService
                         .getClientTypeNCodeNClientLevel(entity.getClientId())
                         .map(Tuple2::getT1),
-                (ca, clientType) -> switch (clientType) {
+                (ca, existingUser, clientType) -> switch (clientType) {
                     case "INDV" -> this.clientHierarchyService
                             .getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
                             .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
@@ -828,7 +829,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             null);
                     default -> Mono.empty();
                 },
-                (ca, clientType, userExists) -> {
+                (ca, existingUser, clientType, userExists) -> {
                     if (Boolean.TRUE.equals(userExists))
                         return Mono.empty();
 
@@ -838,10 +839,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                             ca, entity.getClientId(), entity.getId(), super.update(entity))
                                     : Mono.empty());
                 },
-                (ca, clientType, userExists, updated) -> updated != null
-                        ? this.evictCache(updated.getId(), updated.getClientId()).<User>map(evicted -> updated)
+                (ca, existingUser, clientType, userExists, updated) -> updated != null
+                        ? this.evictCache(updated.getId(), updated.getClientId())
+                                .flatMap(evicted -> this.evictManagerCachesIfChanged(
+                                        updated.getClientId(), existingUser.getReportingTo(), updated.getReportingTo()))
+                                .<User>map(evicted -> updated)
                         : super.update(entity)
                                 .flatMap(updatedUser -> this.evictCache(updatedUser.getId(), updatedUser.getClientId())
+                                        .flatMap(evicted -> this.evictManagerCachesIfChanged(
+                                                updatedUser.getClientId(), existingUser.getReportingTo(), updatedUser.getReportingTo()))
                                         .<User>map(evicted -> updatedUser)))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
@@ -863,6 +869,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.userSubOrgService
                 .evictOwnerCache(clientId, userId)
                 .map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
+    }
+
+    private Mono<Boolean> evictManagerCachesIfChanged(ULong clientId, ULong oldReportingTo, ULong newReportingTo) {
+        if (Objects.equals(oldReportingTo, newReportingTo))
+            return Mono.just(Boolean.TRUE);
+        return this.userSubOrgService.evictManagerCaches(clientId, oldReportingTo, newReportingTo);
     }
 
     @Override

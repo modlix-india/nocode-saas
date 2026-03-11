@@ -91,7 +91,8 @@ public interface IProcessorAccessService {
 
         Mono<List<BigInteger>> userSubOrgMono = this.getSecurityService()
                 .getUserSubOrgInternal(
-                        ca.getUser().getId(), ca.getUrlAppCode(), ca.getUser().getClientId());
+                        ca.getUser().getId(), ca.getUrlAppCode(), ca.getUser().getClientId())
+                .cache();
 
         boolean hasOwnerRole = SecurityContextUtil.hasAuthority(
                 BusinessPartnerConstant.OWNER_ROLE, ca.getUser().getAuthorities());
@@ -104,9 +105,13 @@ public interface IProcessorAccessService {
             managingClientMono =
                     this.getSecurityService().getManagingClientIds(ca.getUser().getClientId());
         } else if (hasManagerRole) {
-            managingClientMono = this.getSecurityService()
-                    .getClientIdsOfManager(ca.getUser().getId())
-                    .defaultIfEmpty(List.of());
+            managingClientMono = userSubOrgMono.flatMap(subOrgUserIds -> {
+                List<BigInteger> allManagerIds = new java.util.ArrayList<>(subOrgUserIds);
+                allManagerIds.add(ca.getUser().getId());
+                return this.getSecurityService()
+                        .getClientIdsOfManagers(allManagerIds)
+                        .defaultIfEmpty(List.of());
+            });
         } else {
             managingClientMono = Mono.just(List.of());
         }
