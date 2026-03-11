@@ -26,4 +26,5 @@ public class TokenObject extends AbstractDTO<ULong, ULong> {
     private String partToken;
     private LocalDateTime expiresAt;
     private String ipAddress;
+    private LocalDateTime lastUsedAt;
 }

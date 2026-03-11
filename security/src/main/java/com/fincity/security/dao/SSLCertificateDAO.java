@@ -129,6 +129,21 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 						.getTime()), ZoneOffset.UTC)));
 	}
 
+	public Mono<List<SSLCertificate>> readExpiringCertificates(int daysBeforeExpiry) {
+
+		LocalDateTime cutoffDate = LocalDateTime.now(ZoneOffset.UTC).plusDays(daysBeforeExpiry);
+		LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+
+		return Flux.from(this.dslContext.selectFrom(SECURITY_SSL_CERTIFICATE)
+				.where(DSL.and(
+					SECURITY_SSL_CERTIFICATE.CURRENT.eq(ByteUtil.ONE),
+					SECURITY_SSL_CERTIFICATE.EXPIRY_DATE.le(cutoffDate),
+					SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.isNotNull(),
+					SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.gt(now))))
+			.map(e -> e.into(this.pojoClass))
+			.collectList();
+	}
+
 	public Mono<List<SSLCertificateConfiguration>> readAllCertificates() {
 
 		SelectConditionStep<Record6<String, String, String, String, String, String>> query = this.dslContext

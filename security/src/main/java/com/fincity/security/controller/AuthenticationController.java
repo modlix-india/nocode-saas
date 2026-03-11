@@ -28,6 +28,7 @@ import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.TokenService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -39,10 +40,13 @@ public class AuthenticationController {
 
     private final AuthenticationService service;
     private final ClientService clientService;
+    private final TokenService tokenService;
 
-    public AuthenticationController(AuthenticationService service, ClientService clientService) {
+    public AuthenticationController(AuthenticationService service, ClientService clientService,
+            TokenService tokenService) {
         this.service = service;
         this.clientService = clientService;
+        this.tokenService = tokenService;
     }
 
     @PostMapping("authenticate")
@@ -168,6 +172,17 @@ public class AuthenticationController {
     public Mono<ResponseEntity<UserAccess>> getUserAccess(@RequestBody UserAppAccessRequest request,
             ServerHttpRequest httpRequest) {
         return this.service.getUserAppAccess(request, httpRequest).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("internal/tokens/cleanup")
+    public Mono<ResponseEntity<Map<String, Integer>>> cleanupTokens(
+            @RequestParam(name = "unusedDays", defaultValue = "90") int unusedDays) {
+        return Mono.zip(
+                this.tokenService.cleanupExpiredTokens(),
+                this.tokenService.cleanupUnusedTokens(unusedDays))
+                .map(t -> ResponseEntity.ok(Map.of(
+                        "expiredTokensRemoved", t.getT1(),
+                        "unusedTokensRemoved", t.getT2())));
     }
 
 }
