@@ -53,4 +53,15 @@ public class SSLChallengeDAO extends AbstractUpdatableDAO<SecuritySslChallengeRe
 				.map(e -> e.get(SECURITY_SSL_CHALLENGE.AUTHORIZATION))
 				.defaultIfEmpty("");
 	}
+
+	public Mono<Boolean> updateTokenAndAuthorization(ULong id, String token, String authorization) {
+
+		return Mono.from(this.dslContext.update(SECURITY_SSL_CHALLENGE)
+				.set(SECURITY_SSL_CHALLENGE.TOKEN, token)
+				.set(SECURITY_SSL_CHALLENGE.AUTHORIZATION, authorization)
+				.set(SECURITY_SSL_CHALLENGE.STATUS, "PENDING")
+				.set(SECURITY_SSL_CHALLENGE.FAILED_REASON, (String) null)
+				.where(SECURITY_SSL_CHALLENGE.ID.eq(id)))
+				.map(e -> true);
+	}
 }
