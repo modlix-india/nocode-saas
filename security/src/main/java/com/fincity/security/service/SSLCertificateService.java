@@ -390,7 +390,8 @@ public class SSLCertificateService {
         String chStatus = null;
 
         try {
-            Tuple2<String, String> tup = this.triggerChallenge(auth, ch);
+            Tuple2<String, String> tup = this.triggerChallenge(auth, ch, order, challenge.getDomain(),
+                challenge.getChallengeType());
             chStatus = tup.getT1();
             if (!tup.getT2().isBlank())
                 chError = tup.getT2();
@@ -432,52 +433,94 @@ public class SSLCertificateService {
         return null;
     }
 
-    private Tuple2<String, String> triggerChallenge(Authorization auth, Challenge ch)
-        throws AcmeException, InterruptedException {
+    private Tuple2<String, String> triggerChallenge(Authorization auth, Challenge ch, Order order,
+        String domain, String challengeType) throws AcmeException, InterruptedException {
 
-        String chStatus;
-        String chError = "";
-
-        // Check if the authorization is already invalid before triggering
+        // Check if the authorization is already valid before triggering
         Status preStatus = auth.getStatus();
         logger.info("Pre-trigger auth status: {}, challenge status: {}, domain: {}, type: {}",
-            preStatus, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType());
+            preStatus, ch.getStatus(), domain, ch.getType());
+
+        if (preStatus == Status.VALID)
+            return Tuples.of(preStatus.toString(), "");
 
         if (preStatus == Status.INVALID) {
-            chStatus = preStatus.toString();
-            chError = "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.";
-            logger.error("Authorization was already INVALID before triggering. Domain: {}", auth.getIdentifier().getDomain());
-            return Tuples.of(chStatus, chError);
+            logger.error("Authorization was already INVALID before triggering. Domain: {}", domain);
+            return Tuples.of(preStatus.toString(),
+                "Authorization was already INVALID before triggering. A new certificate request with fresh challenges is needed.");
         }
 
         ch.trigger();
-        int count = 3;
-        Status status;
 
-        while ((status = auth.getStatus()) != Status.VALID && status != Status.INVALID && count > 0) {
+        Status status = this.pollAuthorizationStatus(order, domain);
+
+        if (status == Status.VALID)
+            return Tuples.of(status.toString(), "");
+
+        String chError = this.buildChallengeErrorDetail(order, domain, challengeType, status);
+
+        logger.error("Challenge validation failed — Domain: {}, Challenge type: {}, Error: {}",
+            domain, challengeType, chError);
+
+        return Tuples.of(status.toString(), chError);
+    }
+
+    private Status pollAuthorizationStatus(Order order, String domain)
+        throws AcmeException, InterruptedException {
+
+        Status status = Status.PENDING;
+
+        for (int i = 0; i < 5; i++) {
 
             Thread.sleep(3000L); // NOSONAR
-            auth.update();
-            count--;
+
+            order.update();
+            Authorization freshAuth = this.findAuthorizationForDomain(order, domain);
+
+            if (freshAuth != null) {
+                status = freshAuth.getStatus();
+                logger.info("Poll attempt {}: auth status = {} for domain: {}", i + 1, status, domain);
+            }
+
+            if (status == Status.VALID || status == Status.INVALID)
+                break;
         }
 
-        chStatus = status.toString();
+        return status;
+    }
 
-        if (status != Status.VALID) {
-            // Update challenge to get the real status and error from ACME server
-            try { ch.update(); } catch (AcmeException ignored) { /* best effort */ }
+    private Authorization findAuthorizationForDomain(Order order, String domain) {
 
-            String errorDetail = ch.getError()
+        for (Authorization a : order.getAuthorizations()) {
+            if (a.getIdentifier().getDomain().equals(domain))
+                return a;
+        }
+        return null;
+    }
+
+    private String buildChallengeErrorDetail(Order order, String domain, String challengeType, Status authStatus) {
+
+        String challengeTypeToFind = challengeType.equals(Http01Challenge.TYPE) ? Http01Challenge.TYPE
+            : Dns01Challenge.TYPE;
+
+        Challenge freshCh = null;
+        try {
+            Authorization freshAuth = this.findAuthorizationForDomain(order, domain);
+            if (freshAuth != null)
+                freshCh = freshAuth.findChallenge(challengeTypeToFind).orElse(null);
+        } catch (Exception ignored) { /* best effort */ }
+
+        String freshChStatus = "UNKNOWN";
+        String errorDetail = "No error detail returned by ACME server";
+
+        if (freshCh != null) {
+            freshChStatus = freshCh.getStatus().toString();
+            errorDetail = freshCh.getError()
                 .map(this::formatProblemDetail)
-                .orElse("No error detail returned by ACME server");
-
-            logger.error("Challenge validation failed — Authorization status: {}, Challenge status: {}, Domain: {}, Challenge type: {}, Error: {}",
-                status, ch.getStatus(), auth.getIdentifier().getDomain(), ch.getType(), errorDetail);
-
-            chError = "Authorization status: " + status + " | Challenge status: " + ch.getStatus() + " | " + errorDetail;
+                .orElse(errorDetail);
         }
 
-        return Tuples.of(chStatus, chError);
+        return "Authorization status: " + authStatus + " | Challenge status: " + freshChStatus + " | " + errorDetail;
     }
 
     private String formatProblemDetail(Problem problem) {
