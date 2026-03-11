@@ -109,6 +109,12 @@ public class SecuritySslRequest extends TableImpl<SecuritySslRequestRecord> {
     public final TableField<SecuritySslRequestRecord, String> FAILED_REASON = createField(DSL.name("FAILED_REASON"), SQLDataType.CLOB, this, "Reason for challenge failure");
 
     /**
+     * The column <code>security.security_ssl_request.ORDER_URL</code>. ACME
+     * order URL to reuse across trigger attempts
+     */
+    public final TableField<SecuritySslRequestRecord, String> ORDER_URL = createField(DSL.name("ORDER_URL"), SQLDataType.VARCHAR(1024), this, "ACME order URL to reuse across trigger attempts");
+
+    /**
      * The column <code>security.security_ssl_request.UPDATED_BY</code>. ID of
      * the user who updated this row
      */
