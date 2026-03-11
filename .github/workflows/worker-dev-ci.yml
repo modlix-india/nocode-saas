@@ -6,12 +6,9 @@ on:
       - oci-development
     paths:
       - 'worker/**'
-      - 'commons/**'
-      - 'commons-jooq/**'
-      - 'commons-security/**'
-      - 'commons-mongo/**'
-      - 'commons-mq/**'
-      - 'commons-core/**'
+      - 'commons2/**'
+      - 'commons2-jooq/**'
+      - 'commons2-security/**'
       - '.github/workflows/worker-dev-ci.yml'
   workflow_dispatch:
 
@@ -36,12 +33,9 @@ jobs:
           cache: 'maven'
 
       - run: |
-          mvn -q clean install -f commons/pom.xml
-          mvn -q clean install -f commons-jooq/pom.xml
-          mvn -q clean install -f commons-security/pom.xml
-          mvn -q clean install -f commons-mongo/pom.xml
-          mvn -q clean install -f commons-mq/pom.xml
-          mvn -q clean install -f commons-core/pom.xml
+          mvn -q clean install -f commons2/pom.xml
+          mvn -q clean install -f commons2-security/pom.xml
+          mvn -q clean install -f commons2-jooq/pom.xml
 
       - working-directory: worker
         run: mvn -q clean package
