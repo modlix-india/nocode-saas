@@ -1,0 +1,47 @@
+package com.modlix.saas.worker.dao;
+
+import static com.modlix.saas.worker.jooq.tables.WorkerTasks.WORKER_TASKS;
+
+import com.modlix.saas.worker.dto.Task;
+import com.modlix.saas.worker.enums.TaskState;
+import com.modlix.saas.worker.jooq.tables.records.WorkerTasksRecord;
+import com.modlix.saas.commons2.jooq.dao.AbstractUpdatableDAO;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
+
+@Service
+public class TaskDAO extends AbstractUpdatableDAO<WorkerTasksRecord, ULong, Task> {
+
+    protected TaskDAO() {
+        super(Task.class, WORKER_TASKS, WORKER_TASKS.ID);
+    }
+
+    public List<Task> findTasksDueForExecution(LocalDateTime currentTime) {
+        return this.dslContext
+                .selectFrom(WORKER_TASKS)
+                .where(WORKER_TASKS.NEXT_FIRE_TIME.lessOrEqual(currentTime))
+                .orderBy(WORKER_TASKS.NEXT_FIRE_TIME.asc())
+                .fetch()
+                .map(e -> e.into(this.pojoClass));
+    }
+
+    public Task findByNameAndAppAndClient(String name, String appCode, String clientCode) {
+        var record = this.dslContext
+                .selectFrom(WORKER_TASKS)
+                .where(WORKER_TASKS.NAME.eq(name))
+                .and(WORKER_TASKS.APP_CODE.eq(appCode))
+                .and(WORKER_TASKS.CLIENT_CODE.eq(clientCode))
+                .fetchOne();
+        return record != null ? record.into(this.pojoClass) : null;
+    }
+
+    public List<Task> findAllNormalTasks() {
+        return this.dslContext
+                .selectFrom(WORKER_TASKS)
+                .where(WORKER_TASKS.TASK_STATE.eq(TaskState.NORMAL))
+                .fetch()
+                .map(e -> e.into(this.pojoClass));
+    }
+}

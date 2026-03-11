@@ -111,10 +111,9 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
     public final TableField<WorkerTasksRecord, TaskState> TASK_STATE = createField(DSL.name("TASK_STATE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("NORMAL", SQLDataType.VARCHAR)), this, "Current task triggering state.", new EnumConverter<String, TaskState>(String.class, TaskState.class));
 
     /**
-     * The column <code>worker.worker_tasks.TASK_JOB_TYPE</code>. Type of the
-     * job.
+     * The column <code>worker.worker_tasks.TASK_JOB_TYPE</code>.
      */
-    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(13).nullable(false).defaultValue(DSL.inline("SIMPLE", SQLDataType.VARCHAR)), this, "Type of the job.", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
+    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(13).nullable(false).defaultValue(DSL.inline("SSL_RENEWAL", SQLDataType.VARCHAR)), this, "", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
 
     /**
      * The column <code>worker.worker_tasks.JOB_DATA</code>.
@@ -146,12 +145,6 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
      * for simple or cron jobs.
      */
     public final TableField<WorkerTasksRecord, String> SCHEDULE = createField(DSL.name("SCHEDULE"), SQLDataType.VARCHAR(255).nullable(false), this, "Schedule expression for simple or cron jobs.");
-
-    /**
-     * The column <code>worker.worker_tasks.REPEAT_INTERVAL</code>. Number of
-     * times this job repeats; only applicable for simple jobs.
-     */
-    public final TableField<WorkerTasksRecord, Integer> REPEAT_INTERVAL = createField(DSL.name("REPEAT_INTERVAL"), SQLDataType.INTEGER, this, "Number of times this job repeats; only applicable for simple jobs.");
 
     /**
      * The column <code>worker.worker_tasks.RECOVERABLE</code>. If true, the job
