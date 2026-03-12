@@ -23,6 +23,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,8 @@ import org.jooq.SelectConditionStep;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -67,8 +70,26 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         static final TicketConditionOptions WITHOUT_STAGE_OR_STATUS = new TicketConditionOptions(false, false);
     }
 
+    private ProductTicketRuRuleService productTicketRuRuleService;
+
     protected TicketBucketDAO() {
         super(Ticket.class, ENTITY_PROCESSOR_TICKETS, ENTITY_PROCESSOR_TICKETS.ID);
+    }
+
+    @Lazy
+    @Autowired
+    private void setProductTicketRuRuleService(ProductTicketRuRuleService productTicketRuRuleService) {
+        this.productTicketRuRuleService = productTicketRuRuleService;
+    }
+
+    @Override
+    protected Mono<Optional<AbstractCondition>> getAdditionalAccessConditions(ProcessorAccess access) {
+        if (access.getUser() == null && access.getUserInherit() == null)
+            return Mono.just(Optional.empty());
+
+        return this.productTicketRuRuleService.getUserReadConditions(access)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty());
     }
 
     @Override

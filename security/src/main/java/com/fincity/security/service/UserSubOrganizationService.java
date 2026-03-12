@@ -299,7 +299,7 @@ public class UserSubOrganizationService
 
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao.getUserIdsByClientId(clientId, null).collectList(),
+                () -> this.dao.getUserIdsByClientId(clientId, null, false).collectList(),
                 this.getCacheKey(clientId, OWNER));
     }
 
