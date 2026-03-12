@@ -10,7 +10,9 @@ import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.OwnerDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -19,6 +21,8 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwne
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import com.fincity.saas.entity.processor.service.content.NoteService;
+import com.fincity.saas.entity.processor.service.content.TaskService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -43,9 +47,24 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
+    private TaskService taskService;
+    private NoteService noteService;
+
     @Autowired
     @Lazy
     private OwnerService self;
+
+    @Autowired
+    @Lazy
+    private void setTaskService(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    @Autowired
+    @Lazy
+    private void setNoteService(NoteService noteService) {
+        this.noteService = noteService;
+    }
 
     public OwnerService(@Lazy TicketService ticketService, Gson gson) {
         this.ticketService = ticketService;
@@ -175,6 +194,43 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.checkDuplicate"));
+    }
+
+    @Override
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, Owner owner) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.checkDeleteAccess(access, owner),
+                        checked -> this.evictOwnerAssociatedCaches(owner),
+                        (checked, evicted) -> super.deleteInternal(access, owner))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.deleteInternal"));
+    }
+
+    private Mono<Boolean> checkDeleteAccess(ProcessorAccess access, Owner owner) {
+
+        if (access.getUser() == null
+                || !SecurityContextUtil.hasAuthority(
+                        BusinessPartnerConstant.OWNER_ROLE, access.getUser().getAuthorities()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                    "delete " + this.getEntityName());
+
+        if (owner.getClientCode() != null
+                && !owner.getClientCode().equals(access.getClientCode()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                    "delete " + this.getEntityName());
+
+        return Mono.just(Boolean.TRUE);
+    }
+
+    private Mono<Boolean> evictOwnerAssociatedCaches(Owner owner) {
+        return Mono.zip(
+                this.ticketService.evictCachesForOwner(owner.getId()).defaultIfEmpty(Boolean.TRUE),
+                this.taskService.evictCachesForOwner(owner.getId()).defaultIfEmpty(Boolean.TRUE),
+                this.noteService.evictCachesForOwner(owner.getId()).defaultIfEmpty(Boolean.TRUE))
+                .thenReturn(Boolean.TRUE);
     }
 
     @Override
