@@ -106,7 +106,20 @@ public class UserInviteService
                                         Set.of(invite.getProfileId()))
                                 .filter(BooleanUtil::safeValueOf),
 
-                (ca, invite, reportingToInSameClient, hasAccess) -> this.userDao
+                (ca, invite, reportingToInSameClient, hasAccess) -> {
+                    String appCode = ca.getUrlAppCode();
+                    if (StringUtil.safeIsBlank(appCode))
+                        return Mono.just(true);
+
+                    return this.appService.getAppByCode(appCode)
+                            .flatMap(app -> this.validateUserCheckForInvite(
+                                    app.getId(), app.getClientId(), entity.getClientId(),
+                                    entity.getUserName(), entity.getEmailId(),
+                                    entity.getPhoneNumber()))
+                            .defaultIfEmpty(true);
+                },
+
+                (ca, invite, reportingToInSameClient, hasAccess, userCheckValid) -> this.userDao
                         .checkUserExistsForInvite(
                                 entity.getClientId(),
                                 entity.getUserName(),

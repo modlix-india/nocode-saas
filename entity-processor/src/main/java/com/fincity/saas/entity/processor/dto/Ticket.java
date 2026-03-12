@@ -56,6 +56,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong productTemplateId = null;
     private LocalDateTime latestTaskDueDate;
     private LocalDateTime expiresOn;
+    private String latestComment;
 
     public Ticket() {
         super();
@@ -92,6 +93,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.productTemplateId = ticket.productTemplateId;
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
+        this.latestComment = ticket.latestComment;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
