@@ -127,6 +127,10 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                 });
     }
 
+    protected Mono<Optional<AbstractCondition>> getAdditionalAccessConditions(ProcessorAccess access) {
+        return Mono.just(Optional.empty());
+    }
+
     private Mono<AbstractCondition> getBaseAccessConditions(ProcessorAccess access, Map<String, String> fieldMappings) {
 
         return Mono.zip(
@@ -137,7 +141,8 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                                 .defaultIfEmpty(Optional.empty()),
                         this.getClientIdCondition(access, fieldMappings)
                                 .map(Optional::of)
-                                .defaultIfEmpty(Optional.empty()))
+                                .defaultIfEmpty(Optional.empty()),
+                        this.getAdditionalAccessConditions(access))
                 .map(condTuple -> {
                     List<AbstractCondition> appClientConditions = new ArrayList<>();
                     condTuple.getT1().ifPresent(appClientConditions::add);
@@ -154,7 +159,12 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                             ? ComplexCondition.and(userClientConditions)
                             : ComplexCondition.or(userClientConditions);
 
-                    return ComplexCondition.and(appClientCondition, userClientCondition);
+                    AbstractCondition finalAccessCondition = condTuple.getT5()
+                            .filter(AbstractCondition::isNonEmpty)
+                            .<AbstractCondition>map(additional -> ComplexCondition.or(userClientCondition, additional))
+                            .orElse(userClientCondition);
+
+                    return ComplexCondition.and(appClientCondition, finalAccessCondition);
                 });
     }
 

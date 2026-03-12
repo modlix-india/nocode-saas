@@ -39,6 +39,8 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
@@ -162,18 +164,13 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     public List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
         List<Field<?>> list = super.getMainTableBaseFields(tableFields, queryParams);
 
-        Field<LocalDateTime> latestTaskDueDate = this.getLatestTaskDueDateField();
-
         if (tableFields == null || tableFields.isEmpty()) {
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
-            list.add(latestTaskDueDate);
             return list;
         }
 
         if (tableFields.contains(Ticket.Fields.productTemplateId))
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
-
-        if (tableFields.contains(Ticket.Fields.latestTaskDueDate)) list.add(latestTaskDueDate);
 
         return list;
     }
@@ -318,7 +315,6 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 dslContext
                         .select(Arrays.asList(table.fields()))
                         .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID)
-                        .select(this.getLatestTaskDueDateField())
                         .from(table)
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
@@ -373,22 +369,135 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         return ComplexCondition.or(clientCondition, userCondition);
     }
 
-    private Field<LocalDateTime> getLatestTaskDueDateField() {
-        return dslContext
-                .select(ENTITY_PROCESSOR_TASKS.DUE_DATE)
+    @Override
+    @SuppressWarnings("unchecked")
+    public Mono<Page<Ticket>> readPageFilterWithTimezone(
+            Pageable pageable, AbstractCondition condition, String timezone) {
+
+        return super.readPageFilterWithTimezone(pageable, condition, timezone)
+                .flatMap(this::enrichTicketsPage);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        return super.readPageFilterEagerWithTimezone(pageable, condition, fields, timezone, queryParams,
+                subQueryConditions)
+                .flatMap(this::enrichTicketMapsPage);
+    }
+
+    private Mono<Page<Ticket>> enrichTicketsPage(Page<Ticket> page) {
+
+        List<Ticket> tickets = page.getContent();
+        if (tickets.isEmpty()) return Mono.just(page);
+
+        List<ULong> ticketIds = tickets.stream()
+                .map(Ticket::getId)
+                .toList();
+
+        return Mono.zip(fetchLatestComments(ticketIds), fetchLatestTaskDueDates(ticketIds))
+                .map(tuple -> {
+                    Map<ULong, String> comments = tuple.getT1();
+                    Map<ULong, LocalDateTime> dueDates = tuple.getT2();
+
+                    tickets.forEach(ticket -> {
+                        ticket.setLatestComment(comments.get(ticket.getId()));
+                        ticket.setLatestTaskDueDate(dueDates.get(ticket.getId()));
+                    });
+
+                    return page;
+                });
+    }
+
+    private Mono<Page<Map<String, Object>>> enrichTicketMapsPage(Page<Map<String, Object>> page) {
+
+        List<Map<String, Object>> records = page.getContent();
+        if (records.isEmpty()) return Mono.just(page);
+
+        List<ULong> ticketIds = records.stream()
+                .map(rec -> (ULong) rec.get("id"))
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (ticketIds.isEmpty()) return Mono.just(page);
+
+        return Mono.zip(fetchLatestComments(ticketIds), fetchLatestTaskDueDates(ticketIds))
+                .map(tuple -> {
+                    Map<ULong, String> comments = tuple.getT1();
+                    Map<ULong, LocalDateTime> dueDates = tuple.getT2();
+
+                    records.forEach(rec -> {
+                        ULong id = (ULong) rec.get("id");
+                        if (id != null) {
+                            rec.put("latestComment", comments.get(id));
+                            rec.put("latestTaskDueDate", dueDates.get(id));
+                        }
+                    });
+
+                    return page;
+                });
+    }
+
+    private Mono<Map<ULong, String>> fetchLatestComments(List<ULong> ticketIds) {
+
+        Field<Integer> rowNum = DSL.rowNumber()
+                .over(DSL.partitionBy(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)
+                        .orderBy(ENTITY_PROCESSOR_ACTIVITIES.ACTIVITY_DATE.desc()))
+                .as("rn");
+
+        Table<?> sub = dslContext
+                .select(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID, ENTITY_PROCESSOR_ACTIVITIES.COMMENT, rowNum)
+                .from(ENTITY_PROCESSOR_ACTIVITIES)
+                .where(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID.in(ticketIds))
+                .and(ENTITY_PROCESSOR_ACTIVITIES.COMMENT.isNotNull())
+                .asTable("act_comment_sub");
+
+        return Flux.from(dslContext
+                        .select(sub.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID),
+                                sub.field(ENTITY_PROCESSOR_ACTIVITIES.COMMENT))
+                        .from(sub)
+                        .where(sub.field("rn", Integer.class).eq(1)))
+                .collectMap(
+                        rec -> rec.get(sub.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)),
+                        rec -> rec.get(sub.field(ENTITY_PROCESSOR_ACTIVITIES.COMMENT)));
+    }
+
+    private Mono<Map<ULong, LocalDateTime>> fetchLatestTaskDueDates(List<ULong> ticketIds) {
+
+        Field<Integer> rowNum = DSL.rowNumber()
+                .over(DSL.partitionBy(ENTITY_PROCESSOR_TASKS.TICKET_ID)
+                        .orderBy(
+                                DSL.field(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
+                                        .desc(),
+                                DSL.if_(
+                                                ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()),
+                                                ENTITY_PROCESSOR_TASKS.DUE_DATE,
+                                                DSL.inline((LocalDateTime) null))
+                                        .asc(),
+                                ENTITY_PROCESSOR_TASKS.DUE_DATE.desc()))
+                .as("rn");
+
+        Table<?> sub = dslContext
+                .select(ENTITY_PROCESSOR_TASKS.TICKET_ID, ENTITY_PROCESSOR_TASKS.DUE_DATE, rowNum)
                 .from(ENTITY_PROCESSOR_TASKS)
-                .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.in(ticketIds))
                 .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
-                .orderBy(
-                        DSL.field(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
-                                .desc(),
-                        DSL.if_(
-                                        ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()),
-                                        ENTITY_PROCESSOR_TASKS.DUE_DATE,
-                                        DSL.inline((LocalDateTime) null))
-                                .asc(),
-                        ENTITY_PROCESSOR_TASKS.DUE_DATE.desc())
-                .limit(DSL.inline(1))
-                .asField("LATEST_TASK_DUE_DATE");
+                .asTable("task_due_sub");
+
+        return Flux.from(dslContext
+                        .select(sub.field(ENTITY_PROCESSOR_TASKS.TICKET_ID),
+                                sub.field(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                        .from(sub)
+                        .where(sub.field("rn", Integer.class).eq(1)))
+                .collectMap(
+                        rec -> rec.get(sub.field(ENTITY_PROCESSOR_TASKS.TICKET_ID)),
+                        rec -> rec.get(sub.field(ENTITY_PROCESSOR_TASKS.DUE_DATE)));
     }
 }

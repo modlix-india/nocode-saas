@@ -1,6 +1,13 @@
 spring:
   application:
     name: worker
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            readTimeout: 300000
+            connectTimeout: 60000
   datasource:
     url: ${worker.db.url}
     username: ${worker.db.username}
