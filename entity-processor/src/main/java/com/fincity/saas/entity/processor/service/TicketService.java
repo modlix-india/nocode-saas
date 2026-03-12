@@ -935,6 +935,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
     }
 
+    @Override
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, Ticket ticket) {
+        return FlatMapUtil.flatMapMono(
+                        () -> Mono.zip(
+                                this.taskService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
+                                this.noteService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE))
+                                .thenReturn(Boolean.TRUE),
+                        evicted -> super.deleteInternal(access, ticket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.deleteInternal"));
+    }
+
     private Mono<Ticket> computeAndSetExpiresOn(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getSource() == null || ticket.getProductId() == null) return Mono.just(ticket);

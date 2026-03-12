@@ -74,6 +74,13 @@ public class TaskDAO extends BaseContentDAO<EntityProcessorTasksRecord, Task> {
         super(Task.class, ENTITY_PROCESSOR_TASKS, ENTITY_PROCESSOR_TASKS.ID);
     }
 
+    public Flux<Task> readAllByTicketId(ULong ticketId) {
+        return Flux.from(this.dslContext
+                        .selectFrom(ENTITY_PROCESSOR_TASKS)
+                        .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ticketId)))
+                .map(e -> e.into(Task.class));
+    }
+
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
 
