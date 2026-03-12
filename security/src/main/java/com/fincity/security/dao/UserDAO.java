@@ -661,12 +661,17 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     }
 
     public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds) {
+        return this.getUserIdsByClientId(clientId, userIds, true);
+    }
+
+    public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds, boolean excludeDeleted) {
 
         return this.clientDAO.getClientTypeNCode(clientId)
                 .flatMapMany(typeAndCode -> {
                     List<Condition> conditions = new ArrayList<>();
                     conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
-                    conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+                    if (excludeDeleted)
+                        conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 
                     boolean isSystemClient = ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(typeAndCode.getT1());
 
