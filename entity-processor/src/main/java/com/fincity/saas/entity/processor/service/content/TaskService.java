@@ -305,6 +305,12 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 .flatMap(tasks -> this.evictCaches(Flux.fromIterable(tasks)));
     }
 
+    public Mono<Boolean> evictCachesForOwner(ULong ownerId) {
+        return this.dao.readAllByOwnerId(ownerId)
+                .collectList()
+                .flatMap(tasks -> this.evictCaches(Flux.fromIterable(tasks)));
+    }
+
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
         return Mono.just(new ListFunctionRepository(this.functions));

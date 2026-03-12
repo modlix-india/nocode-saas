@@ -22,4 +22,11 @@ public class NoteDAO extends BaseContentDAO<EntityProcessorNotesRecord, Note> {
                         .where(ENTITY_PROCESSOR_NOTES.TICKET_ID.eq(ticketId)))
                 .map(e -> e.into(Note.class));
     }
+
+    public Flux<Note> readAllByOwnerId(ULong ownerId) {
+        return Flux.from(this.dslContext
+                        .selectFrom(ENTITY_PROCESSOR_NOTES)
+                        .where(ENTITY_PROCESSOR_NOTES.OWNER_ID.eq(ownerId)))
+                .map(e -> e.into(Note.class));
+    }
 }

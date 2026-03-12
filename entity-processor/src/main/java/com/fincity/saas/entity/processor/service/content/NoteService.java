@@ -119,6 +119,12 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
                 .flatMap(notes -> this.evictCaches(Flux.fromIterable(notes)));
     }
 
+    public Mono<Boolean> evictCachesForOwner(ULong ownerId) {
+        return this.dao.readAllByOwnerId(ownerId)
+                .collectList()
+                .flatMap(notes -> this.evictCaches(Flux.fromIterable(notes)));
+    }
+
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
         return Mono.just(new ListFunctionRepository(this.functions));

@@ -10,6 +10,7 @@ import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
@@ -21,6 +22,7 @@ import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -938,12 +940,44 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Override
     protected Mono<Integer> deleteInternal(ProcessorAccess access, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
-                        () -> Mono.zip(
+                        () -> this.checkDeleteAccess(access, ticket),
+                        checked -> Mono.zip(
                                 this.taskService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
                                 this.noteService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE))
                                 .thenReturn(Boolean.TRUE),
-                        evicted -> super.deleteInternal(access, ticket))
+                        (checked, evicted) -> super.deleteInternal(access, ticket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.deleteInternal"));
+    }
+
+    private Mono<Boolean> checkDeleteAccess(ProcessorAccess access, Ticket ticket) {
+
+        if (access.getUser() == null
+                || !SecurityContextUtil.hasAuthority(
+                        BusinessPartnerConstant.OWNER_ROLE, access.getUser().getAuthorities()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                    "delete " + this.getEntityName());
+
+        if (ticket.getClientCode() != null
+                && !ticket.getClientCode().equals(access.getClientCode()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                    "delete " + this.getEntityName());
+
+        return Mono.just(Boolean.TRUE);
+    }
+
+    public Mono<Boolean> evictCachesForOwner(ULong ownerId) {
+        return this.dao
+                .getAllOwnerTickets(ownerId)
+                .flatMap(ticket -> Mono.zip(
+                        this.taskService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
+                        this.noteService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
+                        this.evictCache(ticket).defaultIfEmpty(Boolean.TRUE))
+                        .thenReturn(Boolean.TRUE))
+                .then(Mono.just(Boolean.TRUE));
     }
 
     private Mono<Ticket> computeAndSetExpiresOn(ProcessorAccess access, Ticket ticket) {
