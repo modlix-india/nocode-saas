@@ -263,7 +263,7 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 
 			List<ULong> allUserIds = List.of(ULong.valueOf(1), ULong.valueOf(2), ULong.valueOf(3));
 
-			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull()))
+			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull(), eq(false)))
 					.thenReturn(Flux.fromIterable(allUserIds));
 
 			StepVerifier.create(service.getCurrentUserSubOrg().collectList())
@@ -311,7 +311,7 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 
 			when(userService.getUserAuthorities("testApp", SYSTEM_CLIENT_ID, USER_ID))
 					.thenReturn(Mono.just(List.of("Authorities.ROLE_Owner", "Authorities.Logged_IN")));
-			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull()))
+			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull(), eq(false)))
 					.thenReturn(Flux.fromIterable(allUserIds));
 
 			StepVerifier.create(service.getUserSubOrgInternal("testApp", SYSTEM_CLIENT_ID, USER_ID).collectList())
@@ -352,7 +352,7 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 			User user1 = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
 			User user2 = TestDataFactory.createActiveUser(ULong.valueOf(11), SYSTEM_CLIENT_ID);
 
-			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull()))
+			when(dao.getUserIdsByClientId(eq(SYSTEM_CLIENT_ID), isNull(), eq(false)))
 					.thenReturn(Flux.fromIterable(allUserIds));
 			when(userService.readByIds(anyList(), isNull()))
 					.thenReturn(Mono.just(List.of(user1, user2)));
