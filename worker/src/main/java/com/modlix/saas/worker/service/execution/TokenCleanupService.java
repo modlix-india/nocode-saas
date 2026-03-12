@@ -3,7 +3,6 @@ package com.modlix.saas.worker.service.execution;
 import java.util.Map;
 
 import com.modlix.saas.worker.dto.Task;
-import com.modlix.saas.worker.feign.IFeignCoreService;
 import com.modlix.saas.worker.feign.IFeignSecurityService;
 import org.springframework.stereotype.Service;
 
@@ -14,11 +13,9 @@ public class TokenCleanupService extends AbstractExecutionService {
     private static final int DEFAULT_UNUSED_DAYS = 90;
 
     private final IFeignSecurityService feignSecurityService;
-    private final IFeignCoreService feignCoreService;
 
-    public TokenCleanupService(IFeignSecurityService feignSecurityService, IFeignCoreService feignCoreService) {
+    public TokenCleanupService(IFeignSecurityService feignSecurityService) {
         this.feignSecurityService = feignSecurityService;
-        this.feignCoreService = feignCoreService;
     }
 
     @Override
@@ -30,7 +27,6 @@ public class TokenCleanupService extends AbstractExecutionService {
 
         int securityExpired = 0;
         int securityUnused = 0;
-        int coreTokens = 0;
 
         try {
             Map<String, Integer> securityResult = runWithTimeout(
@@ -48,19 +44,8 @@ public class TokenCleanupService extends AbstractExecutionService {
             result.append("Security token cleanup error: ").append(e.getMessage());
         }
 
-        result.append(". ");
-
-        try {
-            Integer coreCount = runWithTimeout(feignCoreService::cleanupExpiredCoreTokens);
-            coreTokens = coreCount != null ? coreCount : 0;
-            result.append("Core tokens cleaned: ").append(coreTokens);
-        } catch (Exception e) {
-            logger.error("Core token cleanup failed: {}", e.getMessage());
-            result.append("Core token cleanup error: ").append(e.getMessage());
-        }
-
-        logger.info("Token cleanup complete — security expired: {}, security unused: {}, core: {}",
-                securityExpired, securityUnused, coreTokens);
+        logger.info("Token cleanup complete — security expired: {}, security unused: {}",
+                securityExpired, securityUnused);
 
         return truncateResult(result.toString());
     }
