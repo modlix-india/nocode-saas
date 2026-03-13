@@ -111,6 +111,8 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
                     existing.setCampaignName(campaign.getCampaignName());
                     existing.setCampaignType(campaign.getCampaignType());
                     existing.setCampaignPlatform(campaign.getCampaignPlatform());
+                    existing.setPlatformAccountId(campaign.getPlatformAccountId());
+                    existing.setPlatformLoginId(campaign.getPlatformLoginId());
 
                     return Mono.just(existing);
                 })

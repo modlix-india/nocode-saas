@@ -154,7 +154,6 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Setter for
      * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
-     * Campaign Source
      */
     public EntityProcessorCampaignsRecord setCampaignPlatform(CampaignPlatform value) {
         set(7, value);
@@ -164,10 +163,47 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Getter for
      * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
-     * Campaign Source
      */
     public CampaignPlatform getCampaignPlatform() {
         return (CampaignPlatform) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_campaigns.PLATFORM_ACCOUNT_ID</code>.
+     * Ad account ID (Google customer ID, Meta ad account ID).
+     */
+    public EntityProcessorCampaignsRecord setPlatformAccountId(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_campaigns.PLATFORM_ACCOUNT_ID</code>.
+     * Ad account ID (Google customer ID, Meta ad account ID).
+     */
+    public String getPlatformAccountId() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_campaigns.PLATFORM_LOGIN_ID</code>.
+     * Google login-customer-id (MCC account). NULL for non-Google platforms.
+     */
+    public EntityProcessorCampaignsRecord setPlatformLoginId(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_campaigns.PLATFORM_LOGIN_ID</code>.
+     * Google login-customer-id (MCC account). NULL for non-Google platforms.
+     */
+    public String getPlatformLoginId() {
+        return (String) get(9);
     }
 
     /**
@@ -176,7 +212,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * Product Id campaign belongs to.
      */
     public EntityProcessorCampaignsRecord setProductId(ULong value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -186,7 +222,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * Product Id campaign belongs to.
      */
     public ULong getProductId() {
-        return (ULong) get(8);
+        return (ULong) get(10);
     }
 
     /**
@@ -195,7 +231,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * Temporary active flag for this campaign.
      */
     public EntityProcessorCampaignsRecord setTempActive(Boolean value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -205,7 +241,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * Temporary active flag for this campaign.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(9);
+        return (Boolean) get(11);
     }
 
     /**
@@ -214,7 +250,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * to check if this campaign is active or not.
      */
     public EntityProcessorCampaignsRecord setIsActive(Boolean value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -224,7 +260,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * to check if this campaign is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(10);
+        return (Boolean) get(12);
     }
 
     /**
@@ -233,7 +269,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * of the user who created this row.
      */
     public EntityProcessorCampaignsRecord setCreatedBy(ULong value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -243,7 +279,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(13);
     }
 
     /**
@@ -252,7 +288,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * when this row is created.
      */
     public EntityProcessorCampaignsRecord setCreatedAt(LocalDateTime value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -262,7 +298,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -271,7 +307,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * of the user who updated this row.
      */
     public EntityProcessorCampaignsRecord setUpdatedBy(ULong value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -281,7 +317,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(15);
     }
 
     /**
@@ -290,7 +326,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * when this row is updated.
      */
     public EntityProcessorCampaignsRecord setUpdatedAt(LocalDateTime value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -300,7 +336,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -326,7 +362,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Create a detached, initialised EntityProcessorCampaignsRecord
      */
-    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, CampaignPlatform campaignPlatform, ULong productId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, CampaignPlatform campaignPlatform, String platformAccountId, String platformLoginId, ULong productId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS);
 
         setId(id);
@@ -337,6 +373,8 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
         setCampaignName(campaignName);
         setCampaignType(campaignType);
         setCampaignPlatform(campaignPlatform);
+        setPlatformAccountId(platformAccountId);
+        setPlatformLoginId(platformLoginId);
         setProductId(productId);
         setTempActive(tempActive);
         setIsActive(isActive);
