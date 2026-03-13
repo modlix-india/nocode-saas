@@ -302,9 +302,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Page<Map<String, Object>>> readPartnerClient(Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.securityService
-                                .getManagingClientIds(access.getUser().getClientId())
-                                .map(ids -> ids.stream().map(ULongUtil::valueOf).toList()),
+                        access -> Mono.justOrEmpty(access.getUserInherit().getManagingClientIds())
+                                .defaultIfEmpty(List.of()),
                         (access, clientIds) -> this.addClientConditions(query.getCondition(), clientIds),
                         (access, clientIds, clientCondition) ->
                                 this.getPartners(query.getCondition(), access, clientIds),
