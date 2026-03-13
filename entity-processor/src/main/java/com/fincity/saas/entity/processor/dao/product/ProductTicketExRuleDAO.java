@@ -32,7 +32,7 @@ public class ProductTicketExRuleDAO
         return Mono.from(this.dslContext
                         .selectFrom(this.table)
                         .where(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.APP_CODE.eq(access.getAppCode()))
-                        .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.CLIENT_CODE.eq(access.getClientCode()))
+                        .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.CLIENT_CODE.eq(access.getEffectiveClientCode()))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.PRODUCT_ID.eq(productId))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.SOURCE.eq(source))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.IS_ACTIVE.eq(Boolean.TRUE)))
@@ -45,7 +45,7 @@ public class ProductTicketExRuleDAO
         return Mono.from(this.dslContext
                         .selectFrom(this.table)
                         .where(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.APP_CODE.eq(access.getAppCode()))
-                        .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.CLIENT_CODE.eq(access.getClientCode()))
+                        .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.CLIENT_CODE.eq(access.getEffectiveClientCode()))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.PRODUCT_TEMPLATE_ID.eq(productTemplateId))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.SOURCE.eq(source))
                         .and(ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES.IS_ACTIVE.eq(Boolean.TRUE)))
