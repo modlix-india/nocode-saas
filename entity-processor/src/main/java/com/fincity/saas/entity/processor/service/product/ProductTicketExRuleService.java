@@ -190,7 +190,7 @@ public class ProductTicketExRuleService
         return this.cacheService.cacheValueOrGet(
                 CACHE_NAME,
                 () -> this.dao.findActiveRuleByProduct(access, productId, source),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), "product", productId, source));
+                this.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), "product", productId, source));
     }
 
     private Mono<ProductTicketExRule> findTemplateRule(
@@ -199,7 +199,7 @@ public class ProductTicketExRuleService
                 CACHE_NAME,
                 () -> this.dao.findActiveRuleByTemplate(access, productTemplateId, source),
                 this.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), "template", productTemplateId, source));
+                        access.getAppCode(), access.getEffectiveClientCode(), "template", productTemplateId, source));
     }
 
     public Mono<Void> recalculateExpiresOnForRule(ProcessorAccess access, ProductTicketExRule rule) {
