@@ -7,7 +7,11 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCollectorLog;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -65,9 +69,31 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_campaign_metrics</code>.
+     */
+    public final EntityProcessorCampaignMetrics ENTITY_PROCESSOR_CAMPAIGN_METRICS = EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_campaign_sync_state</code>.
+     */
+    public final EntityProcessorCampaignSyncState ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE = EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE;
+
+    /**
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_collector_log</code>.
+     */
+    public final EntityProcessorCollectorLog ENTITY_PROCESSOR_COLLECTOR_LOG = EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG;
+
+    /**
+     * The table <code>entity_processor.entity_processor_integrations</code>.
+     */
+    public final EntityProcessorIntegrations ENTITY_PROCESSOR_INTEGRATIONS = EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -193,7 +219,11 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorAds.ENTITY_PROCESSOR_ADS,
             EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
+            EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS,
+            EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
+            EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG,
+            EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
