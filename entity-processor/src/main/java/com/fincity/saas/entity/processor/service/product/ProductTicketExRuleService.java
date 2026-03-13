@@ -124,11 +124,10 @@ public class ProductTicketExRuleService
     }
 
     @Override
-    public Mono<ProductTicketExRule> update(ProductTicketExRule entity) {
-        return super.update(entity)
-                .flatMap(updated -> this.hasAccess()
-                        .flatMap(access -> this.recalculateExpiresOnForRule(access, updated)
-                                .thenReturn(updated)))
+    public Mono<ProductTicketExRule> update(ProcessorAccess access, ProductTicketExRule entity) {
+        return super.update(access, entity)
+                .flatMap(updated -> this.recalculateExpiresOnForRule(access, updated)
+                        .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.update"));
     }
 
