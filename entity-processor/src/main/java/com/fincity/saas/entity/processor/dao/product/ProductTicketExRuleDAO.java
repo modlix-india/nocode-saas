@@ -65,8 +65,7 @@ public class ProductTicketExRuleDAO
                 .eq(rule.getAppCode())
                 .and(ticketsTable.CLIENT_CODE.eq(rule.getClientCode()))
                 .and(ticketsTable.SOURCE.eq(rule.getSource()))
-                .and(ticketsTable.EXPIRES_ON.isNotNull())
-                .and(ticketsTable.EXPIRES_ON.gt(now));
+                .and(ticketsTable.EXPIRES_ON.isNull().or(ticketsTable.EXPIRES_ON.gt(now)));
 
         if (rule.getProductId() != null) {
             // Product-level rule: directly match tickets by product ID
