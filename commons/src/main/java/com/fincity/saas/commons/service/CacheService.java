@@ -75,6 +75,8 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 					.map(e -> true)
 					.subscribe();
 
+			this.caffineCacheEvict(cacheName, key);
+
 			return Mono.fromCompletionStage(redisAsyncCommand.hdel(cacheName, key))
 					.map(e -> true);
 		}
@@ -199,6 +201,10 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		if (pubAsyncCommand != null) {
 			Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, cacheName + ":*"))
 					.subscribe();
+
+			Cache cache = this.cacheManager.getCache(cacheName);
+			if (cache != null)
+				cache.clear();
 
 			return Mono.fromCompletionStage(redisAsyncCommand.del(cacheName))
 					.map(e -> true)
