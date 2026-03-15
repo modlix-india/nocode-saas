@@ -72,6 +72,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         implements IRepositoryProvider {
 
     private static final String TICKET_CACHE = "ticket";
+    private static final String DIAG_ACTION_ASSIGNMENT_INITIAL = "ASSIGNMENT_INITIAL";
+    private static final String DIAG_REASON_RULE = "Initial assignment via rule";
+    private static final String DIAG_REASON_LOGGED_IN_USER = "Initial assignment to logged-in user";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
     private static final ClassSchema classSchema =
@@ -307,18 +310,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     this.getEntityPrefix(access.getAppCode()));
 
         ticket.setAssignedUserId(userId);
-
-        this.diagnosticsService
-                .logAssignment(
-                        access,
-                        ticket.getId(),
-                        "ASSIGNMENT_INITIAL",
-                        null,
-                        userId,
-                        ruleResult != null ? "Initial assignment via rule" : "Initial assignment to logged-in user",
-                        ruleResult)
-                .onErrorResume(e -> Mono.empty())
-                .subscribe();
+        ticket.setAssignmentRuleResult(ruleResult);
 
         return Mono.just(ticket)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setTicketAssignment"));
@@ -423,8 +415,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.setProductId(productIdentity.getT1().getId())
                                         .setDnc(productIdentity.getT2())),
                         (access, productIdentity, isDuplicate, pTicket) -> super.create(access, pTicket),
-                        (access, productIdentity, isDuplicate, pTicket, created) ->
-                                this.createNote(access, ticketRequest, created),
+                        (access, productIdentity, isDuplicate, pTicket, created) -> {
+                            RuleResult rr = pTicket.getAssignmentRuleResult();
+                            this.diagnosticsService
+                                    .logAssignment(
+                                            access,
+                                            created.getId(),
+                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
+                                            null,
+                                            created.getAssignedUserId(),
+                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
+                                            rr)
+                                    .onErrorResume(e -> Mono.empty())
+                                    .subscribe();
+                            return this.createNote(access, ticketRequest, created);
+                        },
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
@@ -488,8 +493,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "campaign")),
-                        (campaign, product, ticket, isDuplicate, pTicket, created) ->
-                                this.createNote(access, cTicketRequest, created),
+                        (campaign, product, ticket, isDuplicate, pTicket, created) -> {
+                            RuleResult rr = pTicket.getAssignmentRuleResult();
+                            this.diagnosticsService
+                                    .logAssignment(
+                                            access,
+                                            created.getId(),
+                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
+                                            null,
+                                            created.getAssignedUserId(),
+                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
+                                            rr)
+                                    .onErrorResume(e -> Mono.empty())
+                                    .subscribe();
+                            return this.createNote(access, cTicketRequest, created);
+                        },
                         (campaign, product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
@@ -531,8 +549,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "website")),
-                        (product, ticket, isDuplicate, pTicket, created) ->
-                                this.createNote(access, cTicketRequest, created),
+                        (product, ticket, isDuplicate, pTicket, created) -> {
+                            RuleResult rr = pTicket.getAssignmentRuleResult();
+                            this.diagnosticsService
+                                    .logAssignment(
+                                            access,
+                                            created.getId(),
+                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
+                                            null,
+                                            created.getAssignedUserId(),
+                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
+                                            rr)
+                                    .onErrorResume(e -> Mono.empty())
+                                    .subscribe();
+                            return this.createNote(access, cTicketRequest, created);
+                        },
                         (product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
