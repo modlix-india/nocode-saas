@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientF
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
+import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
@@ -58,6 +59,9 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private LocalDateTime expiresOn;
     private String latestComment;
 
+    @JsonIgnore
+    private transient RuleResult assignmentRuleResult;
+
     public Ticket() {
         super();
         this.relationsMap.put(Fields.ownerId, EntitySeries.OWNER.getTable());
@@ -94,6 +98,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
         this.latestComment = ticket.latestComment;
+        this.assignmentRuleResult = ticket.assignmentRuleResult;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
