@@ -7,7 +7,12 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCollectorLog;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -51,9 +56,36 @@ public class Tables {
     public static final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_campaign_metrics</code>.
+     */
+    public static final EntityProcessorCampaignMetrics ENTITY_PROCESSOR_CAMPAIGN_METRICS = EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_campaign_sync_state</code>.
+     */
+    public static final EntityProcessorCampaignSyncState ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE = EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE;
+
+    /**
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public static final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_collector_log</code>.
+     */
+    public static final EntityProcessorCollectorLog ENTITY_PROCESSOR_COLLECTOR_LOG = EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG;
+
+    /**
+     * The table <code>entity_processor.entity_processor_diagnostics</code>.
+     */
+    public static final EntityProcessorDiagnostics ENTITY_PROCESSOR_DIAGNOSTICS = EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_integrations</code>.
+     */
+    public static final EntityProcessorIntegrations ENTITY_PROCESSOR_INTEGRATIONS = EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
