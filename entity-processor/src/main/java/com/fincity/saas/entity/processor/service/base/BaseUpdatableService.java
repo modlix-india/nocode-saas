@@ -339,7 +339,7 @@ public abstract class BaseUpdatableService<
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, id),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
+                this.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), id));
     }
 
     public Mono<D> readByCode(ProcessorAccess access, String code) {
@@ -362,7 +362,7 @@ public abstract class BaseUpdatableService<
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, code),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
+                this.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), code));
     }
 
     public Mono<D> readByIdentity(Identity identity) {
