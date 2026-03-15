@@ -20,6 +20,7 @@ import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
@@ -276,12 +277,12 @@ public class ProductTicketCRuleService
                         stageId));
     }
 
-    public Mono<ULong> getUserAssignment(
+    public Mono<RuleResult> getUserAssignment(
             ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
         return getUserAssignment(access, productId, stageId, tokenPrefix, userId, ticket, true);
     }
 
-    public Mono<ULong> getUserAssignment(
+    public Mono<RuleResult> getUserAssignment(
             ProcessorAccess access,
             ULong productId,
             ULong stageId,
@@ -304,7 +305,14 @@ public class ProductTicketCRuleService
                                 ULong assignedUserId = uRule.getLastAssignedUserId();
                                 if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
                                     return Mono.empty();
-                                return Mono.just(assignedUserId);
+                                return Mono.just(new RuleResult()
+                                        .setUserId(assignedUserId)
+                                        .setRuleId(uRule.getId())
+                                        .setRuleOrder(uRule.getOrder())
+                                        .setDistributionType(uRule.getUserDistributionType())
+                                        .setProductId(uRule.getProductId())
+                                        .setProductTemplateId(uRule.getProductTemplateId())
+                                        .setStageId(uRule.getStageId()));
                             });
                 })
                 .onErrorResume(e -> Mono.empty())
