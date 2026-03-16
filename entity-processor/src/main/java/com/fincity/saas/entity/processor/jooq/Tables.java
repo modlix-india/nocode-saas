@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -54,6 +55,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public static final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_diagnostics</code>.
+     */
+    public static final EntityProcessorDiagnostics ENTITY_PROCESSOR_DIAGNOSTICS = EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.

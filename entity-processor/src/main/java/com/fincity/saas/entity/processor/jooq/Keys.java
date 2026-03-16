@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -31,6 +32,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActi
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsetsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorDiagnosticsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
@@ -80,6 +82,7 @@ public class Keys {
     public static final UniqueKey<EntityProcessorCampaignsRecord> KEY_ENTITY_PROCESSOR_CAMPAIGNS_PRIMARY = Internal.createUniqueKey(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS, DSL.name("KEY_entity_processor_campaigns_PRIMARY"), new TableField[] { EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS.ID }, true);
     public static final UniqueKey<EntityProcessorCampaignsRecord> KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK1_CAMPAIGNS_ID = Internal.createUniqueKey(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS, DSL.name("KEY_entity_processor_campaigns_UK1_CAMPAIGNS_ID"), new TableField[] { EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS.APP_CODE, EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS.CLIENT_CODE, EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS.CAMPAIGN_ID }, true);
     public static final UniqueKey<EntityProcessorCampaignsRecord> KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK2_CAMPAIGNS_CODE = Internal.createUniqueKey(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS, DSL.name("KEY_entity_processor_campaigns_UK2_CAMPAIGNS_CODE"), new TableField[] { EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS.CODE }, true);
+    public static final UniqueKey<EntityProcessorDiagnosticsRecord> KEY_ENTITY_PROCESSOR_DIAGNOSTICS_PRIMARY = Internal.createUniqueKey(EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS, DSL.name("KEY_entity_processor_diagnostics_PRIMARY"), new TableField[] { EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS.ID }, true);
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_PRIMARY = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_PRIMARY"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.ID }, true);
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_UK1_NOTES_CODE = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_UK1_NOTES_CODE"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.CODE }, true);
     public static final UniqueKey<EntityProcessorOwnersRecord> KEY_ENTITY_PROCESSOR_OWNERS_PRIMARY = Internal.createUniqueKey(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS, DSL.name("KEY_entity_processor_owners_PRIMARY"), new TableField[] { EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS.ID }, true);

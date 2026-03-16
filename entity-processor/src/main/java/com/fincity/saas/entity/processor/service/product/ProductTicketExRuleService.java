@@ -115,11 +115,19 @@ public class ProductTicketExRuleService
     }
 
     @Override
-    public Mono<ProductTicketExRule> update(ProductTicketExRule entity) {
-        return super.update(entity)
-                .flatMap(updated -> this.hasAccess()
-                        .flatMap(access -> this.recalculateExpiresOnForRule(access, updated)
-                                .thenReturn(updated)))
+    public Mono<ProductTicketExRule> create(ProductTicketExRule entity) {
+        return super.create(entity)
+                .flatMap(created -> this.hasAccess()
+                        .flatMap(access -> this.recalculateExpiresOnForRule(access, created)
+                                .thenReturn(created)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.create"));
+    }
+
+    @Override
+    public Mono<ProductTicketExRule> update(ProcessorAccess access, ProductTicketExRule entity) {
+        return super.update(access, entity)
+                .flatMap(updated -> this.recalculateExpiresOnForRule(access, updated)
+                        .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.update"));
     }
 
@@ -181,7 +189,7 @@ public class ProductTicketExRuleService
         return this.cacheService.cacheValueOrGet(
                 CACHE_NAME,
                 () -> this.dao.findActiveRuleByProduct(access, productId, source),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), "product", productId, source));
+                this.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), "product", productId, source));
     }
 
     private Mono<ProductTicketExRule> findTemplateRule(
@@ -190,7 +198,7 @@ public class ProductTicketExRuleService
                 CACHE_NAME,
                 () -> this.dao.findActiveRuleByTemplate(access, productTemplateId, source),
                 this.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), "template", productTemplateId, source));
+                        access.getAppCode(), access.getEffectiveClientCode(), "template", productTemplateId, source));
     }
 
     public Mono<Void> recalculateExpiresOnForRule(ProcessorAccess access, ProductTicketExRule rule) {

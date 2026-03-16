@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -68,6 +69,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_diagnostics</code>.
+     */
+    public final EntityProcessorDiagnostics ENTITY_PROCESSOR_DIAGNOSTICS = EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -194,6 +200,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorAds.ENTITY_PROCESSOR_ADS,
             EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
+            EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
