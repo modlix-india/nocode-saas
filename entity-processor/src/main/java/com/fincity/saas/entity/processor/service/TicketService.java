@@ -376,6 +376,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
                     existing.setTag(ticket.getTag());
+                    existing.setExpiresOn(ticket.getExpiresOn());
 
                     return Mono.just(existing);
                 })
