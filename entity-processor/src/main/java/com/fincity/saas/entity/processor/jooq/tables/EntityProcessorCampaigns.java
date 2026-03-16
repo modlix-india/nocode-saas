@@ -10,8 +10,6 @@ import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds.EntityProcessorAdsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets.EntityProcessorAdsetsPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics.EntityProcessorCampaignMetricsPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState.EntityProcessorCampaignSyncStatePath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
 
@@ -118,22 +116,9 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
     /**
      * The column
      * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
+     * Campaign Source
      */
-    public final TableField<EntityProcessorCampaignsRecord, CampaignPlatform> CAMPAIGN_PLATFORM = createField(DSL.name("CAMPAIGN_PLATFORM"), SQLDataType.VARCHAR(10), this, "", new EnumConverter<String, CampaignPlatform>(String.class, CampaignPlatform.class));
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_campaigns.PLATFORM_ACCOUNT_ID</code>.
-     * Ad account ID (Google customer ID, Meta ad account ID).
-     */
-    public final TableField<EntityProcessorCampaignsRecord, String> PLATFORM_ACCOUNT_ID = createField(DSL.name("PLATFORM_ACCOUNT_ID"), SQLDataType.VARCHAR(64), this, "Ad account ID (Google customer ID, Meta ad account ID).");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_campaigns.PLATFORM_LOGIN_ID</code>.
-     * Google login-customer-id (MCC account). NULL for non-Google platforms.
-     */
-    public final TableField<EntityProcessorCampaignsRecord, String> PLATFORM_LOGIN_ID = createField(DSL.name("PLATFORM_LOGIN_ID"), SQLDataType.VARCHAR(64), this, "Google login-customer-id (MCC account). NULL for non-Google platforms.");
+    public final TableField<EntityProcessorCampaignsRecord, CampaignPlatform> CAMPAIGN_PLATFORM = createField(DSL.name("CAMPAIGN_PLATFORM"), SQLDataType.VARCHAR(8), this, "Campaign Source", new EnumConverter<String, CampaignPlatform>(String.class, CampaignPlatform.class));
 
     /**
      * The column
@@ -303,32 +288,6 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
             _entityProcessorAdsets = new EntityProcessorAdsetsPath(this, null, Keys.FK1_ADSETS_CAMPAIGN_ID.getInverseKey());
 
         return _entityProcessorAdsets;
-    }
-
-    private transient EntityProcessorCampaignMetricsPath _entityProcessorCampaignMetrics;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_campaign_metrics</code> table
-     */
-    public EntityProcessorCampaignMetricsPath entityProcessorCampaignMetrics() {
-        if (_entityProcessorCampaignMetrics == null)
-            _entityProcessorCampaignMetrics = new EntityProcessorCampaignMetricsPath(this, null, Keys.FK1_METRICS_CAMPAIGN.getInverseKey());
-
-        return _entityProcessorCampaignMetrics;
-    }
-
-    private transient EntityProcessorCampaignSyncStatePath _entityProcessorCampaignSyncState;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_campaign_sync_state</code> table
-     */
-    public EntityProcessorCampaignSyncStatePath entityProcessorCampaignSyncState() {
-        if (_entityProcessorCampaignSyncState == null)
-            _entityProcessorCampaignSyncState = new EntityProcessorCampaignSyncStatePath(this, null, Keys.FK1_SYNC_CAMPAIGN.getInverseKey());
-
-        return _entityProcessorCampaignSyncState;
     }
 
     private transient EntityProcessorAdsPath _entityProcessorAds;
