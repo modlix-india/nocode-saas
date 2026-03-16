@@ -156,7 +156,7 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.readByIdInternal(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.dao.readInternal(entity.getId()), existing -> {
             if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
@@ -376,6 +376,15 @@ public abstract class BaseUpdatableService<
         return identity.isId()
                 ? this.readByIdInternal(identity.getULongId())
                 : this.readByCodeInternal(identity.getCode());
+    }
+
+    public Mono<D> readByIdentityDirect(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId()
+                ? this.dao.readInternal(identity.getULongId())
+                : this.dao.readInternal(identity.getCode());
     }
 
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
