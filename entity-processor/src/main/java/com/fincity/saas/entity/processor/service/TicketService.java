@@ -1095,7 +1095,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<Void> resetExpiresOn(ProcessorAccess access, ULong ticketId) {
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.readById(access, ticketId),
+                        () -> this.dao.readInternal(ticketId),
                         ticket -> {
                             if (ticket == null) return Mono.empty();
 
