@@ -4,7 +4,7 @@ set -euo pipefail
 # =============================================================================
 # copydb.sh - Copy MySQL databases from dev/stage/prod to local via SSH jumphost
 #
-# Usage: ./copydb.sh <env>
+# Usage: ./copydb.sh <env> <remote_db_password>
 #   env: dev | stage | prod
 #
 # This script:
@@ -14,9 +14,10 @@ set -euo pipefail
 # =============================================================================
 
 ENV="${1:-}"
+REMOTE_PASS="${2:-}"
 
-if [[ -z "$ENV" ]] || [[ ! "$ENV" =~ ^(dev|stage|prod)$ ]]; then
-    echo "Usage: $0 <dev|stage|prod>"
+if [[ -z "$ENV" ]] || [[ ! "$ENV" =~ ^(dev|stage|prod)$ ]] || [[ -z "$REMOTE_PASS" ]]; then
+    echo "Usage: $0 <dev|stage|prod> <remote_db_password>"
     exit 1
 fi
 
@@ -28,7 +29,6 @@ SSH_OPTS="-i ${SSH_KEY} -o StrictHostKeyChecking=no"
 
 # --- Remote DB Config ---
 REMOTE_USER="admin"
-REMOTE_PASS="dpPass-123"
 REMOTE_HOST="${ENV}-mysql.sub10150624021.modlixvcn.oraclevcn.com"
 REMOTE_PORT=3306
 
