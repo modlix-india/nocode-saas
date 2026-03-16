@@ -378,6 +378,15 @@ public abstract class BaseUpdatableService<
                 : this.readByCodeInternal(identity.getCode());
     }
 
+    public Mono<D> readByIdentityDirect(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId()
+                ? this.dao.readInternal(identity.getULongId())
+                : this.dao.readInternal(identity.getCode());
+    }
+
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();

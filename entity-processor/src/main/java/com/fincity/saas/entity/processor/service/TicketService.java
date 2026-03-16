@@ -881,6 +881,38 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
+    public Mono<Ticket> reassignForWalkIn(ProcessorAccess access, Ticket ticket, ULong userId) {
+
+        if (userId == null) return Mono.just(ticket);
+
+        ULong oldUserId = ticket.getAssignedUserId();
+
+        if (oldUserId != null && oldUserId.equals(userId)) return Mono.just(ticket);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.setTicketAssignment(access, ticket, userId, null),
+                        aTicket -> super.updateInternal(access, aTicket),
+                        (aTicket, uTicket) -> {
+                            this.diagnosticsService
+                                    .logAssignment(
+                                            access, uTicket.getId(), "ASSIGNMENT_WALK_IN_FORM", oldUserId,
+                                            uTicket.getAssignedUserId(), "User assigned from walk-in form", null)
+                                    .onErrorResume(e -> Mono.empty())
+                                    .subscribe();
+
+                            return this.activityService
+                                    .acReassign(
+                                            access,
+                                            uTicket.getId(),
+                                            "User assigned from walk-in form",
+                                            oldUserId,
+                                            uTicket.getAssignedUserId(),
+                                            false)
+                                    .thenReturn(uTicket);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForWalkIn"));
+    }
+
     public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId, boolean isAutomatic) {
 
         if (userId != null)
