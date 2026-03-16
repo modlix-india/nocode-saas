@@ -195,11 +195,16 @@ public abstract class BaseContentService<
         if (content.getTicketId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.TICKET))
             return Mono.empty();
 
-        return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(access, content.getTicketId()), ticket -> {
-                    content.setTicketId(ticket.getId());
-                    content.setOwnerId(ticket.getOwnerId());
-                    return this.create(access, content);
-                })
+        return FlatMapUtil.flatMapMono(
+                        () -> this.ticketService.readById(access, content.getTicketId()),
+                        ticket -> {
+                            content.setTicketId(ticket.getId());
+                            content.setOwnerId(ticket.getOwnerId());
+                            return this.create(access, content);
+                        },
+                        (ticket, created) -> this.ticketService
+                                .resetExpiresOn(access, ticket.getId())
+                                .thenReturn(created))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
