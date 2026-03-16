@@ -396,7 +396,7 @@ public class ProductWalkInFormService
             ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
 
         return this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest)
-                .flatMap(users -> this.ticketService.readByIdentityInternal(ticketRequest.getTicketId()))
+                .flatMap(users -> this.ticketService.readByIdentityDirect(ticketRequest.getTicketId()))
                 .switchIfEmpty(msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -448,6 +448,7 @@ public class ProductWalkInFormService
         if (stageUnchanged && statusUnchanged)
             return ticketService
                     .updateInternal(access, ticket)
+                    .flatMap(updated -> ticketService.reassignForWalkIn(access, updated, ticketRequest.getUserId()))
                     .map(updated -> Tuples.of(
                             updated, ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries())))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
