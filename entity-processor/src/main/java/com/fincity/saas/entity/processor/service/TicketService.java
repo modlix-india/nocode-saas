@@ -1,5 +1,17 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -10,19 +22,19 @@ import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
-import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -52,17 +64,8 @@ import com.fincity.saas.entity.processor.service.product.ProductTicketExRuleServ
 import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
+
 import jakarta.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -342,45 +345,58 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     @Override
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
-        return super.updatableEntity(ticket)
-                .flatMap(existing -> {
-                    if (existing.isExpired())
-                        return this.msgService.throwMessage(
+
+        return FlatMapUtil.flatMapMono(
+            () -> super.updatableEntity(ticket),
+
+            existing -> SecurityContextUtil.getUsersContextAuthentication(),
+
+            (existing, ca) -> {
+
+                if (!existing.isExpired()) return Mono.just(true);
+
+                if (!existing.getClientCode().equals(ca.getClientCode()) ||
+                    !SecurityContextUtil.hasAuthority(BusinessPartnerConstant.OWNER_ROLE, ca.getUser().getAuthorities()))
+                    return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 ProcessorMessageResourceService.TICKET_EXPIRED);
 
-                    ULong oldAssignedUserId = existing.getAssignedUserId();
-                    ULong newAssignedUserId = ticket.getAssignedUserId();
+                return Mono.just(true);
+            },
 
-                    if (newAssignedUserId != null
-                            && !newAssignedUserId.equals(oldAssignedUserId)) {
-                        SecurityContextUtil.getUsersContextAuthentication()
-                                .flatMap(ca -> this.diagnosticsService.log(
-                                        ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
-                                                ca.getUser(), null),
-                                        com.fincity.saas.entity.processor.jooq.enums
-                                                .EntityProcessorDiagnosticsObjectType.TICKET,
-                                        existing.getId(),
-                                        "ASSIGNMENT_UPDATE",
-                                        oldAssignedUserId,
-                                        newAssignedUserId,
-                                        "Generic ticket update",
-                                        Map.of()))
-                                .onErrorResume(e -> Mono.empty())
-                                .subscribe();
-                    }
+            (existing, ca, canUpdate) -> {
+                ULong oldAssignedUserId = existing.getAssignedUserId();
+                ULong newAssignedUserId = ticket.getAssignedUserId();
 
-                    existing.setEmail(ticket.getEmail());
-                    existing.setAssignedUserId(ticket.getAssignedUserId());
-                    existing.setStage(ticket.getStage());
-                    existing.setStatus(ticket.getStatus());
-                    existing.setSubSource(ticket.getSubSource());
-                    existing.setTag(ticket.getTag());
-                    existing.setExpiresOn(ticket.getExpiresOn());
+                if (newAssignedUserId != null
+                        && !newAssignedUserId.equals(oldAssignedUserId)) {
+                    this.diagnosticsService.log(
+                            ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
+                                    ca.getUser(), null),
+                            com.fincity.saas.entity.processor.jooq.enums
+                                    .EntityProcessorDiagnosticsObjectType.TICKET,
+                            existing.getId(),
+                            "ASSIGNMENT_UPDATE",
+                            oldAssignedUserId,
+                            newAssignedUserId,
+                            "Generic ticket update",
+                            Map.of())
+                        .onErrorResume(e -> Mono.empty())
+                        .subscribe();
+                }
 
-                    return Mono.just(existing);
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
+                existing.setEmail(ticket.getEmail());
+                existing.setAssignedUserId(ticket.getAssignedUserId());
+                existing.setStage(ticket.getStage());
+                existing.setStatus(ticket.getStatus());
+                existing.setSubSource(ticket.getSubSource());
+                existing.setTag(ticket.getTag());
+                existing.setExpiresOn(ticket.getExpiresOn());
+
+                return Mono.just(existing);
+            }
+        )
+        .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
     @ReactiveTime
