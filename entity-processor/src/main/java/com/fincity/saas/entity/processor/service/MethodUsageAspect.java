@@ -32,7 +32,7 @@ public class MethodUsageAspect {
 
     @Around("monoServiceMethods()")
     public Object trackMono(ProceedingJoinPoint joinPoint) throws Throwable {
-        String method = joinPoint.getSignature().toShortString();
+        String method = getTargetMethodName(joinPoint);
         Object result = joinPoint.proceed();
 
         if (result instanceof Mono<?> mono) {
@@ -44,7 +44,7 @@ public class MethodUsageAspect {
 
     @Around("fluxServiceMethods()")
     public Object trackFlux(ProceedingJoinPoint joinPoint) throws Throwable {
-        String method = joinPoint.getSignature().toShortString();
+        String method = getTargetMethodName(joinPoint);
         Object result = joinPoint.proceed();
 
         if (result instanceof Flux<?> flux) {
@@ -52,5 +52,11 @@ public class MethodUsageAspect {
         }
 
         return result;
+    }
+
+    private String getTargetMethodName(ProceedingJoinPoint joinPoint) {
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        return className + "." + methodName + "(..)";
     }
 }
