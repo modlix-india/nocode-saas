@@ -239,12 +239,24 @@ public class ProductTicketCRuleService
             ULong userId,
             Ticket ticket,
             boolean isCreate) {
+
+        logger.info("getUserAssignment: productId={}, stageId={}, isCreate={}, userId={}", productId, stageId, isCreate, userId);
+
         return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
-                    if (productRule.isEmpty()) return Mono.empty();
+                    logger.info("getUserAssignment: productId={}, stageId={}, rulesFound={}, ruleKeys={}",
+                            productId, stageId, productRule.size(), productRule.keySet());
+
+                    if (productRule.isEmpty()) {
+                        logger.info("getUserAssignment: No rules found for productId={}, stageId={}", productId, stageId);
+                        return Mono.empty();
+                    }
 
                     // During updates/reassignment, if only the default rule exists, return empty (don't change
                     // assignment)
-                    if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
+                    if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) {
+                        logger.info("getUserAssignment: Only default rule (order 0) found during update, skipping reassignment for productId={}, stageId={}", productId, stageId);
+                        return Mono.empty();
+                    }
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
@@ -264,7 +276,11 @@ public class ProductTicketCRuleService
                                         .setStageId(uRule.getStageId()));
                             });
                 })
-                .onErrorResume(e -> Mono.empty())
+                .onErrorResume(e -> {
+                    logger.error("Error in getUserAssignment for productId={}, stageId={}: {}",
+                            productId, stageId, e.getMessage(), e);
+                    return Mono.empty();
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
 

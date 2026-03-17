@@ -27,7 +27,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
@@ -362,9 +361,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 ULong oldAssignedUserId = existing.getAssignedUserId();
                 ULong newAssignedUserId = ticket.getAssignedUserId();
 
+                existing.setEmail(ticket.getEmail());
+                existing.setAssignedUserId(ticket.getAssignedUserId());
+                existing.setStage(ticket.getStage());
+                existing.setStatus(ticket.getStatus());
+                existing.setSubSource(ticket.getSubSource());
+                existing.setTag(ticket.getTag());
+                existing.setExpiresOn(ticket.getExpiresOn());
+
                 if (newAssignedUserId != null
                         && !newAssignedUserId.equals(oldAssignedUserId)) {
-                    this.diagnosticsService.log(
+                    return this.diagnosticsService.log(
                             ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
                                     ca.getUser(), null),
                             com.fincity.saas.entity.processor.jooq.enums
@@ -375,17 +382,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             newAssignedUserId,
                             "Generic ticket update",
                             Map.of())
-                        .onErrorResume(e -> Mono.empty())
-                        .subscribe();
+                        .onErrorResume(e -> {
+                            logger.error("Failed to log diagnostics for ticket {}: {}", existing.getId(), e.getMessage());
+                            return Mono.empty();
+                        })
+                        .thenReturn(existing);
                 }
-
-                existing.setEmail(ticket.getEmail());
-                existing.setAssignedUserId(ticket.getAssignedUserId());
-                existing.setStage(ticket.getStage());
-                existing.setStatus(ticket.getStatus());
-                existing.setSubSource(ticket.getSubSource());
-                existing.setTag(ticket.getTag());
-                existing.setExpiresOn(ticket.getExpiresOn());
 
                 return Mono.just(existing);
             }
@@ -834,15 +836,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             TaskRequest taskRequest,
             String comment) {
 
-        ULong oldStage = CloneUtil.cloneObject(ticket.getStage());
+        ULong oldStage = ticket.getStage();
 
         boolean doReassignment = !oldStage.equals(stageId);
+
+        logger.info("updateTicketStage: ticketId={}, oldStage={}, newStage={}, statusId={}, doReassignment={}, reassignUserId={}",
+                ticket.getId(), oldStage, stageId, statusId, doReassignment, reassignUserId);
 
         ticket.setStage(stageId);
         ticket.setStatus(statusId);
 
-        return FlatMapUtil.flatMapMono(
-                        () -> super.updateInternal(access, ticket),
+        return this.computeAndSetExpiresOn(access, ticket)
+                .flatMap(eTicket -> FlatMapUtil.flatMapMono(
+                        () -> super.updateInternal(access, eTicket),
                         uTicket -> taskRequest != null
                                 ? this.createTask(access, taskRequest, uTicket)
                                 : Mono.just(Boolean.FALSE),
@@ -851,7 +857,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .thenReturn(uTicket),
                         (uTicket, cTask, fTicket) -> doReassignment
                                 ? this.reassignForStage(access, fTicket, reassignUserId, true)
-                                : Mono.just(fTicket))
+                                : Mono.just(fTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
     }
 
@@ -903,28 +909,31 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         () -> this.setTicketAssignment(access, ticket, userId, null),
                         aTicket -> super.updateInternal(access, aTicket),
-                        (aTicket, uTicket) -> {
-                            this.diagnosticsService
-                                    .logAssignment(
-                                            access, uTicket.getId(), "ASSIGNMENT_WALK_IN_FORM", oldUserId,
-                                            uTicket.getAssignedUserId(), "User assigned from walk-in form", null)
-                                    .onErrorResume(e -> Mono.empty())
-                                    .subscribe();
-
-                            return this.activityService
-                                    .acReassign(
-                                            access,
-                                            uTicket.getId(),
-                                            "User assigned from walk-in form",
-                                            oldUserId,
-                                            uTicket.getAssignedUserId(),
-                                            false)
-                                    .thenReturn(uTicket);
-                        })
+                        (aTicket, uTicket) -> Mono.when(
+                                    this.diagnosticsService
+                                            .logAssignment(
+                                                    access, uTicket.getId(), "ASSIGNMENT_WALK_IN_FORM", oldUserId,
+                                                    uTicket.getAssignedUserId(), "User assigned from walk-in form", null)
+                                            .onErrorResume(e -> {
+                                                logger.error("Failed to log diagnostics for ticket {}: {}", uTicket.getId(), e.getMessage());
+                                                return Mono.empty();
+                                            }),
+                                    this.activityService
+                                            .acReassign(
+                                                    access,
+                                                    uTicket.getId(),
+                                                    "User assigned from walk-in form",
+                                                    oldUserId,
+                                                    uTicket.getAssignedUserId(),
+                                                    false))
+                                    .thenReturn(uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForWalkIn"));
     }
 
     public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId, boolean isAutomatic) {
+
+        logger.info("reassignForStage: ticketId={}, productId={}, stage={}, userId={}, assignedUserId={}",
+                ticket.getId(), ticket.getProductId(), ticket.getStage(), userId, ticket.getAssignedUserId());
 
         if (userId != null)
             return this.updateTicketForReassignment(
@@ -961,21 +970,24 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         aTicket -> super.updateInternal(access, aTicket),
                         (aTicket, uTicket) -> {
                             String action = isAutomatic ? "ASSIGNMENT_STAGE_CHANGE" : "ASSIGNMENT_REASSIGN";
-                            this.diagnosticsService
-                                    .logAssignment(
-                                            access, uTicket.getId(), action, oldUserId,
-                                            uTicket.getAssignedUserId(), comment, ruleResult)
-                                    .onErrorResume(e -> Mono.empty())
-                                    .subscribe();
 
-                            return this.activityService
-                                    .acReassign(
-                                            access,
-                                            uTicket.getId(),
-                                            comment,
-                                            oldUserId,
-                                            uTicket.getAssignedUserId(),
-                                            isAutomatic)
+                            return Mono.when(
+                                    this.diagnosticsService
+                                            .logAssignment(
+                                                    access, uTicket.getId(), action, oldUserId,
+                                                    uTicket.getAssignedUserId(), comment, ruleResult)
+                                            .onErrorResume(e -> {
+                                                logger.error("Failed to log diagnostics for ticket {}: {}", uTicket.getId(), e.getMessage());
+                                                return Mono.empty();
+                                            }),
+                                    this.activityService
+                                            .acReassign(
+                                                    access,
+                                                    uTicket.getId(),
+                                                    comment,
+                                                    oldUserId,
+                                                    uTicket.getAssignedUserId(),
+                                                    isAutomatic))
                                     .thenReturn(uTicket);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketForReassignment"));
