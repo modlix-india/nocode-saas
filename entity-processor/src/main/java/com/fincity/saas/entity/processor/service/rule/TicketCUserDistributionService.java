@@ -13,13 +13,6 @@ public class TicketCUserDistributionService
         extends BaseUserDistributionService<
                 EntityProcessorTicketCUserDistributionsRecord, TicketCUserDistribution, TicketCUserDistributionDAO> {
 
-    private static final String TICKET_C_USER_DISTRIBUTION = "ticketCUserDistribution";
-
-    @Override
-    protected String getCacheName() {
-        return TICKET_C_USER_DISTRIBUTION;
-    }
-
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TICKET_C_USER_DISTRIBUTION;

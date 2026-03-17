@@ -55,8 +55,6 @@ public class ProductTicketCRuleService
                 TicketCUserDistribution>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
-
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
@@ -108,11 +106,6 @@ public class ProductTicketCRuleService
     }
 
     @Override
-    protected String getCacheName() {
-        return PRODUCT_TICKET_C_RULE;
-    }
-
-    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TICKET_C_RULE;
     }
@@ -137,34 +130,6 @@ public class ProductTicketCRuleService
                 .thenReturn(cEntity));
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(ProductTicketCRule entity) {
-
-        if (entity.getProductId() != null)
-            return Mono.zip(
-                    super.evictCache(entity),
-                    super.cacheService.evict(
-                            this.getCacheName(),
-                            super.getCacheKey(
-                                    entity.getAppCode(),
-                                    entity.getClientCode(),
-                                    BaseRuleDto.Fields.productId,
-                                    entity.getProductId(),
-                                    entity.getStageId())),
-                    (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
-
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                BaseRuleDto.Fields.productTemplateId,
-                                entity.getProductTemplateId(),
-                                entity.getStageId())),
-                (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
-    }
 
     public Flux<ProductTicketCRule> createMultiple(ProductTicketCRule rule, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
@@ -223,8 +188,6 @@ public class ProductTicketCRuleService
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateCombine(
             ProcessorAccess access, Product product, ULong stageId) {
 
-        if (!product.isOverrideCTemplate()) return Mono.empty();
-
         return Mono.zip(
                 this.getProductRules(access, product.getId(), stageId)
                         .map(rules -> rules.stream()
@@ -255,26 +218,12 @@ public class ProductTicketCRuleService
     }
 
     private Mono<List<ProductTicketCRule>> getProductRules(ProcessorAccess access, ULong productId, ULong stageId) {
-
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getRules(access, productId, null, stageId),
-                super.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), BaseRuleDto.Fields.productId, productId, stageId));
+        return this.dao.getRules(access, productId, null, stageId);
     }
 
     private Mono<List<ProductTicketCRule>> getProductTemplateRules(
             ProcessorAccess access, ULong productTemplateId, ULong stageId) {
-
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getRules(access, null, productTemplateId, stageId),
-                super.getCacheKey(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        BaseRuleDto.Fields.productTemplateId,
-                        productTemplateId,
-                        stageId));
+        return this.dao.getRules(access, null, productTemplateId, stageId);
     }
 
     public Mono<RuleResult> getUserAssignment(

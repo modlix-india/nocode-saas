@@ -59,7 +59,6 @@ public class ProductWalkInFormService
         implements IRepositoryProvider {
 
     private static final String SYSTEM = "SYSTEM";
-    private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private static final String NAMESPACE = "EntityProcessor.ProductWalkInForm";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -167,11 +166,6 @@ public class ProductWalkInFormService
     private void setProductTemplateWalkInFormService(
             ProductTemplateWalkInFormService productTemplateWalkInFormService) {
         this.productTemplateWalkInFormService = productTemplateWalkInFormService;
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_WALK_IN_FORM_CACHE;
     }
 
     @Override

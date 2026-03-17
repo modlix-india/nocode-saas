@@ -74,7 +74,6 @@ import reactor.util.context.Context;
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO>
         implements IRepositoryProvider {
 
-    private static final String TICKET_CACHE = "ticket";
     private static final String DIAG_ACTION_ASSIGNMENT_INITIAL = "ASSIGNMENT_INITIAL";
     private static final String DIAG_REASON_RULE = "Initial assignment via rule";
     private static final String DIAG_REASON_LOGGED_IN_USER = "Initial assignment to logged-in user";
@@ -217,11 +216,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 self::updateTag));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return TICKET_CACHE;
     }
 
     @Override
@@ -1091,11 +1085,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     protected Mono<Integer> deleteInternal(ProcessorAccess access, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                         () -> this.checkDeleteAccess(access, ticket),
-                        checked -> Mono.zip(
-                                this.taskService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
-                                this.noteService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE))
-                                .thenReturn(Boolean.TRUE),
-                        (checked, evicted) -> super.deleteInternal(access, ticket))
+                        checked -> super.deleteInternal(access, ticket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.deleteInternal"));
     }
 
@@ -1117,17 +1107,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     "delete " + this.getEntityName());
 
         return Mono.just(Boolean.TRUE);
-    }
-
-    public Mono<Boolean> evictCachesForOwner(ULong ownerId) {
-        return this.dao
-                .getAllOwnerTickets(ownerId)
-                .flatMap(ticket -> Mono.zip(
-                        this.taskService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
-                        this.noteService.evictCachesForTicket(ticket.getId()).defaultIfEmpty(Boolean.TRUE),
-                        this.evictCache(ticket).defaultIfEmpty(Boolean.TRUE))
-                        .thenReturn(Boolean.TRUE))
-                .then(Mono.just(Boolean.TRUE));
     }
 
     private Mono<Ticket> computeAndSetExpiresOn(ProcessorAccess access, Ticket ticket) {

@@ -29,7 +29,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -188,10 +187,9 @@ public abstract class BaseRuleService<
                         access -> super.readById(access, id),
                         this::deleteUserDistribution,
                         (access, entity, udDeleted) -> super.deleteInternal(access, entity),
-                        (access, entity, udDeleted, deleted) -> this.dao.decrementOrdersAfter(
-                                access, entity.getProductId(), entity.getProductTemplateId(), entity.getOrder()),
-                        (access, entity, udDeleted, deleted, affectedRules) -> super.evictCaches(
-                                        Flux.fromIterable(affectedRules))
+                        (access, entity, udDeleted, deleted) -> this.dao
+                                .decrementOrdersAfter(
+                                        access, entity.getProductId(), entity.getProductTemplateId(), entity.getOrder())
                                 .thenReturn(deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
     }
