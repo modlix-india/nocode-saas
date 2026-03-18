@@ -79,7 +79,7 @@ public class SourceConfigService implements IProcessorAccessService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "SourceConfigService.getAvailableSources"));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner'")   
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     public Mono<List<SourceConfig>> saveAllSources(List<SourceConfig> sources) {
 
         return FlatMapUtil.flatMapMono(
