@@ -237,11 +237,26 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     this.productService.getEntityName());
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.setAssignmentAndStage(ticket, access),
-                        aTicket -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
-                        this::updateTicketFromOwner,
-                        (aTicket, owner, oTicket) -> this.computeAndSetExpiresOn(access, oTicket))
+                        () -> this.checkDuplicateFromTicket(access, ticket),
+                        isDuplicate -> this.setAssignmentAndStage(ticket, access),
+                        (isDuplicate, aTicket) -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
+                        (isDuplicate, aTicket, owner) -> this.updateTicketFromOwner(aTicket, owner),
+                        (isDuplicate, aTicket, owner, oTicket) -> this.computeAndSetExpiresOn(access, oTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
+    }
+
+    private Mono<Boolean> checkDuplicateFromTicket(ProcessorAccess access, Ticket ticket) {
+
+        PhoneNumber phone = ticket.getPhoneNumber() != null
+                ? PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber())
+                : null;
+
+        Email email = ticket.getEmail() != null ? Email.of(ticket.getEmail()) : null;
+
+        if (phone == null && email == null) return Mono.just(Boolean.FALSE);
+
+        return this.checkDuplicate(
+                access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource());
     }
 
     private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
@@ -413,22 +428,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.getDnc(access, ticketRequest)),
                         (access, productIdentity) -> {
                             if (!productIdentity.getT1().isActive())
-                                return this.msgService.<Boolean>throwMessage(
+                                return this.msgService.<Ticket>throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
-                            return this.checkDuplicate(
-                                    access,
-                                    productIdentity.getT1().getId(),
-                                    ticketRequest.getPhoneNumber(),
-                                    ticketRequest.getEmail(),
-                                    ticketRequest.getSource(),
-                                    ticketRequest.getSubSource());
+                            return Mono.just(
+                                    ticket.setProductId(productIdentity.getT1().getId())
+                                            .setDnc(productIdentity.getT2()));
                         },
-                        (access, productIdentity, isDuplicate) -> Mono.just(
-                                ticket.setProductId(productIdentity.getT1().getId())
-                                        .setDnc(productIdentity.getT2())),
-                        (access, productIdentity, isDuplicate, pTicket) -> super.create(access, pTicket),
-                        (access, productIdentity, isDuplicate, pTicket, created) -> {
+                        (access, productIdentity, pTicket) -> super.create(access, pTicket),
+                        (access, productIdentity, pTicket, created) -> {
                             RuleResult rr = pTicket.getAssignmentRuleResult();
                             this.diagnosticsService
                                     .logAssignment(
@@ -443,7 +451,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     .subscribe();
                             return this.createNote(access, ticketRequest, created);
                         },
-                        (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
+                        (access, productIdentity, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
@@ -493,20 +501,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                                 .defaultIfEmpty(ticket);
                                     });
                         },
-                        (campaign, product, ticket) -> this.checkDuplicate(
-                                access,
-                                campaign.getProductId(),
-                                cTicketRequest.getLeadDetails().getPhone(),
-                                cTicketRequest.getLeadDetails().getEmail(),
-                                cTicketRequest.getLeadDetails().getSource(),
-                                cTicketRequest.getLeadDetails().getSubSource()),
-                        (campaign, product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (campaign, product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket)
+                        (campaign, product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
+                        (campaign, product, ticket, pTicket) -> super.create(access, pTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "campaign")),
-                        (campaign, product, ticket, isDuplicate, pTicket, created) -> {
+                        (campaign, product, ticket, pTicket, created) -> {
                             RuleResult rr = pTicket.getAssignmentRuleResult();
                             this.diagnosticsService
                                     .logAssignment(
@@ -521,7 +522,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     .subscribe();
                             return this.createNote(access, cTicketRequest, created);
                         },
-                        (campaign, product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
+                        (campaign, product, ticket, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[cTicketRequest]"));
@@ -549,20 +550,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
                             return Mono.just(Ticket.of(cTicketRequest));
                         },
-                        (product, ticket) -> this.checkDuplicate(
-                                access,
-                                product.getId(),
-                                cTicketRequest.getLeadDetails().getPhone(),
-                                cTicketRequest.getLeadDetails().getEmail(),
-                                cTicketRequest.getLeadDetails().getSource(),
-                                cTicketRequest.getLeadDetails().getSubSource()),
-                        (product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket)
+                        (product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
+                        (product, ticket, pTicket) -> super.create(access, pTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "website")),
-                        (product, ticket, isDuplicate, pTicket, created) -> {
+                        (product, ticket, pTicket, created) -> {
                             RuleResult rr = pTicket.getAssignmentRuleResult();
                             this.diagnosticsService
                                     .logAssignment(
@@ -577,7 +571,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     .subscribe();
                             return this.createNote(access, cTicketRequest, created);
                         },
-                        (product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
+                        (product, ticket, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
