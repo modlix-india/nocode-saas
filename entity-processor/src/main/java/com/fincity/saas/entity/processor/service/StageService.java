@@ -47,7 +47,6 @@ import reactor.util.function.Tuples;
 public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO>
         implements IRepositoryProvider {
 
-    private static final String STAGE_CACHE = "stage";
     private static final String NAMESPACE = "EntityProcessor.Stage";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -112,11 +111,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
-    protected String getCacheName() {
-        return STAGE_CACHE;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
@@ -165,13 +159,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(Stage entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evictAll("productTicketCRule"),
-                (stageEvicted, productTicketCRuleEvicted) -> stageEvicted && productTicketCRuleEvicted);
-    }
 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
@@ -265,8 +252,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     productTemplateId.getULongId(),
                                     parent.getId()),
                             valueEntry -> super.deleteMultiple(valueEntry.getValue()),
-                            (valueEntry, deleted) -> this.evictCache(parent)
-                                    .flatMap(evicted -> Mono.just(Tuples.of(parent, List.<Stage>of()))))
+                            (valueEntry, deleted) -> Mono.just(Tuples.of(parent, List.<Stage>of())))
                     .defaultIfEmpty(Tuples.of(parent, List.of()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.updateOrCreateChildren"));
 
@@ -320,10 +306,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .flatMap(updatedChildren -> {
                                         if (!existingChildrenMap.isEmpty())
                                             return super.deleteMultiple(existingChildrenMap.values())
-                                                    .flatMap(deleted -> this.evictCache(parent))
                                                     .then(Mono.just(Tuples.of(parent, updatedChildren)));
-                                        return this.evictCache(parent)
-                                                .flatMap(evicted -> Mono.just(Tuples.of(parent, updatedChildren)));
+                                        return Mono.just(Tuples.of(parent, updatedChildren));
                                     });
                         })
                 .defaultIfEmpty(Tuples.of(parent, List.of()))
