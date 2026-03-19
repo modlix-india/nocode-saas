@@ -52,6 +52,7 @@ public class TicketCallService implements IRepositoryProvider {
     private final IFeignMessageService messageService;
     private final ProcessorMessageResourceService msgService;
     private final ActivityService activityService;
+    private final SourceConfigService sourceConfigService;
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
@@ -62,6 +63,7 @@ public class TicketCallService implements IRepositoryProvider {
             IFeignMessageService messageService,
             ProcessorMessageResourceService msgService,
             ActivityService activityService,
+            SourceConfigService sourceConfigService,
             Gson gson) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
@@ -69,6 +71,7 @@ public class TicketCallService implements IRepositoryProvider {
         this.messageService = messageService;
         this.msgService = msgService;
         this.activityService = activityService;
+        this.sourceConfigService = sourceConfigService;
         this.gson = gson;
     }
 
@@ -163,29 +166,33 @@ public class TicketCallService implements IRepositoryProvider {
 
         ULong productId = productComm.getProductId();
 
-        String source = productComm.getSource() != null ? productComm.getSource() : SourceUtil.DEFAULT_CALL_SOURCE;
-
-        String subSource =
-                productComm.getSubSource() != null ? productComm.getSubSource() : SourceUtil.DEFAULT_CALL_SUB_SOURCE;
-
         logger.info("Creating new ticket for productId: {}, from: {}", productId, from.getNumber());
 
-        return this.productService
-                .readById(access, productId)
-                .flatMap(product -> {
-                    if (!product.isActive())
-                        return this.msgService.<Ticket>throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
-                    return ticketService.create(
-                            access,
-                            new Ticket()
-                                    .setName("New Customer")
-                                    .setDialCode(from.getCountryCode())
-                                    .setPhoneNumber(from.getNumber())
-                                    .setProductId(productId)
-                                    .setSource(source)
-                                    .setSubSource(subSource));
+        return this.sourceConfigService
+                .getCallSource(access.getAppCode(), access.getEffectiveClientCode())
+                .flatMap(callSourceTuple -> {
+                    String source = productComm.getSource() != null
+                            ? productComm.getSource() : callSourceTuple.getT1();
+                    String subSource = productComm.getSubSource() != null
+                            ? productComm.getSubSource() : callSourceTuple.getT2();
+
+                    return this.productService
+                            .readById(access, productId)
+                            .flatMap(product -> {
+                                if (!product.isActive())
+                                    return this.msgService.<Ticket>throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
+                                return ticketService.create(
+                                        access,
+                                        new Ticket()
+                                                .setName("New Customer")
+                                                .setDialCode(from.getCountryCode())
+                                                .setPhoneNumber(from.getNumber())
+                                                .setProductId(productId)
+                                                .setSource(source)
+                                                .setSubSource(subSource));
+                            });
                 })
                 .doOnNext(ticket ->
                         logger.info("Created new ticket - ticketId: {}, productId: {}", ticket.getId(), productId))

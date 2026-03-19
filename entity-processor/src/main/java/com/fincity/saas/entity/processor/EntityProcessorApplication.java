@@ -13,6 +13,7 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 import reactivefeign.spring.config.EnableReactiveFeignClients;
 
 @SpringBootApplication
+@EnableCaching
 @ComponentScan(basePackages = "com.fincity")
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
 @EnableWebFlux
@@ -20,7 +21,6 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableReactiveMethodSecurity(order = Ordered.HIGHEST_PRECEDENCE)
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages = "com.fincity")
-@EnableCaching
 public class EntityProcessorApplication {
 
     public static void main(String[] args) {

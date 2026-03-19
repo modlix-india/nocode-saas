@@ -32,7 +32,6 @@ import reactor.util.context.Context;
 public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTypesRecord, TaskType, TaskTypeDAO>
         implements IRepositoryProvider {
 
-    private static final String TASK_TYPE_CACHE = "taskType";
     private static final String NAMESPACE = "EntityProcessor.TaskType";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -63,11 +62,6 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                 Schema.ofRef(taskTypeSchemaRef),
                 gson,
                 self::createRequest));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return TASK_TYPE_CACHE;
     }
 
     @Override
