@@ -40,7 +40,6 @@ public class ProductCommService
         extends BaseProcessorService<EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_COMM = "productComm";
     private static final String NAMESPACE = "EntityProcessor.ProductComm";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -93,11 +92,6 @@ public class ProductCommService
     }
 
     @Override
-    protected String getCacheName() {
-        return PRODUCT_COMM;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
@@ -105,51 +99,6 @@ public class ProductCommService
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_COMM;
-    }
-
-    @Override
-    protected Mono<Boolean> evictCache(ProductComm entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                this.evictProductCommCache(entity),
-                (baseEvicted, productCommEvicted) -> baseEvicted && productCommEvicted);
-    }
-
-    private Mono<Boolean> evictProductCommCache(ProductComm entity) {
-        return Mono.zip(
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getProductId(),
-                                entity.getConnectionName(),
-                                entity.getConnectionType(),
-                                entity.getSource(),
-                                entity.getSubSource())),
-                this.evictDefaultCache(entity),
-                (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
-    }
-
-    private Mono<Boolean> evictDefaultCache(ProductComm entity) {
-
-        return Mono.zip(
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getConnectionName(),
-                                entity.getConnectionType())),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getProductId(),
-                                entity.getConnectionName(),
-                                entity.getConnectionType())),
-                (appDefaultEvicted, productDefaultEvicted) -> appDefaultEvicted || productDefaultEvicted);
     }
 
     @Override
@@ -355,7 +304,7 @@ public class ProductCommService
 
                             return super.updateInternal(access, defaultComm);
                         },
-                        (defaultComm, updated) -> this.evictCache(updated).thenReturn(updated))
+                        (defaultComm, updated) -> Mono.just(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updateDefault"));
     }
 
@@ -428,27 +377,12 @@ public class ProductCommService
             ConnectionSubType connectionSubType,
             String source,
             String subSource) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getProductComm(access, productId, connectionType, connectionSubType, source, subSource),
-                super.getCacheKey(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        productId,
-                        connectionType.name(),
-                        connectionSubType.name(),
-                        source,
-                        subSource));
+        return this.dao.getProductComm(access, productId, connectionType, connectionSubType, source, subSource);
     }
 
     private Mono<ProductComm> getDefaultAppInternal(
             ProcessorAccess access, ConnectionType connectionType, ConnectionSubType connectionSubType) {
-
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getDefaultAppProductComm(access, connectionType, connectionSubType),
-                super.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), connectionType.name(), connectionSubType.name()));
+        return this.dao.getDefaultAppProductComm(access, connectionType, connectionSubType);
     }
 
     private Mono<ProductComm> getDefaultInternal(
@@ -456,15 +390,7 @@ public class ProductCommService
             ULong productId,
             ConnectionType connectionType,
             ConnectionSubType connectionSubType) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getDefaultProductComm(access, productId, connectionType, connectionSubType),
-                super.getCacheKey(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        productId,
-                        connectionType.name(),
-                        connectionSubType.name()));
+        return this.dao.getDefaultProductComm(access, productId, connectionType, connectionSubType);
     }
 
     @Override

@@ -28,7 +28,6 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
@@ -59,7 +58,6 @@ public class ProductWalkInFormService
         implements IRepositoryProvider {
 
     private static final String SYSTEM = "SYSTEM";
-    private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private static final String NAMESPACE = "EntityProcessor.ProductWalkInForm";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -167,11 +165,6 @@ public class ProductWalkInFormService
     private void setProductTemplateWalkInFormService(
             ProductTemplateWalkInFormService productTemplateWalkInFormService) {
         this.productTemplateWalkInFormService = productTemplateWalkInFormService;
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_WALK_IN_FORM_CACHE;
     }
 
     @Override
@@ -481,7 +474,7 @@ public class ProductWalkInFormService
                         access,
                         ticket.setStage(walkInFormResponse.getStageId())
                                 .setStatus(walkInFormResponse.getStatusId())
-                                .setSource(SourceUtil.WALK_IN)
+                                .setSource("Walk-In")
                                 .setProductId(resolvedProduct.getT1())
                                 .setAssignedUserId(ticketRequest.getUserId()))
                 .map(created ->
