@@ -24,6 +24,7 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -31,6 +32,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
@@ -235,6 +237,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     this.productService.getEntityName());
+
+        // Skip duplicate check and assignment/stage setup for updates (ticket already has an ID)
+        if (ticket.getId() != null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.checkDuplicateFromTicket(access, ticket),
@@ -694,12 +699,37 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        if (ruleCondition != null && ruleCondition.isNonEmpty())
-            return this.checkDuplicateWithRule(
-                    access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource);
+        return this.checkWithinClientDuplicate(access, productId, ticketPhone, ticketMail, source, subSource)
+                .flatMap(isDuplicate -> {
+                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
+
+                    if (ruleCondition != null && ruleCondition.isNonEmpty())
+                        return this.checkDuplicateWithRule(
+                                access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource);
+
+                    return Mono.just(Boolean.FALSE);
+                });
+    }
+
+    private Mono<Boolean> checkWithinClientDuplicate(
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail,
+            String source,
+            String subSource) {
+
+        if (!access.isOutsideUser() || access.getUser() == null)
+            return this.fetchDuplicateAndLog(
+                            this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource)
+                    .switchIfEmpty(Mono.just(Boolean.FALSE));
+
+        AbstractCondition clientIdCondition = FilterCondition.make(
+                BaseProcessorDto.Fields.clientId, ULongUtil.valueOf(access.getUser().getClientId()));
 
         return this.fetchDuplicateAndLog(
-                        this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource)
+                        this.getTicket(clientIdCondition, access, productId, ticketPhone, ticketMail),
+                        access, source, subSource)
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
