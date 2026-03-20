@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -19,6 +20,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicke
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSourceConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
@@ -68,6 +70,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_diagnostics</code>.
+     */
+    public final EntityProcessorDiagnostics ENTITY_PROCESSOR_DIAGNOSTICS = EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -129,6 +136,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_source_configs</code>.
+     */
+    public final EntityProcessorSourceConfigs ENTITY_PROCESSOR_SOURCE_CONFIGS = EntityProcessorSourceConfigs.ENTITY_PROCESSOR_SOURCE_CONFIGS;
 
     /**
      * The table <code>entity_processor.entity_processor_stages</code>.
@@ -194,6 +206,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorAds.ENTITY_PROCESSOR_ADS,
             EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
+            EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
@@ -205,6 +218,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES,
             EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
+            EntityProcessorSourceConfigs.ENTITY_PROCESSOR_SOURCE_CONFIGS,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
             EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES,
             EntityProcessorTasks.ENTITY_PROCESSOR_TASKS,

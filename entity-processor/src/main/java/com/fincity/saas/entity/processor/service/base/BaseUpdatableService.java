@@ -11,7 +11,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
@@ -26,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -50,11 +47,6 @@ public abstract class BaseUpdatableService<
     @Getter
     protected IFeignSecurityService securityService;
 
-    @Getter
-    protected CacheService cacheService;
-
-    protected abstract String getCacheName();
-
     protected abstract boolean canOutsideCreate();
 
     protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
@@ -69,71 +61,9 @@ public abstract class BaseUpdatableService<
                 this.getEntityName());
     }
 
-    protected String getCacheName(String... entityNames) {
-        return String.join("_", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
-    }
-
-    protected String getCacheName(Object... entityNames) {
-        return String.join(
-                ":",
-                Stream.of(entityNames)
-                        .filter(Objects::nonNull)
-                        .map(Object::toString)
-                        .toArray(String[]::new));
-    }
-
-    protected String getCacheKey(String... entityNames) {
-        return String.join(":", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
-    }
-
-    protected String getCacheKey(Object... entityNames) {
-        return String.join(
-                ":",
-                Stream.of(entityNames)
-                        .filter(Objects::nonNull)
-                        .map(Object::toString)
-                        .toArray(String[]::new));
-    }
-
-    protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(
-                this.evictBaseCache(entity),
-                this.evictAcCcCache(entity),
-                (baseEvicted, acCcEvicted) -> baseEvicted && acCcEvicted);
-    }
-
-    protected Mono<Boolean> evictCaches(Flux<D> entities) {
-        return entities.flatMap(this::evictCache).collectList().map(results -> results.stream()
-                .allMatch(Boolean::booleanValue));
-    }
-
-    private Mono<Boolean> evictBaseCache(D entity) {
-        return Mono.zip(
-                this.cacheService.evict(this.getCacheName(), entity.getId()),
-                this.cacheService.evict(this.getCacheName(), entity.getCode()),
-                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
-    }
-
-    private Mono<Boolean> evictAcCcCache(D entity) {
-
-        return Mono.zip(
-                this.cacheService.evict(
-                        this.getCacheName(),
-                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getId())),
-                this.cacheService.evict(
-                        this.getCacheName(),
-                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCode())),
-                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
-    }
-
     @Autowired
     protected void setMsgService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
-    }
-
-    @Autowired
-    protected void setCacheService(CacheService cacheService) {
-        this.cacheService = cacheService;
     }
 
     @Autowired
@@ -156,7 +86,7 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.readByIdInternal(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.dao.readInternal(entity.getId()), existing -> {
             if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
@@ -290,19 +220,18 @@ public abstract class BaseUpdatableService<
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
-        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+        return super.update(entity);
     }
 
     protected Mono<D> updateInternalForOutsideUser(D entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+        return super.update(entity);
     }
 
     protected Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
-        return super.update(key, fields)
-                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+        return super.update(key, fields);
     }
 
     protected <T> Mono<T> identityMissingError() {
@@ -332,14 +261,11 @@ public abstract class BaseUpdatableService<
     }
 
     protected Mono<D> readByIdInternal(ULong id) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
+        return this.dao.readInternal(id);
     }
 
     private Mono<D> readByIdInternal(ProcessorAccess access, ULong id) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.readInternal(access, id),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
+        return this.dao.readInternal(access, id);
     }
 
     public Mono<D> readByCode(ProcessorAccess access, String code) {
@@ -355,14 +281,11 @@ public abstract class BaseUpdatableService<
     }
 
     private Mono<D> readByCodeInternal(String code) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
+        return this.dao.readInternal(code);
     }
 
     private Mono<D> readByCodeInternal(ProcessorAccess access, String code) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.readInternal(access, code),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
+        return this.dao.readInternal(access, code);
     }
 
     public Mono<D> readByIdentity(Identity identity) {
@@ -376,6 +299,15 @@ public abstract class BaseUpdatableService<
         return identity.isId()
                 ? this.readByIdInternal(identity.getULongId())
                 : this.readByCodeInternal(identity.getCode());
+    }
+
+    public Mono<D> readByIdentityDirect(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId()
+                ? this.dao.readInternal(identity.getULongId())
+                : this.dao.readInternal(identity.getCode());
     }
 
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
@@ -413,15 +345,11 @@ public abstract class BaseUpdatableService<
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
 
-        return super.delete(entity.getId())
-                .flatMap(deleted -> this.evictCache(entity).map(evicted -> deleted));
+        return super.delete(entity.getId());
     }
 
     public Mono<Integer> deleteMultiple(Collection<D> entities) {
-        return this.dao
-                .deleteMultiple(entities.stream().map(AbstractDTO::getId).toList())
-                .flatMap(
-                        deleted -> this.evictCaches(Flux.fromIterable(entities)).map(evicted -> deleted));
+        return this.dao.deleteMultiple(entities.stream().map(AbstractDTO::getId).toList());
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {

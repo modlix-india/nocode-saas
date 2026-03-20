@@ -60,7 +60,6 @@ import reactor.util.context.Context;
 public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
         implements IRepositoryProvider {
 
-    private static final String PARTNER_CACHE = "Partner";
     private static final String NAMESPACE = "EntityProcessor.Partner";
 
     private static final String FETCH_PARTNERS = "fetchPartners";
@@ -153,25 +152,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     @Override
-    protected String getCacheName() {
-        return PARTNER_CACHE;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(Partner entity) {
-        return Mono.zip(
-                        super.evictCache(entity),
-                        super.cacheService.evict(
-                                this.getCacheName(),
-                                super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getClientId())),
-                        (baseEvicted, cIdEvicted) -> baseEvicted && cIdEvicted)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.evictCache"));
-    }
 
     @Override
     public EntitySeries getEntitySeries() {
@@ -242,7 +226,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::getLoggedInPartner,
                         partner -> super.updateInternalForOutsideUser(partner.setPartnerVerificationStatus(status)),
-                        (partner, uPartner) -> this.evictCache(partner).map(evicted -> uPartner))
+                        (partner, uPartner) -> Mono.just(uPartner))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "PartnerService.updateLoggedInPartnerVerificationStatus"));
     }
@@ -252,8 +236,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         this::getLoggedInPartner,
                         partner -> super.hasAccess(),
                         (partner, access) -> super.updateInternalForOutsideUser(partner.setDnc(!partner.getDnc())),
-                        (partner, access, uPartner) -> this.evictCache(partner),
-                        (partner, access, uPartner, evicted) -> this.ticketService
+                        (partner, access, uPartner) -> this.ticketService
                                 .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
                                 .then(Mono.just(uPartner)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.toggleLoggedInPartnerDnc"));
@@ -264,7 +247,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)),
-                        (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
+                        (access, partner, updated) -> Mono.just(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updatePartnerVerificationStatus"));
     }
 
@@ -273,19 +256,14 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
-                        (access, partner, updated) -> this.evictCache(partner),
-                        (access, partner, updated, evicted) -> this.ticketService
+                        (access, partner, updated) -> this.ticketService
                                 .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
                                 .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
 
     private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
-        return this.cacheService
-                .cacheValueOrGet(
-                        this.getCacheName(),
-                        () -> this.dao.getPartnerByClientId(access, clientId),
-                        super.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), clientId))
+        return this.dao.getPartnerByClientId(access, clientId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerByClientId"));
     }
 
@@ -302,9 +280,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Page<Map<String, Object>>> readPartnerClient(Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.securityService
-                                .getManagingClientIds(access.getUser().getClientId())
-                                .map(ids -> ids.stream().map(ULongUtil::valueOf).toList()),
+                        access -> Mono.justOrEmpty(access.getUserInherit().getManagingClientIds())
+                                .defaultIfEmpty(List.of()),
                         (access, clientIds) -> this.addClientConditions(query.getCondition(), clientIds),
                         (access, clientIds, clientCondition) ->
                                 this.getPartners(query.getCondition(), access, clientIds),

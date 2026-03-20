@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -19,6 +20,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicke
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSourceConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
@@ -54,6 +56,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_campaigns</code>.
      */
     public static final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_diagnostics</code>.
+     */
+    public static final EntityProcessorDiagnostics ENTITY_PROCESSOR_DIAGNOSTICS = EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -115,6 +122,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public static final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_source_configs</code>.
+     */
+    public static final EntityProcessorSourceConfigs ENTITY_PROCESSOR_SOURCE_CONFIGS = EntityProcessorSourceConfigs.ENTITY_PROCESSOR_SOURCE_CONFIGS;
 
     /**
      * The table <code>entity_processor.entity_processor_stages</code>.

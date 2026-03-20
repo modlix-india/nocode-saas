@@ -26,8 +26,6 @@ public class ProductTicketExRuleService
         extends BaseUpdatableService<
                 EntityProcessorProductTicketExRulesRecord, ProductTicketExRule, ProductTicketExRuleDAO> {
 
-    private static final String CACHE_NAME = "productTicketExRule";
-
     private ProductService productService;
     private ProductTemplateService productTemplateService;
 
@@ -41,11 +39,6 @@ public class ProductTicketExRuleService
     @Lazy
     public void setProductTemplateService(ProductTemplateService productTemplateService) {
         this.productTemplateService = productTemplateService;
-    }
-
-    @Override
-    protected String getCacheName() {
-        return CACHE_NAME;
     }
 
     @Override
@@ -115,42 +108,20 @@ public class ProductTicketExRuleService
     }
 
     @Override
-    public Mono<ProductTicketExRule> update(ProductTicketExRule entity) {
-        return super.update(entity)
-                .flatMap(updated -> this.hasAccess()
-                        .flatMap(access -> this.recalculateExpiresOnForRule(access, updated)
-                                .thenReturn(updated)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.update"));
+    public Mono<ProductTicketExRule> create(ProductTicketExRule entity) {
+        return super.create(entity)
+                .flatMap(created -> this.hasAccess()
+                        .flatMap(access -> this.recalculateExpiresOnForRule(access, created)
+                                .thenReturn(created)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.create"));
     }
 
     @Override
-    protected Mono<Boolean> evictCache(ProductTicketExRule entity) {
-        return Mono.zip(
-                        super.evictCache(entity),
-                        this.evictRuleCache(entity),
-                        (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.evictCache"));
-    }
-
-    private Mono<Boolean> evictRuleCache(ProductTicketExRule entity) {
-        if (entity.getProductId() != null) {
-            return this.cacheService.evict(
-                    CACHE_NAME,
-                    this.getCacheKey(
-                            entity.getAppCode(),
-                            entity.getClientCode(),
-                            "product",
-                            entity.getProductId(),
-                            entity.getSource()));
-        }
-        return this.cacheService.evict(
-                CACHE_NAME,
-                this.getCacheKey(
-                        entity.getAppCode(),
-                        entity.getClientCode(),
-                        "template",
-                        entity.getProductTemplateId(),
-                        entity.getSource()));
+    public Mono<ProductTicketExRule> update(ProcessorAccess access, ProductTicketExRule entity) {
+        return super.update(access, entity)
+                .flatMap(updated -> this.recalculateExpiresOnForRule(access, updated)
+                        .thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketExRuleService.update"));
     }
 
     public Mono<LocalDateTime> computeExpiresOn(ProcessorAccess access, ULong productId, String source) {
@@ -178,19 +149,12 @@ public class ProductTicketExRuleService
     }
 
     private Mono<ProductTicketExRule> findProductRule(ProcessorAccess access, ULong productId, String source) {
-        return this.cacheService.cacheValueOrGet(
-                CACHE_NAME,
-                () -> this.dao.findActiveRuleByProduct(access, productId, source),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), "product", productId, source));
+        return this.dao.findActiveRuleByProduct(access, productId, source);
     }
 
     private Mono<ProductTicketExRule> findTemplateRule(
             ProcessorAccess access, ULong productTemplateId, String source) {
-        return this.cacheService.cacheValueOrGet(
-                CACHE_NAME,
-                () -> this.dao.findActiveRuleByTemplate(access, productTemplateId, source),
-                this.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), "template", productTemplateId, source));
+        return this.dao.findActiveRuleByTemplate(access, productTemplateId, source);
     }
 
     public Mono<Void> recalculateExpiresOnForRule(ProcessorAccess access, ProductTicketExRule rule) {

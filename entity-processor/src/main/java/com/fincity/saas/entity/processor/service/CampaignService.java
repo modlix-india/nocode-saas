@@ -32,7 +32,6 @@ import reactor.util.context.Context;
 public class CampaignService extends BaseUpdatableService<EntityProcessorCampaignsRecord, Campaign, CampaignDAO>
         implements IRepositoryProvider {
 
-    private static final String CAMPAIGN_CACHE = "campaign";
     private static final String NAMESPACE = "EntityProcessor.Campaign";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -68,24 +67,10 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     }
 
     @Override
-    protected String getCacheName() {
-        return CAMPAIGN_CACHE;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return false;
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(Campaign entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCampaignId())),
-                (baseEvicted, campaignEvicted) -> baseEvicted && campaignEvicted);
-    }
 
     public Mono<Campaign> createRequest(CampaignRequest campaignRequest) {
 
@@ -118,11 +103,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     }
 
     public Mono<Campaign> readByCampaignId(ProcessorAccess access, String campaignId) {
-        return super.cacheService
-                .cacheValueOrGet(
-                        this.getCacheName(),
-                        () -> this.dao.readByCampaignId(access, campaignId),
-                        super.getCacheKey(access.getAppCode(), access.getClientCode(), campaignId))
+        return this.dao.readByCampaignId(access, campaignId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.readByCampaignId"));
     }
 

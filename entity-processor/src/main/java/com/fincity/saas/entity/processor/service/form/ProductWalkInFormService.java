@@ -28,7 +28,6 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
@@ -59,7 +58,6 @@ public class ProductWalkInFormService
         implements IRepositoryProvider {
 
     private static final String SYSTEM = "SYSTEM";
-    private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private static final String NAMESPACE = "EntityProcessor.ProductWalkInForm";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -167,11 +165,6 @@ public class ProductWalkInFormService
     private void setProductTemplateWalkInFormService(
             ProductTemplateWalkInFormService productTemplateWalkInFormService) {
         this.productTemplateWalkInFormService = productTemplateWalkInFormService;
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_WALK_IN_FORM_CACHE;
     }
 
     @Override
@@ -396,7 +389,7 @@ public class ProductWalkInFormService
             ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
 
         return this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest)
-                .flatMap(users -> this.ticketService.readByIdentityInternal(ticketRequest.getTicketId()))
+                .flatMap(users -> this.ticketService.readByIdentityDirect(ticketRequest.getTicketId()))
                 .switchIfEmpty(msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -448,6 +441,7 @@ public class ProductWalkInFormService
         if (stageUnchanged && statusUnchanged)
             return ticketService
                     .updateInternal(access, ticket)
+                    .flatMap(updated -> ticketService.reassignForWalkIn(access, updated, ticketRequest.getUserId()))
                     .map(updated -> Tuples.of(
                             updated, ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries())))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
@@ -480,7 +474,7 @@ public class ProductWalkInFormService
                         access,
                         ticket.setStage(walkInFormResponse.getStageId())
                                 .setStatus(walkInFormResponse.getStatusId())
-                                .setSource(SourceUtil.WALK_IN)
+                                .setSource("Walk-In")
                                 .setProductId(resolvedProduct.getT1())
                                 .setAssignedUserId(ticketRequest.getUserId()))
                 .map(created ->

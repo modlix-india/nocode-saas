@@ -45,10 +45,6 @@ public class TicketDuplicationRuleService
                 NoOpUserDistribution>
         implements IRepositoryProvider {
 
-    private static final String TICKET_DUPLICATION_RULE = "ticketDuplicationRule";
-    private static final String PRODUCT_CONDITION_CACHE = "ticketDuplicationProductRuleCondition";
-    private static final String PRODUCT_TEMPLATE_CONDITION_CACHE = "ticketDuplicationProductTemplateRuleCondition";
-
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -73,11 +69,6 @@ public class TicketDuplicationRuleService
     private void init() {
         this.functions.addAll(super.getCommonFunctions(
                 "EntityProcessor.TicketDuplicationRule", TicketDuplicationRule.class, classSchema, gson));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return TICKET_DUPLICATION_RULE;
     }
 
     @Override
@@ -118,38 +109,6 @@ public class TicketDuplicationRuleService
         });
     }
 
-    private String getProductConditionCacheName(String appCode, String clientCode, ULong productId) {
-        return super.getCacheName(PRODUCT_CONDITION_CACHE, appCode, clientCode, productId);
-    }
-
-    private String getProductTemplateConditionCacheName(String appCode, String clientCode, ULong productTemplateId) {
-        return super.getCacheName(PRODUCT_TEMPLATE_CONDITION_CACHE, appCode, clientCode, productTemplateId);
-    }
-
-    private Mono<Boolean> evictProductConditionCache(String appCode, String clientCode, ULong productId) {
-        return super.cacheService.evictAll(this.getProductConditionCacheName(appCode, clientCode, productId));
-    }
-
-    private Mono<Boolean> evictProductTemplateConditionCache(
-            String appCode, String clientCode, ULong productTemplateId) {
-        return super.cacheService.evictAll(
-                this.getProductTemplateConditionCacheName(appCode, clientCode, productTemplateId));
-    }
-
-    @Override
-    protected Mono<Boolean> evictCache(TicketDuplicationRule entity) {
-        Mono<Boolean> productEviction = entity.getProductId() != null
-                ? this.evictProductConditionCache(entity.getAppCode(), entity.getClientCode(), entity.getProductId())
-                : Mono.just(Boolean.TRUE);
-
-        return Mono.zip(
-                        super.evictCache(entity),
-                        productEviction,
-                        this.evictProductTemplateConditionCache(
-                                entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId()))
-                .map((evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3()));
-    }
-
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
 
@@ -164,10 +123,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductDuplicateCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
-        return super.cacheService.cacheValueOrGet(
-                this.getProductConditionCacheName(access.getAppCode(), access.getClientCode(), productId),
-                () -> this.getProductDuplicateConditionInternal(access, productId, source, subSource),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, source, subSource));
+        return this.getProductDuplicateConditionInternal(access, productId, source, subSource);
     }
 
     private Mono<AbstractCondition> getProductDuplicateConditionInternal(
@@ -185,11 +141,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductTemplateDuplicateCondition(
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
-        return super.cacheService.cacheValueOrGet(
-                this.getProductTemplateConditionCacheName(
-                        access.getAppCode(), access.getClientCode(), productTemplateId),
-                () -> this.getProductTemplateDuplicateConditionInternal(access, productTemplateId, source, subSource),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, source, subSource));
+        return this.getProductTemplateDuplicateConditionInternal(access, productTemplateId, source, subSource);
     }
 
     private Mono<AbstractCondition> getProductTemplateDuplicateConditionInternal(
