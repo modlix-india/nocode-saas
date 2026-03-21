@@ -877,6 +877,30 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 });
     }
 
+    public Flux<ULong> getDistinctClientIds(ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> Flux.from(this.dslContext
+                                .selectDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID)
+                                .from(this.table)
+                                .where(conditions)
+                                .and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()))
+                        .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.CLIENT_ID)));
+    }
+
+    public Flux<ULong> getDistinctProductIds(ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> Flux.from(this.dslContext
+                                .selectDistinct(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID)
+                                .from(this.table)
+                                .where(conditions)
+                                .and(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.isNotNull()))
+                        .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID)));
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Select<?> unionAsRecord(Select<?> left, Select<?> right) {
         return (left).union((Select) right);
