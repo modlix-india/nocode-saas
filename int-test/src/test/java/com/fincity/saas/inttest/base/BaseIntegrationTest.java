@@ -26,12 +26,24 @@ public abstract class BaseIntegrationTest {
             throw new RuntimeException("Failed to load inttest.properties", e);
         }
 
-        RestAssured.baseURI = baseUrl();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
 
-    protected String baseUrl() {
-        return envOrProp("BASE_URL", "base.url", "http://localhost:8080");
+    /**
+     * Base host without trailing slash.
+     * e.g. "https://apps.local.modlix.com"
+     */
+    protected String baseHost() {
+        String host = envOrProp("BASE_HOST", "base.host", "https://apps.local.modlix.com");
+        return host.endsWith("/") ? host.substring(0, host.length() - 1) : host;
+    }
+
+    /**
+     * Build the full base URL for a given appCode and clientCode.
+     * URL pattern: https://apps.local.modlix.com/{appCode}/{clientCode}/page
+     */
+    protected String baseUrl(String appCode, String clientCode) {
+        return baseHost() + "/" + appCode + "/" + clientCode + "/page";
     }
 
     protected String prop(String key) {
@@ -50,27 +62,30 @@ public abstract class BaseIntegrationTest {
     }
 
     /**
-     * Returns a RestAssured RequestSpecification pre-configured with auth token and
-     * required headers (clientCode, appCode, forwarded host/IP).
+     * Returns a RestAssured RequestSpecification pre-configured with auth token,
+     * base URI scoped to the given appCode/clientCode, and required headers.
      */
     protected RequestSpecification givenAuth(String token, String clientCode, String appCode) {
         return given()
+                .baseUri(baseUrl(appCode, clientCode))
                 .header("Authorization", "Bearer " + token)
                 .header("clientCode", clientCode)
                 .header("appCode", appCode)
-                .header("X-Forwarded-Host", "localhost")
+                .header("X-Forwarded-Host", baseHost().replaceFirst("https?://", ""))
                 .header("X-Real-IP", "127.0.0.1")
                 .contentType("application/json");
     }
 
     /**
-     * Returns a RestAssured RequestSpecification with no auth (for login endpoints).
+     * Returns a RestAssured RequestSpecification with no auth (for registration/login).
+     * Uses the base host directly (no appCode/clientCode in path).
      */
     protected RequestSpecification givenNoAuth(String clientCode, String appCode) {
         return given()
+                .baseUri(baseUrl(appCode, clientCode))
                 .header("clientCode", clientCode)
                 .header("appCode", appCode)
-                .header("X-Forwarded-Host", "localhost")
+                .header("X-Forwarded-Host", baseHost().replaceFirst("https?://", ""))
                 .header("X-Real-IP", "127.0.0.1")
                 .contentType("application/json");
     }

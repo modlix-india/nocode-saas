@@ -1,8 +1,8 @@
 package com.fincity.saas.inttest.leadzump.realestate;
 
-import com.fincity.saas.inttest.base.AuthHelper;
 import com.fincity.saas.inttest.base.BaseIntegrationTest;
 import com.fincity.saas.inttest.base.EntityProcessorApi;
+import com.fincity.saas.inttest.base.SecurityApi;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,23 +76,43 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
 
     @BeforeAll
     void setup() {
-        clientCode = prop("realestate.large.client.code");
         appCode = prop("leadzump.app.code");
+        String parentClientCode = prop("leadzump.client.code");
 
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String email = "re-large-" + uid + "@inttest.local";
+        String password = "Test@1234";
+
+        SecurityApi secApi = new SecurityApi(baseHost());
+        String otp = prop("otp");
+
+        Response otpRes = secApi.generateRegistrationOtp(parentClientCode, appCode, email);
+        assertThat(otpRes.statusCode()).as("Generate OTP").isEqualTo(200);
+
+        Response regRes = secApi.register(parentClientCode, appCode, mapOf(
+                "clientName", "RE_Large_" + uid,
+                "firstName", "LargeBuilder",
+                "lastName", "IntTest",
+                "emailId", email,
+                "password", password,
+                "passType", "PASSWORD",
+                "businessClient", true,
+                "otp", otp
+        ));
+
+        assertThat(regRes.statusCode()).as("Self-registration").isIn(200, 201);
+
+        token = regRes.body().path("authentication.accessToken");
+        assertThat(token).as("Registration should return accessToken").isNotNull().isNotEmpty();
+
+        clientCode = regRes.body().path("authentication.client.code");
         if (clientCode == null || clientCode.isBlank()) {
-            clientCode = prop("leadzump.client.code");
+            Response authRes = secApi.authenticate(parentClientCode, appCode, email, password);
+            assertThat(authRes.statusCode()).as("Post-registration auth").isEqualTo(200);
+            token = authRes.body().path("accessToken");
+            clientCode = authRes.body().path("user.clientCode");
         }
 
-        String username = prop("realestate.large.admin.username");
-        String password = prop("realestate.large.admin.password");
-
-        if (username == null || username.isBlank()) {
-            username = prop("system.username");
-            password = prop("system.password");
-            clientCode = prop("system.client.code");
-        }
-
-        token = AuthHelper.authenticate(clientCode, appCode, username, password);
         api = new EntityProcessorApi(givenAuth(token, clientCode, appCode));
     }
 
@@ -116,150 +137,81 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Test
     @Order(110)
     void s1_02_createPreQualStages() {
-        // Fresh (parent)
-        Response fresh = api.createStage(Map.of(
+        // Fresh → Open (nested child)
+        Response fresh = api.createStage(mapOf(
                 "name", "Fresh",
                 "platform", "PRE_QUALIFICATION",
                 "productTemplateId", templateId,
                 "isParent", true,
                 "order", 1,
-                "stageType", "OPEN"
+                "stageType", "OPEN",
+                "children", mapOf(
+                        0, mapOf("name", "Open", "stageType", "OPEN", "order", 0)
+                )
         ));
-        assertThat(fresh.statusCode()).as("Create Fresh stage").isIn(200, 201);
-        stageFreshId = fresh.body().path("id");
+        assertThat(fresh.statusCode()).as("Create Fresh stage with Open child").isIn(200, 201);
+        stageFreshId = fresh.body().path("parent.id");
+        stageOpenId = fresh.body().path("child[0].id");
 
-        // Open (child of Fresh)
-        Response open = api.createStage(Map.of(
-                "name", "Open",
-                "platform", "PRE_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageFreshId,
-                "order", 0,
-                "stageType", "OPEN"
-        ));
-        assertThat(open.statusCode()).as("Create Open stage").isIn(200, 201);
-        stageOpenId = open.body().path("id");
-
-        // Contactable (parent)
-        Response contactable = api.createStage(Map.of(
+        // Contactable → Visit Proposed, Visit Confirmed (nested children)
+        Response contactable = api.createStage(mapOf(
                 "name", "Contactable",
                 "platform", "PRE_QUALIFICATION",
                 "productTemplateId", templateId,
                 "isParent", true,
                 "order", 2,
-                "stageType", "OPEN"
+                "stageType", "OPEN",
+                "children", mapOf(
+                        2, mapOf("name", "Visit Proposed", "stageType", "OPEN", "order", 2),
+                        3, mapOf("name", "Visit Confirmed", "stageType", "OPEN", "order", 3)
+                )
         ));
-        assertThat(contactable.statusCode()).as("Create Contactable stage").isIn(200, 201);
-        stageContactableId = contactable.body().path("id");
+        assertThat(contactable.statusCode()).as("Create Contactable stage with children").isIn(200, 201);
+        stageContactableId = contactable.body().path("parent.id");
+        stageVisitProposedId = contactable.body().path("child[0].id");
+        stageVisitConfirmedId = contactable.body().path("child[1].id");
 
-        // Visit Proposed (child of Contactable)
-        Response visitProposed = api.createStage(Map.of(
-                "name", "Visit Proposed",
-                "platform", "PRE_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageContactableId,
-                "order", 2,
-                "stageType", "OPEN"
-        ));
-        assertThat(visitProposed.statusCode()).isIn(200, 201);
-        stageVisitProposedId = visitProposed.body().path("id");
-
-        // Visit Confirmed (child of Contactable)
-        Response visitConfirmed = api.createStage(Map.of(
-                "name", "Visit Confirmed",
-                "platform", "PRE_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageContactableId,
-                "order", 3,
-                "stageType", "OPEN"
-        ));
-        assertThat(visitConfirmed.statusCode()).isIn(200, 201);
-        stageVisitConfirmedId = visitConfirmed.body().path("id");
-
-        // Non Contactable (parent)
-        Response nonContactable = api.createStage(Map.of(
+        // Non Contactable → RNR (nested child)
+        Response nonContactable = api.createStage(mapOf(
                 "name", "Non Contactable",
                 "platform", "PRE_QUALIFICATION",
                 "productTemplateId", templateId,
                 "isParent", true,
                 "order", 3,
-                "stageType", "OPEN"
+                "stageType", "OPEN",
+                "children", mapOf(
+                        0, mapOf("name", "RNR", "stageType", "OPEN", "order", 0)
+                )
         ));
-        assertThat(nonContactable.statusCode()).isIn(200, 201);
-        stageNonContactableId = nonContactable.body().path("id");
-
-        // RNR (child of Non Contactable)
-        Response rnr = api.createStage(Map.of(
-                "name", "RNR",
-                "platform", "PRE_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageNonContactableId,
-                "order", 0,
-                "stageType", "OPEN"
-        ));
-        assertThat(rnr.statusCode()).isIn(200, 201);
-        stageRnrPreId = rnr.body().path("id");
+        assertThat(nonContactable.statusCode()).as("Create Non Contactable stage with RNR child").isIn(200, 201);
+        stageNonContactableId = nonContactable.body().path("parent.id");
+        stageRnrPreId = nonContactable.body().path("child[0].id");
     }
 
     @Test
     @Order(120)
     void s1_03_createPostQualStages() {
-        // Visit (parent, POST_QUAL)
-        Response visit = api.createStage(Map.of(
+        // Visit → Visit Done, Meeting Proposed, Meeting Done (nested children)
+        Response visit = api.createStage(mapOf(
                 "name", "Visit",
                 "platform", "POST_QUALIFICATION",
                 "productTemplateId", templateId,
                 "isParent", true,
                 "order", 4,
-                "stageType", "OPEN"
+                "stageType", "OPEN",
+                "children", mapOf(
+                        0, mapOf("name", "Visit Done", "stageType", "OPEN", "order", 0),
+                        2, mapOf("name", "Meeting Proposed", "stageType", "OPEN", "order", 2),
+                        4, mapOf("name", "Meeting Done", "stageType", "OPEN", "order", 4)
+                )
         ));
-        assertThat(visit.statusCode()).isIn(200, 201);
-        stageVisitId = visit.body().path("id");
+        assertThat(visit.statusCode()).as("Create Visit stage with children").isIn(200, 201);
+        stageVisitId = visit.body().path("parent.id");
+        stageVisitDoneId = visit.body().path("child[0].id");
+        stageMeetingProposedId = visit.body().path("child[1].id");
+        stageMeetingDoneId = visit.body().path("child[2].id");
 
-        // Visit Done (child)
-        Response visitDone = api.createStage(Map.of(
-                "name", "Visit Done",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageVisitId,
-                "order", 0,
-                "stageType", "OPEN"
-        ));
-        assertThat(visitDone.statusCode()).isIn(200, 201);
-        stageVisitDoneId = visitDone.body().path("id");
-
-        // Meeting Proposed (child)
-        Response meetingProposed = api.createStage(Map.of(
-                "name", "Meeting Proposed",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageVisitId,
-                "order", 2,
-                "stageType", "OPEN"
-        ));
-        assertThat(meetingProposed.statusCode()).isIn(200, 201);
-        stageMeetingProposedId = meetingProposed.body().path("id");
-
-        // Meeting Done (child)
-        Response meetingDone = api.createStage(Map.of(
-                "name", "Meeting Done",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageVisitId,
-                "order", 4,
-                "stageType", "OPEN"
-        ));
-        assertThat(meetingDone.statusCode()).isIn(200, 201);
-        stageMeetingDoneId = meetingDone.body().path("id");
-
-        // Booking (parent, CLOSED, isSuccess)
+        // Booking → Booking Open, Booking Done (nested children)
         Response booking = api.createStage(mapOf(
                 "name", "Booking",
                 "platform", "POST_QUALIFICATION",
@@ -268,38 +220,18 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
                 "order", 8,
                 "stageType", "CLOSED",
                 "isSuccess", true,
-                "isFailure", false
+                "isFailure", false,
+                "children", mapOf(
+                        0, mapOf("name", "Booking Open", "stageType", "CLOSED", "order", 0),
+                        2, mapOf("name", "Booking Done", "stageType", "CLOSED", "order", 2)
+                )
         ));
-        assertThat(booking.statusCode()).isIn(200, 201);
-        stageBookingId = booking.body().path("id");
+        assertThat(booking.statusCode()).as("Create Booking stage with children").isIn(200, 201);
+        stageBookingId = booking.body().path("parent.id");
+        stageBookingOpenId = booking.body().path("child[0].id");
+        stageBookingDoneId = booking.body().path("child[1].id");
 
-        // Booking Open (child)
-        Response bookingOpen = api.createStage(Map.of(
-                "name", "Booking Open",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageBookingId,
-                "order", 0,
-                "stageType", "CLOSED"
-        ));
-        assertThat(bookingOpen.statusCode()).isIn(200, 201);
-        stageBookingOpenId = bookingOpen.body().path("id");
-
-        // Booking Done (child)
-        Response bookingDone = api.createStage(Map.of(
-                "name", "Booking Done",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageBookingId,
-                "order", 2,
-                "stageType", "CLOSED"
-        ));
-        assertThat(bookingDone.statusCode()).isIn(200, 201);
-        stageBookingDoneId = bookingDone.body().path("id");
-
-        // Lost (parent, CLOSED, isFailure)
+        // Lost → Budget Constraint (nested child)
         Response lost = api.createStage(mapOf(
                 "name", "Lost",
                 "platform", "POST_QUALIFICATION",
@@ -308,23 +240,14 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
                 "order", 7,
                 "stageType", "CLOSED",
                 "isSuccess", false,
-                "isFailure", true
+                "isFailure", true,
+                "children", mapOf(
+                        1, mapOf("name", "Budget Constraint", "stageType", "CLOSED", "order", 1)
+                )
         ));
-        assertThat(lost.statusCode()).isIn(200, 201);
-        stageLostId = lost.body().path("id");
-
-        // Budget Constraint (child of Lost)
-        Response budgetConstraint = api.createStage(Map.of(
-                "name", "Budget Constraint",
-                "platform", "POST_QUALIFICATION",
-                "productTemplateId", templateId,
-                "isParent", false,
-                "parentLevel0", stageLostId,
-                "order", 1,
-                "stageType", "CLOSED"
-        ));
-        assertThat(budgetConstraint.statusCode()).isIn(200, 201);
-        stageBudgetConstraintId = budgetConstraint.body().path("id");
+        assertThat(lost.statusCode()).as("Create Lost stage with Budget Constraint child").isIn(200, 201);
+        stageLostId = lost.body().path("parent.id");
+        stageBudgetConstraintId = lost.body().path("child[0].id");
     }
 
     @Test

@@ -22,11 +22,11 @@ public class EntityProcessorApi {
     // ── Product Templates ──────────────────────────────────────────────
 
     public Response createProductTemplate(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/productTemplates/req");
+        return spec.body(body).post(EP + "/products/templates/req");
     }
 
     public Response getProductTemplate(Object id) {
-        return spec.get(EP + "/productTemplates/req/" + id);
+        return spec.get(EP + "/products/templates/req/" + id);
     }
 
     // ── Stages ─────────────────────────────────────────────────────────
@@ -74,31 +74,31 @@ public class EntityProcessorApi {
     // ── Creation Rules (c_rules) ───────────────────────────────────────
 
     public Response createCreationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/productTicketCRules/req");
+        return spec.body(body).post(EP + "/products/tickets/c/rules/req");
     }
 
     // ── User Distributions ─────────────────────────────────────────────
 
     public Response createUserDistribution(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/ticketCUserDistributions/req");
+        return spec.body(body).post(EP + "/tickets/c/users/distributions/req");
     }
 
     // ── Visibility Rules (ru_rules) ────────────────────────────────────
 
     public Response createVisibilityRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/productTicketRURules/req");
+        return spec.body(body).post(EP + "/products/tickets/ru/rules/req");
     }
 
     // ── Expiration Rules ───────────────────────────────────────────────
 
     public Response createExpirationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/productTicketExRules/req");
+        return spec.body(body).post(EP + "/products/tickets/ex/rules/req");
     }
 
     // ── Duplication Rules ──────────────────────────────────────────────
 
     public Response createDuplicationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/ticketDuplicationRules/req");
+        return spec.body(body).post(EP + "/tickets/duplicate/rules/req");
     }
 
     public Response getDuplicationRules() {
@@ -119,12 +119,8 @@ public class EntityProcessorApi {
         return spec.get(EP + "/tickets/" + id + "/eager");
     }
 
-    public Response queryUserTickets(Map<String, Object> queryParams) {
-        RequestSpecification r = spec;
-        for (var e : queryParams.entrySet()) {
-            r = r.queryParam(e.getKey(), e.getValue());
-        }
-        return r.get(EP + "/tickets/users/query");
+    public Response queryUserTickets(Map<String, Object> body) {
+        return spec.body(body).post(EP + "/tickets/users/query");
     }
 
     public Response updateTicketStage(Object ticketId, Map<String, Object> body) {
@@ -270,7 +266,7 @@ public class EntityProcessorApi {
     // ── Walk-in Forms ──────────────────────────────────────────────────
 
     public Response createWalkInForm(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/productWalkInForms/req");
+        return spec.body(body).post(EP + "/products/forms/req");
     }
 
     // ── Analytics ──────────────────────────────────────────────────────
@@ -297,21 +293,25 @@ public class EntityProcessorApi {
 
     // ── Open API (no auth) ─────────────────────────────────────────────
 
-    public static Response submitWebsiteLead(String productCode, Map<String, Object> body) {
+    public static Response submitWebsiteLead(String baseHost, String productCode, Map<String, Object> body) {
+        String host = baseHost.replaceFirst("https?://", "");
         return io.restassured.RestAssured.given()
+                .baseUri(baseHost)
                 .contentType("application/json")
-                .header("X-Forwarded-Host", "localhost")
+                .header("X-Forwarded-Host", host)
                 .header("X-Real-IP", "127.0.0.1")
                 .body(body)
-                .post("/api/open/tickets/req/website/" + productCode);
+                .post(EP + "/open/tickets/req/website/" + productCode);
     }
 
-    public static Response submitCampaignLead(String productCode, Map<String, Object> body) {
+    public static Response submitCampaignLead(String baseHost, String productCode, Map<String, Object> body) {
+        String host = baseHost.replaceFirst("https?://", "");
         return io.restassured.RestAssured.given()
+                .baseUri(baseHost)
                 .contentType("application/json")
-                .header("X-Forwarded-Host", "localhost")
+                .header("X-Forwarded-Host", host)
                 .header("X-Real-IP", "127.0.0.1")
                 .body(body)
-                .post("/api/open/tickets/req/campaigns/" + productCode);
+                .post(EP + "/open/tickets/req/campaigns/" + productCode);
     }
 }
