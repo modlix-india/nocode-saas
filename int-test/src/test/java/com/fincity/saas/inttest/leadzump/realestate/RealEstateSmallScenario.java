@@ -265,7 +265,10 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
     @Order(670)
     void s6_08_singleProductAnalytics() {
         Response res = api.analyticsStageCounts_Products(mapOf(
-                "productIds", List.of(productId)
+                "productIds", List.of(productId),
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
         ));
 
         assertThat(res.statusCode()).isEqualTo(200);

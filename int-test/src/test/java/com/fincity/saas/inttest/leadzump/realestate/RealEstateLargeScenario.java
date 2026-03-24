@@ -464,7 +464,10 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Order(230)
     void s1_14_analyticsStageCountsForProduct() {
         Response res = api.analyticsStageCounts_Products(mapOf(
-                "productIds", List.of(productId)
+                "productIds", List.of(productId),
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
         ));
 
         assertThat(res.statusCode()).isEqualTo(200);
@@ -642,24 +645,26 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Test
     @Order(510)
     void s5_02_analyticsSourceBreakdown() {
-        // Note: This endpoint requires startDate/endDate (FilterableListResponse with date grouping).
-        // LocalDateTime serialization from JSON strings is not supported in the current Jackson config.
-        // TODO: Fix when date serialization format is resolved.
         Response res = api.analyticsStageCounts_SourcesAssignedUsers(mapOf(
-                "sources", List.of("Social Media", "Channel Partner")
+                "sources", List.of("Social Media", "Channel Partner"),
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
         ));
 
-        assertThat(res.statusCode()).as("Analytics source breakdown (dates required)").isIn(200, 500);
+        assertThat(res.statusCode()).as("Analytics source breakdown").isEqualTo(200);
     }
 
     @Test
     @Order(520)
     void s5_03_analyticsDateTrend() {
-        // Note: This endpoint requires startDate/endDate for date grouping.
-        // TODO: Fix when date serialization format is resolved.
-        Response res = api.analyticsDateCounts_Clients(Map.of());
+        Response res = api.analyticsDateCounts_Clients(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
+        ));
 
-        assertThat(res.statusCode()).as("Analytics date trend (dates required)").isIn(200, 500);
+        assertThat(res.statusCode()).as("Analytics date trend").isEqualTo(200);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -670,7 +675,10 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Order(800)
     void s8_01_analyticsStageCounts_AssignedUsers() {
         Response res = api.analyticsStageCounts_AssignedUsers(mapOf(
-                "productIds", List.of(productId)
+                "productIds", List.of(productId),
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
         ));
 
         assertThat(res.statusCode()).isEqualTo(200);
@@ -681,7 +689,11 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Test
     @Order(810)
     void s8_02_analyticsStageCounts_Products() {
-        Response res = api.analyticsStageCounts_Products(Map.of());
+        Response res = api.analyticsStageCounts_Products(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
+        ));
 
         assertThat(res.statusCode()).isEqualTo(200);
     }
@@ -689,7 +701,115 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Test
     @Order(820)
     void s8_03_analyticsProductStages_ClientsMe() {
-        Response res = api.analyticsProductStages_ClientsMe(Map.of());
+        Response res = api.analyticsProductStages_ClientsMe(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S9: Timezone-Aware Analytics
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(900)
+    void s9_01_analyticsWithIST() {
+        Response res = api.analyticsStageCounts_Products(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata"
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+        Object content = res.body().path("content");
+        assertThat(content).as("IST analytics should return content").isNotNull();
+    }
+
+    @Test
+    @Order(910)
+    void s9_02_analyticsWithUTC() {
+        Response res = api.analyticsStageCounts_Products(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "UTC"
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+        Object content = res.body().path("content");
+        assertThat(content).as("UTC analytics should return content").isNotNull();
+    }
+
+    @Test
+    @Order(920)
+    void s9_03_analyticsWithEST() {
+        Response res = api.analyticsStageCounts_Products(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "America/New_York"
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+        Object content = res.body().path("content");
+        assertThat(content).as("EST analytics should return content").isNotNull();
+    }
+
+    @Test
+    @Order(930)
+    void s9_04_analyticsSourcesWithTimezone() {
+        Response res = api.analyticsStageCounts_SourcesAssignedUsers(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata",
+                "sources", List.of("Social Media")
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    @Order(940)
+    void s9_05_analyticsDateTrendWithTimezone() {
+        Response res = api.analyticsDateCounts_Clients(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata",
+                "timePeriod", "DAYS"
+        ));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    @Order(950)
+    void s9_06_analyticsDifferentTimePeriods() {
+        Response resWeeks = api.analyticsDateCounts_Clients(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata",
+                "timePeriod", "WEEKS"
+        ));
+        assertThat(resWeeks.statusCode()).isEqualTo(200);
+
+        Response resMonths = api.analyticsDateCounts_Clients(mapOf(
+                "startDate", 1772303400,
+                "endDate", 1774981799,
+                "timezone", "Asia/Kolkata",
+                "timePeriod", "MONTHS"
+        ));
+        assertThat(resMonths.statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    @Order(960)
+    void s9_07_analyticsNarrowDateRange() {
+        Response res = api.analyticsStageCounts_Products(mapOf(
+                "startDate", 1774292400,
+                "endDate", 1774378799,
+                "timezone", "Asia/Kolkata"
+        ));
 
         assertThat(res.statusCode()).isEqualTo(200);
     }
