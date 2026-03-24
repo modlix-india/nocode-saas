@@ -72,6 +72,7 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     // Partner-related (S2)
     private static Number partnerClientId;
     private static Number partnerId;
+    private static Number userId;
     private static Number dedupRuleId;
     private static Number firstPartnerTicketId;
 
@@ -114,6 +115,7 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
             clientCode = authRes.body().path("user.clientCode");
         }
 
+        userId = regRes.body().path("authentication.user.id");
         api = new EntityProcessorApi(givenAuth(token, clientCode, appCode));
     }
 
@@ -276,21 +278,18 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
         // The stageId determines which stage this creation rule applies to.
         Response ruleRes = api.createCreationRule(mapOf(
                 "name", "Default Rule",
-                "productId", productId,
                 "productTemplateId", templateId,
                 "stageId", stageOpenId,
                 "order", 0,
-                "userDistributionType", "ROUND_ROBIN"
+                "userDistributionType", "ROUND_ROBIN",
+                "userDistributions", List.of(Map.of(
+                        "userId", userId,
+                        "percentage", 100
+                ))
         ));
-        // Creation rule requires user distributions — may return 400 if none provided.
-        assertThat(ruleRes.statusCode()).as("Create creation rule").isIn(200, 201, 400);
-        if (ruleRes.statusCode() == 200 || ruleRes.statusCode() == 201) {
-            creationRuleId = ruleRes.body().path("id");
-            assertThat(creationRuleId).isNotNull();
-        }
-
-        // Note: In a full setup we'd add user distributions here.
-        // For now the rule exists — actual user assignment depends on available users.
+        assertThat(ruleRes.statusCode()).as("Create creation rule").isIn(200, 201);
+        creationRuleId = ruleRes.body().path("id");
+        assertThat(creationRuleId).isNotNull();
     }
 
     @Test
@@ -353,23 +352,32 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Test
     @Order(180)
     void s1_09_scheduleVisitTask() {
-        // TaskRequest fields: name, content, ticketId (Identity), dueDate, taskPriority, hasReminder, nextReminder
-        // LocalDateTime fields (dueDate, nextReminder) don't deserialize from ISO strings — omit them.
+        // Fetch available task types — task type is required.
+        // The endpoint returns a Page object with "content" list.
+        // If no task types exist, we create one first.
+        Response typesRes = api.getTaskTypes();
+        assertThat(typesRes.statusCode()).isEqualTo(200);
+        List<Map<String, Object>> taskTypes = typesRes.body().path("content");
+        Number taskTypeId;
+        if (taskTypes != null && !taskTypes.isEmpty()) {
+            taskTypeId = (Number) taskTypes.get(0).get("id");
+        } else {
+            // Create a task type
+            Response ttRes = api.createTaskType(Map.of("name", "Follow-Up", "description", "Follow-up task"));
+            assertThat(ttRes.statusCode()).as("Create task type").isIn(200, 201);
+            taskTypeId = ttRes.body().path("id");
+        }
+
         Response res = api.createTask(mapOf(
                 "name", "Site Visit - Skyline Towers",
                 "content", "Schedule Saturday 10AM. Customer prefers morning slot.",
                 "ticketId", ticketId,
-                "taskPriority", "HIGH",
-                "hasReminder", false
+                "taskTypeId", taskTypeId
         ));
 
-        // Task may fail with 400 if enum deserialization doesn't match.
-        if (res.statusCode() == 200 || res.statusCode() == 201) {
-            taskId = res.body().path("id");
-            assertThat(taskId).isNotNull();
-        } else {
-            assertThat(res.statusCode()).as("Create task").isIn(200, 201, 400);
-        }
+        assertThat(res.statusCode()).as("Create task").isIn(200, 201);
+        taskId = res.body().path("id");
+        assertThat(taskId).isNotNull();
     }
 
     @Test
@@ -606,6 +614,7 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Order(340)
     void s2_05_duplicateLeadBlocked() {
         // Submit same phone number again — dedup should block or return existing
+        assertThat(firstPartnerTicketId).as("First partner ticket must exist for dedup test").isNotNull();
         Response res = api.createTicket(mapOf(
                 "name", "RE_IntTest_Priya S",
                 "dialCode", 91,
@@ -614,20 +623,13 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
                 "source", "Channel Partner"
         ));
 
-        // Depending on dedup config, this might:
-        // - Return 200 with the existing ticket (re-inquiry)
-        // - Return 409 conflict
-        // - Return 200 but with the same ticket ID
-        // We verify that we don't get a completely new, different ticket
-        if (res.statusCode() == 200 || res.statusCode() == 201) {
-            Number duplicateTicketId = res.body().path("id");
-            // If dedup is active, the ID should match the first ticket
-            // or this is a re-inquiry that updated the existing ticket
-            assertThat(duplicateTicketId).as("Dedup should return existing ticket or re-inquiry").isNotNull();
-        } else {
-            // 409 or other error is also acceptable (dedup blocked)
-            assertThat(res.statusCode()).as("Dedup should block duplicate").isIn(200, 201, 400, 409);
-        }
+        // Dedup should reject — same phone number already exists.
+        // Backend returns 400 with "A Deal already exists with ID: '{id}'"
+        assertThat(res.statusCode()).as("Dedup should reject duplicate").isEqualTo(400);
+        String errorMsg = res.body().path("debugMessage");
+        assertThat(errorMsg).as("Error should reference existing ticket")
+                .contains("already exists with ID")
+                .contains(firstPartnerTicketId.toString());
     }
 
     // ═══════════════════════════════════════════════════════════════════

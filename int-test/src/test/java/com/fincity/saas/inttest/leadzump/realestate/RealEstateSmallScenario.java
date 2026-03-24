@@ -47,6 +47,9 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
     private static Number stageBookingId;
     private static Number stageBookingDoneId;
 
+    // User
+    private static Number userId;
+
     // S6 data
     private static Number ticketId;
     private static Number noteId;
@@ -90,6 +93,7 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
             clientCode = authRes.body().path("user.clientCode");
         }
 
+        userId = regRes.body().path("authentication.user.id");
         api = new EntityProcessorApi(givenAuth(token, clientCode, appCode));
     }
 
@@ -155,6 +159,23 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
         assertThat(res.statusCode()).isIn(200, 201);
         productId = res.body().path("id");
         productCode = res.body().path("code");
+    }
+
+    @Test
+    @Order(30)
+    void setup_createCreationRule() {
+        Response res = api.createCreationRule(mapOf(
+                "name", "Owner Assignment",
+                "productTemplateId", templateId,
+                "stageId", stageOpenId,
+                "order", 0,
+                "userDistributionType", "ROUND_ROBIN",
+                "userDistributions", List.of(Map.of(
+                        "userId", userId,
+                        "percentage", 100
+                ))
+        ));
+        assertThat(res.statusCode()).as("Create creation rule").isIn(200, 201);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -297,8 +318,7 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
                 ),
                 "comment", "Interested in 3bhk_pune"
         ));
-        // 404 = "No Stage found" — product template stages may not auto-apply to open API.
-        assertThat(r1.statusCode()).as("Website lead 1").isIn(200, 201, 400, 404);
+        assertThat(r1.statusCode()).as("Website lead 1").isIn(200, 201);
 
         // Lead 2 — minimal data
         Response r2 = EntityProcessorApi.submitWebsiteLead(baseHost(), productCode, mapOf(
@@ -311,7 +331,7 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
                         "source", "Website"
                 )
         ));
-        assertThat(r2.statusCode()).as("Website lead 2").isIn(200, 201, 400, 404);
+        assertThat(r2.statusCode()).as("Website lead 2").isIn(200, 201);
 
         // Lead 3 — phone as string (PhoneNumber deserializer handles plain strings)
         Response r3 = EntityProcessorApi.submitWebsiteLead(baseHost(), productCode, mapOf(
@@ -324,7 +344,7 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
                         "source", "Website"
                 )
         ));
-        assertThat(r3.statusCode()).as("Website lead 3").isIn(200, 201, 400, 404);
+        assertThat(r3.statusCode()).as("Website lead 3").isIn(200, 201);
     }
 
     @Test
