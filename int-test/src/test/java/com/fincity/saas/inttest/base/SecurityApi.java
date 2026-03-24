@@ -54,6 +54,37 @@ public class SecurityApi {
     }
 
     /**
+     * Invite a user (requires builder admin auth).
+     */
+    public Response inviteUser(String token, String clientCode, String appCode, Map<String, Object> body) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .body(body)
+                .post(SEC + "/users/invite");
+    }
+
+    /**
+     * Accept an invite (public endpoint, no auth).
+     */
+    public Response acceptInvite(String clientCode, String appCode, Map<String, Object> body) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .body(body)
+                .post(SEC + "/users/acceptInvite");
+    }
+
+    /**
      * Authenticate and return the raw Response (extract accessToken from body).
      */
     public Response authenticate(String clientCode, String appCode, String userName, String password) {

@@ -123,6 +123,13 @@ public class EntityProcessorApi {
         return req().get(EP + "/tickets/" + id + "/eager");
     }
 
+    /** List tickets visible to the current user (paginated eager endpoint). */
+    public Response listTickets(int page, int size) {
+        return req().queryParam("page", page).queryParam("size", size)
+                .queryParam("sort", "id,desc")
+                .get(EP + "/tickets/eager");
+    }
+
     public Response queryUserTickets(Map<String, Object> body) {
         return req().body(body).post(EP + "/tickets/users/query");
     }
