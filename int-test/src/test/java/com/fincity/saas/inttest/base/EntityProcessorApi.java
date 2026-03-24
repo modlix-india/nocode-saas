@@ -55,12 +55,8 @@ public class EntityProcessorApi {
         return spec.get(EP + "/products/code/" + code);
     }
 
-    public Response getProductsEager(Map<String, Object> queryParams) {
-        RequestSpecification r = spec;
-        for (var e : queryParams.entrySet()) {
-            r = r.queryParam(e.getKey(), e.getValue());
-        }
-        return r.get(EP + "/products/eager/query");
+    public Response getProductsEager(Map<String, Object> body) {
+        return spec.body(body).post(EP + "/products/eager/query");
     }
 
     public Response getProductForms() {
@@ -74,7 +70,7 @@ public class EntityProcessorApi {
     // ── Creation Rules (c_rules) ───────────────────────────────────────
 
     public Response createCreationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/products/tickets/c/rules/req");
+        return spec.body(body).post(EP + "/products/tickets/c/rules");
     }
 
     // ── User Distributions ─────────────────────────────────────────────
@@ -92,13 +88,13 @@ public class EntityProcessorApi {
     // ── Expiration Rules ───────────────────────────────────────────────
 
     public Response createExpirationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/products/tickets/ex/rules/req");
+        return spec.body(body).post(EP + "/products/tickets/ex/rules");
     }
 
     // ── Duplication Rules ──────────────────────────────────────────────
 
     public Response createDuplicationRule(Map<String, Object> body) {
-        return spec.body(body).post(EP + "/tickets/duplicate/rules/req");
+        return spec.body(body).post(EP + "/tickets/duplicate/rules");
     }
 
     public Response getDuplicationRules() {
@@ -210,15 +206,13 @@ public class EntityProcessorApi {
     }
 
     public Response getMyTeammates(int page, int size) {
-        return spec.queryParam("page", page)
-                .queryParam("size", size)
-                .get(EP + "/partners/me/teammates");
+        return spec.body(Map.of("page", page, "size", size))
+                .post(EP + "/partners/me/teammates");
     }
 
     public Response getPartnerClients(int page, int size) {
-        return spec.queryParam("page", page)
-                .queryParam("size", size)
-                .get(EP + "/partners/clients");
+        return spec.body(Map.of("page", page, "size", size))
+                .post(EP + "/partners/clients");
     }
 
     // ── Product Comms ──────────────────────────────────────────────────
@@ -304,7 +298,7 @@ public class EntityProcessorApi {
                 .post(EP + "/open/tickets/req/website/" + productCode);
     }
 
-    public static Response submitCampaignLead(String baseHost, String productCode, Map<String, Object> body) {
+    public static Response submitCampaignLead(String baseHost, Map<String, Object> body) {
         String host = baseHost.replaceFirst("https?://", "");
         return io.restassured.RestAssured.given()
                 .baseUri(baseHost)
@@ -312,6 +306,6 @@ public class EntityProcessorApi {
                 .header("X-Forwarded-Host", host)
                 .header("X-Real-IP", "127.0.0.1")
                 .body(body)
-                .post(EP + "/open/tickets/req/campaigns/" + productCode);
+                .post(EP + "/open/tickets/req/campaigns");
     }
 }
