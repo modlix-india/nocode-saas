@@ -10,6 +10,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
+import com.fincity.security.jooq.tables.SecurityClientActivity;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
@@ -43,6 +44,8 @@ public class Indexes {
     public static final Index SECURITY_APP_REG_USER_DESIGNATION_FK3_APP_REG_USER_DESIGNATION_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_USER_DESIGNATION_APP_ID"), SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION, new OrderField[] { SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION.APP_ID }, false);
     public static final Index SECURITY_APP_REG_USER_ROLE_V2_FK3_APP_REG_USER_ROLE_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_USER_ROLE_APP_ID"), SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2, new OrderField[] { SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2.APP_ID }, false);
     public static final Index SECURITY_APP_REG_DESIGNATION_FK4_APP_REG_DESIGNATION_APP_ID = Internal.createIndex(DSL.name("FK4_APP_REG_DESIGNATION_APP_ID"), SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION, new OrderField[] { SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION.APP_ID }, false);
+    public static final Index SECURITY_CLIENT_ACTIVITY_IDX_CLIENT_ACTIVITY_CLIENT = Internal.createIndex(DSL.name("IDX_CLIENT_ACTIVITY_CLIENT"), SecurityClientActivity.SECURITY_CLIENT_ACTIVITY, new OrderField[] { SecurityClientActivity.SECURITY_CLIENT_ACTIVITY.CLIENT_ID }, false);
+    public static final Index SECURITY_CLIENT_ACTIVITY_IDX_CLIENT_ACTIVITY_CREATED_BY = Internal.createIndex(DSL.name("IDX_CLIENT_ACTIVITY_CREATED_BY"), SecurityClientActivity.SECURITY_CLIENT_ACTIVITY, new OrderField[] { SecurityClientActivity.SECURITY_CLIENT_ACTIVITY.CREATED_BY }, false);
     public static final Index SECURITY_USER_K1_USER_NAME = Internal.createIndex(DSL.name("K1_USER_NAME"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.USER_NAME }, false);
     public static final Index SECURITY_USER_K2_EMAIL_ID = Internal.createIndex(DSL.name("K2_EMAIL_ID"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.EMAIL_ID }, false);
     public static final Index SECURITY_USER_K3_PHONE_NUMBER = Internal.createIndex(DSL.name("K3_PHONE_NUMBER"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.PHONE_NUMBER }, false);
