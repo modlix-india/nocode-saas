@@ -58,6 +58,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     private ProductTicketRuRuleService productTicketRuRuleService;
     private TicketPeDuplicationRuleService ticketPeDuplicationRuleService;
 
+    private static final String LATEST_TASK_DUE_DATE = "latestTaskDueDate";
+
     protected TicketDAO() {
         super(
                 Ticket.class,
@@ -65,6 +67,26 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS.ID,
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
         this.productIdField = ENTITY_PROCESSOR_TICKETS.PRODUCT_ID;
+    }
+
+    @Override
+    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
+        if (LATEST_TASK_DUE_DATE.equals(fieldName)) {
+            // Subquery: SELECT MIN(due_date) FROM tasks WHERE ticket_id = t.id AND is_completed = false AND due_date >= NOW()
+            // Falls back to MAX(due_date) if no future tasks
+            return DSL.coalesce(
+                    DSL.field(DSL.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                            .from(ENTITY_PROCESSOR_TASKS)
+                            .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                            .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
+                            .and(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))),
+                    DSL.field(DSL.select(DSL.max(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                            .from(ENTITY_PROCESSOR_TASKS)
+                            .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                            .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false))))
+            ).as(LATEST_TASK_DUE_DATE);
+        }
+        return super.getField(fieldName, selectJoinStep);
     }
 
     @Lazy
@@ -437,7 +459,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         ULong id = (ULong) rec.get("id");
                         if (id != null) {
                             rec.put("latestComment", comments.get(id));
-                            rec.put("latestTaskDueDate", dueDates.get(id));
+                            rec.put(LATEST_TASK_DUE_DATE, dueDates.get(id));
                         }
                     });
 

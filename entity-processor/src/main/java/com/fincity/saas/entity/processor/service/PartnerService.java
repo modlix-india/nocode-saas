@@ -42,14 +42,19 @@ import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
@@ -65,6 +70,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private static final String FETCH_PARTNERS = "fetchPartners";
 
     private static final String FETCH_LEADS = "fetchLeads";
+
+    private static final String SORT_ACTIVE_USERS = "activeUsers";
+    private static final String SORT_TOTAL_TICKETS = "totalTickets";
+    private static final Set<String> COMPUTED_SORT_FIELDS = Set.of(SORT_ACTIVE_USERS, SORT_TOTAL_TICKETS);
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -278,6 +287,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     public Mono<Page<Map<String, Object>>> readPartnerClient(Query query, MultiValueMap<String, String> queryParams) {
+        boolean computedSort = query.getSort().stream()
+                .anyMatch(order -> COMPUTED_SORT_FIELDS.contains(order.getProperty()));
+        Sort requestedSort = query.getSort();
+        int requestedPage = query.getPage();
+        int requestedSize = query.getSize();
+
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> Mono.justOrEmpty(access.getUserInherit().getManagingClientIds())
@@ -288,15 +303,61 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         (access, clientIds, clientCondition, partners) -> this.updateClientCondition(
                                 clientCondition,
                                 partners.stream().map(Partner::getClientId).toList()),
-                        (access, clientIds, clientCondition, partners, uClientCondition) -> super.securityService
-                                .readClientPageFilterInternal(
-                                        this.updateQueryCondition(query, uClientCondition), queryParams)
-                                .map(page -> page.map(IClassConvertor::toMap)),
+                        (access, clientIds, clientCondition, partners, uClientCondition) -> {
+                            Query effectiveQuery = this.updateQueryCondition(query, uClientCondition);
+                            if (computedSort) {
+                                effectiveQuery
+                                        .setSort(Sort.unsorted())
+                                        .setPage(0)
+                                        .setSize(Math.max(partners.size(), 1))
+                                        .setCount(Boolean.FALSE);
+                            }
+                            return super.securityService
+                                    .readClientPageFilterInternal(effectiveQuery, queryParams)
+                                    .map(page -> page.map(IClassConvertor::toMap));
+                        },
                         (access, clientIds, clientCondition, partners, uClientCondition, clientPage) ->
                                 this.fillClientDetails(access, partners, clientPage.getContent(), queryParams)
-                                        .thenReturn(clientPage))
+                                        .map(ignored -> computedSort
+                                                ? this.sortAndPaginateInMemory(
+                                                        clientPage.getContent(),
+                                                        requestedSort,
+                                                        requestedPage,
+                                                        requestedSize)
+                                                : clientPage))
                 .switchIfEmpty(Mono.just(Page.empty()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPartnerClient"));
+    }
+
+    private Page<Map<String, Object>> sortAndPaginateInMemory(
+            List<Map<String, Object>> content, Sort sort, int page, int size) {
+
+        List<Map<String, Object>> sorted = new ArrayList<>(content);
+        sort.stream()
+                .map(this::buildFieldComparator)
+                .reduce(Comparator::thenComparing)
+                .ifPresent(sorted::sort);
+
+        int total = sorted.size();
+        int start = Math.min(page * size, total);
+        int end = Math.min(start + size, total);
+
+        return new PageImpl<>(new ArrayList<>(sorted.subList(start, end)), PageRequest.of(page, size, sort), total);
+    }
+
+    private Comparator<Map<String, Object>> buildFieldComparator(Sort.Order order) {
+        String property = order.getProperty();
+        Comparator<Map<String, Object>> fieldComp = (a, b) -> compareMapValues(a.get(property), b.get(property));
+        return order.isDescending() ? fieldComp.reversed() : fieldComp;
+    }
+
+    private static int compareMapValues(Object va, Object vb) {
+        if (va == null && vb == null) return 0;
+        if (va == null) return -1;
+        if (vb == null) return 1;
+        if (va instanceof Number na && vb instanceof Number nb)
+            return Long.compare(na.longValue(), nb.longValue());
+        return va.toString().compareTo(vb.toString());
     }
 
     private Mono<List<Partner>> getPartners(
@@ -419,7 +480,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         (a, b) -> b));
 
         TicketBucketFilter filter = (TicketBucketFilter) new TicketBucketFilter()
-                .setStageIds(stages)
+                .setStageIds(stages.isEmpty() ? null : stages)
                 .setClientIds(clientMapById.keySet().stream().toList())
                 .setClients(clientFilterMap.values().stream().toList())
                 .setIncludeAll(includeAll)
@@ -438,11 +499,32 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     partners.forEach(partner -> {
                         StatusEntityCount count = status.get(partner.getClientId());
                         Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-                        if (count != null && clientMap != null) clientMap.put(ticketKey, count.toMap());
+                        if (clientMap == null) return;
+                        if (count != null) clientMap.put(ticketKey, count.toMap());
+                        clientMap.put(SORT_TOTAL_TICKETS, computeTotalTickets(count));
                     });
 
                     return Mono.just(clientMapById.values());
                 });
+    }
+
+    private static long computeTotalTickets(StatusEntityCount count) {
+        if (count == null || count.getPerCount() == null) return 0L;
+        // Sum individual stage/status entries (excluding the "Total" aggregate to avoid double-counting).
+        long individualSum = count.getPerCount().stream()
+                .filter(e -> !"Total".equalsIgnoreCase(e.getId()))
+                .mapToLong(e -> e.getValue() != null && e.getValue().getCount() != null
+                        ? e.getValue().getCount().longValue() : 0L)
+                .sum();
+        if (individualSum > 0) return individualSum;
+        // When only the "Total" aggregate entry is present (e.g. includeTotal=true without includeAll),
+        // fall back to that value rather than returning 0.
+        return count.getPerCount().stream()
+                .filter(e -> "Total".equalsIgnoreCase(e.getId()))
+                .mapToLong(e -> e.getValue() != null && e.getValue().getCount() != null
+                        ? e.getValue().getCount().longValue() : 0L)
+                .findFirst()
+                .orElse(0L);
     }
 
     private Mono<Collection<Map<String, Object>>> fillPartnerTeammateTicketDetails(
