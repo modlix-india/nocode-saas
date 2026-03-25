@@ -3,6 +3,7 @@ package com.fincity.saas.inttest.base;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
+import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
@@ -146,6 +147,10 @@ public class EntityProcessorApi {
         return req().body(body).patch(EP + "/tickets/req/" + ticketId + "/reassign");
     }
 
+    public Response bulkReassign(Map<String, Object> body) {
+        return req().body(body).patch(EP + "/tickets/bulk-reassign");
+    }
+
     // ── Notes ──────────────────────────────────────────────────────────
 
     public Response createNote(Map<String, Object> body) {
@@ -232,6 +237,24 @@ public class EntityProcessorApi {
     public Response getPartnerClients(int page, int size) {
         return req().body(Map.of("page", page, "size", size))
                 .post(EP + "/partners/clients");
+    }
+
+    /**
+     * Query partner clients with an explicit sort field + direction and optional URL query params
+     * (e.g. fetchLeads, fetchUserCounts, includeTotal).
+     * Sort is sent as a JSON body array matching the custom SortDeserializer format.
+     */
+    public Response getPartnerClientsSorted(int page, int size, String sortProperty, String sortDirection,
+            Map<String, String> extraQueryParams) {
+        RequestSpecification r = req();
+        if (extraQueryParams != null) {
+            for (var e : extraQueryParams.entrySet()) r = r.queryParam(e.getKey(), e.getValue());
+        }
+        return r.body(Map.of(
+                "page", page,
+                "size", size,
+                "sort", List.of(Map.of("direction", sortDirection.toUpperCase(), "property", sortProperty))
+        )).post(EP + "/partners/clients");
     }
 
     // ── Product Comms ──────────────────────────────────────────────────
