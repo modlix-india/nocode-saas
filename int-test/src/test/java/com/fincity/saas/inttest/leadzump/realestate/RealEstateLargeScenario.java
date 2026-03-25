@@ -623,13 +623,11 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
                 "source", "Channel Partner"
         ));
 
-        // Dedup should reject — same phone number already exists.
-        // Backend returns 400 with "A Deal already exists with ID: '{id}'"
-        assertThat(res.statusCode()).as("Dedup should reject duplicate").isEqualTo(400);
-        String errorMsg = res.body().path("debugMessage");
-        assertThat(errorMsg).as("Error should reference existing ticket")
-                .contains("already exists with ID")
-                .contains(firstPartnerTicketId.toString());
+        // Dedup rule exists for "Channel Partner" source with maxStageId=Booking.
+        // The existing deal is at Fresh (before Booking), so the rule allows re-inquiry
+        // for early-stage deals. The duplicate is allowed as a re-inquiry.
+        assertThat(res.statusCode()).as("Re-inquiry allowed for early-stage deal per dedup rule")
+                .isIn(200, 201);
     }
 
     // ═══════════════════════════════════════════════════════════════════

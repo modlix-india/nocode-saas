@@ -24,6 +24,7 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
@@ -699,16 +700,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        return this.checkWithinClientDuplicate(access, productId, ticketPhone, ticketMail, source, subSource)
-                .flatMap(isDuplicate -> {
-                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
+        if (ruleCondition == null || !ruleCondition.isNonEmpty()) {
+            // No duplication rule for this source — block all duplicates.
+            return this.checkWithinClientDuplicate(access, productId, ticketPhone, ticketMail, source, subSource);
+        }
 
-                    if (ruleCondition != null && ruleCondition.isNonEmpty())
-                        return this.checkDuplicateWithRule(
-                                access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource);
-
-                    return Mono.just(Boolean.FALSE);
-                });
+        // A duplication rule exists for this source. Use the rule-based check which respects
+        // maxStageId and rule conditions. If the rule-based check chain fails (empty), fall back
+        // to within-client check.
+        return this.checkDuplicateWithRule(
+                access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource)
+                .switchIfEmpty(this.checkWithinClientDuplicate(
+                        access, productId, ticketPhone, ticketMail, source, subSource));
     }
 
     private Mono<Boolean> checkWithinClientDuplicate(
@@ -742,8 +745,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
+        // Strip entity prefix (e.g., "Deal.source" -> "source") from condition fields
+        // since the DAO queries use raw column names, not prefixed evaluator names.
+        AbstractCondition dbCondition = stripFieldPrefix(ruleCondition);
+
         return FlatMapUtil.flatMapMono(
-                () -> ruleCondition.removeConditionWithField(Ticket.Fields.stage),
+                () -> dbCondition.removeConditionWithField(Ticket.Fields.stage),
                 conditionWithoutStage ->
                         this.getTickets(conditionWithoutStage, access, productId, ticketPhone, ticketMail),
                 (conditionWithoutStage, tickets) -> {
@@ -752,11 +759,41 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource);
 
                     return this.fetchDuplicateAndLog(
-                            this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail),
+                            this.getTicket(dbCondition, access, productId, ticketPhone, ticketMail),
                             access,
                             source,
                             subSource);
                 });
+    }
+
+    private static AbstractCondition stripFieldPrefix(AbstractCondition condition) {
+        if (condition == null) return null;
+
+        if (condition instanceof FilterCondition fc) {
+            String field = fc.getField();
+            if (field != null && field.contains(".")) {
+                return FilterCondition.of(
+                        field.substring(field.lastIndexOf('.') + 1),
+                        fc.getValue(),
+                        fc.getOperator())
+                        .setToValue(fc.getToValue())
+                        .setMultiValue(fc.getMultiValue())
+                        .setNegate(fc.isNegate());
+            }
+            return fc;
+        }
+
+        if (condition instanceof ComplexCondition cc && cc.getConditions() != null) {
+            List<AbstractCondition> stripped = cc.getConditions().stream()
+                    .map(TicketService::stripFieldPrefix)
+                    .toList();
+            return new ComplexCondition()
+                    .setOperator(cc.getOperator())
+                    .setConditions(stripped)
+                    .setNegate(cc.isNegate());
+        }
+
+        return condition;
     }
 
     private Mono<Boolean> fetchDuplicateAndLog(
