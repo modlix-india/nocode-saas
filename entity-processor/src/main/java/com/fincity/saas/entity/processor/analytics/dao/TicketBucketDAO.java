@@ -901,6 +901,18 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID)));
     }
 
+    public Flux<ULong> getDistinctAssignedUserIds(ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> Flux.from(this.dslContext
+                                .selectDistinct(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID)
+                                .from(this.table)
+                                .where(conditions)
+                                .and(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID.isNotNull()))
+                        .map(rec -> rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID)));
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Select<?> unionAsRecord(Select<?> left, Select<?> right) {
         return (left).union((Select) right);

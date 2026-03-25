@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.product.Product;
 
 import lombok.Data;
@@ -26,6 +27,8 @@ public class FilterablePageResponse<T> implements Page<T>, Serializable {
 
     private List<Client> clients;
     private List<Product> products;
+    private List<User> assignedUsers;
+    private List<User> clientManagers;
 
     @JsonIgnore
     private transient Page<T> page;
@@ -33,12 +36,16 @@ public class FilterablePageResponse<T> implements Page<T>, Serializable {
     public static <T> FilterablePageResponse<T> of(
             Page<T> page,
             List<Client> clients,
-            List<Product> products) {
+            List<Product> products,
+            List<User> assignedUsers,
+            List<User> clientManagers) {
 
         FilterablePageResponse<T> response = new FilterablePageResponse<>();
         response.page = page;
         response.clients = clients;
         response.products = products;
+        response.assignedUsers = assignedUsers;
+        response.clientManagers = clientManagers;
         return response;
     }
 
@@ -56,7 +63,7 @@ public class FilterablePageResponse<T> implements Page<T>, Serializable {
 
     @Override
     public <U> FilterablePageResponse<U> map(Function<? super T, ? extends U> converter) {
-        return FilterablePageResponse.of(page.map(converter), clients, products);
+        return FilterablePageResponse.of(page.map(converter), clients, products, assignedUsers, clientManagers);
     }
 
     // Slice methods

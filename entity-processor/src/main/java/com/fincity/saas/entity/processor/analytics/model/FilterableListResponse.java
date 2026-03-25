@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.product.Product;
 
 import lombok.Data;
@@ -20,16 +21,22 @@ public class FilterableListResponse<T> implements Serializable {
     private List<T> data;
     private List<Client> clients;
     private List<Product> products;
+    private List<User> assignedUsers;
+    private List<User> clientManagers;
 
     public static <T> FilterableListResponse<T> of(
             List<T> data,
             List<Client> clients,
-            List<Product> products) {
+            List<Product> products,
+            List<User> assignedUsers,
+            List<User> clientManagers) {
 
         FilterableListResponse<T> response = new FilterableListResponse<>();
         response.data = data;
         response.clients = clients;
         response.products = products;
+        response.assignedUsers = assignedUsers;
+        response.clientManagers = clientManagers;
         return response;
     }
 }

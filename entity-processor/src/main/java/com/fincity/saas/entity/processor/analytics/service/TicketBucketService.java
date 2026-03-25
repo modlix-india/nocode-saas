@@ -22,6 +22,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -361,22 +362,27 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
         return Mono.zip(
                         this.dao.getDistinctClientIds(access, filter).collectList(),
-                        this.dao.getDistinctProductIds(access, filter).collectList())
+                        this.dao.getDistinctProductIds(access, filter).collectList(),
+                        this.dao.getDistinctAssignedUserIds(access, filter).collectList())
                 .flatMap(distinctIds -> {
                     List<ULong> clientIds = distinctIds.getT1();
                     List<ULong> productIds = distinctIds.getT2();
+                    List<ULong> assignedUserIds = distinctIds.getT3();
 
                     return Mono.zip(
                                     resolveClients(clientIds),
-                                    resolveProducts(access, productIds))
+                                    resolveProducts(access, productIds),
+                                    resolveAssignedUsers(assignedUserIds))
                             .flatMap(resolved -> ReactivePaginationUtil.toPage(results, pageable)
-                                    .map(page -> FilterablePageResponse.of(page, resolved.getT1(), resolved.getT2())));
+                                    .map(page -> FilterablePageResponse.of(page,
+                                            resolved.getT1(), resolved.getT2(),
+                                            resolved.getT3(), extractClientManagers(resolved.getT1()))));
                 });
     }
 
     private static <T> Mono<FilterablePageResponse<T>> toFilterablePageResponse(List<T> results, Pageable pageable) {
         return ReactivePaginationUtil.toPage(results, pageable)
-                .map(page -> FilterablePageResponse.of(page, List.of(), List.of()));
+                .map(page -> FilterablePageResponse.of(page, List.of(), List.of(), List.of(), List.of()));
     }
 
     private <T> Mono<FilterableListResponse<T>> toFilterableListResponse(
@@ -384,11 +390,15 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
         return Mono.zip(
                         this.dao.getDistinctClientIds(access, filter).collectList(),
-                        this.dao.getDistinctProductIds(access, filter).collectList())
+                        this.dao.getDistinctProductIds(access, filter).collectList(),
+                        this.dao.getDistinctAssignedUserIds(access, filter).collectList())
                 .flatMap(distinctIds -> Mono.zip(
                                 resolveClients(distinctIds.getT1()),
-                                resolveProducts(access, distinctIds.getT2()))
-                        .map(resolved -> FilterableListResponse.of(results, resolved.getT1(), resolved.getT2())));
+                                resolveProducts(access, distinctIds.getT2()),
+                                resolveAssignedUsers(distinctIds.getT3()))
+                        .map(resolved -> FilterableListResponse.of(results,
+                                resolved.getT1(), resolved.getT2(),
+                                resolved.getT3(), extractClientManagers(resolved.getT1()))));
     }
 
     private Mono<List<Client>> resolveClients(List<ULong> clientIds) {
@@ -396,10 +406,31 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
         List<BigInteger> idsBigInt = clientIds.stream().map(ULong::toBigInteger).toList();
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("fetchClientManagers", "true");
 
         return this.securityService
                 .getClientInternalBatch(idsBigInt, params)
                 .defaultIfEmpty(List.of());
+    }
+
+    private Mono<List<User>> resolveAssignedUsers(List<ULong> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Mono.just(List.of());
+
+        List<BigInteger> idsBigInt = userIds.stream().map(ULong::toBigInteger).toList();
+        return this.securityService
+                .getUsersInternalBatch(idsBigInt, null)
+                .defaultIfEmpty(List.of());
+    }
+
+    private static List<User> extractClientManagers(List<Client> clients) {
+        if (clients == null || clients.isEmpty()) return List.of();
+
+        return clients.stream()
+                .filter(c -> c.getClientManagers() != null)
+                .flatMap(c -> c.getClientManagers().stream())
+                .filter(u -> u != null && u.getId() != null)
+                .distinct()
+                .toList();
     }
 
     private Mono<List<Product>> resolveProducts(ProcessorAccess access, List<ULong> productIds) {
