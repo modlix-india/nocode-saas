@@ -344,19 +344,19 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "order", 1,
                 "userDistributionType", "ROUND_ROBIN",
                 "condition", Map.of(
-                        "field", "source",
-                        "value", "Channel Partner",
-                        "operator", "EQUALS",
-                        "negate", false
+                        "operator", "AND",
+                        "negate", false,
+                        "conditions", List.of(Map.of(
+                                "field", "Deal.source",
+                                "value", "Channel Partner",
+                                "operator", "EQUALS",
+                                "negate", false
+                        ))
                 ),
                 "userDistributions", List.of(
                         Map.of("userId", insideSalesMemberId)
                 )
         ));
-        if (res.statusCode() != 200 && res.statusCode() != 201) {
-            System.err.println("[DEBUG] CP rule: status=" + res.statusCode() + " insideSalesMemberId=" + insideSalesMemberId
-                + " body=" + res.body().asString().substring(0, Math.min(300, res.body().asString().length())));
-        }
         assertThat(res.statusCode()).as("Create CP source creation rule").isIn(200, 201);
         assertThat((Number) res.body().path("id")).as("CP rule ID").isNotNull();
     }
@@ -453,14 +453,10 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
         assertThat(res.statusCode()).as("SalesMember2 list tickets").isEqualTo(200);
 
         List<Map<String, Object>> content = res.body().path("content");
-        // SalesMember2 sees only leads assigned to them (may be 0 if round-robin didn't distribute)
-        if (content != null && !content.isEmpty()) {
-            content.forEach(ticket -> {
-                Number assigned = (Number) ticket.get("assignedUserId");
-                assertThat(assigned.longValue()).as("SalesMember2 only sees own leads")
-                        .isEqualTo(salesMember2UserId.longValue());
-            });
-        }
+        assertThat(content).as("SalesMember2 should see their assigned lead").isNotNull().hasSize(1);
+        Number assigned = (Number) content.get(0).get("assignedUserId");
+        assertThat(assigned.longValue()).as("SalesMember2 only sees own leads")
+                .isEqualTo(salesMember2UserId.longValue());
     }
 
     @Test
@@ -488,15 +484,10 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
         assertThat(res.statusCode()).as("InsideSalesManager list tickets").isEqualTo(200);
 
         List<Map<String, Object>> content = res.body().path("content");
-        // InsideSalesManager sees leads from their sub-org (InsideSalesMember).
-        // If CP source rule didn't route to ISM, content may be empty.
-        if (content != null && !content.isEmpty()) {
-            content.forEach(ticket -> {
-                Number assigned = (Number) ticket.get("assignedUserId");
-                assertThat(assigned.longValue()).as("ISM sees only inside sales team leads")
-                        .isIn(insideSalesManagerUserId.longValue(), insideSalesMemberId.longValue());
-            });
-        }
+        assertThat(content).as("InsideSalesManager should see CP lead").isNotNull().hasSize(1);
+        Number assigned = (Number) content.get(0).get("assignedUserId");
+        assertThat(assigned.longValue()).as("CP lead assigned to InsideSalesMember")
+                .isEqualTo(insideSalesMemberId.longValue());
     }
 
     // ═══════════════════════════════════════════════════════════════════

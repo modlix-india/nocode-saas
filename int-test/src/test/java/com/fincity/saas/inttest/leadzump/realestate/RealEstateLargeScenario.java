@@ -579,7 +579,7 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
                         "operator", "AND",
                         "negate", false,
                         "conditions", List.of(Map.of(
-                                "field", "source",
+                                "field", "Deal.source",
                                 "value", "Channel Partner",
                                 "operator", "EQUALS",
                                 "negate", false
