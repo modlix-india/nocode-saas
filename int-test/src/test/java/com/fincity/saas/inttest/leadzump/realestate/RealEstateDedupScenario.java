@@ -36,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>S3 (400-420): Dedup rule does NOT allow different source — correctly blocked</li>
  *   <li>S4 (500-520): Cross-product dedup within same client</li>
  *   <li>S5 (600-630): Stage-based dedup — deal past maxStageId</li>
+ *   <li>S6 (700-740): Assignment carry — re-inquiry gets same assigned user</li>
+ *   <li>S7 (800-810): Cross-CP assignment carry — different CPs, same phone, same user</li>
  * </ul>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -58,7 +60,11 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
     // Dedup rule
     private static Number dedupRuleId;
 
-    // Ticket IDs captured during tests
+    // Team members (for assignment carry tests)
+    private static Number salesMember1UserId, salesMember2UserId;
+
+    // Ticket IDs and assignment data captured during tests
+    private static Number s7Cp1AssignedUserId;
     private static Number s1Ticket1Id;
     private static Number s2Ticket1Id;
     private static Number s3Ticket1Id;
@@ -518,6 +524,183 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         assertThat(res.statusCode())
                 .as("Re-inquiry should be allowed when existing deal is past maxStageId")
                 .isIn(200, 201);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S6: Assignment Carry — Re-inquiry gets same assigned user
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(700)
+    void s6_01_inviteTeamMembers() {
+        SecurityApi secApi = new SecurityApi(baseHost());
+
+        // Invite SalesMember1
+        Response inv1 = secApi.inviteUser(token, clientCode, appCode, mapOf(
+                "emailId", "dedup-sm1-" + uid + "@inttest.local",
+                "firstName", "DedupSM1", "lastName", "IntTest",
+                "profileId", 122, "reportingTo", userId
+        ));
+        assertThat(inv1.statusCode()).as("Invite SM1").isIn(200, 201);
+        String code1 = inv1.body().path("userRequest.inviteCode");
+
+        Response acc1 = secApi.acceptInvite(clientCode, appCode, mapOf(
+                "emailId", "dedup-sm1-" + uid + "@inttest.local",
+                "firstName", "DedupSM1", "lastName", "IntTest",
+                "password", "Test@1234", "passType", "PASSWORD", "inviteCode", code1
+        ));
+        assertThat(acc1.statusCode()).as("Accept SM1").isIn(200, 201);
+        salesMember1UserId = acc1.body().path("authentication.user.id");
+
+        // Invite SalesMember2
+        Response inv2 = secApi.inviteUser(token, clientCode, appCode, mapOf(
+                "emailId", "dedup-sm2-" + uid + "@inttest.local",
+                "firstName", "DedupSM2", "lastName", "IntTest",
+                "profileId", 122, "reportingTo", userId
+        ));
+        assertThat(inv2.statusCode()).as("Invite SM2").isIn(200, 201);
+        String code2 = inv2.body().path("userRequest.inviteCode");
+
+        Response acc2 = secApi.acceptInvite(clientCode, appCode, mapOf(
+                "emailId", "dedup-sm2-" + uid + "@inttest.local",
+                "firstName", "DedupSM2", "lastName", "IntTest",
+                "password", "Test@1234", "passType", "PASSWORD", "inviteCode", code2
+        ));
+        assertThat(acc2.statusCode()).as("Accept SM2").isIn(200, 201);
+        salesMember2UserId = acc2.body().path("authentication.user.id");
+    }
+
+    @Test
+    @Order(710)
+    void s6_02_createCPRoundRobinRuleForTeam() {
+        // Create a CP source rule (order=1) distributing to SM1 and SM2.
+        // The default rule (order=0 from setup) assigns to owner.
+        // This rule overrides for Channel Partner source.
+        Response res = api.createCreationRule(mapOf(
+                "name", "CP Team RR Rule",
+                "productTemplateId", templateId,
+                "stageId", stageFreshId,
+                "order", 1,
+                "userDistributionType", "ROUND_ROBIN",
+                "condition", Map.of(
+                        "operator", "AND",
+                        "negate", false,
+                        "conditions", List.of(Map.of(
+                                "field", "Deal.source",
+                                "value", "Channel Partner",
+                                "operator", "EQUALS",
+                                "negate", false
+                        ))
+                ),
+                "userDistributions", List.of(
+                        Map.of("userId", salesMember1UserId),
+                        Map.of("userId", salesMember2UserId)
+                )
+        ));
+        assertThat(res.statusCode()).as("Create CP RR rule for dedup test").isIn(200, 201);
+    }
+
+    @Test
+    @Order(720)
+    void s6_03_firstCPLeadAssignedToSM1() {
+        // First CP lead — CP rule routes to SM1 via round-robin
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S6_Lead1",
+                "dialCode", 91,
+                "phoneNumber", "+918000000006",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Alpha"
+        ));
+        assertThat(res.statusCode()).as("Create first CP lead").isIn(200, 201);
+        Number assignedUser = res.body().path("assignedUserId");
+        assertThat(assignedUser).as("First CP lead should be assigned").isNotNull();
+        assertThat(assignedUser.longValue()).as("First CP lead assigned to SM1")
+                .isEqualTo(salesMember1UserId.longValue());
+    }
+
+    @Test
+    @Order(730)
+    void s6_04_reInquirySamePhone_getsAssignedToSameSM1() {
+        // Same phone, same source — dedup rule allows. Should be assigned to SM1 (not SM2).
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S6_Lead1_ReInquiry",
+                "dialCode", 91,
+                "phoneNumber", "+918000000006",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Beta"
+        ));
+        assertThat(res.statusCode()).as("Re-inquiry should be allowed").isIn(200, 201);
+        Number assignedUser = res.body().path("assignedUserId");
+        assertThat(assignedUser).as("Re-inquiry should be assigned").isNotNull();
+        assertThat(assignedUser.longValue())
+                .as("Re-inquiry should go to SAME user (SM1), not round-robin to SM2")
+                .isEqualTo(salesMember1UserId.longValue());
+    }
+
+    @Test
+    @Order(740)
+    void s6_05_nextNewLead_goesToSM2_viaRoundRobin() {
+        // A completely new phone number — round-robin should assign to SM2
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S6_NewLead",
+                "dialCode", 91,
+                "phoneNumber", "+918000000007",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Gamma"
+        ));
+        assertThat(res.statusCode()).as("New lead should succeed").isIn(200, 201);
+        Number assignedUser = res.body().path("assignedUserId");
+        assertThat(assignedUser).as("New lead should be assigned").isNotNull();
+        assertThat(assignedUser.longValue())
+                .as("New lead should go to SM2 via round-robin")
+                .isEqualTo(salesMember2UserId.longValue());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S7: Cross-CP Assignment Carry — Different CPs, same phone
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(800)
+    void s7_01_cp1SubmitsLead() {
+        // First CP submits a lead — assigned via CP round-robin rule
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S7_CP1Lead",
+                "dialCode", 91,
+                "phoneNumber", "+918000000008",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_One"
+        ));
+        assertThat(res.statusCode()).as("CP1 lead").isIn(200, 201);
+        s7Cp1AssignedUserId = res.body().path("assignedUserId");
+        assertThat(s7Cp1AssignedUserId).as("CP1 lead should be assigned").isNotNull();
+    }
+
+    @Test
+    @Order(810)
+    void s7_02_cp2SubmitsSamePhone_getsAssignedToSameUser() {
+        // Different CP, same phone — dedup rule allows. Should go to SAME user as CP1's lead.
+        assertThat(s7Cp1AssignedUserId).as("CP1 assigned user must exist").isNotNull();
+
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S7_CP2Lead_SamePhone",
+                "dialCode", 91,
+                "phoneNumber", "+918000000008",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Two"
+        ));
+        assertThat(res.statusCode()).as("CP2 same phone should be allowed").isIn(200, 201);
+
+        Number cp2AssignedUser = res.body().path("assignedUserId");
+        assertThat(cp2AssignedUser).as("CP2 lead should be assigned").isNotNull();
+        assertThat(cp2AssignedUser.longValue())
+                .as("CP2 lead with same phone should be assigned to SAME user as CP1 lead")
+                .isEqualTo(s7Cp1AssignedUserId.longValue());
     }
 
     // ═══════════════════════════════════════════════════════════════════

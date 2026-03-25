@@ -243,7 +243,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (ticket.getId() != null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.checkDuplicateFromTicket(access, ticket),
+                        () -> this.checkDuplicateAndCarryAssignment(access, ticket),
                         isDuplicate -> this.setAssignmentAndStage(ticket, access),
                         (isDuplicate, aTicket) -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
                         (isDuplicate, aTicket, owner) -> this.updateTicketFromOwner(aTicket, owner),
@@ -251,7 +251,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
-    private Mono<Boolean> checkDuplicateFromTicket(ProcessorAccess access, Ticket ticket) {
+    /**
+     * Checks for duplicate tickets and, when a duplicate rule allows creation,
+     * carries the existing ticket's assignedUserId onto the new ticket.
+     * This ensures all inquiries for the same lead are handled by the same user.
+     */
+    private Mono<Boolean> checkDuplicateAndCarryAssignment(ProcessorAccess access, Ticket ticket) {
 
         PhoneNumber phone = ticket.getPhoneNumber() != null
                 ? PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber())
@@ -262,7 +267,22 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (phone == null && email == null) return Mono.just(Boolean.FALSE);
 
         return this.checkDuplicate(
-                access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource());
+                access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource())
+                .flatMap(isDuplicate -> {
+                    // If duplicate was blocked (this won't reach here — checkDuplicate throws 400)
+                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
+
+                    // Duplicate check passed (allowed). Find any existing ticket with same phone/email
+                    // and carry forward the assigned user so the same person handles all inquiries.
+                    return this.getTicket(access, ticket.getProductId(), phone, email)
+                            .map(existingTicket -> {
+                                if (existingTicket.getAssignedUserId() != null) {
+                                    ticket.setAssignedUserId(existingTicket.getAssignedUserId());
+                                }
+                                return Boolean.FALSE;
+                            })
+                            .defaultIfEmpty(Boolean.FALSE);
+                });
     }
 
     private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
