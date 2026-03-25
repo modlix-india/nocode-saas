@@ -24,6 +24,7 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
@@ -242,7 +243,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (ticket.getId() != null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.checkDuplicateFromTicket(access, ticket),
+                        () -> this.checkDuplicateAndCarryAssignment(access, ticket),
                         isDuplicate -> this.setAssignmentAndStage(ticket, access),
                         (isDuplicate, aTicket) -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
                         (isDuplicate, aTicket, owner) -> this.updateTicketFromOwner(aTicket, owner),
@@ -250,7 +251,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
-    private Mono<Boolean> checkDuplicateFromTicket(ProcessorAccess access, Ticket ticket) {
+    /**
+     * Checks for duplicate tickets and, when a duplicate rule allows creation,
+     * carries the existing ticket's assignedUserId onto the new ticket.
+     * This ensures all inquiries for the same lead are handled by the same user.
+     */
+    private Mono<Boolean> checkDuplicateAndCarryAssignment(ProcessorAccess access, Ticket ticket) {
 
         PhoneNumber phone = ticket.getPhoneNumber() != null
                 ? PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber())
@@ -261,7 +267,22 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (phone == null && email == null) return Mono.just(Boolean.FALSE);
 
         return this.checkDuplicate(
-                access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource());
+                access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource())
+                .flatMap(isDuplicate -> {
+                    // If duplicate was blocked (this won't reach here — checkDuplicate throws 400)
+                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
+
+                    // Duplicate check passed (allowed). Find any existing ticket with same phone/email
+                    // and carry forward the assigned user so the same person handles all inquiries.
+                    return this.getTicket(access, ticket.getProductId(), phone, email)
+                            .map(existingTicket -> {
+                                if (existingTicket.getAssignedUserId() != null) {
+                                    ticket.setAssignedUserId(existingTicket.getAssignedUserId());
+                                }
+                                return Boolean.FALSE;
+                            })
+                            .defaultIfEmpty(Boolean.FALSE);
+                });
     }
 
     private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
@@ -699,16 +720,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        return this.checkWithinClientDuplicate(access, productId, ticketPhone, ticketMail, source, subSource)
-                .flatMap(isDuplicate -> {
-                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
+        if (ruleCondition == null || !ruleCondition.isNonEmpty()) {
+            // No duplication rule for this source — block all duplicates.
+            return this.checkWithinClientDuplicate(access, productId, ticketPhone, ticketMail, source, subSource);
+        }
 
-                    if (ruleCondition != null && ruleCondition.isNonEmpty())
-                        return this.checkDuplicateWithRule(
-                                access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource);
-
-                    return Mono.just(Boolean.FALSE);
-                });
+        // A duplication rule exists for this source. Use the rule-based check which respects
+        // maxStageId and rule conditions. If the rule-based check chain fails (empty), fall back
+        // to within-client check.
+        return this.checkDuplicateWithRule(
+                access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource)
+                .switchIfEmpty(this.checkWithinClientDuplicate(
+                        access, productId, ticketPhone, ticketMail, source, subSource));
     }
 
     private Mono<Boolean> checkWithinClientDuplicate(
@@ -742,8 +765,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
+        // Strip entity prefix (e.g., "Deal.source" -> "source") from condition fields
+        // since the DAO queries use raw column names, not prefixed evaluator names.
+        AbstractCondition dbCondition = stripFieldPrefix(ruleCondition);
+
         return FlatMapUtil.flatMapMono(
-                () -> ruleCondition.removeConditionWithField(Ticket.Fields.stage),
+                () -> dbCondition.removeConditionWithField(Ticket.Fields.stage),
                 conditionWithoutStage ->
                         this.getTickets(conditionWithoutStage, access, productId, ticketPhone, ticketMail),
                 (conditionWithoutStage, tickets) -> {
@@ -752,11 +779,41 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource);
 
                     return this.fetchDuplicateAndLog(
-                            this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail),
+                            this.getTicket(dbCondition, access, productId, ticketPhone, ticketMail),
                             access,
                             source,
                             subSource);
                 });
+    }
+
+    private static AbstractCondition stripFieldPrefix(AbstractCondition condition) {
+        if (condition == null) return null;
+
+        if (condition instanceof FilterCondition fc) {
+            String field = fc.getField();
+            if (field != null && field.contains(".")) {
+                return FilterCondition.of(
+                        field.substring(field.lastIndexOf('.') + 1),
+                        fc.getValue(),
+                        fc.getOperator())
+                        .setToValue(fc.getToValue())
+                        .setMultiValue(fc.getMultiValue())
+                        .setNegate(fc.isNegate());
+            }
+            return fc;
+        }
+
+        if (condition instanceof ComplexCondition cc && cc.getConditions() != null) {
+            List<AbstractCondition> stripped = cc.getConditions().stream()
+                    .map(TicketService::stripFieldPrefix)
+                    .toList();
+            return new ComplexCondition()
+                    .setOperator(cc.getOperator())
+                    .setConditions(stripped)
+                    .setNegate(cc.isNegate());
+        }
+
+        return condition;
     }
 
     private Mono<Boolean> fetchDuplicateAndLog(
@@ -920,6 +977,37 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     null);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
+    }
+
+    public Mono<Integer> bulkReassignTickets(Query query, ULong userId, String comment) {
+
+        if (userId == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "reassign user");
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> {
+                            if (!access.getUserInherit().getSubOrg().contains(userId))
+                                return this.msgService.<Boolean>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            return Mono.just(Boolean.TRUE);
+                        },
+                        (access, valid) -> this.dao.processorAccessCondition(query.getCondition(), access),
+                        (access, valid, pCondition) -> this.dao.readAll(pCondition)
+                                .flatMap(ticket -> this.updateTicketForReassignment(
+                                        access, ticket, userId, comment, false, null)
+                                        .onErrorResume(e -> {
+                                            logger.error("Bulk reassign failed for ticket {}: {}",
+                                                    ticket.getId(), e.getMessage());
+                                            return Mono.empty();
+                                        }))
+                                .count()
+                                .map(Long::intValue))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.bulkReassignTickets"));
     }
 
     public Mono<Ticket> reassignForWalkIn(ProcessorAccess access, Ticket ticket, ULong userId) {

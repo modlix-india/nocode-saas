@@ -960,7 +960,8 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
         if (appCode == null)
             return Mono.just(List.of());
 
-        var condition = this.buildUserFilterServerCondition(userIds, appCode, clientId, clientCode);
+        var condition = this.buildUserFilterServerCondition(userIds, appCode, clientId, clientCode)
+                .and(SecurityUser.SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
 
         var query = super.dslContext
                 .select(
