@@ -355,4 +355,22 @@ public class TestDataFactory {
 		otpEntity.setEmailId("test@test.com");
 		return otpEntity;
 	}
+
+	// --- ClientActivity ---
+
+	public static com.fincity.security.dto.ClientActivity createClientActivity(ULong id, ULong clientId,
+			ULong createdBy, String activityName, String description) {
+		com.fincity.security.dto.ClientActivity activity = new com.fincity.security.dto.ClientActivity();
+		activity.setId(id);
+		activity.setClientId(clientId);
+		activity.setCreatedBy(createdBy);
+		activity.setActivityName(activityName);
+		activity.setDescription(description);
+		return activity;
+	}
+
+	public static com.fincity.security.dto.ClientActivity createClientActivity(ULong id, ULong clientId,
+			ULong createdBy) {
+		return createClientActivity(id, clientId, createdBy, "Test Activity", "Test description");
+	}
 }
