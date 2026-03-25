@@ -799,7 +799,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
                                 "conditions", List.of(
                                         Map.of("field", "source", "value", "Website",
                                                 "operator", "EQUALS", "negate", false),
-                                        Map.of("field", "subSource", "value", "BulkTest",
+                                        Map.of("field", "subSource", "value", "Bulktest",
                                                 "operator", "EQUALS", "negate", false)
                                 )
                         ),
@@ -827,7 +827,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         List<Map<String, Object>> content = res.body().path("content");
         // Find the BulkTest tickets
         long bulkTestCount = content.stream()
-                .filter(t -> "BulkTest".equals(t.get("subSource")))
+                .filter(t -> "Bulktest".equals(t.get("subSource")))
                 .count();
         assertThat(bulkTestCount).as("SM2 should see the 3 bulk-reassigned tickets")
                 .isGreaterThanOrEqualTo(3);

@@ -979,6 +979,37 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
+    public Mono<Integer> bulkReassignTickets(Query query, ULong userId, String comment) {
+
+        if (userId == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "reassign user");
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> {
+                            if (!access.getUserInherit().getSubOrg().contains(userId))
+                                return this.msgService.<Boolean>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            return Mono.just(Boolean.TRUE);
+                        },
+                        (access, valid) -> this.dao.processorAccessCondition(query.getCondition(), access),
+                        (access, valid, pCondition) -> this.dao.readAll(pCondition)
+                                .flatMap(ticket -> this.updateTicketForReassignment(
+                                        access, ticket, userId, comment, false, null)
+                                        .onErrorResume(e -> {
+                                            logger.error("Bulk reassign failed for ticket {}: {}",
+                                                    ticket.getId(), e.getMessage());
+                                            return Mono.empty();
+                                        }))
+                                .count()
+                                .map(Long::intValue))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.bulkReassignTickets"));
+    }
+
     public Mono<Ticket> reassignForWalkIn(ProcessorAccess access, Ticket ticket, ULong userId) {
 
         if (userId == null) return Mono.just(ticket);
