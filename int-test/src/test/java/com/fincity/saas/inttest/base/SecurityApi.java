@@ -85,6 +85,38 @@ public class SecurityApi {
     }
 
     /**
+     * Deactivate a user (requires admin auth).
+     */
+    public Response makeUserInActive(String token, String clientCode, String appCode, Number userId) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .queryParam("userId", userId)
+                .patch(SEC + "/users/makeUserInActive");
+    }
+
+    /**
+     * Reactivate a user (requires admin auth).
+     */
+    public Response makeUserActive(String token, String clientCode, String appCode, Number userId) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .queryParam("userId", userId)
+                .patch(SEC + "/users/makeUserActive");
+    }
+
+    /**
      * Authenticate and return the raw Response (extract accessToken from body).
      */
     public Response authenticate(String clientCode, String appCode, String userName, String password) {

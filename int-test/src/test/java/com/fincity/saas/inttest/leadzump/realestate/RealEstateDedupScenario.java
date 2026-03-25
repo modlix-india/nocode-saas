@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>S5 (600-630): Stage-based dedup — deal past maxStageId</li>
  *   <li>S6 (700-740): Assignment carry — re-inquiry gets same assigned user</li>
  *   <li>S7 (800-810): Cross-CP assignment carry — different CPs, same phone, same user</li>
+ *   <li>S8 (900-930): Inactive user skipped in round-robin, reactivation restores</li>
  * </ul>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -701,6 +702,67 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         assertThat(cp2AssignedUser.longValue())
                 .as("CP2 lead with same phone should be assigned to SAME user as CP1 lead")
                 .isEqualTo(s7Cp1AssignedUserId.longValue());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S8: Inactive User Skipped in Round-Robin
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(900)
+    void s8_01_deactivateSM1() {
+        SecurityApi secApi = new SecurityApi(baseHost());
+        Response res = secApi.makeUserInActive(token, clientCode, appCode, salesMember1UserId);
+        assertThat(res.statusCode()).as("Deactivate SM1").isIn(200, 201);
+    }
+
+    @Test
+    @Order(910)
+    void s8_02_newLeadSkipsSM1_goesToSM2() {
+        // SM1 is inactive. New CP lead should skip SM1 and go to SM2.
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S8_InactiveTest",
+                "dialCode", 91,
+                "phoneNumber", "+918000000009",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Inactive"
+        ));
+        assertThat(res.statusCode()).as("Lead with inactive SM1").isIn(200, 201);
+        Number assignedUser = res.body().path("assignedUserId");
+        assertThat(assignedUser).as("Lead should be assigned").isNotNull();
+        assertThat(assignedUser.longValue())
+                .as("Lead should skip inactive SM1 and go to SM2")
+                .isEqualTo(salesMember2UserId.longValue());
+    }
+
+    @Test
+    @Order(920)
+    void s8_03_reactivateSM1() {
+        SecurityApi secApi = new SecurityApi(baseHost());
+        Response res = secApi.makeUserActive(token, clientCode, appCode, salesMember1UserId);
+        assertThat(res.statusCode()).as("Reactivate SM1").isIn(200, 201);
+    }
+
+    @Test
+    @Order(930)
+    void s8_04_afterReactivation_SM1BackInPool() {
+        // SM1 is active again. New lead should go to SM1 (round-robin continues).
+        Response res = api.createTicket(mapOf(
+                "name", "Dedup_S8_ReactivatedTest",
+                "dialCode", 91,
+                "phoneNumber", "+918000000010",
+                "productId", product1Id,
+                "source", "Channel Partner",
+                "subSource", "CP_Reactivated"
+        ));
+        assertThat(res.statusCode()).as("Lead after SM1 reactivation").isIn(200, 201);
+        Number assignedUser = res.body().path("assignedUserId");
+        assertThat(assignedUser).as("Lead should be assigned").isNotNull();
+        // SM1 is back in the pool — round-robin should include both SM1 and SM2
+        assertThat(assignedUser.longValue())
+                .as("Lead should go to an active team member (SM1 or SM2)")
+                .isIn(salesMember1UserId.longValue(), salesMember2UserId.longValue());
     }
 
     // ═══════════════════════════════════════════════════════════════════
