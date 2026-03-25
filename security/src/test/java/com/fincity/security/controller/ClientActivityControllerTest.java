@@ -2,6 +2,7 @@ package com.fincity.security.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -133,7 +134,7 @@ class ClientActivityControllerTest {
         @DisplayName("returns 403 when service throws FORBIDDEN")
         void readPageFilter_Forbidden_Returns403() {
             when(clientActivityService.readPageFilter(eq(CLIENT_ID), any(Pageable.class),
-                    any(AbstractCondition.class)))
+                    nullable(AbstractCondition.class)))
                     .thenReturn(Mono.error(new GenericException(HttpStatus.FORBIDDEN, "forbidden_permission")));
 
             webTestClient.get()
@@ -148,7 +149,7 @@ class ClientActivityControllerTest {
             Page<ClientActivity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
             when(clientActivityService.readPageFilter(eq(CLIENT_ID), any(Pageable.class),
-                    any(AbstractCondition.class)))
+                    nullable(AbstractCondition.class)))
                     .thenReturn(Mono.just(emptyPage));
             when(clientActivityService.fillCreatedByUser(any()))
                     .thenReturn(Mono.empty());
