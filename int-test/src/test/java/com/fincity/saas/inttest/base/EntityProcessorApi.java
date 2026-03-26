@@ -131,6 +131,31 @@ public class EntityProcessorApi {
                 .get(EP + "/tickets/eager");
     }
 
+    /** Query tickets with explicit sort via POST /tickets/query. */
+    public Response queryTicketsSorted(int page, int size, String sortProperty, String sortDirection) {
+        return req().body(Map.of(
+                "page", page,
+                "size", size,
+                "sort", List.of(Map.of("direction", sortDirection.toUpperCase(), "property", sortProperty))
+        )).post(EP + "/tickets/query");
+    }
+
+    /** Query tickets eager with explicit sort via POST /tickets/eager/query. */
+    public Response queryTicketsEagerSorted(int page, int size, String sortProperty, String sortDirection) {
+        return req().body(Map.of(
+                "page", page,
+                "size", size,
+                "sort", List.of(Map.of("direction", sortDirection.toUpperCase(), "property", sortProperty))
+        )).post(EP + "/tickets/eager/query");
+    }
+
+    /** List tickets with sort via GET query param. */
+    public Response listTicketsSorted(int page, int size, String sortProperty, String sortDirection) {
+        return req().queryParam("page", page).queryParam("size", size)
+                .queryParam("sort", sortProperty + "," + sortDirection.toLowerCase())
+                .get(EP + "/tickets");
+    }
+
     public Response queryUserTickets(Map<String, Object> body) {
         return req().body(body).post(EP + "/tickets/users/query");
     }

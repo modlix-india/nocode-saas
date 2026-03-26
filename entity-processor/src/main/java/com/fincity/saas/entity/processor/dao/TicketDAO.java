@@ -72,8 +72,10 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @Override
     public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
         if (LATEST_TASK_DUE_DATE.equals(fieldName)) {
-            // Subquery: SELECT MIN(due_date) FROM tasks WHERE ticket_id = t.id AND is_completed = false AND due_date >= NOW()
-            // Falls back to MAX(due_date) if no future tasks
+            // Correlated subquery for sorting/filtering by nearest task due date.
+            // MIN(future incomplete due dates), falling back to MAX(any incomplete due date).
+            // No .as() alias — JOOQ renders aliased fields as just the alias name in ORDER BY,
+            // which fails because this expression is not in the SELECT clause.
             return DSL.coalesce(
                     DSL.field(DSL.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
                             .from(ENTITY_PROCESSOR_TASKS)
@@ -84,7 +86,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                             .from(ENTITY_PROCESSOR_TASKS)
                             .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
                             .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false))))
-            ).as(LATEST_TASK_DUE_DATE);
+            );
         }
         return super.getField(fieldName, selectJoinStep);
     }
