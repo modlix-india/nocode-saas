@@ -289,6 +289,11 @@ public class ProfileService
     }
 
     @Override
+    protected ULong resolveClientId(Profile entity) {
+        return entity.getClientId();
+    }
+
+    @Override
     protected Mono<Profile> updatableEntity(Profile entity) {
         return Mono.error(NotImplementedException::new);
     }

@@ -140,6 +140,14 @@ public class ClientActivityService
                 .then();
     }
 
+    public void createLog(ULong clientId, String activityName, String description) {
+        ClientActivity activity = new ClientActivity();
+        activity.setClientId(clientId);
+        activity.setActivityName(activityName);
+        activity.setDescription(description);
+        super.create(activity).subscribe();
+    }
+
     @Override
     public Mono<Integer> delete(ULong id) {
         return this.securityMessageResourceService.throwMessage(

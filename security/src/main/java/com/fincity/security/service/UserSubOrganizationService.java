@@ -133,6 +133,11 @@ public class UserSubOrganizationService
         return SecuritySoxLogObjectName.USER;
     }
 
+    @Override
+    protected ULong resolveClientId(User entity) {
+        return entity.getClientId();
+    }
+
     private Mono<Integer> evictTokens(ULong id) {
         return this.tokenService.evictTokensOfUser(id);
     }
