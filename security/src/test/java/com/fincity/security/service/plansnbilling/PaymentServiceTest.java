@@ -59,6 +59,9 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private IPaymentGatewayIntegration paymentGatewayIntegration;
 
+	@Mock
+	private com.fincity.security.service.ClientActivityService clientActivityService;
+
 	private PaymentService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -70,7 +73,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new PaymentService(dao, paymentGatewayDAO, invoiceDAO, clientService,
-				messageResourceService, List.of(paymentGatewayIntegration));
+				messageResourceService, List.of(paymentGatewayIntegration), clientActivityService);
 
 		// PaymentService constructor already sets this.dao = dao, so no reflection
 		// needed for the DAO. But the superclass field is set directly, verify:
@@ -148,6 +151,8 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 						assertEquals(INVOICE_ID, result.getInvoiceId());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Payment Create"), anyString());
 		}
 
 		@Test
@@ -222,6 +227,8 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 						assertEquals(SecurityPaymentPaymentStatus.PAID, result.getPaymentStatus());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Payment Update"), anyString());
 		}
 
 		@Test
@@ -326,6 +333,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(SecurityPaymentPaymentStatus.PAID, result.getPaymentStatus()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Payment Update"), anyString());
 			// Verify invoice status was also updated
 			verify(invoiceDAO, times(2)).readById(INVOICE_ID);
 		}

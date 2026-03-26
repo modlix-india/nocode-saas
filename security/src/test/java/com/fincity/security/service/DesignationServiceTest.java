@@ -58,6 +58,9 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ObjectMapper objectMapper;
 
+	@Mock
+	private ClientActivityService clientActivityService;
+
 	@InjectMocks
 	private DesignationService service;
 
@@ -86,6 +89,11 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 		}
 
 		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(Designation.class));
+
+		// Inject clientActivityService via reflection
+		var activityField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "clientActivityService");
+		activityField.setAccessible(true);
+		org.springframework.util.ReflectionUtils.setField(activityField, service, clientActivityService);
 
 		setupMessageResourceService(securityMessageResourceService);
 		setupCacheService(cacheService);
@@ -121,6 +129,8 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 						assertEquals("CTO", result.getName());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Designation Create"), anyString());
 		}
 
 		@Test
@@ -143,6 +153,7 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Manager", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Designation Create"), anyString());
 			verifyNoInteractions(clientService);
 		}
 
@@ -169,6 +180,7 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Engineer", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(targetClientId), eq("Designation Create"), anyString());
 			verify(clientService).isUserClientManageClient(ca, targetClientId);
 		}
 
@@ -280,6 +292,7 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Designation Update"), anyString());
 			verify(cacheService, atLeast(1)).evict(eq("designation"), eq(DESIGNATION_ID));
 		}
 	}
@@ -308,6 +321,7 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Designation Update"), anyString());
 			verify(cacheService, atLeast(1)).evict(eq("designation"), eq(DESIGNATION_ID));
 		}
 	}
@@ -323,11 +337,15 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 		@Test
 		void delete_EvictsCache() {
 
+			Designation existing = TestDataFactory.createDesignation(DESIGNATION_ID, CLIENT_ID, "ToDelete");
+			when(dao.readById(DESIGNATION_ID)).thenReturn(Mono.just(existing));
 			when(dao.delete(DESIGNATION_ID)).thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.delete(DESIGNATION_ID))
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Designation Delete"), anyString());
 		}
 	}
 

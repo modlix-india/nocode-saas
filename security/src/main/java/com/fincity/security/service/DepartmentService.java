@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -43,6 +45,10 @@ public class DepartmentService
     private final ClientService clientService;
     private final CacheService cacheService;
 
+    @Autowired
+    @Lazy
+    private ClientActivityService clientActivityService;
+
     private static final String CACHE_NAME_DEPARTMENT = "department";
 
     public DepartmentService(SecurityMessageResourceService securityMessageResourceService,
@@ -72,7 +78,11 @@ public class DepartmentService
                 },
                 (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
 
-                (ca, managed, sameClient) -> super.create(entity))
+                (ca, managed, sameClient) -> super.create(entity).map(created -> {
+                    clientActivityService.createLog(created.getClientId(),
+                            "Department Create", "Department created");
+                    return created;
+                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -107,9 +117,13 @@ public class DepartmentService
                 managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
                 (managed, canBeUpdated) -> super.update(entity),
-                (managed, canBeUpdated, updatedDepartment) -> this.cacheService
-                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
-                        .thenReturn(updatedDepartment))
+                (managed, canBeUpdated, updatedDepartment) -> {
+                    clientActivityService.createLog(updatedDepartment.getClientId(),
+                            "Department Update", "Department updated");
+                    return this.cacheService
+                            .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                            .thenReturn(updatedDepartment);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -124,9 +138,13 @@ public class DepartmentService
 
                 canBeUpdated -> super.update(key, fields),
 
-                (canBeUpdated, updatedDepartment) -> this.cacheService
-                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
-                        .thenReturn(updatedDepartment))
+                (canBeUpdated, updatedDepartment) -> {
+                    clientActivityService.createLog(updatedDepartment.getClientId(),
+                            "Department Update", "Department updated");
+                    return this.cacheService
+                            .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                            .thenReturn(updatedDepartment);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
@@ -146,7 +164,11 @@ public class DepartmentService
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
     @Override
     public Mono<Integer> delete(ULong id) {
-        return super.delete(id);
+        return this.read(id).flatMap(entity -> super.delete(id).map(count -> {
+            clientActivityService.createLog(entity.getClientId(),
+                    "Department Delete", "Department deleted");
+            return count;
+        }));
     }
 
     public Mono<Map<ULong, Tuple2<AppRegistrationDepartment, Department>>> createForRegistration(

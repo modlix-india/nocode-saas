@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -56,6 +58,10 @@ public class DesignationService
     private final DepartmentService departmentService;
     private final CacheService cacheService;
 
+    @Autowired
+    @Lazy
+    private ClientActivityService clientActivityService;
+
     public DesignationService(SecurityMessageResourceService securityMessageResourceService,
             ClientService clientService,
             DepartmentService departmentService,
@@ -86,7 +92,11 @@ public class DesignationService
                 (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
                         entity.getNextDesignationId(), entity.getDepartmentId()),
 
-                (ca, managed, sameClient) -> super.create(entity))
+                (ca, managed, sameClient) -> super.create(entity).map(created -> {
+                    clientActivityService.createLog(created.getClientId(),
+                            "Designation Create", "Designation created");
+                    return created;
+                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DESIGNATION, entity)));
@@ -124,11 +134,13 @@ public class DesignationService
                 managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
                 (managed, canBeUpdated) -> super.update(entity),
-                (managed, canBeUpdated, updatedDesignation) -> this.cacheService
-                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
-                        .thenReturn(updatedDesignation)
-
-        )
+                (managed, canBeUpdated, updatedDesignation) -> {
+                    clientActivityService.createLog(updatedDesignation.getClientId(),
+                            "Designation Update", "Designation updated");
+                    return this.cacheService
+                            .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                            .thenReturn(updatedDesignation);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, entity.getId())));
@@ -141,9 +153,13 @@ public class DesignationService
                 () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
 
                 canBeUpdated -> super.update(key, fields),
-                (canBeUpdated, updatedDesignation) -> this.cacheService
-                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
-                        .thenReturn(updatedDesignation))
+                (canBeUpdated, updatedDesignation) -> {
+                    clientActivityService.createLog(updatedDesignation.getClientId(),
+                            "Designation Update", "Designation updated");
+                    return this.cacheService
+                            .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                            .thenReturn(updatedDesignation);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, key)));
@@ -165,7 +181,11 @@ public class DesignationService
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
     @Override
     public Mono<Integer> delete(ULong id) {
-        return super.delete(id);
+        return this.read(id).flatMap(entity -> super.delete(id).map(count -> {
+            clientActivityService.createLog(entity.getClientId(),
+                    "Designation Delete", "Designation deleted");
+            return count;
+        }));
     }
 
     public Mono<Map<ULong, Tuple2<AppRegistrationDesignation, Designation>>> createForRegistration(
