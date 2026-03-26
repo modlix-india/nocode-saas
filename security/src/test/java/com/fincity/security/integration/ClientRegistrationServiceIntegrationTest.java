@@ -62,6 +62,7 @@ class ClientRegistrationServiceIntegrationTest extends AbstractIntegrationTest {
 						.then())
 				.then(databaseClient.sql("DELETE FROM security_app WHERE APP_CODE LIKE 'crtest%'").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
 				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
 				.block();

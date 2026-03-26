@@ -38,6 +38,7 @@ class TokenDAOIntegrationTest extends AbstractIntegrationTest {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_user_token WHERE USER_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
 				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
 				.block();
