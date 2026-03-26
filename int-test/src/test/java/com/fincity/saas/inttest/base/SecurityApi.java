@@ -117,6 +117,21 @@ public class SecurityApi {
     }
 
     /**
+     * Soft-delete a user (requires admin auth with User_DELETE authority).
+     */
+    public Response deleteUser(String token, String clientCode, String appCode, Number userId) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .delete(SEC + "/users/" + userId);
+    }
+
+    /**
      * Authenticate and return the raw Response (extract accessToken from body).
      */
     public Response authenticate(String clientCode, String appCode, String userName, String password) {

@@ -23,6 +23,7 @@ import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentPaymentStatus;
 import com.fincity.security.jooq.tables.records.SecurityPaymentRecord;
+import com.fincity.security.service.ClientActivityService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.plansnbilling.paymentgateway.IPaymentGatewayIntegration;
@@ -39,16 +40,19 @@ public class PaymentService
     private final ClientService clientService;
     private final SecurityMessageResourceService messageResourceService;
     private final List<IPaymentGatewayIntegration> paymentGatewayIntegrations;
+    private final ClientActivityService clientActivityService;
 
     public PaymentService(PaymentDAO dao, PaymentGatewayDAO paymentGatewayDAO, InvoiceDAO invoiceDAO,
             ClientService clientService, SecurityMessageResourceService messageResourceService,
-            List<IPaymentGatewayIntegration> paymentGatewayIntegrations) {
+            List<IPaymentGatewayIntegration> paymentGatewayIntegrations,
+            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService) {
         this.dao = dao;
         this.paymentGatewayDAO = paymentGatewayDAO;
         this.invoiceDAO = invoiceDAO;
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
         this.paymentGatewayIntegrations = paymentGatewayIntegrations;
+        this.clientActivityService = clientActivityService;
     }
 
     /**
@@ -83,7 +87,9 @@ public class PaymentService
 
                 (ca, invoice, paymentGateway, integration, payment) -> {
                     payment.setInvoiceId(invoiceId);
-                    return this.dao.create(payment);
+                    return this.dao.create(payment).doOnNext(created ->
+                            clientActivityService.createLog(invoice.getClientId(),
+                                    "Payment Create", "Payment created"));
                 })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -133,7 +139,9 @@ public class PaymentService
                                 existing.setPaymentStatus(payment.getPaymentStatus());
                                 existing.setPaymentResponse(payment.getPaymentResponse());
                                 existing.setPaymentDate(LocalDateTime.now());
-                                return this.dao.update(existing);
+                                return this.dao.update(existing).doOnNext(updated ->
+                                        clientActivityService.createLog(clientId,
+                                                "Payment Update", "Payment updated"));
                             })
                             .switchIfEmpty(this.messageResourceService.throwMessage(
                                     msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -187,7 +195,9 @@ public class PaymentService
                 (ca, payment, invoice) -> {
                     payment.setPaymentStatus(status);
                     payment.setPaymentDate(LocalDateTime.now());
-                    return this.dao.update(payment);
+                    return this.dao.update(payment).doOnNext(updated ->
+                            clientActivityService.createLog(invoice.getClientId(),
+                                    "Payment Update", "Payment updated"));
                 },
 
                 (ca, payment, invoice, updated) -> {

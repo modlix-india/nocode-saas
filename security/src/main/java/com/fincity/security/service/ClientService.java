@@ -119,6 +119,11 @@ public class ClientService
         return SecuritySoxLogObjectName.CLIENT;
     }
 
+    @Override
+    protected ULong resolveClientId(Client entity) {
+        return entity.getId();
+    }
+
     public Mono<Client> getClientBy(ServerHttpRequest request) {
 
         HttpHeaders header = request.getHeaders();

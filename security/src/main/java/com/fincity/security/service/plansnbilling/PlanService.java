@@ -31,6 +31,7 @@ import com.fincity.security.dto.plansnbilling.PlanLimit;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
 import com.fincity.security.model.ClientPlanRequest;
 import com.fincity.security.service.AppService;
+import com.fincity.security.service.ClientActivityService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
@@ -57,9 +58,12 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     private final CacheService cacheService;
 
+    private final ClientActivityService clientActivityService;
+
     public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, InvoiceService invoiceService,
             ClientService clientService,
-            AppService appService, SecurityMessageResourceService messageResourceService, CacheService cacheService) {
+            AppService appService, SecurityMessageResourceService messageResourceService, CacheService cacheService,
+            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService) {
         this.planCycleDAO = planCycleDAO;
         this.planLimitDAO = planLimitDAO;
         this.invoiceService = invoiceService;
@@ -67,6 +71,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
         this.appService = appService;
         this.messageResourceService = messageResourceService;
         this.cacheService = cacheService;
+        this.clientActivityService = clientActivityService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Plan_CREATE')")
@@ -110,13 +115,18 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 (ca, managed, hasWriteAccess, fallbackPlanAccess, created, cyclesAdded) -> {
 
-                    if (entity.getLimits() == null || entity.getLimits().isEmpty())
+                    if (entity.getLimits() == null || entity.getLimits().isEmpty()) {
+                        clientActivityService.createLog(created.getClientId(),
+                                "Plan Create", "Plan created");
                         return Mono.just(created);
+                    }
 
                     return Flux.fromIterable(entity.getLimits())
                             .map(limit -> limit.setPlanId(created.getId()))
                             .flatMap(this.planLimitDAO::create).collectList()
-                            .map(created::setLimits);
+                            .map(created::setLimits)
+                            .doOnNext(p -> clientActivityService.createLog(p.getClientId(),
+                                    "Plan Create", "Plan created"));
                 })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -177,12 +187,16 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 (ca, hasWriteAccess, fallbackPlanAccess, updated, cyclesAdded) -> {
 
+                    Mono<Plan> result;
                     if (entity.getLimits() == null || entity.getLimits().isEmpty())
-                        return this.planLimitDAO.deleteLimits(cyclesAdded.getId())
+                        result = this.planLimitDAO.deleteLimits(cyclesAdded.getId())
                                 .map(removed -> cyclesAdded.setLimits(null));
+                    else
+                        result = this.planLimitDAO.updateLimits(cyclesAdded.getId(), entity.getLimits())
+                                .map(cyclesAdded::setLimits);
 
-                    return this.planLimitDAO.updateLimits(cyclesAdded.getId(), entity.getLimits())
-                            .map(cyclesAdded::setLimits);
+                    return result.doOnNext(p -> clientActivityService.createLog(p.getClientId(),
+                            "Plan Update", "Plan updated"));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.update"))
                 .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_REGISTRATION_PLANS))
@@ -235,7 +249,11 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                         .isUserClientManageClient(ca, existing.getClientId())
                         .filter(BooleanUtil::safeValueOf),
 
-                (ca, existing, hasAccess) -> this.dao.delete(id),
+                (ca, existing, hasAccess) -> this.dao.delete(id).map(deleted -> {
+                    clientActivityService.createLog(existing.getClientId(),
+                            "Plan Delete", "Plan deleted");
+                    return deleted;
+                }),
 
                 (ca, existing, hasAccess, deleted) -> Mono
                         .zip(this.planCycleDAO.deleteCycles(id), this.planLimitDAO.deleteLimits(id))

@@ -70,6 +70,9 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private CacheService cacheService;
 
+	@Mock
+	private com.fincity.security.service.ClientActivityService clientActivityService;
+
 	private PlanService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -80,7 +83,7 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new PlanService(planCycleDAO, planLimitDAO, invoiceService, clientService, appService,
-				messageResourceService, cacheService);
+				messageResourceService, cacheService, clientActivityService);
 
 		// Inject the mocked DAO via reflection
 		// PlanService -> AbstractJOOQUpdatableDataService -> AbstractJOOQDataService
@@ -162,6 +165,8 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 						assertFalse(result.isDefaultPlan());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Plan Create"), anyString());
 		}
 
 		@Test
@@ -182,6 +187,7 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(PLAN_ID, result.getId()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("Plan Create"), anyString());
 			verify(clientService).isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID));
 		}
 	}
@@ -320,6 +326,8 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.update(entity))
 					.assertNext(result -> assertEquals("Updated Plan", result.getName()))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Plan Update"), anyString());
 		}
 
 		@Test
@@ -360,6 +368,7 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 					})
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Plan Update"), anyString());
 			verify(planCycleDAO).updateCycles(eq(PLAN_ID), anyList());
 			verify(planLimitDAO).updateLimits(eq(PLAN_ID), anyList());
 		}
@@ -414,6 +423,7 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Plan Delete"), anyString());
 			verify(planCycleDAO).deleteCycles(PLAN_ID);
 			verify(planLimitDAO).deleteLimits(PLAN_ID);
 		}
@@ -438,6 +448,8 @@ class PlanServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.delete(PLAN_ID))
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Plan Delete"), anyString());
 		}
 
 		@Test
