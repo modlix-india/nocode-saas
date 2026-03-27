@@ -7,6 +7,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.difference.IDifferentiable;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
@@ -36,6 +37,20 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 
 	private KIRunFxDefinition kiRunFxDefinition;
 	private RedirectionDefinition redirectionDefinition;
+
+	public PathDefinition(PathDefinition pathDefinition) {
+		this.uriType = pathDefinition.uriType;
+		this.headers = CloneUtil.cloneMapList(pathDefinition.headers);
+		this.whitelist = CloneUtil.cloneMapList(pathDefinition.whitelist);
+		this.blacklist = CloneUtil.cloneMapList(pathDefinition.blacklist);
+		this.referrer = CloneUtil.cloneMapList(pathDefinition.referrer);
+		this.kiRunFxDefinition = pathDefinition.kiRunFxDefinition != null
+				? new KIRunFxDefinition(pathDefinition.kiRunFxDefinition)
+				: null;
+		this.redirectionDefinition = pathDefinition.redirectionDefinition != null
+				? new RedirectionDefinition(pathDefinition.redirectionDefinition)
+				: null;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
