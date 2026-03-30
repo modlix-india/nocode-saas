@@ -193,8 +193,7 @@ public class UserSubOrganizationService
         if (oldManagerId == null && newManagerId == null)
             return Mono.just(Boolean.TRUE);
 
-        return Flux.fromIterable(List.of(oldManagerId, newManagerId))
-                .filter(Objects::nonNull)
+        return Flux.fromIterable(Stream.of(oldManagerId, newManagerId).filter(Objects::nonNull).toList())
                 .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
                 .then(Mono.just(Boolean.TRUE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictManagerCaches"));
@@ -205,8 +204,7 @@ public class UserSubOrganizationService
         if (oldReportingTo == null && newReportingTo == null)
             return Mono.just(updatedUser);
 
-        return Flux.fromIterable(List.of(oldReportingTo, newReportingTo))
-                .filter(Objects::nonNull)
+        return Flux.fromIterable(Stream.of(oldReportingTo, newReportingTo).filter(Objects::nonNull).toList())
                 .flatMap(managerId -> this.cacheService.evict(getCacheName(),
                         getCacheKey(updatedUser.getClientId(), managerId)))
                 .then(Mono.just(updatedUser))
