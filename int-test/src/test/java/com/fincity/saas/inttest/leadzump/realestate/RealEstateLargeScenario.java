@@ -492,7 +492,7 @@ public class RealEstateLargeScenario extends BaseIntegrationTest {
     @Order(295)
     void s2_00_registerBrokerClient() {
         // PartnerRequest requires clientId pointing to a client with levelType "CUSTOMER".
-        // Register a sub-client under the main client to act as the broker.
+        // Register a sub-client under the main org client (CLIENT level) so the broker gets CUSTOMER level.
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String brokerEmail = "re-broker-" + uid + "@inttest.local";
         SecurityApi secApi = new SecurityApi(baseHost());

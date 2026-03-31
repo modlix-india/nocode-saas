@@ -2,6 +2,7 @@ package com.fincity.saas.inttest.leadzump.realestate;
 
 import com.fincity.saas.inttest.base.BaseIntegrationTest;
 import com.fincity.saas.inttest.base.EntityProcessorApi;
+import com.fincity.saas.inttest.base.ProfileHelper;
 import com.fincity.saas.inttest.base.SecurityApi;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
@@ -44,6 +45,10 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
 
     // Shared UID for unique emails per run
     private static String uid;
+
+    // Profile IDs (resolved dynamically)
+    private static Number salesManagerProfileId, salesMemberProfileId;
+    private static Number insideSalesManagerProfileId, insideSalesMemberProfileId;
 
     // Team members — tokens and user IDs
     private static String salesManagerToken, salesMember1Token, salesMember2Token;
@@ -99,6 +104,13 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
 
         userId = regRes.body().path("authentication.user.id");
         api = new EntityProcessorApi(givenAuth(token, clientCode, appCode));
+
+        // Resolve profile IDs dynamically
+        ProfileHelper profiles = ProfileHelper.load(secApi, token, parentClientCode, appCode);
+        salesManagerProfileId = profiles.getByName("Sales Manager");
+        salesMemberProfileId = profiles.getByName("Sales Member");
+        insideSalesManagerProfileId = profiles.getByName("Inside Sales Manager");
+        insideSalesMemberProfileId = profiles.getByName("Inside Sales Member");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -166,14 +178,14 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "emailId", "salesmgr-" + uid + "@inttest.local",
                 "firstName", "SalesManager",
                 "lastName", "OrgTest",
-                "profileId", 123,
+                "profileId", salesManagerProfileId,
                 "reportingTo", userId
         ));
         assertThat(invRes.statusCode()).as("Invite SalesManager").isIn(200, 201);
         String inviteCode = invRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code for SalesManager").isNotNull();
 
-        Response accRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response accRes = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "salesmgr-" + uid + "@inttest.local",
                 "firstName", "SalesManager",
                 "lastName", "OrgTest",
@@ -197,14 +209,14 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "emailId", "salesmem1-" + uid + "@inttest.local",
                 "firstName", "SalesMember1",
                 "lastName", "OrgTest",
-                "profileId", 122,
+                "profileId", salesMemberProfileId,
                 "reportingTo", salesManagerUserId
         ));
         assertThat(invRes.statusCode()).as("Invite SalesMember1").isIn(200, 201);
         String inviteCode = invRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code for SalesMember1").isNotNull();
 
-        Response accRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response accRes = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "salesmem1-" + uid + "@inttest.local",
                 "firstName", "SalesMember1",
                 "lastName", "OrgTest",
@@ -228,14 +240,14 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "emailId", "salesmem2-" + uid + "@inttest.local",
                 "firstName", "SalesMember2",
                 "lastName", "OrgTest",
-                "profileId", 122,
+                "profileId", salesMemberProfileId,
                 "reportingTo", salesManagerUserId
         ));
         assertThat(invRes.statusCode()).as("Invite SalesMember2").isIn(200, 201);
         String inviteCode = invRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code for SalesMember2").isNotNull();
 
-        Response accRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response accRes = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "salesmem2-" + uid + "@inttest.local",
                 "firstName", "SalesMember2",
                 "lastName", "OrgTest",
@@ -259,14 +271,14 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "emailId", "insidesmgr-" + uid + "@inttest.local",
                 "firstName", "InsideSalesManager",
                 "lastName", "OrgTest",
-                "profileId", 119,
+                "profileId", insideSalesManagerProfileId,
                 "reportingTo", userId
         ));
         assertThat(invRes.statusCode()).as("Invite InsideSalesManager").isIn(200, 201);
         String inviteCode = invRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code for InsideSalesManager").isNotNull();
 
-        Response accRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response accRes = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "insidesmgr-" + uid + "@inttest.local",
                 "firstName", "InsideSalesManager",
                 "lastName", "OrgTest",
@@ -290,14 +302,14 @@ public class RealEstateOrgScenario extends BaseIntegrationTest {
                 "emailId", "insidesm-" + uid + "@inttest.local",
                 "firstName", "InsideSalesMember",
                 "lastName", "OrgTest",
-                "profileId", 120,
+                "profileId", insideSalesMemberProfileId,
                 "reportingTo", insideSalesManagerUserId
         ));
         assertThat(invRes.statusCode()).as("Invite InsideSalesMember").isIn(200, 201);
         String inviteCode = invRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code for InsideSalesMember").isNotNull();
 
-        Response accRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response accRes = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "insidesm-" + uid + "@inttest.local",
                 "firstName", "InsideSalesMember",
                 "lastName", "OrgTest",

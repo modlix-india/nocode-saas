@@ -1,6 +1,7 @@
 package com.fincity.saas.inttest.security;
 
 import com.fincity.saas.inttest.base.BaseIntegrationTest;
+import com.fincity.saas.inttest.base.ProfileHelper;
 import com.fincity.saas.inttest.base.SecurityApi;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
@@ -86,24 +87,25 @@ public class StaleTokenScenario extends BaseIntegrationTest {
             clientCode = authRes.body().path("user.clientCode");
         }
 
+        // ── Look up profiles dynamically ──
+        ProfileHelper profiles = ProfileHelper.load(secApi, adminToken, parentClientCode, appCode);
+        Number salesMemberProfileId = profiles.getByName("Sales Member");
+
         // ── Invite target user ──
         targetEmail = "stale-target-" + uid + "@inttest.local";
-
-        Number adminUserId = regRes.body().path("authentication.user.id");
 
         Response inviteRes = secApi.inviteUser(adminToken, clientCode, appCode, mapOf(
                 "emailId", targetEmail,
                 "firstName", "StaleTarget",
                 "lastName", "IntTest",
-                "profileId", 122,
-                "reportingTo", adminUserId
+                "profileId", salesMemberProfileId
         ));
         assertThat(inviteRes.statusCode()).as("Invite target user").isIn(200, 201);
         String inviteCode = inviteRes.body().path("userRequest.inviteCode");
         assertThat(inviteCode).as("Invite code").isNotNull();
 
         // Accept invite
-        Response acceptRes = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response acceptRes = secApi.acceptInvite(parentClientCode, appCode, mapOf(
                 "emailId", targetEmail,
                 "firstName", "StaleTarget",
                 "lastName", "IntTest",
@@ -113,11 +115,16 @@ public class StaleTokenScenario extends BaseIntegrationTest {
         ));
         assertThat(acceptRes.statusCode()).as("Accept invite").isIn(200, 201);
 
-        // Authenticate target user to get their token
-        Response targetAuth = secApi.authenticate(clientCode, appCode, targetEmail, TARGET_PASSWORD);
-        assertThat(targetAuth.statusCode()).as("Target: authenticate").isEqualTo(200);
-        targetToken = targetAuth.body().path("accessToken");
-        targetUserId = targetAuth.body().path("user.id");
+        // Extract target user's token from the acceptInvite response
+        targetToken = acceptRes.body().path("authentication.accessToken");
+        targetUserId = acceptRes.body().path("authentication.user.id");
+        if (targetToken == null || targetToken.isBlank()) {
+            // Fallback: authenticate via parent client context
+            Response targetAuth = secApi.authenticate(parentClientCode, appCode, targetEmail, TARGET_PASSWORD);
+            assertThat(targetAuth.statusCode()).as("Target: authenticate").isEqualTo(200);
+            targetToken = targetAuth.body().path("accessToken");
+            targetUserId = targetAuth.body().path("user.id");
+        }
         assertThat(targetToken).as("Target: accessToken").isNotNull().isNotEmpty();
         assertThat(targetUserId).as("Target: userId").isNotNull();
     }

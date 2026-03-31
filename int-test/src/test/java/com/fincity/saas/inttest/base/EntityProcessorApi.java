@@ -352,6 +352,42 @@ public class EntityProcessorApi {
         return req().body(body).post(EP + "/analytics/tickets/products/stages/clients/me");
     }
 
+    // ── Analytics (Status-based) ─────────────────────────────────────────
+
+    public Response analyticsStatusCounts_AssignedUsers(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/status-counts/assigned-users");
+    }
+
+    public Response analyticsStatusCounts_Products(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/products/statuses");
+    }
+
+    public Response analyticsStatusCounts_CreatedBys(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/status-counts/created-bys");
+    }
+
+    public Response analyticsStatusCounts_Clients(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/status-counts/clients");
+    }
+
+    // ── Analytics (Stage-based — additional) ──────────────────────────────
+
+    public Response analyticsStageCounts_CreatedBys(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/stage-counts/created-bys");
+    }
+
+    public Response analyticsStageCounts_Clients(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/stage-counts/clients");
+    }
+
+    public Response analyticsStageCounts_CreatedBysUniqueClientId(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/stage-counts/created-bys/unique/client-id");
+    }
+
+    public Response analyticsProductsClients(Map<String, Object> body) {
+        return req().body(body).post(EP + "/analytics/tickets/stage-counts/products/clients");
+    }
+
     // ── Open API (no auth) ─────────────────────────────────────────────
 
     public static Response submitWebsiteLead(String baseHost, String productCode, Map<String, Object> body) {

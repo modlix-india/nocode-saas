@@ -71,6 +71,13 @@
                         <include>**/*Test.java</include>
                         <include>**/*Scenario.java</include>
                     </includes>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.execution.parallel.enabled = false
+                        </configurationParameters>
+                    </properties>
                     <systemPropertyVariables>
                         <BASE_URL>${env.BASE_URL}</BASE_URL>
                     </systemPropertyVariables>

@@ -82,6 +82,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 : this.dao::getTicketPerCreatedByStageCount,
                         sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
                         sFilter -> sFilter.getFieldData().getStages()))
+                .switchIfEmpty(Mono.just(List.of()))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME,
                         "TicketBucketService.getTicketPerCreatedByStageCount[ProcessorAccess, TicketBucketFilter]"));
@@ -275,6 +276,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 : this.dao::getTicketPerClientIdStageCount,
                         sFilter -> sFilter.getBaseFieldData().getClients(),
                         sFilter -> sFilter.getFieldData().getStages()))
+                .switchIfEmpty(Mono.just(List.of()))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME,
                         "TicketBucketService.getTicketPerClientIdStageCount[ProcessorAccess, TicketBucketFilter]"));
@@ -556,6 +558,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
         return this.productService
                 .getAllProducts(access, filter.getProductIds())
+                .defaultIfEmpty(List.of())
                 .flatMap(products -> {
                     if (products.isEmpty()) return Mono.just(filter);
 
@@ -609,6 +612,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
         return this.productService
                 .getAllProducts(access, null)
+                .defaultIfEmpty(List.of())
                 .map(allProducts -> {
                     List<Product> templateProducts = allProducts.stream()
                             .filter(p -> allTemplateIds.contains(p.getProductTemplateId()))
@@ -626,17 +630,18 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
     private Mono<TicketBucketFilter> resolveProducts(ProcessorAccess access, TicketBucketFilter filter) {
 
-        return FlatMapUtil.flatMapMono(
-                () -> this.productService.getAllProducts(
+        return this.productService
+                .getAllProducts(
                         access,
                         filter.getProductIds() == null || filter.getProductIds().isEmpty()
                                 ? null
-                                : filter.getProductIds()),
-                products -> Mono.just(filter.filterProductIds(
+                                : filter.getProductIds())
+                .defaultIfEmpty(List.of())
+                .map(products -> filter.filterProductIds(
                                 products.stream().map(BaseUpdatableDto::getId).toList())
                         .setProducts(products.stream()
                                 .map(product -> IdAndValue.of(product.getId(), product.getName()))
-                                .toList())));
+                                .toList()));
     }
 
     private Mono<TicketBucketFilter> resolveStages(ProcessorAccess access, TicketBucketFilter filter) {

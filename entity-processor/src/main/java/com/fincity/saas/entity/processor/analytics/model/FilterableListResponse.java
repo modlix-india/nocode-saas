@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.product.Product;
@@ -14,6 +15,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public class FilterableListResponse<T> implements Serializable {
 
     @Serial
