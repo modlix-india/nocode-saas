@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -29,6 +30,9 @@ public class FilterablePageResponse<T> implements Page<T>, Serializable {
     private List<Product> products;
     private List<User> assignedUsers;
     private List<User> clientManagers;
+    private List<ProductTemplate> productTemplates;
+    private List<ProductTemplate> selectedProductTemplates;
+    private List<StageHierarchy> stageHierarchies;
 
     @JsonIgnore
     private transient Page<T> page;
@@ -46,6 +50,24 @@ public class FilterablePageResponse<T> implements Page<T>, Serializable {
         response.products = products;
         response.assignedUsers = assignedUsers;
         response.clientManagers = clientManagers;
+        return response;
+    }
+
+    public static <T> FilterablePageResponse<T> of(
+            Page<T> page,
+            List<Client> clients,
+            List<Product> products,
+            List<User> assignedUsers,
+            List<User> clientManagers,
+            List<ProductTemplate> productTemplates,
+            List<ProductTemplate> selectedProductTemplates,
+            List<StageHierarchy> stageHierarchies) {
+
+        FilterablePageResponse<T> response =
+                of(page, clients, products, assignedUsers, clientManagers);
+        response.productTemplates = productTemplates;
+        response.selectedProductTemplates = selectedProductTemplates;
+        response.stageHierarchies = stageHierarchies;
         return response;
     }
 

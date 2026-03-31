@@ -31,6 +31,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
     private List<ULong> stageIds;
     private List<ULong> statusIds;
     private List<ULong> productIds;
+    private List<ULong> productTemplateIds;
     private boolean includeAll;
     private boolean includeNone;
 
@@ -62,6 +63,11 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
         return this;
     }
 
+    public TicketBucketFilter filterProductTemplateIds(List<ULong> productTemplateIds) {
+        this.productTemplateIds = CollectionUtil.intersectLists(this.productTemplateIds, productTemplateIds);
+        return this;
+    }
+
     public TicketBucketFilter setStages(List<IdAndValue<ULong, String>> stages) {
         this.fieldData.setStages(stages);
         return this;
@@ -74,6 +80,16 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
 
     public TicketBucketFilter setProducts(List<IdAndValue<ULong, String>> products) {
         this.fieldData.setProducts(products);
+        return this;
+    }
+
+    public TicketBucketFilter setProductTemplates(List<IdAndValue<ULong, String>> productTemplates) {
+        this.fieldData.setProductTemplates(productTemplates);
+        return this;
+    }
+
+    public TicketBucketFilter setSelectedProductTemplateIds(List<ULong> selectedProductTemplateIds) {
+        this.fieldData.setSelectedProductTemplateIds(selectedProductTemplateIds);
         return this;
     }
 
@@ -105,5 +121,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
         private List<IdAndValue<ULong, String>> stages;
         private List<IdAndValue<ULong, String>> statuses;
         private List<IdAndValue<ULong, String>> products;
+        private List<IdAndValue<ULong, String>> productTemplates;
+        private List<ULong> selectedProductTemplateIds;
     }
 }

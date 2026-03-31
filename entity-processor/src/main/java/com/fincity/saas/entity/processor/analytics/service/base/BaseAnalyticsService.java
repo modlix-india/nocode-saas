@@ -16,6 +16,7 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import com.fincity.saas.entity.processor.util.CollectionUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
@@ -47,6 +48,8 @@ public abstract class BaseAnalyticsService<
 
     protected ProductService productService;
 
+    protected ProductTemplateService productTemplateService;
+
     @Autowired
     private void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
@@ -65,6 +68,11 @@ public abstract class BaseAnalyticsService<
     @Autowired
     private void setProductService(ProductService productService) {
         this.productService = productService;
+    }
+
+    @Autowired
+    private void setProductTemplateService(ProductTemplateService productTemplateService) {
+        this.productTemplateService = productTemplateService;
     }
 
     public Mono<TicketBucketFilter> resolveCreatedBys(ProcessorAccess access, TicketBucketFilter filter) {
