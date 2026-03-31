@@ -233,6 +233,291 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, NO_STAGE, false);
     }
 
+    public Flux<PerValueCount> getTicketPerAssignedUserCurrentStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketCountByGroupAndJoin(
+                access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID,
+                ENTITY_PROCESSOR_TICKETS.STAGE, NO_STAGE, false);
+    }
+
+    public Flux<PerValueCount> getTicketPerCreatedByCurrentStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketCountByGroupAndJoin(
+                access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.CREATED_BY,
+                ENTITY_PROCESSOR_TICKETS.STAGE, NO_STAGE, true);
+    }
+
+    public Flux<PerValueCount> getTicketPerClientIdCurrentStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketCountByGroupAndJoin(
+                access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.CLIENT_ID,
+                ENTITY_PROCESSOR_TICKETS.STAGE, NO_STAGE, true);
+    }
+
+    public Flux<PerValueCount> getTicketPerProjectCurrentStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketCountByGroupAndJoin(
+                access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.PRODUCT_ID,
+                ENTITY_PROCESSOR_TICKETS.STAGE, NO_STAGE, false);
+    }
+
+    public Flux<PerDateCount> getTicketPerAssignedUserCurrentStageSourceDateCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketDateCountByGroupCurrentStage(
+                access, ticketBucketFilter, ENTITY_PROCESSOR_TICKETS.SOURCE, NO_STAGE, false);
+    }
+
+    public Flux<PerDateCount> getTicketCountPerCurrentStageAndDateWithClientId(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter, TimePeriod timePeriod) {
+        return this.getTicketDateCountByStageOnlyCurrentStage(
+                access, ticketBucketFilter, timePeriod, NO_STAGE, Boolean.FALSE, Boolean.TRUE);
+    }
+
+    public Flux<PerDateCount> getUniqueCreatedByCountPerCurrentStageAndDateWithClientId(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter, TimePeriod timePeriod) {
+        return this.getUniqueClientDateCountByStageOnlyCurrentStage(
+                access, ticketBucketFilter, timePeriod, NO_STAGE, Boolean.FALSE, Boolean.TRUE);
+    }
+
+    public Flux<PerValueCount> getTicketCountPerProductCurrentStageAndClientId(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(
+                                    ENTITY_PROCESSOR_TICKETS.PRODUCT_ID,
+                                    clientIdAsString,
+                                    DSL.count(this.idField))
+                            .from(this.table)
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+
+                    Select<?> groupedQuery = query.groupBy(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, clientIdAsString);
+                    return AnalyticsQueryLogger.logQuery(
+                            "getTicketCountPerProductCurrentStageAndClientId",
+                            groupedQuery,
+                            ticketBucketFilter,
+                            Flux.from(groupedQuery)
+                                    .map(rec -> new PerValueCount()
+                                            .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID))
+                                            .setGroupedValue(rec.get(clientIdAsString))
+                                            .setCount(rec.get(DSL.count(this.idField))
+                                                    .longValue())));
+                });
+    }
+
+    public Flux<PerDateCount> getTicketCountPerClientIdAndDateCurrentStage(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
+        TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> dateGroupField =
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
+        Field<LocalDateTime> groupByDateField =
+                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(clientIdAsString, groupByDateField, DSL.count(this.idField))
+                            .from(this.table)
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+
+                    Select<?> groupedQuery = query.groupBy(clientIdAsString, dateGroupField);
+                    return AnalyticsQueryLogger.logQuery(
+                            "getTicketCountPerClientIdAndDateCurrentStage",
+                            groupedQuery,
+                            ticketBucketFilter,
+                            Flux.from(groupedQuery)
+                                    .map(rec -> new PerDateCount()
+                                            .setDate(rec.get(groupByDateField))
+                                            .setGroupedValue(rec.get(clientIdAsString))
+                                            .setCount(rec.get(DSL.count(this.idField))
+                                                    .longValue())));
+                });
+    }
+
+    private Flux<PerDateCount> getTicketDateCountByGroupCurrentStage(
+            ProcessorAccess access,
+            TicketBucketFilter ticketBucketFilter,
+            Field<String> groupField,
+            String defaultValue,
+            boolean requiresNonNull) {
+
+        TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> ticketDateGroupField =
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
+        Field<LocalDateTime> minTicketDateField =
+                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> this.resolveFilteredAndTotalConditions(abstractCondition, ticketBucketFilter)
+                        .flux(),
+                (abstractCondition, conditionsTuple) -> {
+                    var conditions = conditionsTuple.getT1();
+                    var totalConditions = conditionsTuple.getT2();
+
+                    SelectConditionStep<?> mainQuery = this.dslContext
+                            .select(ENTITY_PROCESSOR_STAGES.NAME, groupField, minTicketDateField,
+                                    DSL.count(this.idField))
+                            .from(this.table)
+                            .leftJoin(ENTITY_PROCESSOR_STAGES)
+                            .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
+                            .where(conditions);
+
+                    if (requiresNonNull) mainQuery = mainQuery.and(groupField.isNotNull());
+
+                    Select<?> select = ticketBucketFilter.isIncludeTotal()
+                            ? this.unionAsRecord(
+                                    mainQuery.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, ticketDateGroupField),
+                                    this.buildTotalOnlyDateCountSelect(
+                                                    groupField, minTicketDateField, totalConditions, requiresNonNull)
+                                            .groupBy(groupField, ticketDateGroupField))
+                            : mainQuery.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, ticketDateGroupField);
+
+                    return AnalyticsQueryLogger.logQuery(
+                            "getTicketDateCountByGroupCurrentStage",
+                            select,
+                            ticketBucketFilter,
+                            Flux.from(select)
+                                    .map(rec -> this.mapToPerDateCountCurrentStage(
+                                            rec, groupField, minTicketDateField, defaultValue)));
+                });
+    }
+
+    private Flux<PerDateCount> getTicketDateCountByStageOnlyCurrentStage(
+            ProcessorAccess access,
+            TicketBucketFilter ticketBucketFilter,
+            TimePeriod timePeriod,
+            String defaultValue,
+            boolean requiresCreatedByNotNull,
+            Boolean requiresClientIdNotNull) {
+
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> ticketDateGroupField =
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
+        Field<LocalDateTime> selectedTicketDateField =
+                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("bucketDate");
+        Field<? extends Number> countField = DSL.count(this.idField);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> this.resolveFilteredAndTotalConditions(abstractCondition, ticketBucketFilter)
+                        .flux(),
+                (abstractCondition, conditionsTuple) -> {
+                    var conditions = conditionsTuple.getT1();
+                    var totalConditions = conditionsTuple.getT2();
+
+                    SelectConditionStep<?> mainQuery = this.dslContext
+                            .select(ENTITY_PROCESSOR_STAGES.NAME, selectedTicketDateField, countField)
+                            .from(this.table)
+                            .leftJoin(ENTITY_PROCESSOR_STAGES)
+                            .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
+                            .where(conditions);
+
+                    mainQuery = this.applyTicketNotNullFilters(
+                            mainQuery, requiresCreatedByNotNull, requiresClientIdNotNull);
+
+                    Select<?> select = ticketBucketFilter.isIncludeTotal()
+                            ? this.unionAsRecord(
+                                    mainQuery.groupBy(ticketDateGroupField, ENTITY_PROCESSOR_STAGES.NAME),
+                                    this.buildTotalOnlyStageDateCountSelect(
+                                                    selectedTicketDateField,
+                                                    DSL.count(this.idField),
+                                                    totalConditions,
+                                                    requiresCreatedByNotNull,
+                                                    requiresClientIdNotNull)
+                                            .groupBy(ticketDateGroupField))
+                            : mainQuery.groupBy(ticketDateGroupField, ENTITY_PROCESSOR_STAGES.NAME);
+
+                    return AnalyticsQueryLogger.logQuery(
+                            "getTicketDateCountByStageOnlyCurrentStage",
+                            select,
+                            ticketBucketFilter,
+                            Flux.from(select)
+                                    .map(rec -> this.mapToPerStageOnlyDateCountDistinct(
+                                            rec, selectedTicketDateField, countField, defaultValue)));
+                });
+    }
+
+    private Flux<PerDateCount> getUniqueClientDateCountByStageOnlyCurrentStage(
+            ProcessorAccess access,
+            TicketBucketFilter ticketBucketFilter,
+            TimePeriod timePeriod,
+            String defaultValue,
+            boolean requiresCreatedByNotNull,
+            Boolean requiresClientIdNotNull) {
+
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> ticketDateGroupField =
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
+        Field<LocalDateTime> selectedTicketDateField =
+                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("bucketDate");
+        Field<? extends Number> uniqueCountField =
+                DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID).as("uniqueClientCount");
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter).flux(),
+                abstractCondition -> this.resolveFilteredAndTotalConditions(abstractCondition, ticketBucketFilter)
+                        .flux(),
+                (abstractCondition, conditionsTuple) -> {
+                    var conditions = conditionsTuple.getT1();
+                    var totalConditions = conditionsTuple.getT2();
+
+                    SelectConditionStep<?> mainQuery = this.dslContext
+                            .select(ENTITY_PROCESSOR_STAGES.NAME, selectedTicketDateField, uniqueCountField)
+                            .from(this.table)
+                            .leftJoin(ENTITY_PROCESSOR_STAGES)
+                            .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
+                            .where(conditions);
+
+                    mainQuery = this.applyTicketNotNullFilters(
+                            mainQuery, requiresCreatedByNotNull, requiresClientIdNotNull);
+
+                    Select<?> select = ticketBucketFilter.isIncludeTotal()
+                            ? this.unionAsRecord(
+                                    mainQuery.groupBy(ticketDateGroupField, ENTITY_PROCESSOR_STAGES.NAME),
+                                    this.buildTotalOnlyStageDateCountSelect(
+                                                    selectedTicketDateField,
+                                                    DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID),
+                                                    totalConditions,
+                                                    requiresCreatedByNotNull,
+                                                    requiresClientIdNotNull)
+                                            .groupBy(ticketDateGroupField))
+                            : mainQuery.groupBy(ticketDateGroupField, ENTITY_PROCESSOR_STAGES.NAME);
+
+                    return AnalyticsQueryLogger.logQuery(
+                            "getUniqueClientDateCountByStageOnlyCurrentStage",
+                            select,
+                            ticketBucketFilter,
+                            Flux.from(select)
+                                    .map(rec -> this.mapToPerStageOnlyDateCountDistinct(
+                                            rec, selectedTicketDateField, uniqueCountField, defaultValue)));
+                });
+    }
+
+    private PerDateCount mapToPerDateCountCurrentStage(
+            Record rec, Field<String> groupField, Field<LocalDateTime> dateTimeField, String defaultValue) {
+
+        String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+        if (stageName == null) stageName = defaultValue;
+
+        return new PerDateCount()
+                .setDate(rec.get(dateTimeField))
+                .setMapValue(stageName)
+                .setGroupedValue(rec.get(groupField))
+                .setCount(rec.get(DSL.count(this.idField)).longValue());
+    }
+
     public Flux<PerValueCount> getTicketPerAssignedUserStatusCount(
             ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         return this.getTicketCountByGroupAndJoin(

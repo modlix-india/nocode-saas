@@ -87,6 +87,7 @@ public class AnalyticsQueryLogger {
         appendList(sb, "assignedUserIds", filter.getAssignedUserIds());
         appendList(sb, "createdByIds", filter.getCreatedByIds());
 
+        if (filter.isOnlyCurrentStageStatus()) sb.append("onlyCurrentStageStatus=true ");
         if (filter.isIncludeAll()) sb.append("includeAll=true ");
         if (filter.isIncludeNone()) sb.append("includeNone=true ");
         if (filter.isIncludeTotal()) sb.append("includeTotal=true ");

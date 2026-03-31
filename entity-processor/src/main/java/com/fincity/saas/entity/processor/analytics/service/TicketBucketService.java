@@ -61,7 +61,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         Boolean.TRUE,
                         filter,
                         access -> f -> super.resolveAssignedUsers(access, f),
-                        this.dao::getTicketPerAssignedUserStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerAssignedUserCurrentStageCount
+                                : this.dao::getTicketPerAssignedUserStageCount,
                         sFilter -> sFilter.getBaseFieldData().getAssignedUsers(),
                         sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(
@@ -75,7 +77,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         access,
                         Boolean.TRUE,
                         ptFilter,
-                        this.dao::getTicketPerCreatedByStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerCreatedByCurrentStageCount
+                                : this.dao::getTicketPerCreatedByStageCount,
                         sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
                         sFilter -> sFilter.getFieldData().getStages()))
                 .contextWrite(Context.of(
@@ -89,8 +93,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         super::hasAccess,
                         access -> this.resolveProductTemplates(access, filter),
                         (access, ptFilter) -> resolveStages(access, ptFilter),
-                        (access, ptFilter, sFilter) -> this.dao
-                                .getTicketPerAssignedUserStageSourceDateCount(access, sFilter)
+                        (access, ptFilter, sFilter) -> (filter.isOnlyCurrentStageStatus()
+                                        ? this.dao.getTicketPerAssignedUserCurrentStageSourceDateCount(access, sFilter)
+                                        : this.dao.getTicketPerAssignedUserStageSourceDateCount(access, sFilter))
                                 .collectList(),
                         (access, ptFilter, sFilter, perStageCount) -> ReportUtil.toDateStatusCounts(
                                         perStageCount, sFilter.getFieldData().getStages(), sFilter.toReportOptions())
@@ -108,13 +113,17 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         access -> this.resolveProductTemplates(access, filter),
                         (access, ptFilter) -> resolveStages(access, ptFilter),
                         (access, ptFilter, sFilter) -> Mono.zip(
-                                this.dao
-                                        .getTicketCountPerStageAndDateWithClientId(
-                                                access, sFilter, TimePeriod.DAYS)
+                                (filter.isOnlyCurrentStageStatus()
+                                                ? this.dao.getTicketCountPerCurrentStageAndDateWithClientId(
+                                                        access, sFilter, TimePeriod.DAYS)
+                                                : this.dao.getTicketCountPerStageAndDateWithClientId(
+                                                        access, sFilter, TimePeriod.DAYS))
                                         .collectList(),
-                                this.dao
-                                        .getUniqueCreatedByCountPerStageAndDateWithClientId(
-                                                access, sFilter, sFilter.getTimePeriod())
+                                (filter.isOnlyCurrentStageStatus()
+                                                ? this.dao.getUniqueCreatedByCountPerCurrentStageAndDateWithClientId(
+                                                        access, sFilter, sFilter.getTimePeriod())
+                                                : this.dao.getUniqueCreatedByCountPerStageAndDateWithClientId(
+                                                        access, sFilter, sFilter.getTimePeriod()))
                                         .collectList()),
                         (access, ptFilter, sFilter, countsTuple) -> {
                             List<PerDateCount> perStageCount = countsTuple.getT1();
@@ -150,9 +159,13 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         (access, ptFilter, productFilter) -> this.resolveStages(access, productFilter),
                         (access, ptFilter, productFilter, stageFilter) ->
                                 super.resolveClients(access, stageFilter),
-                        (access, ptFilter, productFilter, stageFilter, clientFilter) -> this.dao
-                                .getTicketCountPerProductStageAndClientId(access, stageFilter)
-                                .collectList(),
+                        (access, ptFilter, productFilter, stageFilter, clientFilter) ->
+                                (filter.isOnlyCurrentStageStatus()
+                                                ? this.dao.getTicketCountPerProductCurrentStageAndClientId(
+                                                        access, stageFilter)
+                                                : this.dao.getTicketCountPerProductStageAndClientId(
+                                                        access, stageFilter))
+                                        .collectList(),
                         (access, ptFilter, productFilter, stageFilter, clientFilter, perValueCountList) ->
                                 ReportUtil.toEntityStageCounts(
                                                 perValueCountList,
@@ -177,8 +190,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         super::hasAccess,
                         access -> this.resolveProductTemplates(access, filter),
                         (access, ptFilter) -> super.resolveClients(access, ptFilter),
-                        (access, ptFilter, clientFilter) -> this.dao
-                                .getTicketCountPerClientIdAndDate(access, clientFilter)
+                        (access, ptFilter, clientFilter) -> (filter.isOnlyCurrentStageStatus()
+                                        ? this.dao.getTicketCountPerClientIdAndDateCurrentStage(access, clientFilter)
+                                        : this.dao.getTicketCountPerClientIdAndDate(access, clientFilter))
                                 .collectList(),
                         (access, ptFilter, clientFilter, perDateCountList) -> ReportUtil.toEntityDateCounts(
                                         perDateCountList,
@@ -213,7 +227,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         Boolean.TRUE,
                         filter,
                         access -> f -> super.resolveCreatedBys(access, f),
-                        this.dao::getTicketPerCreatedByStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerCreatedByCurrentStageCount
+                                : this.dao::getTicketPerCreatedByStageCount,
                         sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
                         sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStageCount"));
@@ -239,7 +255,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         Boolean.TRUE,
                         filter,
                         access -> f -> super.resolveClients(access, f),
-                        this.dao::getTicketPerClientIdStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerClientIdCurrentStageCount
+                                : this.dao::getTicketPerClientIdStageCount,
                         sFilter -> sFilter.getBaseFieldData().getClients(),
                         sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStageCount"));
@@ -252,7 +270,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         access,
                         Boolean.TRUE,
                         ptFilter,
-                        this.dao::getTicketPerClientIdStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerClientIdCurrentStageCount
+                                : this.dao::getTicketPerClientIdStageCount,
                         sFilter -> sFilter.getBaseFieldData().getClients(),
                         sFilter -> sFilter.getFieldData().getStages()))
                 .contextWrite(Context.of(
@@ -280,7 +300,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         Boolean.TRUE,
                         filter,
                         access -> f -> this.resolveProducts(access, f),
-                        this.dao::getTicketPerProjectStageCount,
+                        filter.isOnlyCurrentStageStatus()
+                                ? this.dao::getTicketPerProjectCurrentStageCount
+                                : this.dao::getTicketPerProjectStageCount,
                         sFilter -> sFilter.getFieldData().getProducts(),
                         sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProjectStageCount"));
@@ -319,7 +341,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                             Boolean.TRUE,
                             filter,
                             acc -> f -> this.resolveProducts(acc, f),
-                            this.dao::getTicketPerProjectStageCount,
+                            filter.isOnlyCurrentStageStatus()
+                                    ? this.dao::getTicketPerProjectCurrentStageCount
+                                    : this.dao::getTicketPerProjectStageCount,
                             sFilter -> sFilter.getFieldData().getProducts(),
                             sFilter -> sFilter.getFieldData().getStages());
                 })

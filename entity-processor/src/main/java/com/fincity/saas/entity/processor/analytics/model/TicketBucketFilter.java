@@ -34,6 +34,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
     private List<ULong> productTemplateIds;
     private boolean includeAll;
     private boolean includeNone;
+    private boolean onlyCurrentStageStatus;
 
     @JsonIgnore
     private FieldData fieldData = new FieldData();
