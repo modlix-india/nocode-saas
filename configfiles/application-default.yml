@@ -179,6 +179,12 @@ meta:
   webhook:
     verify-token: TEST_THE_API
 
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: localhost
+
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
   session: acme://letsencrypt.org/staging
