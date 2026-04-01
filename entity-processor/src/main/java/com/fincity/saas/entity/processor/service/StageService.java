@@ -370,6 +370,10 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStatus"));
     }
 
+    public Mono<Stage> readInternal(ULong id) {
+        return this.dao.readInternal(id);
+    }
+
     public Mono<ULong> getStage(ProcessorAccess access, ULong productTemplateId, ULong stageId) {
         return super.getAllValueIds(access, null, productTemplateId)
                 .flatMap(stageIdsInternal -> {

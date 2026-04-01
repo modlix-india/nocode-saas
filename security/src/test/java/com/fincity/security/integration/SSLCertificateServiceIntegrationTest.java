@@ -60,6 +60,7 @@ class SSLCertificateServiceIntegrationTest extends AbstractIntegrationTest {
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_app_access WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_app WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql(
 						"DELETE FROM security_client WHERE ID > 1 AND ID NOT IN (SELECT DISTINCT CLIENT_ID FROM security_user)")
 						.then())

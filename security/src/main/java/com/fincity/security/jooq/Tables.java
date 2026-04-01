@@ -20,6 +20,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
 import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityClientActivity;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientManager;
@@ -147,6 +148,11 @@ public class Tables {
      * The table <code>security.security_client</code>.
      */
     public static final SecurityClient SECURITY_CLIENT = SecurityClient.SECURITY_CLIENT;
+
+    /**
+     * The table <code>security.security_client_activity</code>.
+     */
+    public static final SecurityClientActivity SECURITY_CLIENT_ACTIVITY = SecurityClientActivity.SECURITY_CLIENT_ACTIVITY;
 
     /**
      * The table <code>security.security_client_address</code>.

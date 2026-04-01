@@ -56,6 +56,9 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	private ClientHierarchyService clientHierarchyService;
 
 	@Mock
+	private ClientActivityService clientActivityService;
+
+	@Mock
 	private UserInviteDAO dao;
 
 	private UserInviteService service;
@@ -69,7 +72,7 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new UserInviteService(msgService, clientService, authenticationService, userDao, soxLogService,
-				profileService, appService, clientHierarchyService);
+				profileService, appService, clientHierarchyService, clientActivityService);
 
 		var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
 		daoField.setAccessible(true);
@@ -110,6 +113,7 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 					})
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(any(), eq("User Invite Created"), anyString());
 			assertEquals(SYSTEM_CLIENT_ID, invite.getClientId());
 		}
 
@@ -139,6 +143,8 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 						assertEquals(Boolean.FALSE, result.get("existingUser"));
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(any(), eq("User Invite Created"), anyString());
 		}
 
 		@Test

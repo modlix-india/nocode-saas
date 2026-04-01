@@ -659,12 +659,16 @@ public class AuthenticationService implements IAuthenticationService {
                             logger.error("Danger!, Will Robinson. Verified App Code is missing. {}", ca);
 
                         return this.userService
-                                .getUserAuthorities(
-                                        ca.getVerifiedAppCode() == null ? appCode : ca.getVerifiedAppCode(),
-                                        ULong.valueOf(ca.getUser().getClientId()),
-                                        ULong.valueOf(ca.getUser().getId()))
-                                .map(ca.getUser()::setStringAuthorities)
-                                .map(x -> e);
+                                .readInternal(ULong.valueOf(ca.getUser().getId()))
+                                .flatMap(this::checkUserStatus)
+                                .then(this.userService
+                                        .getUserAuthorities(
+                                                ca.getVerifiedAppCode() == null ? appCode
+                                                        : ca.getVerifiedAppCode(),
+                                                ULong.valueOf(ca.getUser().getClientId()),
+                                                ULong.valueOf(ca.getUser().getId()))
+                                        .map(ca.getUser()::setStringAuthorities)
+                                        .map(x -> e));
                     }
                     return Mono.just(e);
                 })
@@ -783,7 +787,8 @@ public class AuthenticationService implements IAuthenticationService {
 
         return FlatMapUtil.flatMapMono(
                 () -> checkTokenOrigin(request, jwtClaims),
-                claims -> this.userService.readInternal(tokenObject.getUserId()),
+                claims -> this.userService.readInternal(tokenObject.getUserId())
+                        .flatMap(this::checkUserStatus),
                 (claims, u) -> this.clientService.getClientTypeNCodeNClientLevel(u.getClientId()),
                 (claims, u, typ) -> Mono.just(new ContextAuthentication(
                         u.toContextUser(),

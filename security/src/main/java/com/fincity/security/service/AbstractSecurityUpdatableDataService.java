@@ -4,7 +4,9 @@ import java.io.Serializable;
 import java.util.Map;
 
 import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
@@ -24,7 +26,13 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 	@Autowired
 	private SoxLogService soxLogService;
 
+	@Autowired
+	@Lazy
+	private ClientActivityService clientActivityService;
+
 	public abstract SecuritySoxLogObjectName getSoxObjectName();
+
+	protected abstract ULong resolveClientId(D entity);
 
 	@Override
 	public Mono<D> create(D entity) {
@@ -32,12 +40,17 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 		return super.create(entity).map(e -> {
 
 			this.dao.getPojoClass()
-			        .map(Class::getSimpleName) // adding description of the operation coming from mono<class<D>>
-			        .flatMap(description -> soxLogService
-			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
-			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULongUtil.valueOf(e.getId()))
-			                        .setDescription(description + " created ")))
+			        .map(Class::getSimpleName)
+			        .flatMap(description -> {
+			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
+			                    .setObjectName(getSoxObjectName())
+			                    .setObjectId(ULongUtil.valueOf(e.getId()))
+			                    .setDescription(description + " created "))
+			                    .subscribe();
+			            clientActivityService.createLog(resolveClientId(e),
+			                    description + " Create", description + " created");
+			            return Mono.empty();
+			        })
 			        .subscribe();
 
 			return e;
@@ -47,19 +60,26 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 	@Override
 	public Mono<Integer> delete(I id) {
 
-		return super.delete(id).map(e -> {
+		return this.read(id).flatMap(entity -> super.delete(id).map(e -> {
+
+			ULong clientId = resolveClientId(entity);
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(description -> soxLogService
-			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
-			                        .setObjectName(getSoxObjectName())
-			                        .setDescription(description + " deleted ")
-			                        .setObjectId(ULongUtil.valueOf(id))))
+			        .flatMap(description -> {
+			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
+			                    .setObjectName(getSoxObjectName())
+			                    .setDescription(description + " deleted ")
+			                    .setObjectId(ULongUtil.valueOf(id)))
+			                    .subscribe();
+			            clientActivityService.createLog(clientId,
+			                    description + " Delete", description + " deleted");
+			            return Mono.empty();
+			        })
 			        .subscribe();
 
 			return e;
-		});
+		}));
 	}
 
 	@Override
@@ -69,11 +89,16 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(description -> soxLogService
-			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
-			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULongUtil.valueOf(e.getId()))
-			                        .setDescription(description + UPDATED)))
+			        .flatMap(description -> {
+			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			                    .setObjectName(getSoxObjectName())
+			                    .setObjectId(ULongUtil.valueOf(e.getId()))
+			                    .setDescription(description + UPDATED))
+			                    .subscribe();
+			            clientActivityService.createLog(resolveClientId(e),
+			                    description + " Update", description + UPDATED);
+			            return Mono.empty();
+			        })
 			        .subscribe();
 
 			return e;
@@ -91,32 +116,47 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
-			        .flatMap(description -> soxLogService
-			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
-			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULongUtil.valueOf(e.getId()))
-			                        .setDescription(description + UPDATED)))
+			        .flatMap(description -> {
+			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
+			                    .setObjectName(getSoxObjectName())
+			                    .setObjectId(ULongUtil.valueOf(e.getId()))
+			                    .setDescription(description + UPDATED))
+			                    .subscribe();
+			            clientActivityService.createLog(resolveClientId(e),
+			                    description + " Update", description + UPDATED);
+			            return Mono.empty();
+			        })
 			        .subscribe();
 
 			return e;
 		});
 	}
 
-	public void assignLog(I id, String description) {
+	public void assignLog(I id, ULong clientId, String description) {
 
 		soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.ASSIGN)
 		        .setObjectName(getSoxObjectName())
 		        .setObjectId(ULongUtil.valueOf(id))
 		        .setDescription(description))
 		        .subscribe();
+
+		clientActivityService.createLog(clientId,
+		        getSoxObjectName().name().substring(0, 1)
+		                + getSoxObjectName().name().substring(1).toLowerCase() + " Assign",
+		        description);
 	}
 
-	public void unAssignLog(I id, String description) {
+	public void unAssignLog(I id, ULong clientId, String description) {
 
 		soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UNASSIGN)
 		        .setObjectName(getSoxObjectName())
 		        .setObjectId(ULongUtil.valueOf(id))
 		        .setDescription(description))
 		        .subscribe();
+
+		clientActivityService.createLog(clientId,
+		        getSoxObjectName().name().substring(0, 1)
+		                + getSoxObjectName().name().substring(1).toLowerCase() + " Unassign",
+		        description);
 	}
 }
