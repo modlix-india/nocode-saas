@@ -58,7 +58,10 @@ public class ProductTicketExRuleDAO
         var rulesTable = ENTITY_PROCESSOR_PRODUCT_TICKET_EX_RULES;
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime newExpiresOn = now.plusDays(rule.getExpiryDays());
+
+        // Compute expires_on per ticket based on its UPDATED_AT, not a single constant
+        var perTicketExpiresOn = DSL.localDateTimeAdd(
+                ticketsTable.UPDATED_AT, rule.getExpiryDays(), org.jooq.DatePart.DAY);
 
         Condition baseCondition = ticketsTable
                 .APP_CODE
@@ -71,7 +74,7 @@ public class ProductTicketExRuleDAO
             // Product-level rule: directly match tickets by product ID
             return Mono.from(this.dslContext
                     .update(ticketsTable)
-                    .set(ticketsTable.EXPIRES_ON, newExpiresOn)
+                    .set(ticketsTable.EXPIRES_ON, perTicketExpiresOn)
                     .where(baseCondition)
                     .and(ticketsTable.PRODUCT_ID.eq(rule.getProductId())));
         }
@@ -83,7 +86,7 @@ public class ProductTicketExRuleDAO
 
         return Mono.from(this.dslContext
                 .update(ticketsTable)
-                .set(ticketsTable.EXPIRES_ON, newExpiresOn)
+                .set(ticketsTable.EXPIRES_ON, perTicketExpiresOn)
                 .where(baseCondition)
                 .and(ticketsTable.PRODUCT_ID.in(
                         DSL.select(productsTable.ID)

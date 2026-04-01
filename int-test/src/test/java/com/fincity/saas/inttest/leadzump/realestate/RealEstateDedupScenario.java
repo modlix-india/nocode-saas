@@ -2,6 +2,7 @@ package com.fincity.saas.inttest.leadzump.realestate;
 
 import com.fincity.saas.inttest.base.BaseIntegrationTest;
 import com.fincity.saas.inttest.base.EntityProcessorApi;
+import com.fincity.saas.inttest.base.ProfileHelper;
 import com.fincity.saas.inttest.base.SecurityApi;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
@@ -49,6 +50,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
     private static String token, clientCode, appCode;
     private static Number userId;
     private static EntityProcessorApi api;
+    private static Number salesMemberProfileId;
 
     // Template and stages
     private static Number templateId;
@@ -117,6 +119,10 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
 
         userId = regRes.body().path("authentication.user.id");
         api = new EntityProcessorApi(givenAuth(token, clientCode, appCode));
+
+        // Resolve profile IDs dynamically
+        ProfileHelper profiles = ProfileHelper.load(secApi, token, parentClientCode, appCode);
+        salesMemberProfileId = profiles.getByName("Sales Member");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -541,12 +547,12 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         Response inv1 = secApi.inviteUser(token, clientCode, appCode, mapOf(
                 "emailId", "dedup-sm1-" + uid + "@inttest.local",
                 "firstName", "DedupSM1", "lastName", "IntTest",
-                "profileId", 122, "reportingTo", userId
+                "profileId", salesMemberProfileId, "reportingTo", userId
         ));
         assertThat(inv1.statusCode()).as("Invite SM1").isIn(200, 201);
         String code1 = inv1.body().path("userRequest.inviteCode");
 
-        Response acc1 = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response acc1 = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "dedup-sm1-" + uid + "@inttest.local",
                 "firstName", "DedupSM1", "lastName", "IntTest",
                 "password", "Test@1234", "passType", "PASSWORD", "inviteCode", code1
@@ -558,12 +564,12 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         Response inv2 = secApi.inviteUser(token, clientCode, appCode, mapOf(
                 "emailId", "dedup-sm2-" + uid + "@inttest.local",
                 "firstName", "DedupSM2", "lastName", "IntTest",
-                "profileId", 122, "reportingTo", userId
+                "profileId", salesMemberProfileId, "reportingTo", userId
         ));
         assertThat(inv2.statusCode()).as("Invite SM2").isIn(200, 201);
         String code2 = inv2.body().path("userRequest.inviteCode");
 
-        Response acc2 = secApi.acceptInvite(clientCode, appCode, mapOf(
+        Response acc2 = secApi.acceptInvite(prop("leadzump.client.code"), appCode, mapOf(
                 "emailId", "dedup-sm2-" + uid + "@inttest.local",
                 "firstName", "DedupSM2", "lastName", "IntTest",
                 "password", "Test@1234", "passType", "PASSWORD", "inviteCode", code2

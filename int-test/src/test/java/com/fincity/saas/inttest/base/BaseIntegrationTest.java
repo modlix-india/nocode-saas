@@ -27,6 +27,7 @@ public abstract class BaseIntegrationTest {
         }
 
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+        RestAssured.defaultParser = io.restassured.parsing.Parser.JSON;
     }
 
     /**

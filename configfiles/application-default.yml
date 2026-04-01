@@ -131,6 +131,10 @@ ai:
 spring:
   flyway:
     enabled: false
+  cloud:
+    inetutils:
+      preferred-networks:
+        - 127.0.0.1
 
 redis:
   url: redis://Kiran%40123@localhost:6379
@@ -178,6 +182,7 @@ app:
 meta:
   webhook:
     verify-token: TEST_THE_API
+
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
