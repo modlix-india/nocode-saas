@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
@@ -433,5 +435,67 @@ class ClientManagerServiceTest extends AbstractServiceUnitTest {
 		StepVerifier.create(service.isUserClientManager("appCode", USER_ID, BUS_CLIENT_ID, TARGET_CLIENT_ID))
 				.assertNext(result -> assertTrue(result))
 				.verifyComplete();
+	}
+
+	@Test
+	void syncManagers_HappyPath_UpdatesManagers() {
+
+		ContextAuthentication ca = TestDataFactory.createSystemAuth();
+		setupSecurityContext(ca);
+
+		List<ULong> newManagerIds = List.of(ULong.valueOf(101), ULong.valueOf(102));
+		List<ULong> currentIds = List.of(ULong.valueOf(102), ULong.valueOf(103));
+
+		when(userService.readInternal(any(ULong.class))).thenReturn(
+				Mono.just(TestDataFactory.createActiveUser(ULong.valueOf(101), BUS_CLIENT_ID)));
+
+		when(dao.getManagerIds(Set.of(TARGET_CLIENT_ID)))
+				.thenReturn(Mono.just(Map.of(TARGET_CLIENT_ID, currentIds)));
+
+		when(dao.bulkCreateIfNotExists(eq(TARGET_CLIENT_ID), anyList(), any(ULong.class)))
+				.thenReturn(Mono.just(1));
+		when(dao.deleteByClientIdAndManagerIds(eq(TARGET_CLIENT_ID), anyList()))
+				.thenReturn(Mono.just(1));
+
+		StepVerifier.create(service.syncManagers(TARGET_CLIENT_ID, newManagerIds))
+				.assertNext(result -> assertTrue(result))
+				.verifyComplete();
+
+		verify(dao).bulkCreateIfNotExists(eq(TARGET_CLIENT_ID),
+				argThat(list -> list.contains(ULong.valueOf(101)) && list.size() == 1), any(ULong.class));
+		verify(dao).deleteByClientIdAndManagerIds(eq(TARGET_CLIENT_ID),
+				argThat(list -> list.contains(ULong.valueOf(103)) && list.size() == 1));
+
+		verify(cacheService).evict(eq("clientManager"), eq(ULong.valueOf(101)), eq(TARGET_CLIENT_ID));
+		verify(cacheService).evict(eq("clientManager"), eq(ULong.valueOf(102)), eq(TARGET_CLIENT_ID));
+		verify(cacheService).evict(eq("clientManager"), eq(ULong.valueOf(103)), eq(TARGET_CLIENT_ID));
+	}
+
+	@Test
+	void syncManagers_EmptyList_ThrowsBadRequest() {
+
+		ContextAuthentication ca = TestDataFactory.createSystemAuth();
+		setupSecurityContext(ca);
+
+		StepVerifier.create(service.syncManagers(TARGET_CLIENT_ID, List.of()))
+				.expectErrorMatches(e -> e instanceof GenericException
+						&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+				.verify();
+	}
+
+	@Test
+	void syncManagers_SameClientManager_ThrowsBadRequest() {
+
+		ContextAuthentication ca = TestDataFactory.createSystemAuth();
+		setupSecurityContext(ca);
+
+		List<ULong> newManagerIds = List.of(ULong.valueOf(101));
+		User userSameClient = TestDataFactory.createActiveUser(ULong.valueOf(101), TARGET_CLIENT_ID);
+		when(userService.readInternal(ULong.valueOf(101))).thenReturn(Mono.just(userSameClient));
+
+		StepVerifier.create(service.syncManagers(TARGET_CLIENT_ID, newManagerIds))
+				.expectErrorMatches(e -> e instanceof GenericException
+						&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+				.verify();
 	}
 }
