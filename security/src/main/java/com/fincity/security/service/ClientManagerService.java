@@ -2,7 +2,6 @@ package com.fincity.security.service;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -355,25 +354,13 @@ public class ClientManagerService
                 },
 
                 (ca, validated, invalidManagers, hasAccess, currentIds) -> {
-                    Set<ULong> currentSet = new HashSet<>(currentIds);
-
-                    List<ULong> toAdd = managerIds.stream()
-                            .filter(id -> !currentSet.contains(id))
-                            .distinct()
-                            .toList();
-
-                    List<ULong> toRemove = currentIds.stream()
-                            .filter(id -> !managerIds.contains(id))
-                            .toList();
-
                     ULong createdBy = ULongUtil.valueOf(ca.getUser().getId());
 
-                    return Mono.zip(
-                            dao.bulkCreateIfNotExists(clientId, toAdd, createdBy),
-                            dao.deleteByClientIdAndManagerIds(clientId, toRemove));
+                    return dao.deleteAllByClientId(clientId)
+                            .then(dao.addClientManagers(clientId, managerIds, createdBy));
                 },
 
-                (ca, v1, v2, v3, currentIds, syncResult) -> {
+                (ca, validated, invalidManagers, hasAccess, currentIds, syncResult) -> {
                     Set<ULong> allAffected = Stream.concat(currentIds.stream(), managerIds.stream())
                             .collect(Collectors.toSet());
 

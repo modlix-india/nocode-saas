@@ -452,19 +452,18 @@ class ClientManagerServiceTest extends AbstractServiceUnitTest {
 		when(dao.getManagerIds(Set.of(TARGET_CLIENT_ID)))
 				.thenReturn(Mono.just(Map.of(TARGET_CLIENT_ID, currentIds)));
 
-		when(dao.bulkCreateIfNotExists(eq(TARGET_CLIENT_ID), anyList(), any(ULong.class)))
-				.thenReturn(Mono.just(1));
-		when(dao.deleteByClientIdAndManagerIds(eq(TARGET_CLIENT_ID), anyList()))
-				.thenReturn(Mono.just(1));
+		when(dao.deleteAllByClientId(eq(TARGET_CLIENT_ID)))
+				.thenReturn(Mono.just(2));
+		when(dao.addClientManagers(eq(TARGET_CLIENT_ID), anyList(), any(ULong.class)))
+				.thenReturn(Mono.just(2));
 
 		StepVerifier.create(service.syncManagers(TARGET_CLIENT_ID, newManagerIds))
 				.assertNext(result -> assertTrue(result))
 				.verifyComplete();
 
-		verify(dao).bulkCreateIfNotExists(eq(TARGET_CLIENT_ID),
-				argThat(list -> list.contains(ULong.valueOf(101)) && list.size() == 1), any(ULong.class));
-		verify(dao).deleteByClientIdAndManagerIds(eq(TARGET_CLIENT_ID),
-				argThat(list -> list.contains(ULong.valueOf(103)) && list.size() == 1));
+		verify(dao).deleteAllByClientId(eq(TARGET_CLIENT_ID));
+		verify(dao).addClientManagers(eq(TARGET_CLIENT_ID),
+				argThat(list -> list.containsAll(newManagerIds) && list.size() == 2), any(ULong.class));
 
 		verify(cacheService).evict(eq("clientManager"), eq(ULong.valueOf(101)), eq(TARGET_CLIENT_ID));
 		verify(cacheService).evict(eq("clientManager"), eq(ULong.valueOf(102)), eq(TARGET_CLIENT_ID));

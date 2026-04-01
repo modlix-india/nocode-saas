@@ -140,16 +140,13 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.MANAGER_ID));
     }
 
-    public Mono<Integer> deleteByClientIdAndManagerIds(ULong clientId, Collection<ULong> managerIds) {
-        if (managerIds == null || managerIds.isEmpty())
-            return Mono.just(0);
+    public Mono<Integer> deleteAllByClientId(ULong clientId) {
         return Mono.from(this.dslContext
                 .deleteFrom(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId)
-                        .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.in(managerIds))));
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId)));
     }
 
-    public Mono<Integer> bulkCreateIfNotExists(ULong clientId, Collection<ULong> managerIds, ULong createdBy) {
+    public Mono<Integer> addClientManagers(ULong clientId, Collection<ULong> managerIds, ULong createdBy) {
         if (managerIds == null || managerIds.isEmpty())
             return Mono.just(0);
 
