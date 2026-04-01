@@ -54,6 +54,23 @@ public class SecurityApi {
     }
 
     /**
+     * Register a client on behalf of an authenticated user (e.g. builder admin creating a CP).
+     * Uses the caller's auth token so the new client is created as a sub-client.
+     */
+    public Response registerClient(String token, String clientCode, String appCode, Map<String, Object> body) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .body(body)
+                .post(SEC + "/clients/register");
+    }
+
+    /**
      * Invite a user (requires builder admin auth).
      */
     public Response inviteUser(String token, String clientCode, String appCode, Map<String, Object> body) {
@@ -72,10 +89,10 @@ public class SecurityApi {
     /**
      * Accept an invite (public endpoint, no auth).
      */
-    public Response acceptInvite(String clientCode, String appCode, Map<String, Object> body) {
+    public Response acceptInvite(String parentClientCode, String appCode, Map<String, Object> body) {
         return given()
-                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
-                .header("clientCode", clientCode)
+                .baseUri(baseHost + "/" + appCode + "/" + parentClientCode + "/page")
+                .header("clientCode", parentClientCode)
                 .header("appCode", appCode)
                 .header("X-Forwarded-Host", forwardedHost)
                 .header("X-Real-IP", "127.0.0.1")
@@ -129,6 +146,54 @@ public class SecurityApi {
                 .header("X-Real-IP", "127.0.0.1")
                 .contentType("application/json")
                 .delete(SEC + "/users/" + userId);
+    }
+
+    /**
+     * Get an application by its appCode. Returns the full App object including id.
+     */
+    public Response getAppByCode(String token, String clientCode, String appCode) {
+        var spec = given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json");
+        if (token != null) spec = spec.header("Authorization", "Bearer " + token);
+        return spec.get(SEC.replace("/security", "/security/applications") + "/appCode/" + appCode);
+    }
+
+    /**
+     * List profiles for a given appId (numeric).
+     */
+    public Response listProfiles(String token, String clientCode, String appCode, Object appId) {
+        var spec = given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .queryParam("size", 100);
+        if (token != null) spec = spec.header("Authorization", "Bearer " + token);
+        return spec.get("/api/security/app/" + appId + "/profiles");
+    }
+
+    /**
+     * Assign a user as client manager of a client.
+     * POST /api/security/client-managers/{userId}/{clientId}
+     */
+    public Response assignClientManager(String token, String clientCode, String appCode,
+            Number userId, Number clientId) {
+        return given()
+                .baseUri(baseHost + "/" + appCode + "/" + clientCode + "/page")
+                .header("Authorization", "Bearer " + token)
+                .header("clientCode", clientCode)
+                .header("appCode", appCode)
+                .header("X-Forwarded-Host", forwardedHost)
+                .header("X-Real-IP", "127.0.0.1")
+                .contentType("application/json")
+                .post(SEC + "/client-managers/" + userId + "/" + clientId);
     }
 
     /**
