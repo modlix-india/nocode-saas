@@ -107,4 +107,20 @@ class ClientManagerControllerTest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+
+    @Test
+    void syncManagers_returnsTrue() {
+
+        List<ULong> managerIds = List.of(ULong.valueOf(101), ULong.valueOf(102));
+        when(clientManagerService.syncManagers(eq(ULong.valueOf(20)), eq(managerIds)))
+                .thenReturn(Mono.just(Boolean.TRUE));
+
+        webTestClient.put()
+                .uri(BASE_PATH + "/20/managers")
+                .bodyValue(managerIds)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Boolean.class)
+                .isEqualTo(true);
+    }
 }
