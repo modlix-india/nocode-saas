@@ -1,9 +1,12 @@
 package com.fincity.security.service;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
@@ -316,4 +319,59 @@ public class ClientManagerService
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagersInternal"));
     }
+
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Boolean> syncManagers(ULong clientId, List<ULong> managerIds) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> {
+                    if (managerIds == null || managerIds.isEmpty()) {
+                        return messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.PARAMS_NOT_FOUND, "manager list", "sync");
+                    }
+                    return Mono.just(Boolean.TRUE);
+                },
+
+                (ca, validated) -> Flux.fromIterable(managerIds)
+                        .flatMap(userService::readInternal)
+                        .filter(u -> u.getClientId().equals(clientId))
+                        .hasElements()
+                        .flatMap(hasInvalid -> hasInvalid
+                                ? messageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.HIERARCHY_ERROR, "Client manager")
+                                : Mono.just(Boolean.FALSE)),
+
+                (ca, validated, invalidManagers) -> checkAccess(clientId),
+
+                (ca, validated, invalidManagers, hasAccess) -> {
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+                    return dao.getManagerIds(Set.of(clientId))
+                            .map(map -> map.getOrDefault(clientId, Collections.emptyList()));
+                },
+
+                (ca, validated, invalidManagers, hasAccess, currentIds) -> {
+                    ULong createdBy = ULongUtil.valueOf(ca.getUser().getId());
+
+                    return dao.deleteAllByClientId(clientId)
+                            .then(dao.addClientManagers(clientId, managerIds, createdBy));
+                },
+
+                (ca, validated, invalidManagers, hasAccess, currentIds, syncResult) -> {
+                    Set<ULong> allAffected = Stream.concat(currentIds.stream(), managerIds.stream())
+                            .collect(Collectors.toSet());
+
+                    return Flux.fromIterable(allAffected)
+                            .flatMap(uid -> evictCacheForUserAndClient(uid, clientId))
+                            .then(Mono.just(Boolean.TRUE));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.syncManagers"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager SYNC"));
+    }
+
 }
