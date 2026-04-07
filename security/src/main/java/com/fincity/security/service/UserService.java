@@ -733,6 +733,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         return super.readPageFilter(pageable, condition);
 
                     ULong ownClientId = ULong.valueOf(ca.getUser().getClientId());
+                    boolean hasClientManage = SecurityContextUtil.hasAuthority(
+                            CLIENT_MANAGE_ROLE, ca.getAuthorities());
                     return this.userSubOrgService.getCurrentUserSubOrg()
                             .collectList()
                             .flatMap(subOrgIds -> this.clientManagerService
@@ -741,14 +743,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                             .filter(id -> !id.equals(ownClientId))
                                             .toList())
                                     .map(managedClientIds -> buildVisibilityCondition(
-                                            subOrgIds, managedClientIds, condition)))
+                                            ownClientId, hasClientManage, subOrgIds, managedClientIds,
+                                            condition)))
                             .flatMap(merged -> super.readPageFilter(pageable, merged));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.readPageFilter"));
     }
 
-    private AbstractCondition buildVisibilityCondition(List<ULong> subOrgIds,
-            List<ULong> managedClientIds, AbstractCondition condition) {
+    private static final String CLIENT_MANAGE_ROLE = "Authorities.ROLE_Client_MANAGE";
+
+    private AbstractCondition buildVisibilityCondition(ULong ownClientId, boolean hasClientManage,
+            List<ULong> subOrgIds, List<ULong> managedClientIds, AbstractCondition condition) {
 
         AbstractCondition subOrgCond = new FilterCondition()
                 .setField("id")
@@ -756,7 +761,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .setMultiValue(subOrgIds);
 
         AbstractCondition visibleCond;
-        if (managedClientIds == null || managedClientIds.isEmpty()) {
+
+        if (hasClientManage) {
+            AbstractCondition ownClientCond = new FilterCondition()
+                    .setField("clientId")
+                    .setOperator(FilterConditionOperator.EQUALS)
+                    .setValue(ownClientId);
+
+            if (managedClientIds == null || managedClientIds.isEmpty()) {
+                visibleCond = ComplexCondition.or(ownClientCond, subOrgCond);
+            } else {
+                AbstractCondition managedClientCond = new FilterCondition()
+                        .setField("clientId")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(managedClientIds);
+                visibleCond = ComplexCondition.or(ownClientCond, subOrgCond, managedClientCond);
+            }
+        } else if (managedClientIds == null || managedClientIds.isEmpty()) {
             visibleCond = subOrgCond;
         } else {
             AbstractCondition managedClientCond = new FilterCondition()

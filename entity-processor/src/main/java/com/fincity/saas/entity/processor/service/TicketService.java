@@ -408,29 +408,33 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 existing.setStatus(ticket.getStatus());
                 existing.setSubSource(ticket.getSubSource());
                 existing.setTag(ticket.getTag());
-                existing.setExpiresOn(ticket.getExpiresOn());
+
+                ProcessorAccess access = ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
+                        ca.getUser(), null);
+
+                Mono<Ticket> result = this.computeAndSetExpiresOn(access, existing);
 
                 if (newAssignedUserId != null
                         && !newAssignedUserId.equals(oldAssignedUserId)) {
-                    return this.diagnosticsService.log(
-                            ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
-                                    ca.getUser(), null),
+                    return result.flatMap(eTicket ->
+                        this.diagnosticsService.log(
+                            access,
                             com.fincity.saas.entity.processor.jooq.enums
                                     .EntityProcessorDiagnosticsObjectType.TICKET,
-                            existing.getId(),
+                            eTicket.getId(),
                             "ASSIGNMENT_UPDATE",
                             oldAssignedUserId,
                             newAssignedUserId,
                             "Generic ticket update",
                             Map.of())
                         .onErrorResume(e -> {
-                            logger.error("Failed to log diagnostics for ticket {}: {}", existing.getId(), e.getMessage());
+                            logger.error("Failed to log diagnostics for ticket {}: {}", eTicket.getId(), e.getMessage());
                             return Mono.empty();
                         })
-                        .thenReturn(existing);
+                        .thenReturn(eTicket));
                 }
 
-                return Mono.just(existing);
+                return result;
             }
         )
         .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
@@ -595,7 +599,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             rr)
                                     .onErrorResume(e -> Mono.empty())
                                     .subscribe();
-                            return this.createNote(access, cTicketRequest, created);
+                        //     return this.createNote(access, cTicketRequest, created);
+                                return Mono.just(true);
                         },
                         (product, ticket, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
@@ -1194,11 +1199,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             ticket.setTag(resolvedTag);
 
                             return FlatMapUtil.flatMapMono(
-                                    () -> this.update(access, ticket),
-                                    uTicket -> ticketTagRequest.getTaskRequest() != null
+                                    () -> this.computeAndSetExpiresOn(access, ticket),
+                                    eTicket -> this.update(access, eTicket),
+                                    (eTicket, uTicket) -> ticketTagRequest.getTaskRequest() != null
                                             ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
                                             : Mono.just(Boolean.FALSE),
-                                    (uTicket, cTask) -> this.activityService
+                                    (eTicket, uTicket, cTask) -> this.activityService
                                             .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagEnum)
                                             .thenReturn(uTicket));
                         })
@@ -1244,31 +1250,32 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.computeAndSetExpiresOn"));
     }
 
+    public Mono<Void> resetExpiresOn(ProcessorAccess access, Ticket ticket) {
+
+        return this.computeAndSetExpiresOn(access, ticket)
+                .flatMap(eTicket -> super.updateInternal(access, eTicket))
+                .then()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.resetExpiresOn(ticket)"));
+    }
+
     public Mono<Void> resetExpiresOn(ProcessorAccess access, ULong ticketId) {
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.dao.readInternal(ticketId),
+                        () -> super.readById(access, ticketId),
                         ticket -> {
                             if (ticket == null) return Mono.empty();
 
                             if (ticket.isExpired()
                                     && (access.getUser() == null
-                                            || !com.fincity.saas.commons.security.util.SecurityContextUtil
+                                            || !SecurityContextUtil
                                                     .hasAuthority(
-                                                            com.fincity.saas.entity.processor.constant
-                                                                    .BusinessPartnerConstant.OWNER_ROLE,
+                                                            BusinessPartnerConstant.OWNER_ROLE,
                                                             access.getUser().getAuthorities())))
                                 return this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         ProcessorMessageResourceService.TICKET_EXPIRED);
 
-                            if (ticket.getSource() == null || ticket.getProductId() == null)
-                                return Mono.just(ticket);
-
-                            return this.productTicketExRuleService
-                                    .computeExpiresOn(access, ticket.getProductId(), ticket.getSource())
-                                    .map(ticket::setExpiresOn)
-                                    .defaultIfEmpty(ticket);
+                            return this.computeAndSetExpiresOn(access, ticket);
                         },
                         (ticket, updatedTicket) -> {
                             Ticket toSave = updatedTicket != null ? updatedTicket : ticket;

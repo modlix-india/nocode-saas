@@ -39,6 +39,17 @@ public class ClientCheckDAOHelper {
         return Tuples.of(mainQuery, countQuery);
     }
 
+    private static <R extends UpdatableRecord<R>> Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> createDistinctClientBaseQueries(
+            DSLContext dslContext, Table<R> table) {
+
+        SelectJoinStep<Record> mainQuery = dslContext.selectDistinct(Arrays.asList(table.fields())).from(table);
+
+        SelectJoinStep<Record1<Integer>> countQuery = dslContext.select(DSL.countDistinct(table.field("ID")))
+                .from(table);
+
+        return Tuples.of(mainQuery, countQuery);
+    }
+
     public static Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> addJoinCondition(
             SelectJoinStep<Record> mainQuery, SelectJoinStep<Record1<Integer>> countQuery, Field<ULong> clientIdField) {
 
@@ -63,12 +74,14 @@ public class ClientCheckDAOHelper {
             DSLContext dslContext, Table<R> table, Field<ULong> clientIdField) {
 
         return SecurityContextUtil.getUsersContextAuthentication().map(ca -> {
-            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> baseQueries = createClientBaseQueries(
+
+            if (ca.getClientTypeCode().equals(ContextAuthentication.CLIENT_TYPE_SYSTEM))
+                return createClientBaseQueries(dslContext, table);
+
+            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> baseQueries = createDistinctClientBaseQueries(
                     dslContext, table);
 
-            return ca.getClientTypeCode().equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)
-                    ? baseQueries
-                    : addJoinCondition(baseQueries.getT1(), baseQueries.getT2(), clientIdField);
+            return addJoinCondition(baseQueries.getT1(), baseQueries.getT2(), clientIdField);
         });
     }
 

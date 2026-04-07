@@ -199,6 +199,48 @@ public class RealEstateSmallScenario extends BaseIntegrationTest {
     }
 
     @Test
+    @Order(601)
+    void s6_01a_verifyInitialStageAndCreateActivity() {
+        // Verify ticket is assigned to first stage (Open) with a status
+        Response ticketRes = api.getTicketEager(ticketId);
+        assertThat(ticketRes.statusCode()).isEqualTo(200);
+
+        Number stage = ticketRes.body().path("stage");
+        assertThat(stage.longValue())
+                .as("Ticket should be in first stage (Fresh)")
+                .isEqualTo(stageFreshId.longValue());
+
+        // Verify a CREATE activity was recorded
+        Response actRes = api.getTicketActivitiesEager(ticketId, 0, 10);
+        assertThat(actRes.statusCode()).isEqualTo(200);
+
+        List<Map<String, Object>> content = actRes.body().path("content");
+        assertThat(content).as("Should have at least one activity").isNotEmpty();
+
+        List<String> actions = content.stream()
+                .map(a -> (String) a.get("activityAction"))
+                .toList();
+        assertThat(actions).as("Should have a CREATE activity").contains("CREATE");
+
+        // Verify the CREATE activity has stage and status
+        Map<String, Object> createActivity = content.stream()
+                .filter(a -> "CREATE".equals(a.get("activityAction")))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(createActivity.get("stageId"))
+                .as("CREATE activity should have stageId")
+                .isNotNull();
+        assertThat(((Number) createActivity.get("stageId")).longValue())
+                .as("CREATE activity stageId should match the first stage (Fresh)")
+                .isEqualTo(stageFreshId.longValue());
+
+        assertThat(createActivity.get("statusId"))
+                .as("CREATE activity should have statusId")
+                .isNotNull();
+    }
+
+    @Test
     @Order(610)
     void s6_02_logOutboundCall() {
         Response res = api.logCallActivity(mapOf(
