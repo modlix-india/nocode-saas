@@ -740,10 +740,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                     ActivityAction.CALL_LOG,
                                     callLogRequest.getCallDate(),
                                     callLogRequest.getComment(),
-                                    context);
-                        },
-                        (access, ticket, activity) ->
-                                this.ticketService.resetExpiresOn(access, ticket.getId()).then())
+                                    context)
+                                    .then(this.ticketService.resetExpiresOn(access, ticket));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createCallLog"));
     }
 
