@@ -172,6 +172,10 @@ public class EntityProcessorApi {
         return req().body(body).patch(EP + "/tickets/req/" + ticketId + "/reassign");
     }
 
+    public Response updateTicketByCode(String code, Map<String, Object> body) {
+        return req().body(body).put(EP + "/tickets/code/" + code);
+    }
+
     public Response bulkReassign(Map<String, Object> body) {
         return req().body(body).patch(EP + "/tickets/bulk-reassign");
     }
