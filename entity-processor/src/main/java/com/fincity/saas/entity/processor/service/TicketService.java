@@ -599,7 +599,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             rr)
                                     .onErrorResume(e -> Mono.empty())
                                     .subscribe();
-                            return this.createNote(access, cTicketRequest, created);
+                        //     return this.createNote(access, cTicketRequest, created);
+                                return Mono.just(true);
                         },
                         (product, ticket, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
