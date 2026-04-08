@@ -23,6 +23,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.policy.AbstractPolicyDao;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.service.AppService;
+import com.fincity.security.service.ClientActivityService;
 import com.fincity.security.service.ClientHierarchyService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -47,6 +48,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
     @Getter
     private ClientHierarchyService clientHierarchyService;
 
+    private ClientActivityService clientActivityService;
+
     @Getter
     private AppService appService;
 
@@ -69,6 +72,11 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
     @Autowired
     public void setAppService(@Lazy AppService appService) {
         this.appService = appService;
+    }
+
+    @Autowired
+    public void setClientActivityService(@Lazy ClientActivityService clientActivityService) {
+        this.clientActivityService = clientActivityService;
     }
 
     protected abstract String getPolicyName();
@@ -104,7 +112,11 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
                 (ca, uEntity, canCreate, created) -> cacheService.evict(getPolicyCacheName(),
                         getCacheKeys(created.getClientId(), created.getAppId())),
 
-                (ca, uEntity, canCreate, created, evicted) -> Mono.just(created))
+                (ca, uEntity, canCreate, created, evicted) -> {
+                    clientActivityService.createLog(created.getClientId(),
+                            getPolicyName() + " Create", getPolicyName() + " created");
+                    return Mono.just(created);
+                })
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -168,8 +180,12 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, entity, canUpdate, canEntityUpdate) -> super.update(key, fields),
 
-                (ca, entity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-                        getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated))
+                (ca, entity, canUpdate, canEntityUpdate, updated) -> {
+                    clientActivityService.createLog(updated.getClientId(),
+                            getPolicyName() + " Update", getPolicyName() + " updated");
+                    return cacheService.evict(getPolicyCacheName(),
+                            getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated);
+                })
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -193,8 +209,12 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, uEntity, canUpdate, canEntityUpdate) -> super.update(entity),
 
-                (ca, uEntity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-                        getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated))
+                (ca, uEntity, canUpdate, canEntityUpdate, updated) -> {
+                    clientActivityService.createLog(uEntity.getClientId(),
+                            getPolicyName() + " Update", getPolicyName() + " updated");
+                    return cacheService.evict(getPolicyCacheName(),
+                            getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated);
+                })
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -218,8 +238,12 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, entity, canDelete, canEntityDelete) -> super.delete(id),
 
-                (ca, entity, canDelete, canEntityDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
-                        getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted))
+                (ca, entity, canDelete, canEntityDelete, deleted) -> {
+                    clientActivityService.createLog(entity.getClientId(),
+                            getPolicyName() + " Delete", getPolicyName() + " deleted");
+                    return cacheService.evict(getPolicyCacheName(),
+                            getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted);
+                })
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));

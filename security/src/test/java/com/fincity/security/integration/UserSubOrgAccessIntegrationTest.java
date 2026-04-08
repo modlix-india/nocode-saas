@@ -38,6 +38,14 @@ class UserSubOrgAccessIntegrationTest extends AbstractIntegrationTest {
             "Authorities.User_DELETE",
             "Authorities.Logged_IN");
 
+    private static final List<String> CLIENT_MANAGE_AUTHORITIES = List.of(
+            "Authorities.ROLE_Client_MANAGE",
+            "Authorities.User_READ",
+            "Authorities.User_CREATE",
+            "Authorities.User_UPDATE",
+            "Authorities.User_DELETE",
+            "Authorities.Logged_IN");
+
     private static final List<String> OWNER_AUTHORITIES = List.of(
             "Authorities.ROLE_Owner",
             "Authorities.User_READ",
@@ -62,7 +70,8 @@ class UserSubOrgAccessIntegrationTest extends AbstractIntegrationTest {
                 .then(databaseClient.sql("DELETE FROM security_past_passwords WHERE USER_ID > 1").then())
                 .then(databaseClient.sql("UPDATE security_user SET REPORTING_TO = NULL WHERE ID > 1").then())
                 .then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
-                .then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
+                .then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
                 .then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
                 .block();
     }
@@ -115,7 +124,7 @@ class UserSubOrgAccessIntegrationTest extends AbstractIntegrationTest {
     class ReadPageFilterTests {
 
         @Test
-        @DisplayName("non-owner sees only their sub-org users")
+        @DisplayName("non-owner without Client_MANAGE sees only their sub-org users")
         void nonOwner_returnsOnlySubOrgUsers() {
             Mono<Page<User>> result = setupSubOrgFixture("SUBORG1")
                     .flatMap(ids -> {
@@ -136,6 +145,84 @@ class UserSubOrgAccessIntegrationTest extends AbstractIntegrationTest {
                                             .collect(Collectors.toSet());
                                     assertThat(returnedIds).contains(managerId, sub1Id, sub2Id);
                                     assertThat(returnedIds).doesNotContain(ids[4]); // outsider
+                                });
+                    });
+
+            StepVerifier.create(result)
+                    .assertNext(page -> assertThat(page.getContent()).isNotEmpty())
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("non-owner with Client_MANAGE sees all same-client users including those outside sub-org")
+        void clientManage_returnsAllSameClientUsers() {
+            Mono<Page<User>> result = setupSubOrgFixture("SUBORG1A")
+                    .flatMap(ids -> {
+                        ULong clientId = ids[0];
+                        ULong managerId = ids[1];
+                        ULong sub1Id = ids[2];
+                        ULong sub2Id = ids[3];
+                        ULong outsiderId = ids[4];
+
+                        ContextAuthentication managerAuth = TestDataFactory.createBusinessAuth(
+                                managerId, clientId, "SUBORG1A", CLIENT_MANAGE_AUTHORITIES);
+
+                        return userService
+                                .readPageFilter(PageRequest.of(0, 20), null)
+                                .contextWrite(ReactiveSecurityContextHolder.withAuthentication(managerAuth))
+                                .doOnNext(page -> {
+                                    Set<ULong> returnedIds = page.getContent().stream()
+                                            .map(User::getId)
+                                            .collect(Collectors.toSet());
+                                    assertThat(returnedIds).contains(managerId, sub1Id, sub2Id, outsiderId);
+                                });
+                    });
+
+            StepVerifier.create(result)
+                    .assertNext(page -> assertThat(page.getContent()).isNotEmpty())
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("non-owner with Client_MANAGE sees own client users plus managed client users")
+        void clientManage_seesOwnClientAndManagedClientUsers() {
+            Mono<Page<User>> result = setupSubOrgFixture("SUBORG1B")
+                    .flatMap(ids -> {
+                        ULong clientId = ids[0];
+                        ULong managerId = ids[1];
+                        ULong outsiderId = ids[4]; // same client, not in sub-org
+
+                        // Create a second client managed by the manager
+                        return insertTestClient("MANAGED", "Managed Client", "BUS")
+                                .flatMap(managedClientId -> insertClientHierarchy(
+                                        managedClientId, clientId, ULong.valueOf(1), null, null)
+                                        .then(insertClientManager(managedClientId, managerId))
+                                        .then(insertTestUser(managedClientId, "managed_user",
+                                                "managed@test.com", "fincity@123"))
+                                        .map(managedUserId -> new ULong[] {
+                                                clientId, managerId, outsiderId, managedClientId, managedUserId
+                                        }));
+                    })
+                    .flatMap(ids -> {
+                        ULong clientId = ids[0];
+                        ULong managerId = ids[1];
+                        ULong outsiderId = ids[2];
+                        ULong managedUserId = ids[4];
+
+                        ContextAuthentication managerAuth = TestDataFactory.createBusinessAuth(
+                                managerId, clientId, "SUBORG1B", CLIENT_MANAGE_AUTHORITIES);
+
+                        return userService
+                                .readPageFilter(PageRequest.of(0, 50), null)
+                                .contextWrite(ReactiveSecurityContextHolder.withAuthentication(managerAuth))
+                                .doOnNext(page -> {
+                                    Set<ULong> returnedIds = page.getContent().stream()
+                                            .map(User::getId)
+                                            .collect(Collectors.toSet());
+                                    // Own client users (including outsider) should be visible
+                                    assertThat(returnedIds).contains(managerId, outsiderId);
+                                    // Managed client users should also be visible
+                                    assertThat(returnedIds).contains(managedUserId);
                                 });
                     });
 

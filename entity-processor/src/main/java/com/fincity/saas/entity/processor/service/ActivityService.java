@@ -246,22 +246,24 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acCreate(ProcessorAccess access, Ticket ticket, String comment) {
-        return this.createActivityInternal(
-                        access,
-                        ActivityAction.CREATE,
-                        null,
-                        comment,
-                        Map.of(
-                                Activity.Fields.ticketId,
-                                ticket.getId(),
+
+        Map<String, Object> context = new HashMap<>(Map.of(
+                Activity.Fields.ticketId,
+                ticket.getId(),
+                Ticket.Fields.source,
+                ticket.getSubSource() != null
+                        ? Map.of(
                                 Ticket.Fields.source,
-                                ticket.getSubSource() != null
-                                        ? Map.of(
-                                                Ticket.Fields.source,
-                                                ticket.getSource(),
-                                                Ticket.Fields.subSource,
-                                                ticket.getSubSource())
-                                        : Map.of(Ticket.Fields.source, ticket.getSource())))
+                                ticket.getSource(),
+                                Ticket.Fields.subSource,
+                                ticket.getSubSource())
+                        : Map.of(Ticket.Fields.source, ticket.getSource())));
+
+        if (ticket.getStage() != null) context.put(Ticket.Fields.stage, ticket.getStage());
+
+        if (ticket.getStatus() != null) context.put(Ticket.Fields.status, ticket.getStatus());
+
+        return this.createActivityInternal(access, ActivityAction.CREATE, null, comment, context)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
@@ -740,10 +742,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                     ActivityAction.CALL_LOG,
                                     callLogRequest.getCallDate(),
                                     callLogRequest.getComment(),
-                                    context);
-                        },
-                        (access, ticket, activity) ->
-                                this.ticketService.resetExpiresOn(access, ticket.getId()).then())
+                                    context)
+                                    .then(this.ticketService.resetExpiresOn(access, ticket));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createCallLog"));
     }
 

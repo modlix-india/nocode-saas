@@ -57,6 +57,9 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private AppService appService;
 
+	@Mock
+	private com.fincity.security.service.ClientActivityService clientActivityService;
+
 	private ClientPasswordPolicyService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -84,6 +87,7 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 		service.setClientService(clientService);
 		service.setClientHierarchyService(clientHierarchyService);
 		service.setAppService(appService);
+		service.setClientActivityService(clientActivityService);
 
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
@@ -568,6 +572,8 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 						assertTrue(result.isAtleastOneUppercase());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("client password policy Create"), anyString());
 		}
 
 		@Test
@@ -600,6 +606,7 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertNotNull(result))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("client password policy Update"), anyString());
 			verify(cacheService).evict(eq("clientPasswordPolicy"), eq(BUS_CLIENT_ID + ":" + APP_ID));
 		}
 
@@ -627,6 +634,7 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("client password policy Delete"), anyString());
 			verify(cacheService).evict(eq("clientPasswordPolicy"), eq(BUS_CLIENT_ID + ":" + APP_ID));
 		}
 	}

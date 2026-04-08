@@ -129,6 +129,11 @@ public class RoleV2Service
     }
 
     @Override
+    protected ULong resolveClientId(RoleV2 entity) {
+        return entity.getClientId();
+    }
+
+    @Override
     protected Mono<RoleV2> updatableEntity(RoleV2 entity) {
         return this.read(entity.getId())
                 .map(existing -> {

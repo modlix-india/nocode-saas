@@ -165,10 +165,31 @@ public class ProductTicketCRuleService
 
         return super.productService
                 .readById(access, productId)
-                .flatMap(product -> product.isOverrideCTemplate()
-                        ? this.getRulesWithOrderWithTemplateOverride(access, product, stageId)
-                        : this.getRulesWithOrderWithTemplateCombine(access, product, stageId))
+                .flatMap(product -> {
+                    Mono<Map<Integer, ProductTicketCRule>> rulesMono;
+                    if (stageId == null) {
+                        rulesMono = product.isOverrideCTemplate()
+                                ? this.getRulesWithOrderWithTemplateOverride(access, product, null)
+                                : this.getRulesWithOrderWithTemplateCombine(access, product, null);
+                    } else {
+                        rulesMono = this.resolveParentStageId(stageId)
+                                .flatMap(resolvedStageId -> product.isOverrideCTemplate()
+                                        ? this.getRulesWithOrderWithTemplateOverride(access, product, resolvedStageId)
+                                        : this.getRulesWithOrderWithTemplateCombine(access, product, resolvedStageId));
+                    }
+                    return rulesMono;
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.getRulesWithOrder"));
+    }
+
+    /**
+     * If the given stageId is a child stage, resolve it to its parent stage ID.
+     * Creation rules are stored with parent stage IDs, but tickets are assigned to child stages.
+     */
+    private Mono<ULong> resolveParentStageId(ULong stageId) {
+        return this.stageService.readInternal(stageId)
+                .map(stage -> stage.isChild() ? stage.getParentLevel_0() : stageId)
+                .defaultIfEmpty(stageId);
     }
 
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateOverride(
@@ -261,7 +282,11 @@ public class ProductTicketCRuleService
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
                                     access, productRule, tokenPrefix, userId, ticket.toJsonElement()),
-                            super::updateInternalForOutsideUser,
+                            eRule -> {
+                                logger.info("getUserAssignment: ruleId={}, assignedUserId={}, distributionType={}",
+                                        eRule.getId(), eRule.getLastAssignedUserId(), eRule.getUserDistributionType());
+                                return super.updateInternalForOutsideUser(eRule);
+                            },
                             (eRule, uRule) -> {
                                 ULong assignedUserId = uRule.getLastAssignedUserId();
                                 if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
