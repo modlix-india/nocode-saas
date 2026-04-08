@@ -133,7 +133,9 @@ public class ProductTicketExRuleService
                         rule -> {
                             if (rule != null) return Mono.just(rule);
                             return this.productService
-                                    .readById(access, productId)
+                                    .readByIdentityInternal(
+                                            com.fincity.saas.entity.processor.model.common.Identity.of(
+                                                    productId.toBigInteger()))
                                     .flatMap(product -> product.getProductTemplateId() != null
                                             ? this.findTemplateRule(
                                                     access, product.getProductTemplateId(), source)
