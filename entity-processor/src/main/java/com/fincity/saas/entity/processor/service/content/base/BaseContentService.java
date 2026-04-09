@@ -88,11 +88,16 @@ public abstract class BaseContentService<
     public Mono<Integer> deleteIdentity(Identity identity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.readByIdentity(identity),
-                entity -> super.delete(entity.getId()),
-                (entity, deleted) -> this.activityService
+                super::hasAccess,
+                access -> this.readByIdentity(identity),
+                (access, entity) -> super.delete(entity.getId()),
+                (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
-                        .then(Mono.just(deleted)));
+                        .then(entity.getTicketId() != null
+                                ? this.ticketService
+                                        .resetExpiresOn(access, entity.getTicketId())
+                                        .thenReturn(deleted)
+                                : Mono.just(deleted)));
     }
 
     @Override
@@ -103,7 +108,11 @@ public abstract class BaseContentService<
                 (access, entity) -> super.delete(entity.getId()),
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
-                        .then(Mono.just(deleted)));
+                        .then(entity.getTicketId() != null
+                                ? this.ticketService
+                                        .resetExpiresOn(access, entity.getTicketId())
+                                        .thenReturn(deleted)
+                                : Mono.just(deleted)));
     }
 
     @Override
@@ -114,7 +123,11 @@ public abstract class BaseContentService<
                 super::deleteInternal,
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
-                        .then(Mono.just(deleted)));
+                        .then(entity.getTicketId() != null
+                                ? this.ticketService
+                                        .resetExpiresOn(access, entity.getTicketId())
+                                        .thenReturn(deleted)
+                                : Mono.just(deleted)));
     }
 
     @Override
@@ -124,7 +137,14 @@ public abstract class BaseContentService<
                 oEntity -> super.update(access, entity),
                 (oEntity, uEntity) -> activityService
                         .acContentUpdate(access, oEntity, uEntity)
-                        .then(Mono.just(uEntity)));
+                        .then(Mono.just(uEntity)),
+                (oEntity, uEntity, result) -> {
+                    if (result.getTicketId() != null)
+                        return this.ticketService
+                                .resetExpiresOn(access, result.getTicketId())
+                                .thenReturn(result);
+                    return Mono.just(result);
+                });
     }
 
     protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
