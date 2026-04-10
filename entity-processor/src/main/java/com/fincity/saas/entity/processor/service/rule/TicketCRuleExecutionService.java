@@ -6,6 +6,9 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.google.gson.JsonElement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -43,28 +46,78 @@ public class TicketCRuleExecutionService {
             String prefix,
             ULong userId,
             JsonElement data) {
+        return this.executeRules(access, rules, prefix, userId, data, null);
+    }
 
-        if (rules == null || rules.isEmpty()) return Mono.empty();
+    public Mono<ProductTicketCRule> executeRules(
+            ProcessorAccess access,
+            Map<Integer, ProductTicketCRule> rules,
+            String prefix,
+            ULong userId,
+            JsonElement data,
+            Map<String, Object> trace) {
+
+        if (rules == null || rules.isEmpty()) {
+            if (trace != null) trace.put("executeRules_empty", true);
+            return Mono.empty();
+        }
 
         final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
-        return this.findMatchedRules(rules, prefix, data)
-                .flatMap(matchedRules -> this.handleMatchedRule(access, matchedRules, finalUserId))
-                .switchIfEmpty(this.handleDefaultRule(access, rules, finalUserId))
+        if (trace != null) {
+            trace.put("executeRules_ruleCount", rules.size());
+            trace.put("executeRules_ruleOrders", rules.keySet().toString());
+            trace.put("executeRules_inputUserId", userId != null ? userId.toString() : null);
+            trace.put("executeRules_finalUserId", finalUserId != null ? finalUserId.toString() : null);
+        }
+
+        return this.findMatchedRules(rules, prefix, data, trace)
+                .flatMap(matchedRule -> {
+                    if (trace != null) {
+                        trace.put("matchedRuleType", "CONDITIONAL");
+                        trace.put("matchedRuleId", matchedRule.getId() != null ? matchedRule.getId().toString() : null);
+                        trace.put("matchedRuleOrder", matchedRule.getOrder());
+                    }
+                    return this.handleMatchedRule(access, matchedRule, finalUserId, trace);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (trace != null) trace.put("conditionalRuleMatched", false);
+                    return this.handleDefaultRule(access, rules, finalUserId, trace);
+                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    private Mono<ProductTicketCRule> distributeUsers(ProductTicketCRule rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRule> distributeUsers(
+            ProductTicketCRule rule, Set<ULong> userIds, Map<String, Object> trace) {
 
-        if (userIds == null || userIds.isEmpty()) return Mono.empty();
+        if (userIds == null || userIds.isEmpty()) {
+            if (trace != null) trace.put("distributeResult", "NO_USERS_AVAILABLE");
+            return Mono.empty();
+        }
 
-        if (userIds.size() == 1)
-            return Mono.just(this.addAssignedUser(rule, userIds.iterator().next()));
+        if (trace != null) {
+            trace.put("distributeUserCount", userIds.size());
+            trace.put("distributeUserIds", userIds.toString());
+            trace.put("distributeType", rule.getUserDistributionType() != null
+                    ? rule.getUserDistributionType().getLiteral() : null);
+            trace.put("distributeLastAssignedUserId",
+                    rule.getLastAssignedUserId() != null ? rule.getLastAssignedUserId().toString() : null);
+        }
+
+        if (userIds.size() == 1) {
+            ULong onlyUser = userIds.iterator().next();
+            if (trace != null) trace.put("distributeResult", "SINGLE_USER_" + onlyUser);
+            return Mono.just(this.addAssignedUser(rule, onlyUser));
+        }
 
         return switch (rule.getUserDistributionType()) {
             case ROUND_ROBIN -> this.handleRoundRobin(rule, userIds);
             case RANDOM -> this.getRandom(rule, userIds);
-            default -> Mono.empty();
+            default -> {
+                if (trace != null)
+                    trace.put("distributeResult", "UNSUPPORTED_TYPE_" + rule.getUserDistributionType());
+                yield Mono.empty();
+            }
         };
     }
 
@@ -99,54 +152,127 @@ public class TicketCRuleExecutionService {
     }
 
     private Mono<ProductTicketCRule> findMatchedRules(
-            Map<Integer, ProductTicketCRule> rules, String prefix, JsonElement data) {
+            Map<Integer, ProductTicketCRule> rules, String prefix, JsonElement data, Map<String, Object> trace) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
         ConditionEvaluator evaluator = conditionEvaluatorCache.computeIfAbsent(prefix, ConditionEvaluator::new);
+
+        List<Map<String, Object>> conditionResults = trace != null ? new ArrayList<>() : null;
 
         return Flux.fromStream(rules.entrySet().stream()
                         .filter(e -> e.getKey() != null && e.getKey() > 0)
                         .sorted(Map.Entry.comparingByKey())
                         .map(Map.Entry::getValue))
                 .concatMap(rule -> {
-                    if (rule.getCondition() == null) return Mono.empty();
+                    if (rule.getCondition() == null) {
+                        if (conditionResults != null) {
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("ruleId", rule.getId() != null ? rule.getId().toString() : null);
+                            entry.put("order", rule.getOrder());
+                            entry.put("result", "NO_CONDITION");
+                            conditionResults.add(entry);
+                        }
+                        return Mono.empty();
+                    }
                     return evaluator
                             .evaluate(rule.getCondition(), data)
+                            .doOnNext(result -> {
+                                if (conditionResults != null) {
+                                    Map<String, Object> entry = new HashMap<>();
+                                    entry.put("ruleId", rule.getId() != null ? rule.getId().toString() : null);
+                                    entry.put("order", rule.getOrder());
+                                    entry.put("result", result.toString());
+                                    conditionResults.add(entry);
+                                }
+                            })
+                            .onErrorResume(e -> {
+                                if (conditionResults != null) {
+                                    Map<String, Object> entry = new HashMap<>();
+                                    entry.put("ruleId", rule.getId() != null ? rule.getId().toString() : null);
+                                    entry.put("order", rule.getOrder());
+                                    entry.put("result", "ERROR");
+                                    entry.put("error", e.getMessage());
+                                    conditionResults.add(entry);
+                                }
+                                return Mono.just(Boolean.FALSE);
+                            })
                             .filter(Boolean::booleanValue)
                             .map(b -> rule);
                 })
-                .next();
+                .next()
+                .doFinally(signal -> {
+                    if (trace != null && conditionResults != null)
+                        trace.put("conditionEvaluations", conditionResults);
+                });
     }
 
     private Mono<ProductTicketCRule> handleDefaultRule(
-            ProcessorAccess access, Map<Integer, ProductTicketCRule> rules, ULong finalUserId) {
+            ProcessorAccess access, Map<Integer, ProductTicketCRule> rules, ULong finalUserId,
+            Map<String, Object> trace) {
+
         ProductTicketCRule defaultRule = rules.get(0);
-        if (defaultRule == null) return Mono.empty();
+        if (defaultRule == null) {
+            if (trace != null) {
+                trace.put("defaultRuleFound", false);
+                trace.put("matchedRuleType", "NONE");
+            }
+            return Mono.empty();
+        }
+
+        if (trace != null) {
+            trace.put("defaultRuleFound", true);
+            trace.put("defaultRuleId", defaultRule.getId() != null ? defaultRule.getId().toString() : null);
+            trace.put("matchedRuleType", "DEFAULT");
+            trace.put("matchedRuleId", defaultRule.getId() != null ? defaultRule.getId().toString() : null);
+            trace.put("matchedRuleOrder", 0);
+        }
 
         return this.userDistributionService
                 .getUsersByRuleId(access, defaultRule.getId())
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (trace != null) trace.put("userResolution", "GET_USERS_RETURNED_EMPTY");
+                    return Mono.empty();
+                }))
                 .flatMap(userIds -> {
-                    // If userId is provided and exists in default rule's userIds, use it
-                    if (finalUserId != null && userIds.contains(finalUserId))
-                        return Mono.just(this.addAssignedUser(defaultRule, finalUserId));
+                    if (trace != null) {
+                        trace.put("userPoolSize", userIds.size());
+                        trace.put("userPoolIds", userIds.toString());
+                    }
 
-                    // Otherwise distribute users according to the rule
-                    return this.distributeUsers(defaultRule, userIds);
+                    if (finalUserId != null && userIds.contains(finalUserId)) {
+                        if (trace != null) trace.put("assignmentReason", "LOGGED_IN_USER_IN_POOL");
+                        return Mono.just(this.addAssignedUser(defaultRule, finalUserId));
+                    }
+
+                    if (trace != null) trace.put("assignmentReason", "DISTRIBUTION");
+                    return this.distributeUsers(defaultRule, userIds, trace);
                 });
     }
 
     private Mono<ProductTicketCRule> handleMatchedRule(
-            ProcessorAccess access, ProductTicketCRule matchedRule, ULong finalUserId) {
+            ProcessorAccess access, ProductTicketCRule matchedRule, ULong finalUserId,
+            Map<String, Object> trace) {
+
         return this.userDistributionService
                 .getUsersByRuleId(access, matchedRule.getId())
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (trace != null) trace.put("userResolution", "GET_USERS_RETURNED_EMPTY");
+                    return Mono.empty();
+                }))
                 .flatMap(userIds -> {
-                    // Case 1: finalUserId is provided and exists in the rule's userIds
-                    if (finalUserId != null && userIds.contains(finalUserId))
-                        return Mono.just(this.addAssignedUser(matchedRule, finalUserId));
+                    if (trace != null) {
+                        trace.put("userPoolSize", userIds.size());
+                        trace.put("userPoolIds", userIds.toString());
+                    }
 
-                    // Case 2: finalUserId is null or not found in any rule
-                    return this.distributeUsers(matchedRule, userIds);
+                    if (finalUserId != null && userIds.contains(finalUserId)) {
+                        if (trace != null) trace.put("assignmentReason", "LOGGED_IN_USER_IN_POOL");
+                        return Mono.just(this.addAssignedUser(matchedRule, finalUserId));
+                    }
+
+                    if (trace != null) trace.put("assignmentReason", "DISTRIBUTION");
+                    return this.distributeUsers(matchedRule, userIds, trace);
                 });
     }
 }

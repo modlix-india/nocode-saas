@@ -190,6 +190,14 @@ public class EntityProcessorApi {
         return req().get(EP + "/notes/" + id);
     }
 
+    public Response updateNoteByCode(String noteCode, Map<String, Object> body) {
+        return req().body(body).put(EP + "/notes/code/" + noteCode);
+    }
+
+    public Response deleteNote(Object noteId) {
+        return req().delete(EP + "/notes/" + noteId);
+    }
+
     public Response getNotesEager(Map<String, Object> queryParams) {
         RequestSpecification r = req();
         for (var e : queryParams.entrySet()) {
@@ -212,8 +220,20 @@ public class EntityProcessorApi {
         return req().get(EP + "/tasks/types");
     }
 
+    public Response getTask(Object id) {
+        return req().get(EP + "/tasks/" + id);
+    }
+
     public Response updateTask(Object taskId, Map<String, Object> body) {
         return req().body(body).put(EP + "/tasks/req/" + taskId);
+    }
+
+    public Response updateTaskByCode(String taskCode, Map<String, Object> body) {
+        return req().body(body).put(EP + "/tasks/code/" + taskCode);
+    }
+
+    public Response deleteTask(Object taskId) {
+        return req().delete(EP + "/tasks/" + taskId);
     }
 
     // ── Activities ─────────────────────────────────────────────────────
