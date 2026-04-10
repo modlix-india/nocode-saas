@@ -180,7 +180,9 @@ public class UserInviteService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.createWithInvitationInternal(request, userInvite),
+                ca -> this.createWithInvitationInternal(request, userInvite)
+                        .flatMap(createdUser -> this.deleteUserInvitation(userInvite.getInviteCode())
+                                .thenReturn(createdUser)),
 
                 (ca, createdUser) -> this
                         .getClientAuthenticationResponse(request, createdUser.getId(),
