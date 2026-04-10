@@ -261,36 +261,57 @@ public class ProductTicketCRuleService
             Ticket ticket,
             boolean isCreate) {
 
-        logger.info("getUserAssignment: productId={}, stageId={}, isCreate={}, userId={}", productId, stageId, isCreate, userId);
+        Map<String, Object> trace = ticket.getEvaluationTrace();
+        if (trace != null) {
+            trace.put("productId", productId != null ? productId.toString() : null);
+            trace.put("stageId", stageId != null ? stageId.toString() : null);
+            trace.put("isCreate", isCreate);
+            trace.put("inputUserId", userId != null ? userId.toString() : null);
+            trace.put("appCode", access.getAppCode());
+            trace.put("clientCode", access.getClientCode());
+            trace.put("isOutsideUser", access.isOutsideUser());
+        }
 
         return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
-                    logger.info("getUserAssignment: productId={}, stageId={}, rulesFound={}, ruleKeys={}",
-                            productId, stageId, productRule.size(), productRule.keySet());
+
+                    if (trace != null) {
+                        trace.put("rulesFound", productRule.size());
+                        trace.put("ruleOrders", productRule.keySet().toString());
+                    }
 
                     if (productRule.isEmpty()) {
-                        logger.info("getUserAssignment: No rules found for productId={}, stageId={}", productId, stageId);
+                        if (trace != null) trace.put("outcome", "NO_RULES_FOUND");
                         return Mono.empty();
                     }
 
                     // During updates/reassignment, if only the default rule exists, return empty (don't change
                     // assignment)
                     if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) {
-                        logger.info("getUserAssignment: Only default rule (order 0) found during update, skipping reassignment for productId={}, stageId={}", productId, stageId);
+                        if (trace != null) trace.put("outcome", "ONLY_DEFAULT_RULE_DURING_UPDATE");
                         return Mono.empty();
                     }
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
-                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement()),
+                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement(), trace),
                             eRule -> {
-                                logger.info("getUserAssignment: ruleId={}, assignedUserId={}, distributionType={}",
-                                        eRule.getId(), eRule.getLastAssignedUserId(), eRule.getUserDistributionType());
+                                if (trace != null) {
+                                    trace.put("executedRuleId",
+                                            eRule.getId() != null ? eRule.getId().toString() : null);
+                                    trace.put("executedRuleAssignedUserId",
+                                            eRule.getLastAssignedUserId() != null
+                                                    ? eRule.getLastAssignedUserId().toString() : null);
+                                }
                                 return super.updateInternalForOutsideUser(eRule);
                             },
                             (eRule, uRule) -> {
                                 ULong assignedUserId = uRule.getLastAssignedUserId();
-                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
+                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) {
+                                    if (trace != null)
+                                        trace.put("outcome", "RULE_MATCHED_BUT_NO_USER_ASSIGNED");
                                     return Mono.empty();
+                                }
+                                if (trace != null) trace.put("outcome", "RULE_ASSIGNED");
                                 return Mono.just(new RuleResult()
                                         .setUserId(assignedUserId)
                                         .setRuleId(uRule.getId())
@@ -302,6 +323,10 @@ public class ProductTicketCRuleService
                             });
                 })
                 .onErrorResume(e -> {
+                    if (trace != null) {
+                        trace.put("outcome", "ERROR");
+                        trace.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+                    }
                     logger.error("Error in getUserAssignment for productId={}, stageId={}: {}",
                             productId, stageId, e.getMessage(), e);
                     return Mono.empty();

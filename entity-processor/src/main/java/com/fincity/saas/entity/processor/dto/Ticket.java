@@ -62,6 +62,9 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     @JsonIgnore
     private transient RuleResult assignmentRuleResult;
 
+    @JsonIgnore
+    private transient Map<String, Object> evaluationTrace;
+
     public Ticket() {
         super();
         this.relationsMap.put(Fields.ownerId, EntitySeries.OWNER.getTable());
@@ -99,6 +102,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.expiresOn = ticket.expiresOn;
         this.latestComment = ticket.latestComment;
         this.assignmentRuleResult = ticket.assignmentRuleResult;
+        this.evaluationTrace = ticket.evaluationTrace;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
