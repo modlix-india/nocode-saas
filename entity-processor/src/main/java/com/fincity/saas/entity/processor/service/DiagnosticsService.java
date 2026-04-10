@@ -119,6 +119,48 @@ public class DiagnosticsService
                 metaData);
     }
 
+    public Mono<DiagnosticsLog> logAssignment(
+            ProcessorAccess access,
+            ULong ticketId,
+            String action,
+            ULong oldUserId,
+            ULong newUserId,
+            String reason,
+            RuleResult ruleResult,
+            Map<String, Object> evaluationTrace) {
+
+        Map<String, Object> metaData = new HashMap<>();
+        if (ruleResult != null) {
+            metaData.put("ruleId", ruleResult.getRuleId() != null ? ruleResult.getRuleId().toString() : null);
+            metaData.put("ruleOrder", ruleResult.getRuleOrder());
+            metaData.put(
+                    "distributionType",
+                    ruleResult.getDistributionType() != null
+                            ? ruleResult.getDistributionType().getLiteral()
+                            : null);
+            metaData.put(
+                    "productId", ruleResult.getProductId() != null ? ruleResult.getProductId().toString() : null);
+            metaData.put(
+                    "productTemplateId",
+                    ruleResult.getProductTemplateId() != null
+                            ? ruleResult.getProductTemplateId().toString()
+                            : null);
+            metaData.put("stageId", ruleResult.getStageId() != null ? ruleResult.getStageId().toString() : null);
+        }
+
+        if (evaluationTrace != null) metaData.put("evaluationTrace", evaluationTrace);
+
+        return this.log(
+                access,
+                EntityProcessorDiagnosticsObjectType.TICKET,
+                ticketId,
+                action,
+                oldUserId,
+                newUserId,
+                reason,
+                metaData);
+    }
+
     public Mono<Page<DiagnosticsLog>> readPageFiltered(ProcessorAccess access, Pageable pageable,
             AbstractCondition condition) {
 
