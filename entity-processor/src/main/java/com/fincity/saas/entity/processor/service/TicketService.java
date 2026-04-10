@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -287,16 +288,31 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
 
-        if (ticket.getAssignedUserId() != null && ticket.getStage() != null) return Mono.just(ticket);
+        Map<String, Object> trace = new HashMap<>();
+        ticket.setEvaluationTrace(trace);
 
-        if (ticket.getAssignedUserId() != null)
+        if (ticket.getAssignedUserId() != null && ticket.getStage() != null) {
+            trace.put("skippedReason", "ALREADY_ASSIGNED_AND_STAGED");
+            trace.put("assignedUserId", ticket.getAssignedUserId().toString());
+            trace.put("stage", ticket.getStage().toString());
+            return Mono.just(ticket);
+        }
+
+        if (ticket.getAssignedUserId() != null) {
+            trace.put("skippedReason", "ALREADY_ASSIGNED_FROM_DUPLICATE");
+            trace.put("assignedUserId", ticket.getAssignedUserId().toString());
             return this.setDefaultStage(access, ticket)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
+        }
 
         ULong loggedInAssignedUser = access.isOutsideUser() ? null : access.getUserId();
+        trace.put("loggedInFallbackUserId", loggedInAssignedUser != null ? loggedInAssignedUser.toString() : null);
+        trace.put("isOutsideUser", access.isOutsideUser());
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.setDefaultStage(access, ticket),
+                        () -> this.setDefaultStage(access, ticket)
+                                .doOnNext(t -> trace.put("defaultStage",
+                                        t.getStage() != null ? t.getStage().toString() : null)),
                         sTicket -> this.productTicketCRuleService.getUserAssignment(
                                 access,
                                 sTicket.getProductId(),
@@ -307,6 +323,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (sTicket, ruleResult) -> {
                             ULong assignedUserId =
                                     ruleResult != null ? ruleResult.getUserId() : loggedInAssignedUser;
+                            trace.put("finalAssignedUserId",
+                                    assignedUserId != null ? assignedUserId.toString() : null);
+                            trace.put("assignedVia", ruleResult != null ? "RULE" : "LOGGED_IN_USER_FALLBACK");
                             return this.setTicketAssignment(access, sTicket, assignedUserId, ruleResult);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
@@ -476,8 +495,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             null,
                                             created.getAssignedUserId(),
                                             rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr)
-                                    .onErrorResume(e -> Mono.empty())
+                                            rr,
+                                            pTicket.getEvaluationTrace())
+                                    .onErrorResume(e -> {
+                                        logger.error("Failed to log diagnostics for ticket {}: {}",
+                                                created.getId(), e.getMessage());
+                                        return Mono.empty();
+                                    })
                                     .subscribe();
                             return this.createNote(access, ticketRequest, created);
                         },
@@ -547,8 +571,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             null,
                                             created.getAssignedUserId(),
                                             rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr)
-                                    .onErrorResume(e -> Mono.empty())
+                                            rr,
+                                            pTicket.getEvaluationTrace())
+                                    .onErrorResume(e -> {
+                                        logger.error("Failed to log diagnostics for ticket {}: {}",
+                                                created.getId(), e.getMessage());
+                                        return Mono.empty();
+                                    })
                                     .subscribe();
                             return this.createNote(access, cTicketRequest, created);
                         },
@@ -596,8 +625,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             null,
                                             created.getAssignedUserId(),
                                             rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr)
-                                    .onErrorResume(e -> Mono.empty())
+                                            rr,
+                                            pTicket.getEvaluationTrace())
+                                    .onErrorResume(e -> {
+                                        logger.error("Failed to log diagnostics for ticket {}: {}",
+                                                created.getId(), e.getMessage());
+                                        return Mono.empty();
+                                    })
                                     .subscribe();
                         //     return this.createNote(access, cTicketRequest, created);
                                 return Mono.just(true);
