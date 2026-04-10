@@ -967,7 +967,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     private Condition buildActivityCondition(LocalDateTime startDate, LocalDateTime endDate, List<ULong> stageIds) {
         Condition condition = ENTITY_PROCESSOR_ACTIVITIES
                 .ACTIVITY_ACTION
-                .eq(ActivityAction.STAGE_UPDATE)
+                .in(ActivityAction.STAGE_UPDATE, ActivityAction.CREATE)
                 .and(ENTITY_PROCESSOR_ACTIVITIES.STAGE_ID.isNotNull());
 
         condition =
