@@ -14,29 +14,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
+import com.fincity.security.dao.ClientActivityDAO;
 import com.fincity.security.dto.ClientActivity;
+import com.fincity.security.jooq.tables.records.SecurityClientActivityRecord;
 import com.fincity.security.service.ClientActivityService;
 
 import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/security/client-activities")
-public class ClientActivityController {
+public class ClientActivityController extends
+        AbstractJOOQDataController<SecurityClientActivityRecord, ULong, ClientActivity, ClientActivityDAO, ClientActivityService> {
 
-    private final ClientActivityService service;
-
-    public ClientActivityController(ClientActivityService service) {
-        this.service = service;
-    }
-
-    @PostMapping
-    public Mono<ResponseEntity<ClientActivity>> create(@RequestBody ClientActivity entity) {
-        return this.service.create(entity).map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/{clientId}")
+    @GetMapping("/byClient/{clientId}")
     public Mono<ResponseEntity<Page<ClientActivity>>> readPageFilter(
             @PathVariable ULong clientId,
             Pageable pageable,
@@ -53,7 +46,7 @@ public class ClientActivityController {
                 .map(ResponseEntity::ok);
     }
 
-    @PostMapping("/{clientId}/query")
+    @PostMapping("/byClient/{clientId}/query")
     public Mono<ResponseEntity<Page<ClientActivity>>> readPageFilterQuery(
             @PathVariable ULong clientId,
             @RequestBody Query query) {
