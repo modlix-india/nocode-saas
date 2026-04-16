@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1018,9 +1020,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-    public Mono<Integer> bulkReassignTickets(Query query, ULong userId, String comment) {
+    public Mono<Integer> bulkReassignTickets(Query query, List<ULong> userIds, String comment) {
 
-        if (userId == null)
+        if (userIds == null || userIds.isEmpty())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
@@ -1029,23 +1031,32 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> {
-                            if (!access.getUserInherit().getSubOrg().contains(userId))
-                                return this.msgService.<Boolean>throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            List<ULong> subOrg = access.getUserInherit().getSubOrg();
+                            for (ULong uid : userIds) {
+                                if (!subOrg.contains(uid))
+                                    return this.msgService.<Boolean>throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            }
                             return Mono.just(Boolean.TRUE);
                         },
                         (access, valid) -> this.dao.processorAccessCondition(query.getCondition(), access),
-                        (access, valid, pCondition) -> this.dao.readAll(pCondition)
-                                .flatMap(ticket -> this.updateTicketForReassignment(
-                                        access, ticket, userId, comment, false, null)
-                                        .onErrorResume(e -> {
-                                            logger.error("Bulk reassign failed for ticket {}: {}",
-                                                    ticket.getId(), e.getMessage());
-                                            return Mono.empty();
-                                        }))
-                                .count()
-                                .map(Long::intValue))
+                        (access, valid, pCondition) -> {
+                            AtomicInteger counter = new AtomicInteger(0);
+                            return this.dao.readAll(pCondition)
+                                    .flatMap(ticket -> {
+                                        ULong userId = userIds.get(counter.getAndIncrement() % userIds.size());
+                                        return this.updateTicketForReassignment(
+                                                access, ticket, userId, comment, false, null)
+                                                .onErrorResume(e -> {
+                                                    logger.error("Bulk reassign failed for ticket {}: {}",
+                                                            ticket.getId(), e.getMessage());
+                                                    return Mono.empty();
+                                                });
+                                    })
+                                    .count()
+                                    .map(Long::intValue);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.bulkReassignTickets"));
     }
 
