@@ -14,7 +14,9 @@ import org.junit.jupiter.api.TestMethodOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -812,7 +814,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
                         "page", 0,
                         "size", 100
                 ),
-                "userId", salesMember2UserId,
+                "userIds", List.of(salesMember2UserId),
                 "comment", "Bulk reassign to SM2 for testing"
         ));
 
@@ -826,7 +828,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
     void s9_03_verifyBulkReassignedToSM2() {
         // Use SM2's token to verify they can see the bulk reassigned tickets
         EntityProcessorApi sm2Api = new EntityProcessorApi(
-                givenAuth(getSmToken(salesMember2UserId), clientCode, appCode));
+                givenAuth(getSmToken("sm2"), clientCode, appCode));
         Response res = sm2Api.listTickets(0, 100);
         assertThat(res.statusCode()).isEqualTo(200);
 
@@ -852,7 +854,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
                         "page", 0,
                         "size", 100
                 ),
-                "userId", 999999,
+                "userIds", List.of(999999),
                 "comment", "Should fail"
         ));
 
@@ -861,24 +863,115 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
 
     @Test
     @Order(1040)
-    void s9_05_bulkReassignWithNoUserId_fails() {
-        // Try bulk reassign without userId — should fail
+    void s9_05_bulkReassignWithNoUserIds_fails() {
+        // Try bulk reassign without userIds — should fail
         Response res = api.bulkReassign(mapOf(
                 "query", mapOf("page", 0, "size", 100),
                 "comment", "No user"
         ));
 
-        assertThat(res.statusCode()).as("Bulk reassign without userId should fail").isEqualTo(400);
+        assertThat(res.statusCode()).as("Bulk reassign without userIds should fail").isEqualTo(400);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S10: Bulk Reassign — Multi-User Split
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(1100)
+    void s10_01_createLeadsForMultiUserSplit() {
+        // Create 6 leads with a unique subSource so we can query them precisely
+        for (int i = 1; i <= 6; i++) {
+            Response res = api.createTicket(mapOf(
+                    "name", "Dedup_S10_SplitLead_" + i,
+                    "dialCode", 91,
+                    "phoneNumber", "+91900000020" + i,
+                    "productId", product1Id,
+                    "source", "Website",
+                    "subSource", "SplitTest"
+            ));
+            assertThat(res.statusCode()).as("Create split test lead " + i).isIn(200, 201);
+        }
+    }
+
+    @Test
+    @Order(1110)
+    void s10_02_bulkReassignToMultipleUsers() {
+        // Bulk reassign all "SplitTest" tickets split across SM1 and SM2
+        Response res = api.bulkReassign(mapOf(
+                "query", mapOf(
+                        "condition", Map.of(
+                                "operator", "AND",
+                                "negate", false,
+                                "conditions", List.of(
+                                        Map.of("field", "source", "value", "Website",
+                                                "operator", "EQUALS", "negate", false),
+                                        Map.of("field", "subSource", "value", "SplitTest",
+                                                "operator", "EQUALS", "negate", false)
+                                )
+                        ),
+                        "page", 0,
+                        "size", 100
+                ),
+                "userIds", List.of(salesMember1UserId, salesMember2UserId),
+                "comment", "Multi-user split reassign test"
+        ));
+
+        assertThat(res.statusCode()).as("Multi-user bulk reassign").isEqualTo(200);
+        Number count = res.body().as(Integer.class);
+        assertThat(count.intValue()).as("Should reassign all 6 tickets").isGreaterThanOrEqualTo(6);
+    }
+
+    @Test
+    @Order(1120)
+    void s10_03_verifyTicketsSplitAcrossUsers() {
+        // Query all SplitTest tickets and verify they are distributed across both users
+        Response res = api.queryTickets(mapOf(
+                "condition", Map.of(
+                        "operator", "AND",
+                        "negate", false,
+                        "conditions", List.of(
+                                Map.of("field", "source", "value", "Website",
+                                        "operator", "EQUALS", "negate", false),
+                                Map.of("field", "subSource", "value", "SplitTest",
+                                        "operator", "EQUALS", "negate", false)
+                        )
+                ),
+                "page", 0,
+                "size", 100
+        ));
+        assertThat(res.statusCode()).isEqualTo(200);
+
+        List<Map<String, Object>> content = res.body().path("content");
+        assertThat(content).as("Should have at least 6 SplitTest tickets").hasSizeGreaterThanOrEqualTo(6);
+
+        // Count how many went to each user
+        Set<Number> assignedUserIds = content.stream()
+                .map(t -> (Number) t.get("assignedUserId"))
+                .collect(Collectors.toSet());
+
+        assertThat(assignedUserIds)
+                .as("Tickets should be assigned to both SM1 and SM2")
+                .contains(salesMember1UserId, salesMember2UserId);
+
+        long sm1Count = content.stream()
+                .filter(t -> salesMember1UserId.longValue() == ((Number) t.get("assignedUserId")).longValue())
+                .count();
+        long sm2Count = content.stream()
+                .filter(t -> salesMember2UserId.longValue() == ((Number) t.get("assignedUserId")).longValue())
+                .count();
+
+        // With 6 tickets and 2 users, each should get exactly 3 (nearly equal split)
+        assertThat(sm1Count).as("SM1 ticket count").isEqualTo(3);
+        assertThat(sm2Count).as("SM2 ticket count").isEqualTo(3);
     }
 
     /**
-     * Helper to get a token for a team member by userId.
-     * SM2 was invited during S6 setup — reuse their token by authenticating.
+     * Helper to get a token for a team member by suffix (e.g. "sm1", "sm2").
      */
-    private String getSmToken(Number smUserId) {
-        // SM2 was created via invite with a known email pattern
+    private String getSmToken(String suffix) {
         SecurityApi secApi = new SecurityApi(baseHost());
-        String smEmail = "dedup-sm2-" + uid + "@inttest.local";
+        String smEmail = "dedup-" + suffix + "-" + uid + "@inttest.local";
         Response authRes = secApi.authenticate(clientCode, appCode, smEmail, "Test@1234");
         if (authRes.statusCode() == 200) {
             return authRes.body().path("accessToken");
