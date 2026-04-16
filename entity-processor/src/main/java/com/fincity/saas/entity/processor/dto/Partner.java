@@ -14,6 +14,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 @Data
@@ -38,8 +39,8 @@ public class Partner extends BaseUpdatableDto<Partner> {
     private ULong managerId;
 
     private String clientName;
-    private Long activeUsers = 0L;
-    private Long totalTickets = 0L;
+    private UInteger activeUsers = UInteger.valueOf(0);
+    private ULong totalTickets = ULong.valueOf(0);
     private String userNames;
     private String userPhones;
     private String clientManagerIds;

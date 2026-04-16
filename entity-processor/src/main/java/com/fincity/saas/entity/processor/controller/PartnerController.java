@@ -7,12 +7,16 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.PartnerDenormalizationService;
 import com.fincity.saas.entity.processor.service.PartnerService;
+import java.beans.PropertyEditorSupport;
 import java.util.Map;
+import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +36,22 @@ public class PartnerController {
     public PartnerController(PartnerService service, PartnerDenormalizationService denormService) {
         this.service = service;
         this.denormService = denormService;
+    }
+
+    @InitBinder
+    public void initBinder(DataBinder binder) {
+        binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                setValue(text == null ? null : ULong.valueOf(text));
+            }
+        });
+    }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<Partner>> readById(@PathVariable("id") ULong id) {
+        return this.service.read(id).map(ResponseEntity::ok)
+                .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @PostMapping("/internal/denorm")
