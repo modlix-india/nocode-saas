@@ -1,16 +1,15 @@
 package com.fincity.saas.entity.processor.controller;
 
 import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
-import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
+import com.fincity.saas.entity.processor.service.PartnerDenormalizationService;
 import com.fincity.saas.entity.processor.service.PartnerService;
 import java.util.Map;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,10 +24,31 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/entity/processor/partners")
-public class PartnerController
-        extends BaseUpdatableController<EntityProcessorPartnersRecord, Partner, PartnerDAO, PartnerService> {
+public class PartnerController {
 
-    @PostMapping(REQ_PATH)
+    private final PartnerService service;
+    private final PartnerDenormalizationService denormService;
+
+    public PartnerController(PartnerService service, PartnerDenormalizationService denormService) {
+        this.service = service;
+        this.denormService = denormService;
+    }
+
+    @PostMapping("/internal/denorm")
+    public Mono<ResponseEntity<Map<String, Object>>> triggerDenormalization(
+            @RequestParam(defaultValue = "false") boolean delta) {
+        return (delta ? denormService.syncDelta() : denormService.syncFull())
+                .map(count -> ResponseEntity.ok(Map.of("partnersUpdated", count, "delta", delta)));
+    }
+
+    @PostMapping("query")
+    public Mono<ResponseEntity<Page<Partner>>> readPageFilter(@RequestBody Query query) {
+        return this.service
+                .readPageFilter(PageRequest.of(query.getPage(), query.getSize(), query.getSort()), query.getCondition())
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/req")
     public Mono<ResponseEntity<Partner>> createFromRequest(@RequestBody PartnerRequest partnerRequest) {
         return this.service.createRequest(partnerRequest).map(ResponseEntity::ok);
     }
@@ -57,22 +77,16 @@ public class PartnerController
                 .map(ResponseEntity::ok);
     }
 
-    @PatchMapping(REQ_PATH_ID + "/verification-status")
+    @PatchMapping("/req/{id}/verification-status")
     public Mono<ResponseEntity<Partner>> updateVerificationStatus(
-            @PathVariable(PATH_VARIABLE_ID) Identity identity,
+            @PathVariable("id") Identity identity,
             @RequestParam("status") PartnerVerificationStatus status) {
         return this.service.updatePartnerVerificationStatus(identity, status).map(ResponseEntity::ok);
     }
 
-    @PatchMapping(REQ_PATH_ID + "/dnc")
-    public Mono<ResponseEntity<Partner>> toggleDnc(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+    @PatchMapping("/req/{id}/dnc")
+    public Mono<ResponseEntity<Partner>> toggleDnc(@PathVariable("id") Identity identity) {
         return this.service.togglePartnerDnc(identity).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/clients")
-    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPartnerClient(
-            @RequestBody Query query, ServerHttpRequest request) {
-        return this.service.readPartnerClient(query, request.getQueryParams()).map(ResponseEntity::ok);
     }
 
     @PostMapping("/clients/teammates")

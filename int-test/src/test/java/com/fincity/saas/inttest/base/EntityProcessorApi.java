@@ -319,8 +319,10 @@ public class EntityProcessorApi {
         return req().body(body).post(EP + "/partners/query");
     }
 
-    public Response triggerPartnerDenorm(boolean delta) {
-        return req().post(EP + "/partners/internal/denorm?delta=" + delta);
+    public static Response triggerPartnerDenorm(boolean delta) {
+        return given()
+                .contentType("application/json")
+                .post("http://localhost:8080" + EP + "/partners/internal/denorm?delta=" + delta);
     }
 
     // ── Product Comms ──────────────────────────────────────────────────
