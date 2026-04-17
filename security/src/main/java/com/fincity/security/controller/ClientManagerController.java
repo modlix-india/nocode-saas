@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.beans.PropertyEditorSupport;
+import java.util.List;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,8 +71,15 @@ public class ClientManagerController {
 
     @PostMapping("/migrateTo/{uid}")
     public Mono<ResponseEntity<Integer>> migrateClientManagersFrom(@PathVariable ULong uid,
-            @RequestParam ULong fromUid) {
-        return service.migrateClientManagersFrom(fromUid, uid)
+            @RequestParam ULong fromUid, @RequestParam(defaultValue = "true") boolean removeManager) {
+        return service.migrateClientManagersFrom(fromUid, uid, removeManager)
+                .map(ResponseEntity::ok);
+    }
+
+    @PutMapping("/{clientId}/managers")
+    public Mono<ResponseEntity<Boolean>> syncManagers(@PathVariable ULong clientId,
+                                                      @RequestBody List<ULong> managerIds) {
+        return service.syncManagers(clientId, managerIds)
                 .map(ResponseEntity::ok);
     }
 
