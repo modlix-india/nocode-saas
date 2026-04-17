@@ -106,7 +106,7 @@ public class TicketController
     public Mono<ResponseEntity<Integer>> bulkReassign(
             @RequestBody TicketBulkReassignRequest request) {
         return this.service
-                .bulkReassignTickets(request.getQuery(), request.getUserId(), request.getComment())
+                .bulkReassignTickets(request.getQuery(), request.getUserIds(), request.getComment())
                 .map(ResponseEntity::ok);
     }
 }

@@ -39,6 +39,12 @@ public class Page extends AbstractOverridableDTO<Page> {
     private String rootComponent;
     private Map<String, ComponentDefinition> componentDefinition;
 
+    // Per-component and per-event-function version tracking.
+    // Enables concurrent edits to different components/events without conflict.
+    // Null means legacy mode (pre-component-versioning pages).
+    private Map<String, Integer> componentVersions;
+    private Map<String, Integer> eventFunctionVersions;
+
     public Page(Page page) {
 
         super(page);
@@ -48,6 +54,10 @@ public class Page extends AbstractOverridableDTO<Page> {
         this.eventFunctions = CloneUtil.cloneMapObject(page.eventFunctions);
         this.rootComponent = page.rootComponent;
         this.componentDefinition = CloneUtil.cloneMapObject(page.componentDefinition);
+        this.componentVersions = page.componentVersions != null
+                ? new java.util.HashMap<>(page.componentVersions) : null;
+        this.eventFunctionVersions = page.eventFunctionVersions != null
+                ? new java.util.HashMap<>(page.eventFunctionVersions) : null;
     }
 
     @SuppressWarnings("unchecked")
