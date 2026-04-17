@@ -237,7 +237,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         partner -> super.hasAccess(),
                         (partner, access) -> super.updateInternalForOutsideUser(partner.setDnc(!partner.getDnc())),
                         (partner, access, uPartner) -> this.ticketService
-                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
+                                .updateTicketDncByClientId(uPartner.getClientId(), uPartner.getDnc())
                                 .then(Mono.just(uPartner)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.toggleLoggedInPartnerDnc"));
     }
@@ -257,7 +257,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
                         (access, partner, updated) -> this.ticketService
-                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
+                                .updateTicketDncByClientId(updated.getClientId(), updated.getDnc())
                                 .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }

@@ -279,6 +279,10 @@ public class EntityProcessorApi {
         return req().patch(EP + "/partners/" + partnerId + "/dnc");
     }
 
+    public Response toggleMyDnc() {
+        return req().patch(EP + "/partners/me/dnc");
+    }
+
     public Response getMyPartner() {
         return req().get(EP + "/partners/me");
     }

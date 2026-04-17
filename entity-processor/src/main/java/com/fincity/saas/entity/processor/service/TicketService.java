@@ -1245,11 +1245,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readTicketUsers"));
     }
 
-    public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
+    public Mono<Integer> updateTicketDncByClientId(ULong clientId, Boolean dnc) {
         return this.dao
-                .getAllClientTicketsByDnc(clientId, !dnc)
-                .map(ticket -> ticket.setDnc(dnc))
-                .flatMap(tickets -> super.updateInternal(access, tickets))
+                .updateDncByClientId(clientId, dnc)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 
