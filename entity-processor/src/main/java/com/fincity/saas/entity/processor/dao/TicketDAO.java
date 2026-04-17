@@ -117,6 +117,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(rec -> rec.into(this.pojoClass));
     }
 
+    public Mono<Integer> updateDncByClientId(ULong clientId, Boolean dnc) {
+        return Mono.from(
+                this.dslContext.update(ENTITY_PROCESSOR_TICKETS)
+                        .set(ENTITY_PROCESSOR_TICKETS.DNC, dnc)
+                        .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.ne(dnc)));
+    }
+
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {
         return Flux.from(dslContext.selectFrom(table).where(ENTITY_PROCESSOR_TICKETS.OWNER_ID.eq(ownerId)))
                 .map(rec -> rec.into(this.pojoClass));

@@ -247,6 +247,12 @@ public class ProductTicketCRuleService
         return this.dao.getRules(access, null, productTemplateId, stageId);
     }
 
+    private static ProcessorAccess resolveRuleAccess(ProcessorAccess access, Product product) {
+        if (product.getClientCode() == null) return access;
+        return ProcessorAccess.of(access.getAppCode(), product.getClientCode(),
+                access.isHasAccessFlag(), access.getUser(), access.getUserInherit());
+    }
+
     public Mono<RuleResult> getUserAssignment(
             ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
         return getUserAssignment(access, productId, stageId, tokenPrefix, userId, ticket, true);
@@ -272,11 +278,22 @@ public class ProductTicketCRuleService
             trace.put("isOutsideUser", access.isOutsideUser());
         }
 
-        return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
+        // Rules and user distributions belong to the product owner's client.
+        // For outside users (e.g. Channel Partners), access.getEffectiveClientCode() returns
+        // the CP's managed client code, but rules are stored under the product's clientCode.
+        // Resolve the product's clientCode and use it for all rule/distribution lookups.
+        return FlatMapUtil.flatMapMono(
+                () -> access.isOutsideUser()
+                        ? super.productService.readById(access, productId)
+                                .map(product -> resolveRuleAccess(access, product))
+                        : Mono.just(access),
+                ruleAccess -> this.getRulesWithOrder(ruleAccess, productId, stageId),
+                (ruleAccess, productRule) -> {
 
                     if (trace != null) {
                         trace.put("rulesFound", productRule.size());
                         trace.put("ruleOrders", productRule.keySet().toString());
+                        trace.put("ruleAccessClientCode", ruleAccess.getClientCode());
                     }
 
                     if (productRule.isEmpty()) {
@@ -293,7 +310,7 @@ public class ProductTicketCRuleService
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
-                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement(), trace),
+                                    ruleAccess, productRule, tokenPrefix, userId, ticket.toJsonElement(), trace),
                             eRule -> {
                                 if (trace != null) {
                                     trace.put("executedRuleId",

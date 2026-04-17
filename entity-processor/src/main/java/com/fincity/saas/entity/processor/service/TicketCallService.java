@@ -142,6 +142,7 @@ public class TicketCallService implements IRepositoryProvider {
                                         ticket.getId(),
                                         ticket.getProductId(),
                                         ticket.getAssignedUserId()))
+                                .flatMap(ticket -> ticketService.validateAssignedUser(access, ticket))
                                 .switchIfEmpty(Mono.defer(() -> this.createExotelTicket(access, from, productComm))),
                         (productComm, ticket) -> {
                             logger.info(

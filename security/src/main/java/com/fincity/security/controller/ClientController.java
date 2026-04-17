@@ -20,8 +20,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.security.model.ClientDenormData;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
@@ -254,6 +258,19 @@ public class ClientController
                         .fillDetails(page.getContent(), request.getQueryParams())
                         .thenReturn(page))
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/clients/denorm/full")
+    public Mono<ResponseEntity<Map<BigInteger, ClientDenormData>>> getClientsDenormFull(
+            @RequestBody List<BigInteger> clientIds) {
+        return this.service.getClientsDenormData(clientIds).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/clients/denorm/delta")
+    public Mono<ResponseEntity<Map<BigInteger, ClientDenormData>>> getClientsDenormDelta(
+            @RequestBody List<BigInteger> clientIds,
+            @RequestParam LocalDateTime since) {
+        return this.service.getClientsDenormDataChangedSince(clientIds, since).map(ResponseEntity::ok);
     }
 
     @PostMapping("/internal/" + PATH_QUERY)

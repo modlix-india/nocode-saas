@@ -34,6 +34,7 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -104,6 +105,48 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
      * Partner client Id.
      */
     public final TableField<EntityProcessorPartnersRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Partner client Id.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.CLIENT_NAME</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, String> CLIENT_NAME = createField(DSL.name("CLIENT_NAME"), SQLDataType.VARCHAR(512), this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.ACTIVE_USERS</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, UInteger> ACTIVE_USERS = createField(DSL.name("ACTIVE_USERS"), SQLDataType.INTEGERUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGERUNSIGNED)), this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.TOTAL_TICKETS</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, ULong> TOTAL_TICKETS = createField(DSL.name("TOTAL_TICKETS"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BIGINTUNSIGNED)), this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.USER_NAMES</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, String> USER_NAMES = createField(DSL.name("USER_NAMES"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.USER_PHONES</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, String> USER_PHONES = createField(DSL.name("USER_PHONES"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.CLIENT_MANAGER_IDS</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, String> CLIENT_MANAGER_IDS = createField(DSL.name("CLIENT_MANAGER_IDS"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_partners.DENORM_UPDATED_AT</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, LocalDateTime> DENORM_UPDATED_AT = createField(DSL.name("DENORM_UPDATED_AT"), SQLDataType.LOCALDATETIME(0), this, "");
 
     /**
      * The column
@@ -206,7 +249,7 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PARTNERS_IDX0_PARTNERS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PARTNERS_FT1_PARTNERS_USER_NAMES, Indexes.ENTITY_PROCESSOR_PARTNERS_IDX0_PARTNERS_AC_CC, Indexes.ENTITY_PROCESSOR_PARTNERS_IDX1_PARTNERS_TOTAL_TICKETS, Indexes.ENTITY_PROCESSOR_PARTNERS_IDX2_PARTNERS_ACTIVE_USERS, Indexes.ENTITY_PROCESSOR_PARTNERS_IDX3_PARTNERS_CLIENT_NAME);
     }
 
     @Override
