@@ -34,6 +34,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.jooq.types.ULong;
@@ -455,7 +456,10 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
         if (selectedIds == null || selectedIds.isEmpty())
             return Mono.just(List.of());
 
-        return Flux.fromIterable(selectedIds)
+        List<ULong> nonNullIds = selectedIds.stream().filter(Objects::nonNull).toList();
+        if (nonNullIds.isEmpty()) return Mono.just(List.of());
+
+        return Flux.fromIterable(nonNullIds)
                 .flatMap(templateId -> this.stageService
                         .getValuesFlat(access.getAppCode(), access.getClientCode(), null, templateId, null)
                         .map(StageHierarchy::from)
@@ -473,7 +477,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
             return Mono.just(reactor.util.function.Tuples.of(List.of(), List.of()));
 
         return Flux.fromIterable(templateIdAndValues)
+                .filter(Objects::nonNull)
                 .map(IdAndValue::getId)
+                .filter(Objects::nonNull)
                 .flatMap(id -> this.productTemplateService.readById(access, id))
                 .collectList()
                 .map(allTemplates -> {
@@ -580,11 +586,13 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                             .flatMap(id -> this.productTemplateService.readById(access, id))
                             .collectList()
                             .map(templates -> {
-                                filter.setSelectedProductTemplateIds(
-                                                templates.stream()
-                                                        .map(BaseUpdatableDto::getId)
-                                                        .toList())
+                                List<ULong> templateIds = templates.stream()
+                                        .map(BaseUpdatableDto::getId)
+                                        .filter(Objects::nonNull)
+                                        .toList();
+                                filter.setSelectedProductTemplateIds(templateIds)
                                         .setProductTemplates(templates.stream()
+                                                .filter(pt -> pt.getId() != null)
                                                 .map(pt -> IdAndValue.of(pt.getId(), pt.getName()))
                                                 .toList())
                                         .filterProductTemplateIds(distinctTemplateIds);
@@ -602,10 +610,14 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                 (ProductTemplate pt) -> pt.getCreatedAt(),
                 Comparator.nullsLast(Comparator.naturalOrder())));
 
-        List<ULong> allTemplateIds = templates.stream().map(BaseUpdatableDto::getId).toList();
+        List<ULong> allTemplateIds = templates.stream()
+                .map(BaseUpdatableDto::getId)
+                .filter(Objects::nonNull)
+                .toList();
 
         filter.filterProductTemplateIds(allTemplateIds)
                 .setProductTemplates(templates.stream()
+                        .filter(pt -> pt.getId() != null)
                         .map(pt -> IdAndValue.of(pt.getId(), pt.getName()))
                         .toList())
                 .setSelectedProductTemplateIds(allTemplateIds);

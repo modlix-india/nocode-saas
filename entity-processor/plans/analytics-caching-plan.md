@@ -142,7 +142,6 @@ cacheService.evict(CACHE_PRODUCT_TEMPLATE, access.getAppCode(), access.getEffect
 
 - `CacheService.cacheValueOrGet(cacheName, supplier, keys...)` — main caching pattern
 - `CacheService.evict(cacheName, keys...)` — eviction on entity change
-- Pattern from `SourceConfigService` (entity-processor) — cache + evict example
 - `IFeignSecurityService.getClientInternalBatch/getUsersInternalBatch` — unchanged, just called through cache
 
 ## Verification

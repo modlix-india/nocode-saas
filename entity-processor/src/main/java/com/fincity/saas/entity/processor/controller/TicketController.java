@@ -104,9 +104,10 @@ public class TicketController
 
     @PatchMapping("/bulk-reassign")
     public Mono<ResponseEntity<Integer>> bulkReassign(
-            @RequestBody TicketBulkReassignRequest request) {
+            @RequestBody TicketBulkReassignRequest request, ServerHttpRequest serverRequest) {
+        String timezone = this.extractTimezone(serverRequest);
         return this.service
-                .bulkReassignTickets(request.getQuery(), request.getUserIds(), request.getComment())
+                .bulkReassignTickets(request.getQuery(), request.getUserIds(), request.getComment(), timezone)
                 .map(ResponseEntity::ok);
     }
 }
