@@ -116,6 +116,7 @@ public class SourceConfigService implements IProcessorAccessService {
                         appCode, clientCode, true)
                 .map(sources -> {
                     for (SourceConfig source : sources) {
+                        if (source.getChildren() == null) continue;
                         for (SourceConfig child : source.getChildren()) {
                             if (child.isCallSource())
                                 return Tuples.of(source.getName(), child.getName());
