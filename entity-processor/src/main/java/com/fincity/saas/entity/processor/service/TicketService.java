@@ -1024,7 +1024,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-    public Mono<Integer> bulkReassignTickets(Query query, List<ULong> userIds, String comment) {
+    public Mono<Integer> bulkReassignTickets(
+            Query query, List<ULong> userIds, String comment, String timezone) {
 
         if (userIds == null || userIds.isEmpty())
             return this.msgService.throwMessage(
@@ -1047,7 +1048,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, valid) -> this.dao.processorAccessCondition(query.getCondition(), access),
                         (access, valid, pCondition) -> {
                             AtomicInteger counter = new AtomicInteger(0);
-                            return this.dao.readAll(pCondition)
+                            return this.dao.readAllForBulkOp(pCondition, timezone, query.getSubQueryConditions())
                                     .flatMap(ticket -> {
                                         ULong userId = userIds.get(counter.getAndIncrement() % userIds.size());
                                         return this.updateTicketForReassignment(
