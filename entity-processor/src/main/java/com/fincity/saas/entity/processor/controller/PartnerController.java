@@ -49,8 +49,11 @@ public class PartnerController {
     }
 
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Partner>> readById(@PathVariable("id") ULong id) {
-        return this.service.read(id).map(ResponseEntity::ok)
+    public Mono<ResponseEntity<Partner>> readById(
+            @PathVariable ULong id,
+            @RequestParam(defaultValue = "false") boolean fetchOwners,
+            @RequestParam(defaultValue = "false") boolean fetchClientManagers) {
+        return this.service.read(id, fetchOwners, fetchClientManagers).map(ResponseEntity::ok)
                 .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
@@ -62,9 +65,16 @@ public class PartnerController {
     }
 
     @PostMapping("query")
-    public Mono<ResponseEntity<Page<Partner>>> readPageFilter(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<Partner>>> readPageFilter(
+            @RequestBody Query query,
+            @RequestParam(defaultValue = "false") boolean fetchOwners,
+            @RequestParam(defaultValue = "false") boolean fetchClientManagers) {
         return this.service
-                .readPageFilter(PageRequest.of(query.getPage(), query.getSize(), query.getSort()), query.getCondition())
+                .readPageFilter(
+                        PageRequest.of(query.getPage(), query.getSize(), query.getSort()),
+                        query.getCondition(),
+                        fetchOwners,
+                        fetchClientManagers)
                 .map(ResponseEntity::ok);
     }
 

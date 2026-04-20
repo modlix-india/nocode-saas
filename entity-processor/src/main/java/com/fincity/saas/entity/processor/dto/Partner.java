@@ -1,21 +1,26 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
-import java.io.Serial;
-import java.time.LocalDateTime;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.UInteger;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -48,6 +53,9 @@ public class Partner extends BaseUpdatableDto<Partner> {
 
     private PartnerVerificationStatus partnerVerificationStatus = PartnerVerificationStatus.INVITATION_SENT;
     private Boolean dnc = Boolean.FALSE;
+    private List<User> owners;
+    private List<User> clientManagers;
+    
 
     public Partner() {
         super();
