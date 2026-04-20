@@ -20,7 +20,6 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicke
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSourceConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
@@ -138,11 +137,6 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
 
     /**
-     * The table <code>entity_processor.entity_processor_source_configs</code>.
-     */
-    public final EntityProcessorSourceConfigs ENTITY_PROCESSOR_SOURCE_CONFIGS = EntityProcessorSourceConfigs.ENTITY_PROCESSOR_SOURCE_CONFIGS;
-
-    /**
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
@@ -218,7 +212,6 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES,
             EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
-            EntityProcessorSourceConfigs.ENTITY_PROCESSOR_SOURCE_CONFIGS,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
             EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES,
             EntityProcessorTasks.ENTITY_PROCESSOR_TASKS,
