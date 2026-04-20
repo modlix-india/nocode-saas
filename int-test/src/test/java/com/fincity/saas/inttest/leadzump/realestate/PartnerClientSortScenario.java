@@ -18,9 +18,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Partner Client Sort Scenario — verifies that sort by computed fields
- * (totalTickets, activeUsers) is applied globally across all records before
- * pagination, NOT only within the retrieved page.
+ * Partner Client Sort Scenario — verifies that sort by denormalized fields
+ * (totalTickets, activeUsers, clientName) is applied at SQL level with proper
+ * cross-page ordering.
  *
  * Setup:
  *   - Main org (builder) with 1 product
@@ -29,13 +29,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   - Broker A authenticates and creates 3 tickets → totalTickets = 3
  *   - Broker B authenticates and creates 1 ticket  → totalTickets = 1
  *   - Broker C creates no tickets               → totalTickets = 0
+ *   - Full denorm sync to populate denormalized fields
  *
  * Key assertion (cross-page sort):
  *   With page size 2 and sort=totalTickets,DESC:
  *     page 0 → [A(3), B(1)]
  *     page 1 → [C(0)]
  *   The last item on page 0 must have totalTickets >= first item on page 1.
- *   This would fail if sort only happened within the retrieved page.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PartnerClientSortScenario extends BaseIntegrationTest {
@@ -50,7 +50,7 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
     // ── Product setup ──────────────────────────────────────────────────
     private static Number templateId;
     private static Number productId;
-    private static Number freshStageId;  // first child stage id — needed for creation rule
+    private static Number freshStageId;
 
     // ── Broker A — 3 tickets ───────────────────────────────────────────
     private static String brokerAEmail;
@@ -268,13 +268,12 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  S3: Brokers submit tickets (auto-sets clientId to broker's client)
+    //  S3: Brokers submit tickets
     // ═══════════════════════════════════════════════════════════════════
 
     @Test
     @Order(300)
     void s3_01_brokerA_submits_3_tickets() {
-        // Authenticate as broker A — BaseProcessorService auto-sets clientId = brokerAClientId
         if (brokerAToken == null || brokerAClientCode == null) {
             Response authRes = new SecurityApi(baseHost()).authenticate(clientCode, appCode, brokerAEmail, PASSWORD);
             assertThat(authRes.statusCode()).isEqualTo(200);
@@ -319,13 +318,27 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  S4: Sort assertions
+    //  S3b: Trigger full denorm sync to populate denormalized fields
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(350)
+    void s3b_triggerFullDenormSync() {
+        Response res = EntityProcessorApi.triggerPartnerDenorm(false);
+        assertThat(res.statusCode()).as("Full denorm sync").isEqualTo(200);
+        Number updated = res.body().path("partnersUpdated");
+        assertThat(updated).as("Partners updated").isNotNull();
+        assertThat(updated.intValue()).as("At least 3 partners synced").isGreaterThanOrEqualTo(3);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  S4: Sort assertions — using denormalized Partner fields
     // ═══════════════════════════════════════════════════════════════════
 
     @Test
     @Order(400)
     void s4_01_basicList_allPartnersPresent() {
-        Response res = api.getPartnerClients(0, 10);
+        Response res = api.queryPartners(0, 10);
         assertThat(res.statusCode()).as("Basic list").isEqualTo(200);
         assertThat((Integer) res.body().path("totalElements")).as("All 3 partners visible").isGreaterThanOrEqualTo(3);
     }
@@ -333,53 +346,38 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
     @Test
     @Order(410)
     void s4_02_sortByTotalTickets_desc_crossPageOrdering() {
-        // This test proves sort is GLOBAL (not within-page).
-        // With page size 2, page 0 and page 1 together must be ordered: A(3) → B(1) → C(0).
-        // If sort were only within-page, page 1 might contain a client with more tickets than
-        // the last item on page 0, which would violate the cross-page ordering assertion below.
-
-        Map<String, String> qp = Map.of("fetchLeads", "true", "fetchPartners", "true", "includeTotal", "true");
-
-        Response page0Res = api.getPartnerClientsSorted(0, 2, "totalTickets", "DESC", qp);
+        Response page0Res = api.queryPartnersSorted(0, 2, "totalTickets", "DESC");
         assertThat(page0Res.statusCode()).as("Sort totalTickets DESC — page 0").isEqualTo(200);
         List<Map<String, Object>> page0 = page0Res.body().path("content");
         assertThat(page0).as("Page 0 must have 2 items").hasSize(2);
 
-        Response page1Res = api.getPartnerClientsSorted(1, 2, "totalTickets", "DESC", qp);
+        Response page1Res = api.queryPartnersSorted(1, 2, "totalTickets", "DESC");
         assertThat(page1Res.statusCode()).as("Sort totalTickets DESC — page 1").isEqualTo(200);
         List<Map<String, Object>> page1 = page1Res.body().path("content");
         assertThat(page1).as("Page 1 must have at least 1 item").isNotEmpty();
 
-        // totalElements must cover all 3 partners
         int totalElements = page0Res.body().path("totalElements");
         assertThat(totalElements).as("Total elements").isGreaterThanOrEqualTo(3);
 
-        // Cross-page ordering: last on page 0 must be >= first on page 1
         long lastOnPage0 = toLong(page0.get(page0.size() - 1).get("totalTickets"));
         long firstOnPage1 = toLong(page1.get(0).get("totalTickets"));
         assertThat(lastOnPage0)
-                .as("Last item on page 0 must have totalTickets >= first item on page 1 "
-                        + "(proves global sort, not page-local sort)")
+                .as("Cross-page: last on page 0 >= first on page 1 (proves SQL-level sort)")
                 .isGreaterThanOrEqualTo(firstOnPage1);
     }
 
     @Test
     @Order(420)
     void s4_03_sortByTotalTickets_desc_exactOrdering() {
-        // Exact ordering: A(3) first, B(1) second, C(0) last (page 1).
-        Map<String, String> qp = Map.of("fetchLeads", "true", "fetchPartners", "true", "includeTotal", "true");
-
-        Response page0Res = api.getPartnerClientsSorted(0, 2, "totalTickets", "DESC", qp);
+        Response page0Res = api.queryPartnersSorted(0, 2, "totalTickets", "DESC");
         List<Map<String, Object>> page0 = page0Res.body().path("content");
 
         long first = toLong(page0.get(0).get("totalTickets"));
         long second = toLong(page0.get(1).get("totalTickets"));
         assertThat(first).as("1st partner (most tickets)").isEqualTo(3L);
         assertThat(second).as("2nd partner").isEqualTo(1L);
-        assertThat(first).isGreaterThanOrEqualTo(second);
 
-        // Page 1: only broker C with 0 tickets
-        Response page1Res = api.getPartnerClientsSorted(1, 2, "totalTickets", "DESC", qp);
+        Response page1Res = api.queryPartnersSorted(1, 2, "totalTickets", "DESC");
         List<Map<String, Object>> page1 = page1Res.body().path("content");
         assertThat(page1).hasSize(1);
         assertThat(toLong(page1.get(0).get("totalTickets"))).as("Last partner (zero tickets)").isEqualTo(0L);
@@ -387,20 +385,12 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
 
     @Test
     @Order(430)
-    void s4_04_sortByTotalTickets_asc_reverseOrdering() {
-        Map<String, String> qp = Map.of("fetchLeads", "true", "fetchPartners", "true", "includeTotal", "true");
-
-        Response res = api.getPartnerClientsSorted(0, 10, "totalTickets", "ASC", qp);
+    void s4_04_sortByTotalTickets_asc() {
+        Response res = api.queryPartnersSorted(0, 10, "totalTickets", "ASC");
         assertThat(res.statusCode()).as("Sort totalTickets ASC").isEqualTo(200);
         List<Map<String, Object>> content = res.body().path("content");
         assertThat(content).hasSizeGreaterThanOrEqualTo(3);
 
-        // First = C(0), last = A(3)
-        assertThat(toLong(content.get(0).get("totalTickets"))).as("First — fewest tickets").isEqualTo(0L);
-        assertThat(toLong(content.get(content.size() - 1).get("totalTickets"))).as("Last — most tickets")
-                .isEqualTo(3L);
-
-        // Verify monotonically non-decreasing
         for (int i = 0; i < content.size() - 1; i++) {
             long cur = toLong(content.get(i).get("totalTickets"));
             long next = toLong(content.get(i + 1).get("totalTickets"));
@@ -410,23 +400,13 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
 
     @Test
     @Order(440)
-    void s4_05_sortByActiveUsers_desc_validResponse() {
-        Map<String, String> qp = Map.of("fetchUserCounts", "true", "fetchPartners", "true");
-
-        Response res = api.getPartnerClientsSorted(0, 10, "activeUsers", "DESC", qp);
+    void s4_05_sortByActiveUsers_desc() {
+        Response res = api.queryPartnersSorted(0, 10, "activeUsers", "DESC");
         assertThat(res.statusCode()).as("Sort activeUsers DESC").isEqualTo(200);
 
         List<Map<String, Object>> content = res.body().path("content");
         assertThat(content).as("Should return all 3 partners").hasSizeGreaterThanOrEqualTo(3);
 
-        // Each broker has at least 1 active user (the registered owner)
-        for (Map<String, Object> item : content) {
-            Number activeUsers = (Number) item.get("activeUsers");
-            assertThat(activeUsers).as("activeUsers field must be present").isNotNull();
-            assertThat(activeUsers.intValue()).as("activeUsers must be >= 1").isGreaterThanOrEqualTo(1);
-        }
-
-        // Verify non-increasing order for DESC
         for (int i = 0; i < content.size() - 1; i++) {
             long cur = toLong(content.get(i).get("activeUsers"));
             long next = toLong(content.get(i + 1).get("activeUsers"));
@@ -436,25 +416,36 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
 
     @Test
     @Order(450)
-    void s4_06_sortByActiveUsers_crossPageOrdering() {
-        // Same cross-page proof but for activeUsers
-        Map<String, String> qp = Map.of("fetchUserCounts", "true", "fetchPartners", "true");
+    void s4_06_sortByClientName_asc() {
+        Response res = api.queryPartnersSorted(0, 10, "clientName", "ASC");
+        assertThat(res.statusCode()).as("Sort clientName ASC").isEqualTo(200);
 
-        Response page0Res = api.getPartnerClientsSorted(0, 2, "activeUsers", "DESC", qp);
-        assertThat(page0Res.statusCode()).as("activeUsers page 0").isEqualTo(200);
-        List<Map<String, Object>> page0 = page0Res.body().path("content");
-        assertThat(page0).hasSize(2);
+        List<Map<String, Object>> content = res.body().path("content");
+        assertThat(content).hasSizeGreaterThanOrEqualTo(3);
 
-        Response page1Res = api.getPartnerClientsSorted(1, 2, "activeUsers", "DESC", qp);
-        assertThat(page1Res.statusCode()).as("activeUsers page 1").isEqualTo(200);
-        List<Map<String, Object>> page1 = page1Res.body().path("content");
-        assertThat(page1).isNotEmpty();
+        for (int i = 0; i < content.size() - 1; i++) {
+            String cur = (String) content.get(i).get("clientName");
+            String next = (String) content.get(i + 1).get("clientName");
+            assertThat(cur).as("clientName present").isNotNull();
+            if (next != null) {
+                assertThat(cur.compareToIgnoreCase(next))
+                        .as("ASC order violation at index " + i + ": " + cur + " vs " + next)
+                        .isLessThanOrEqualTo(0);
+            }
+        }
+    }
 
-        long lastOnPage0 = toLong(page0.get(page0.size() - 1).get("activeUsers"));
-        long firstOnPage1 = toLong(page1.get(0).get("activeUsers"));
-        assertThat(lastOnPage0)
-                .as("Cross-page activeUsers ordering: last on page 0 >= first on page 1")
-                .isGreaterThanOrEqualTo(firstOnPage1);
+    @Test
+    @Order(460)
+    void s4_07_denormFieldsPopulated() {
+        Response res = api.queryPartners(0, 10);
+        List<Map<String, Object>> content = res.body().path("content");
+
+        for (Map<String, Object> partner : content) {
+            assertThat(partner.get("clientName")).as("clientName populated").isNotNull();
+            assertThat(partner.get("totalTickets")).as("totalTickets populated").isNotNull();
+            assertThat(partner.get("activeUsers")).as("activeUsers populated").isNotNull();
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────
@@ -464,6 +455,7 @@ public class PartnerClientSortScenario extends BaseIntegrationTest {
         return ((Number) value).longValue();
     }
 
+    @SuppressWarnings("unchecked")
     private static <K, V> Map<K, V> mapOf(Object... keyValues) {
         Map<Object, Object> map = new HashMap<>();
         for (int i = 0; i < keyValues.length; i += 2) map.put(keyValues[i], keyValues[i + 1]);

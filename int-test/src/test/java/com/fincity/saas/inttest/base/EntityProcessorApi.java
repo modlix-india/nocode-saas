@@ -131,6 +131,11 @@ public class EntityProcessorApi {
                 .get(EP + "/tickets/eager");
     }
 
+    /** Query tickets with full body via POST /tickets/query. */
+    public Response queryTickets(Map<String, Object> body) {
+        return req().body(body).post(EP + "/tickets/query");
+    }
+
     /** Query tickets with explicit sort via POST /tickets/query. */
     public Response queryTicketsSorted(int page, int size, String sortProperty, String sortDirection) {
         return req().body(Map.of(
@@ -274,6 +279,10 @@ public class EntityProcessorApi {
         return req().patch(EP + "/partners/" + partnerId + "/dnc");
     }
 
+    public Response toggleMyDnc() {
+        return req().patch(EP + "/partners/me/dnc");
+    }
+
     public Response getMyPartner() {
         return req().get(EP + "/partners/me");
     }
@@ -283,27 +292,41 @@ public class EntityProcessorApi {
                 .post(EP + "/partners/me/teammates");
     }
 
-    public Response getPartnerClients(int page, int size) {
+    public Response queryPartners(int page, int size) {
         return req().body(Map.of("page", page, "size", size))
-                .post(EP + "/partners/clients");
+                .post(EP + "/partners/query");
     }
 
-    /**
-     * Query partner clients with an explicit sort field + direction and optional URL query params
-     * (e.g. fetchLeads, fetchUserCounts, includeTotal).
-     * Sort is sent as a JSON body array matching the custom SortDeserializer format.
-     */
-    public Response getPartnerClientsSorted(int page, int size, String sortProperty, String sortDirection,
-            Map<String, String> extraQueryParams) {
-        RequestSpecification r = req();
-        if (extraQueryParams != null) {
-            for (var e : extraQueryParams.entrySet()) r = r.queryParam(e.getKey(), e.getValue());
-        }
-        return r.body(Map.of(
+    public Response queryPartnersSorted(int page, int size, String sortProperty, String sortDirection) {
+        return req().body(Map.of(
                 "page", page,
                 "size", size,
                 "sort", List.of(Map.of("direction", sortDirection.toUpperCase(), "property", sortProperty))
-        )).post(EP + "/partners/clients");
+        )).post(EP + "/partners/query");
+    }
+
+    public Response queryPartnersWithCondition(int page, int size, Map<String, Object> condition) {
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("page", page);
+        body.put("size", size);
+        body.put("condition", condition);
+        return req().body(body).post(EP + "/partners/query");
+    }
+
+    public Response queryPartnersSortedWithCondition(int page, int size, String sortProperty, String sortDirection,
+            Map<String, Object> condition) {
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("page", page);
+        body.put("size", size);
+        body.put("sort", List.of(Map.of("direction", sortDirection.toUpperCase(), "property", sortProperty)));
+        if (condition != null) body.put("condition", condition);
+        return req().body(body).post(EP + "/partners/query");
+    }
+
+    public static Response triggerPartnerDenorm(boolean delta) {
+        return given()
+                .contentType("application/json")
+                .post("http://localhost:8080" + EP + "/partners/internal/denorm?delta=" + delta);
     }
 
     // ── Product Comms ──────────────────────────────────────────────────

@@ -225,7 +225,7 @@ public class ClientManagerService
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
-    public Mono<Integer> migrateClientManagersFrom(ULong fromUid, ULong toUid) {
+    public Mono<Integer> migrateClientManagersFrom(ULong fromUid, ULong toUid, boolean removeManager) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -253,11 +253,16 @@ public class ClientManagerService
                 },
 
                 (ca, fromUser, toUser, hasAccess, clientIds) -> this.dao
-                        .migrateManagerAssignments(fromUid, toUid, ULongUtil.valueOf(ca.getUser().getId())),
+                        .migrateManagerAssignments(fromUid, toUid, ULongUtil.valueOf(ca.getUser().getId()),
+                                removeManager),
 
                 (ca, fromUser, toUser, hasAccess, clientIds, migrated) -> Flux.fromIterable(clientIds)
-                        .flatMap(clientId -> this.evictCacheForUserAndClient(fromUid, clientId)
-                                .then(this.evictCacheForUserAndClient(toUid, clientId)))
+                        .flatMap(clientId -> {
+                            Mono<Boolean> evictTo = this.evictCacheForUserAndClient(toUid, clientId);
+                            if (removeManager)
+                                return this.evictCacheForUserAndClient(fromUid, clientId).then(evictTo);
+                            return evictTo;
+                        })
                         .then(Mono.just(migrated)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.migrateClientManagersFrom"))

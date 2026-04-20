@@ -8,11 +8,13 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import java.io.Serial;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 @Data
@@ -36,6 +38,14 @@ public class Partner extends BaseUpdatableDto<Partner> {
     @JsonIgnore
     private ULong managerId;
 
+    private String clientName;
+    private UInteger activeUsers = UInteger.valueOf(0);
+    private ULong totalTickets = ULong.valueOf(0);
+    private String userNames;
+    private String userPhones;
+    private String clientManagerIds;
+    private LocalDateTime denormUpdatedAt;
+
     private PartnerVerificationStatus partnerVerificationStatus = PartnerVerificationStatus.INVITATION_SENT;
     private Boolean dnc = Boolean.FALSE;
 
@@ -48,6 +58,13 @@ public class Partner extends BaseUpdatableDto<Partner> {
         super(partner);
         this.clientId = partner.clientId;
         this.managerId = partner.managerId;
+        this.clientName = partner.clientName;
+        this.activeUsers = partner.activeUsers;
+        this.totalTickets = partner.totalTickets;
+        this.userNames = partner.userNames;
+        this.userPhones = partner.userPhones;
+        this.clientManagerIds = partner.clientManagerIds;
+        this.denormUpdatedAt = partner.denormUpdatedAt;
         this.partnerVerificationStatus = partner.partnerVerificationStatus;
         this.dnc = partner.dnc;
     }

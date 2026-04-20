@@ -111,7 +111,8 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .collectList();
     }
 
-    public Mono<Integer> migrateManagerAssignments(ULong fromManagerId, ULong toManagerId, ULong createdBy) {
+    public Mono<Integer> migrateManagerAssignments(ULong fromManagerId, ULong toManagerId, ULong createdBy,
+            boolean removeManager) {
 
         return Mono.from(this.dslContext
                 .insertInto(SECURITY_CLIENT_MANAGER)
@@ -124,10 +125,15 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                         .from(SECURITY_CLIENT_MANAGER)
                         .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
                 .onDuplicateKeyIgnore())
-                .flatMap(inserted -> Mono.from(this.dslContext
-                        .deleteFrom(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
-                        .map(deleted -> inserted + deleted));
+                .flatMap(inserted -> {
+                    if (!removeManager)
+                        return Mono.just(inserted);
+
+                    return Mono.from(this.dslContext
+                            .deleteFrom(SECURITY_CLIENT_MANAGER)
+                            .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                            .map(deleted -> inserted + deleted);
+                });
     }
 
     public Mono<ULong> getLatestManagerIdForClient(ULong clientId) {

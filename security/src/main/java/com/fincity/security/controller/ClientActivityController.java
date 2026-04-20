@@ -7,7 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +23,8 @@ import com.fincity.security.service.ClientActivityService;
 
 import reactor.core.publisher.Mono;
 
+import java.beans.PropertyEditorSupport;
+
 @RestController
 @RequestMapping("api/security/client-activities")
 public class ClientActivityController {
@@ -31,6 +35,15 @@ public class ClientActivityController {
         this.service = service;
     }
 
+    @InitBinder
+    public void initBinder(DataBinder binder) {
+        binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                setValue(text == null ? null : ULong.valueOf(text));
+            }
+        });
+    }
     @PostMapping
     public Mono<ResponseEntity<ClientActivity>> create(@RequestBody ClientActivity entity) {
         return this.service.create(entity).map(ResponseEntity::ok);

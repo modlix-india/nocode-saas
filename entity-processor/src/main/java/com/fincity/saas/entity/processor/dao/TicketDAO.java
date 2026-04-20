@@ -117,6 +117,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(rec -> rec.into(this.pojoClass));
     }
 
+    public Mono<Integer> updateDncByClientId(ULong clientId, Boolean dnc) {
+        return Mono.from(
+                this.dslContext.update(ENTITY_PROCESSOR_TICKETS)
+                        .set(ENTITY_PROCESSOR_TICKETS.DNC, dnc)
+                        .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.ne(dnc)));
+    }
+
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {
         return Flux.from(dslContext.selectFrom(table).where(ENTITY_PROCESSOR_TICKETS.OWNER_ID.eq(ownerId)))
                 .map(rec -> rec.into(this.pojoClass));
@@ -246,6 +254,38 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                     .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)));
                             return Tuples.of(Tuples.of(recordQuery, countQuery), tuple.getT2());
                         }));
+    }
+
+    public Flux<Ticket> readAllForBulkOp(
+            AbstractCondition condition,
+            String timezone,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        SelectJoinStep<Record> baseQuery = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+                dslContext.select(Arrays.asList(table.fields()))
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        Mono<SelectJoinStep<Record>> queryMono;
+
+        if (subQueryConditions != null && !subQueryConditions.isEmpty()) {
+            AbstractCondition activityCondition = subQueryConditions.get(SUBQUERY_ALIAS);
+            if (activityCondition != null && !activityCondition.isEmpty()) {
+                queryMono = this.buildActivitiesSubqueryTable(activityCondition)
+                        .map(subqueryTable -> (SelectJoinStep<Record>) baseQuery
+                                .join(subqueryTable)
+                                .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))));
+            } else {
+                queryMono = Mono.just(baseQuery);
+            }
+        } else {
+            queryMono = Mono.just(baseQuery);
+        }
+
+        return queryMono.flatMapMany(query -> this.filter(condition, query, timezone)
+                .flatMapMany(jCondition -> Flux.from(query.where(jCondition.and(this.isActiveTrue())))
+                        .map(rec -> rec.into(this.pojoClass))));
     }
 
     @SuppressWarnings("unchecked")

@@ -117,6 +117,7 @@ public abstract class BaseUserDistributionService<
                     }
 
                     userIds.remove(null);
+                    userIds.retainAll(maps.allActiveUserIds());
                     return userIds;
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.getUsersByRuleId"));
@@ -146,18 +147,21 @@ public abstract class BaseUserDistributionService<
         Map<ULong, Set<ULong>> profiles = new HashMap<>();
         Map<ULong, Set<ULong>> designations = new HashMap<>();
         Map<ULong, Set<ULong>> departments = new HashMap<>();
+        Set<ULong> allActiveUserIds = new HashSet<>();
 
-        if (users == null || users.isEmpty()) return new UserMaps(roles, profiles, designations, departments);
+        if (users == null || users.isEmpty())
+            return new UserMaps(roles, profiles, designations, departments, allActiveUserIds);
 
         for (EntityProcessorUser u : users) {
             ULong userId = ULong.valueOf(u.getId());
+            allActiveUserIds.add(userId);
             this.addToMap(roles, u.getRoleId(), userId);
             this.addToMap(designations, u.getDesignationId(), userId);
             this.addToMap(departments, u.getDepartmentId(), userId);
             this.addListToMap(profiles, u.getProfileIds(), userId);
         }
 
-        return new UserMaps(roles, profiles, designations, departments);
+        return new UserMaps(roles, profiles, designations, departments, allActiveUserIds);
     }
 
     private void addToMap(Map<ULong, Set<ULong>> map, Long key, ULong userId) {
@@ -178,10 +182,11 @@ public abstract class BaseUserDistributionService<
             Map<ULong, Set<ULong>> roleMap,
             Map<ULong, Set<ULong>> profileMap,
             Map<ULong, Set<ULong>> desigMap,
-            Map<ULong, Set<ULong>> deptMap)
+            Map<ULong, Set<ULong>> deptMap,
+            Set<ULong> allActiveUserIds)
             implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 7644987612523651920L;
+        private static final long serialVersionUID = 7644987612523651921L;
     }
 }

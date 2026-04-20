@@ -449,6 +449,133 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .collectMultimap(Record2::value1, Record2::value2);
     }
 
+    public Mono<Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData>> getClientsDenormData(
+            List<ULong> clientIds) {
+
+        if (clientIds == null || clientIds.isEmpty())
+            return Mono.just(Map.of());
+
+        return Mono.zip(fetchClientNames(clientIds), fetchUserAggregations(clientIds),
+                this.clientManagerDAO.getManagerIds(new java.util.HashSet<>(clientIds)))
+                .map(tuple -> mergeDenormData(clientIds, tuple.getT1(), tuple.getT2(), tuple.getT3()));
+    }
+
+    public Mono<Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData>> getClientsDenormDataChangedSince(
+            List<ULong> clientIds, java.time.LocalDateTime since) {
+
+        if (clientIds == null || clientIds.isEmpty())
+            return Mono.just(Map.of());
+
+        return findChangedClientIds(clientIds, since)
+                .flatMap(changed -> changed.isEmpty()
+                        ? Mono.just(Map.of())
+                        : this.getClientsDenormData(changed.stream().toList()));
+    }
+
+    private Mono<Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData>> fetchClientNames(
+            List<ULong> clientIds) {
+        return Flux.from(
+                this.dslContext.select(SECURITY_CLIENT.ID, SECURITY_CLIENT.NAME)
+                        .from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.ID.in(clientIds)))
+                .collectMap(r -> r.get(SECURITY_CLIENT.ID),
+                        r -> new com.fincity.saas.commons.security.model.ClientDenormData()
+                                .setClientName(r.get(SECURITY_CLIENT.NAME)));
+    }
+
+    private Mono<Map<ULong, UserAggregation>> fetchUserAggregations(List<ULong> clientIds) {
+        return Flux.from(
+                this.dslContext.select(
+                        SECURITY_USER.CLIENT_ID, SECURITY_USER.STATUS_CODE,
+                        SECURITY_USER.FIRST_NAME, SECURITY_USER.LAST_NAME,
+                        SECURITY_USER.PHONE_NUMBER)
+                        .from(SECURITY_USER)
+                        .where(SECURITY_USER.CLIENT_ID.in(clientIds)
+                                .and(SECURITY_USER.STATUS_CODE.isNotNull())))
+                .collectList()
+                .map(ClientDAO::aggregateUsers);
+    }
+
+    private static Map<ULong, UserAggregation> aggregateUsers(List<? extends Record> records) {
+        Map<ULong, UserAggregation> agg = new java.util.HashMap<>();
+        for (var rec : records) {
+            ULong cid = rec.get(SECURITY_USER.CLIENT_ID);
+            UserAggregation ua = agg.computeIfAbsent(cid, k -> new UserAggregation());
+            ua.add(rec.get(SECURITY_USER.STATUS_CODE), rec.get(SECURITY_USER.FIRST_NAME),
+                    rec.get(SECURITY_USER.LAST_NAME), rec.get(SECURITY_USER.PHONE_NUMBER));
+        }
+        return agg;
+    }
+
+    private static Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData> mergeDenormData(
+            List<ULong> clientIds,
+            Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData> result,
+            Map<ULong, UserAggregation> users,
+            Map<ULong, Collection<ULong>> managers) {
+
+        for (ULong cid : clientIds) {
+            com.fincity.saas.commons.security.model.ClientDenormData data = result.get(cid);
+            if (data == null) continue;
+
+            UserAggregation ua = users.get(cid);
+            if (ua != null) ua.applyTo(data);
+
+            Collection<ULong> mgrIds = managers.get(cid);
+            if (mgrIds != null && !mgrIds.isEmpty()) {
+                data.setClientManagerIds("," + mgrIds.stream()
+                        .map(ULong::toString)
+                        .collect(java.util.stream.Collectors.joining(",")) + ",");
+            }
+        }
+        return result;
+    }
+
+    private Mono<Set<ULong>> findChangedClientIds(List<ULong> clientIds, java.time.LocalDateTime since) {
+        return Flux.from(
+                this.dslContext.select(SECURITY_CLIENT.ID).from(SECURITY_CLIENT)
+                        .where(SECURITY_CLIENT.ID.in(clientIds)
+                                .and(SECURITY_CLIENT.UPDATED_AT.greaterThan(since))))
+                .map(r -> r.get(SECURITY_CLIENT.ID))
+                .concatWith(Flux.from(
+                        this.dslContext.selectDistinct(SECURITY_USER.CLIENT_ID).from(SECURITY_USER)
+                                .where(SECURITY_USER.CLIENT_ID.in(clientIds)
+                                        .and(SECURITY_USER.UPDATED_AT.greaterThan(since))))
+                        .map(r -> r.get(SECURITY_USER.CLIENT_ID)))
+                .concatWith(Flux.from(
+                        this.dslContext.selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID).from(SECURITY_CLIENT_MANAGER)
+                                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.in(clientIds)
+                                        .and(SECURITY_CLIENT_MANAGER.CREATED_AT.greaterThan(since))))
+                        .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID)))
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private static class UserAggregation {
+        int activeCount = 0;
+        final List<String> names = new java.util.ArrayList<>();
+        final List<String> phones = new java.util.ArrayList<>();
+
+        void add(SecurityUserStatusCode status, String firstName, String lastName, String phone) {
+            if (status == SecurityUserStatusCode.ACTIVE) activeCount++;
+
+            StringBuilder sb = new StringBuilder();
+            if (firstName != null && !firstName.isBlank()) sb.append(firstName.trim());
+            if (lastName != null && !lastName.isBlank()) {
+                if (!sb.isEmpty()) sb.append(' ');
+                sb.append(lastName.trim());
+            }
+            if (!sb.isEmpty()) names.add(sb.toString());
+
+            if (phone != null && !phone.isBlank() && !"PLACEHOLDER".equals(phone))
+                phones.add(phone);
+        }
+
+        void applyTo(com.fincity.saas.commons.security.model.ClientDenormData data) {
+            data.setActiveUsers(activeCount);
+            data.setUserNames(String.join(", ", names));
+            data.setUserPhones(String.join(", ", phones));
+        }
+    }
+
     public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {
         return Flux
                 .from(this.dslContext.select(SECURITY_CLIENT_URL.ID, SECURITY_CLIENT_URL.URL_PATTERN)

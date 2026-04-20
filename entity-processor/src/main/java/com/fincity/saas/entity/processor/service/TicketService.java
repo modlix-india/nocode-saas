@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -245,19 +247,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.checkDuplicateAndCarryAssignment(access, ticket),
-                        isDuplicate -> this.setAssignmentAndStage(ticket, access),
-                        (isDuplicate, aTicket) -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
-                        (isDuplicate, aTicket, owner) -> this.updateTicketFromOwner(aTicket, owner),
-                        (isDuplicate, aTicket, owner, oTicket) -> this.computeAndSetExpiresOn(access, oTicket))
+                        preferredUserId -> this.setAssignmentAndStage(ticket, access, preferredUserId),
+                        (preferredUserId, aTicket) -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
+                        (preferredUserId, aTicket, owner) -> this.updateTicketFromOwner(aTicket, owner),
+                        (preferredUserId, aTicket, owner, oTicket) -> this.computeAndSetExpiresOn(access, oTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
     /**
      * Checks for duplicate tickets and, when a duplicate rule allows creation,
-     * carries the existing ticket's assignedUserId onto the new ticket.
-     * This ensures all inquiries for the same lead are handled by the same user.
+     * returns the existing ticket's assignedUserId as a preferred user hint.
+     * The returned userId is validated against the current distribution pool
+     * in setAssignmentAndStage rather than being applied directly.
      */
-    private Mono<Boolean> checkDuplicateAndCarryAssignment(ProcessorAccess access, Ticket ticket) {
+    private Mono<ULong> checkDuplicateAndCarryAssignment(ProcessorAccess access, Ticket ticket) {
 
         PhoneNumber phone = ticket.getPhoneNumber() != null
                 ? PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber())
@@ -265,28 +268,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         Email email = ticket.getEmail() != null ? Email.of(ticket.getEmail()) : null;
 
-        if (phone == null && email == null) return Mono.just(Boolean.FALSE);
+        if (phone == null && email == null) return Mono.empty();
 
         return this.checkDuplicate(
                 access, ticket.getProductId(), phone, email, ticket.getSource(), ticket.getSubSource())
-                .flatMap(isDuplicate -> {
-                    // If duplicate was blocked (this won't reach here — checkDuplicate throws 400)
-                    if (Boolean.TRUE.equals(isDuplicate)) return Mono.just(Boolean.TRUE);
-
-                    // Duplicate check passed (allowed). Find any existing ticket with same phone/email
-                    // and carry forward the assigned user so the same person handles all inquiries.
-                    return this.getTicket(access, ticket.getProductId(), phone, email)
-                            .map(existingTicket -> {
-                                if (existingTicket.getAssignedUserId() != null) {
-                                    ticket.setAssignedUserId(existingTicket.getAssignedUserId());
-                                }
-                                return Boolean.FALSE;
-                            })
-                            .defaultIfEmpty(Boolean.FALSE);
-                });
+                .flatMap(isDuplicate -> this.getTicket(access, ticket.getProductId(), phone, email)
+                        .mapNotNull(Ticket::getAssignedUserId));
     }
 
-    private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
+    private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access, ULong preferredUserId) {
 
         Map<String, Object> trace = new HashMap<>();
         ticket.setEvaluationTrace(trace);
@@ -299,14 +289,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         }
 
         if (ticket.getAssignedUserId() != null) {
-            trace.put("skippedReason", "ALREADY_ASSIGNED_FROM_DUPLICATE");
+            trace.put("skippedReason", "ALREADY_ASSIGNED_EXTERNALLY");
             trace.put("assignedUserId", ticket.getAssignedUserId().toString());
             return this.setDefaultStage(access, ticket)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
         }
 
         ULong loggedInAssignedUser = access.isOutsideUser() ? null : access.getUserId();
+        ULong userIdHint = preferredUserId != null ? preferredUserId : loggedInAssignedUser;
+
+        trace.put("preferredUserId", preferredUserId != null ? preferredUserId.toString() : null);
         trace.put("loggedInFallbackUserId", loggedInAssignedUser != null ? loggedInAssignedUser.toString() : null);
+        trace.put("userIdHint", userIdHint != null ? userIdHint.toString() : null);
         trace.put("isOutsideUser", access.isOutsideUser());
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -318,14 +312,26 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 sTicket.getProductId(),
                                 sTicket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
-                                loggedInAssignedUser,
+                                userIdHint,
                                 sTicket),
                         (sTicket, ruleResult) -> {
-                            ULong assignedUserId =
-                                    ruleResult != null ? ruleResult.getUserId() : loggedInAssignedUser;
+                            ULong assignedUserId;
+                            String assignedVia;
+
+                            if (ruleResult != null) {
+                                assignedUserId = ruleResult.getUserId();
+                                assignedVia = "RULE";
+                            } else if (preferredUserId != null) {
+                                assignedUserId = preferredUserId;
+                                assignedVia = "PREFERRED_USER_NO_RULES";
+                            } else {
+                                assignedUserId = loggedInAssignedUser;
+                                assignedVia = "LOGGED_IN_USER_FALLBACK";
+                            }
+
                             trace.put("finalAssignedUserId",
                                     assignedUserId != null ? assignedUserId.toString() : null);
-                            trace.put("assignedVia", ruleResult != null ? "RULE" : "LOGGED_IN_USER_FALLBACK");
+                            trace.put("assignedVia", assignedVia);
                             return this.setTicketAssignment(access, sTicket, assignedUserId, ruleResult);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
@@ -1018,9 +1024,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-    public Mono<Integer> bulkReassignTickets(Query query, ULong userId, String comment) {
+    public Mono<Integer> bulkReassignTickets(
+            Query query, List<ULong> userIds, String comment, String timezone) {
 
-        if (userId == null)
+        if (userIds == null || userIds.isEmpty())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
@@ -1029,23 +1036,32 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> {
-                            if (!access.getUserInherit().getSubOrg().contains(userId))
-                                return this.msgService.<Boolean>throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            List<ULong> subOrg = access.getUserInherit().getSubOrg();
+                            for (ULong uid : userIds) {
+                                if (!subOrg.contains(uid))
+                                    return this.msgService.<Boolean>throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.INVALID_USER_ACCESS);
+                            }
                             return Mono.just(Boolean.TRUE);
                         },
                         (access, valid) -> this.dao.processorAccessCondition(query.getCondition(), access),
-                        (access, valid, pCondition) -> this.dao.readAll(pCondition)
-                                .flatMap(ticket -> this.updateTicketForReassignment(
-                                        access, ticket, userId, comment, false, null)
-                                        .onErrorResume(e -> {
-                                            logger.error("Bulk reassign failed for ticket {}: {}",
-                                                    ticket.getId(), e.getMessage());
-                                            return Mono.empty();
-                                        }))
-                                .count()
-                                .map(Long::intValue))
+                        (access, valid, pCondition) -> {
+                            AtomicInteger counter = new AtomicInteger(0);
+                            return this.dao.readAllForBulkOp(pCondition, timezone, query.getSubQueryConditions())
+                                    .flatMap(ticket -> {
+                                        ULong userId = userIds.get(counter.getAndIncrement() % userIds.size());
+                                        return this.updateTicketForReassignment(
+                                                access, ticket, userId, comment, false, null)
+                                                .onErrorResume(e -> {
+                                                    logger.error("Bulk reassign failed for ticket {}: {}",
+                                                            ticket.getId(), e.getMessage());
+                                                    return Mono.empty();
+                                                });
+                                    })
+                                    .count()
+                                    .map(Long::intValue);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.bulkReassignTickets"));
     }
 
@@ -1079,6 +1095,41 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                                     false))
                                     .thenReturn(uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForWalkIn"));
+    }
+
+    public Mono<Ticket> validateAssignedUser(ProcessorAccess access, Ticket ticket) {
+
+        if (ticket.getAssignedUserId() == null) return Mono.just(ticket);
+
+        return this.productTicketCRuleService
+                .getUserAssignment(
+                        access,
+                        ticket.getProductId(),
+                        ticket.getStage(),
+                        this.getEntityPrefix(access.getAppCode()),
+                        ticket.getAssignedUserId(),
+                        ticket,
+                        true)
+                .flatMap(ruleResult -> {
+                    if (ruleResult.getUserId().equals(ticket.getAssignedUserId()))
+                        return Mono.just(ticket);
+
+                    logger.info(
+                            "validateAssignedUser: ticketId={}, oldUser={}, newUser={} (old user no longer in distribution)",
+                            ticket.getId(),
+                            ticket.getAssignedUserId(),
+                            ruleResult.getUserId());
+
+                    return this.updateTicketForReassignment(
+                            access,
+                            ticket,
+                            ruleResult.getUserId(),
+                            "Reassigned: user no longer in distribution",
+                            true,
+                            ruleResult);
+                })
+                .switchIfEmpty(Mono.just(ticket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.validateAssignedUser"));
     }
 
     public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId, boolean isAutomatic) {
@@ -1195,11 +1246,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readTicketUsers"));
     }
 
-    public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
+    public Mono<Integer> updateTicketDncByClientId(ULong clientId, Boolean dnc) {
         return this.dao
-                .getAllClientTicketsByDnc(clientId, !dnc)
-                .map(ticket -> ticket.setDnc(dnc))
-                .flatMap(tickets -> super.updateInternal(access, tickets))
+                .updateDncByClientId(clientId, dnc)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 
