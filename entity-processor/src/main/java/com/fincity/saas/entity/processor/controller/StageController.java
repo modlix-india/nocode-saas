@@ -36,9 +36,10 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) StageType stageType,
             @RequestParam(required = false) ULong productTemplateId,
-            @RequestParam(required = false) ULong parentId) {
+            @RequestParam(required = false) ULong parentId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted) {
         return this.service
-                .getAllValues(platform, stageType, productTemplateId, parentId)
+                .getAllValues(platform, stageType, productTemplateId, parentId, includeDeleted)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -49,9 +50,10 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) StageType stageType,
             @RequestParam(required = false) ULong productTemplateId,
-            @RequestParam(required = false) ULong parentId) {
+            @RequestParam(required = false) ULong parentId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted) {
         return this.service
-                .getAllValuesInOrder(platform, stageType, productTemplateId, parentId)
+                .getAllValuesInOrder(platform, stageType, productTemplateId, parentId, includeDeleted)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
