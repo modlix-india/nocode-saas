@@ -2,13 +2,14 @@ package com.fincity.saas.entity.processor.dto;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientFieldResolver;
@@ -18,6 +19,7 @@ import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
@@ -33,6 +35,8 @@ public class Partner extends BaseUpdatableDto<Partner> {
     @Serial
     private static final long serialVersionUID = 3748035430910724547L;
 
+    @JsonIgnore
+    @Getter(onMethod_ = {@JsonIgnore})
     private ULong clientId;
 
     /**
@@ -53,9 +57,15 @@ public class Partner extends BaseUpdatableDto<Partner> {
 
     private PartnerVerificationStatus partnerVerificationStatus = PartnerVerificationStatus.INVITATION_SENT;
     private Boolean dnc = Boolean.FALSE;
-    private List<User> owners;
-    private List<User> clientManagers;
-    
+
+    @JsonIgnore
+    private transient Client clientInfo;
+
+    @JsonIgnore
+    private transient User createdByUser;
+
+    @JsonIgnore
+    private transient User updatedByUser;
 
     public Partner() {
         super();
@@ -84,5 +94,32 @@ public class Partner extends BaseUpdatableDto<Partner> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PARTNER;
+    }
+
+    @JsonProperty("clientId")
+    public Object getClientIdForJson() {
+        return this.clientInfo != null ? this.clientInfo : this.clientId;
+    }
+
+    @Override
+    @JsonIgnore
+    public ULong getCreatedBy() {
+        return super.getCreatedBy();
+    }
+
+    @JsonProperty("createdBy")
+    public Object getCreatedByForJson() {
+        return this.createdByUser != null ? this.createdByUser : super.getCreatedBy();
+    }
+
+    @Override
+    @JsonIgnore
+    public ULong getUpdatedBy() {
+        return super.getUpdatedBy();
+    }
+
+    @JsonProperty("updatedBy")
+    public Object getUpdatedByForJson() {
+        return this.updatedByUser != null ? this.updatedByUser : super.getUpdatedBy();
     }
 }
