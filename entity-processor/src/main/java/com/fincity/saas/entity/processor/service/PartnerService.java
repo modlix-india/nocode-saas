@@ -16,6 +16,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
@@ -311,11 +312,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         if (clientIds.isEmpty()) return Mono.empty();
 
         return super.securityService
-                .getClientUserInternalBatch(clientIds, new LinkedMultiValueMap<>())
-                .doOnNext(users -> {
-                    Map<BigInteger, List<User>> usersByClient = users.stream()
-                            .filter(u -> u.getClientId() != null)
-                            .collect(Collectors.groupingBy(User::getClientId));
+                .getClientInternalBatch(clientIds, new LinkedMultiValueMap<>(Map.of("fetchOwners", List.of("true"))))
+                .doOnNext(clients -> {
+                    Map<BigInteger, List<User>> usersByClient = clients.stream()
+                            .filter(u -> u.getId() != null)
+                            .collect(Collectors.toMap(Client::getId, Client::getOwners));
                     partners.forEach(p -> {
                         if (p.getClientId() != null)
                             p.setOwners(usersByClient.getOrDefault(p.getClientId().toBigInteger(), List.of()));
