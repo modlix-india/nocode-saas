@@ -42,9 +42,7 @@ import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -275,92 +273,71 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerByClientId"));
     }
 
-    public Mono<Partner> read(ULong id, boolean fetchOwners, boolean fetchClientManagers) {
+    public Mono<Partner> read(ULong id, MultiValueMap<String, String> queryParams) {
         return super.read(id)
-                .flatMap(partner -> this.enrichPartners(List.of(partner), fetchOwners, fetchClientManagers)
-                        .thenReturn(partner))
+                .flatMap(partner -> this.enrichPartners(List.of(partner), queryParams).thenReturn(partner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.read"));
     }
 
     public Mono<Page<Partner>> readPageFilter(
-            Pageable pageable, AbstractCondition condition, boolean fetchOwners, boolean fetchClientManagers) {
+            Pageable pageable, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
         return super.readPageFilter(pageable, condition)
-                .flatMap(page -> this.enrichPartners(page.getContent(), fetchOwners, fetchClientManagers)
-                        .thenReturn(page))
+                .flatMap(page -> this.enrichPartners(page.getContent(), queryParams).thenReturn(page))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPageFilter"));
     }
 
-    private Mono<Void> enrichPartners(
-            List<Partner> partners, boolean fetchOwners, boolean fetchClientManagers) {
-        if (partners == null || partners.isEmpty() || (!fetchOwners && !fetchClientManagers))
-            return Mono.empty();
-
-        Mono<Void> ownersMono = fetchOwners ? this.fillOwners(partners) : Mono.empty();
-        Mono<Void> managersMono = fetchClientManagers ? this.fillClientManagers(partners) : Mono.empty();
-
-        return Mono.when(ownersMono, managersMono);
+    private Mono<Void> enrichPartners(List<Partner> partners, MultiValueMap<String, String> queryParams) {
+        if (partners == null || partners.isEmpty()) return Mono.empty();
+        return Mono.when(this.fillClients(partners, queryParams), this.fillAuditUsers(partners));
     }
 
-    private Mono<Void> fillOwners(List<Partner> partners) {
-        List<BigInteger> clientIds = partners.stream()
+    private Mono<Void> fillClients(List<Partner> partners, MultiValueMap<String, String> queryParams) {
+        List<BigInteger> ids = partners.stream()
                 .map(Partner::getClientId)
                 .filter(Objects::nonNull)
                 .map(ULong::toBigInteger)
                 .distinct()
                 .toList();
 
-        if (clientIds.isEmpty()) return Mono.empty();
+        if (ids.isEmpty()) return Mono.empty();
+
+        MultiValueMap<String, String> params = queryParams != null ? queryParams : new LinkedMultiValueMap<>();
 
         return super.securityService
-                .getClientInternalBatch(clientIds, new LinkedMultiValueMap<>(Map.of("fetchOwners", List.of("true"))))
+                .getClientInternalBatch(ids, params)
                 .doOnNext(clients -> {
-                    Map<BigInteger, List<User>> usersByClient = clients.stream()
-                            .filter(u -> u.getId() != null)
-                            .collect(Collectors.toMap(Client::getId, Client::getOwners));
+                    Map<BigInteger, Client> byId = clients.stream()
+                            .collect(Collectors.toMap(Client::getId, Function.identity(), (a, b) -> a));
                     partners.forEach(p -> {
                         if (p.getClientId() != null)
-                            p.setOwners(usersByClient.getOrDefault(p.getClientId().toBigInteger(), List.of()));
+                            p.setClientInfo(byId.get(p.getClientId().toBigInteger()));
                     });
                 })
                 .then();
     }
 
-    private Mono<Void> fillClientManagers(List<Partner> partners) {
-        Map<Partner, List<BigInteger>> idsByPartner = new HashMap<>();
-        Set<BigInteger> allIds = new HashSet<>();
-        for (Partner p : partners) {
-            List<BigInteger> ids = parseClientManagerIds(p.getClientManagerIds());
-            idsByPartner.put(p, ids);
-            allIds.addAll(ids);
-        }
+    private Mono<Void> fillAuditUsers(List<Partner> partners) {
+        Set<BigInteger> ids = new HashSet<>();
+        partners.forEach(p -> {
+            if (p.getCreatedBy() != null) ids.add(p.getCreatedBy().toBigInteger());
+            if (p.getUpdatedBy() != null) ids.add(p.getUpdatedBy().toBigInteger());
+        });
 
-        if (allIds.isEmpty()) {
-            partners.forEach(p -> p.setClientManagers(List.of()));
-            return Mono.empty();
-        }
+        if (ids.isEmpty()) return Mono.empty();
 
         return super.securityService
-                .getUsersInternalBatch(new ArrayList<>(allIds), new LinkedMultiValueMap<>())
+                .getUsersInternalBatch(new ArrayList<>(ids), new LinkedMultiValueMap<>())
                 .doOnNext(users -> {
-                    Map<BigInteger, User> userById = users.stream()
-                            .filter(u -> u.getId() != null)
+                    Map<BigInteger, User> byId = users.stream()
                             .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
-                    idsByPartner.forEach((p, ids) -> p.setClientManagers(ids.stream()
-                            .map(userById::get)
-                            .filter(Objects::nonNull)
-                            .toList()));
+                    partners.forEach(p -> {
+                        if (p.getCreatedBy() != null)
+                            p.setCreatedByUser(byId.get(p.getCreatedBy().toBigInteger()));
+                        if (p.getUpdatedBy() != null)
+                            p.setUpdatedByUser(byId.get(p.getUpdatedBy().toBigInteger()));
+                    });
                 })
                 .then();
-    }
-
-    private static List<BigInteger> parseClientManagerIds(String value) {
-        if (value == null || value.isBlank()) return List.of();
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(BigInteger::new)
-                .distinct()
-                .toList();
     }
 
     public Mono<Boolean> getPartnerDnc(ProcessorAccess access) {
