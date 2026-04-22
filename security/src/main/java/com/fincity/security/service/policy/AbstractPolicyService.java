@@ -114,7 +114,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, uEntity, canCreate, created, evicted) -> {
                     clientActivityService.createLog(created.getClientId(),
-                            getPolicyName() + " Create", getPolicyName() + " created");
+                            getPolicyName() + " Create",
+                            getPolicyName() + " created for appId " + created.getAppId());
                     return Mono.just(created);
                 })
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
@@ -182,7 +183,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, entity, canUpdate, canEntityUpdate, updated) -> {
                     clientActivityService.createLog(updated.getClientId(),
-                            getPolicyName() + " Update", getPolicyName() + " updated");
+                            getPolicyName() + " Update",
+                            getPolicyName() + " updated for appId " + updated.getAppId());
                     return cacheService.evict(getPolicyCacheName(),
                             getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated);
                 })
@@ -211,7 +213,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, uEntity, canUpdate, canEntityUpdate, updated) -> {
                     clientActivityService.createLog(uEntity.getClientId(),
-                            getPolicyName() + " Update", getPolicyName() + " updated");
+                            getPolicyName() + " Update",
+                            getPolicyName() + " updated for appId " + uEntity.getAppId());
                     return cacheService.evict(getPolicyCacheName(),
                             getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated);
                 })
@@ -240,7 +243,8 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
                 (ca, entity, canDelete, canEntityDelete, deleted) -> {
                     clientActivityService.createLog(entity.getClientId(),
-                            getPolicyName() + " Delete", getPolicyName() + " deleted");
+                            getPolicyName() + " Delete",
+                            getPolicyName() + " deleted for appId " + entity.getAppId());
                     return cacheService.evict(getPolicyCacheName(),
                             getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted);
                 })

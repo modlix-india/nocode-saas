@@ -124,6 +124,17 @@ public class ClientService
         return entity.getId();
     }
 
+    @Override
+    protected String describeEntity(Client entity) {
+        if (entity == null)
+            return null;
+        String code = entity.getCode();
+        String name = entity.getName();
+        if (code != null && !code.isBlank() && name != null && !name.isBlank())
+            return code + " (" + name + ")";
+        return code != null && !code.isBlank() ? code : name;
+    }
+
     public Mono<Client> getClientBy(ServerHttpRequest request) {
 
         HttpHeaders header = request.getHeaders();
