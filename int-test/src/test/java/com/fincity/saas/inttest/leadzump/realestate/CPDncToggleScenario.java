@@ -63,6 +63,9 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
     // ExpiresOn values captured before DNC toggle
     private static Number ticket1ExpiresOnBefore, ticket2ExpiresOnBefore;
 
+    // UpdatedAt values captured before DNC toggle
+    private static Number ticket1UpdatedAtBefore, ticket2UpdatedAtBefore;
+
     private static String uid;
     private static SecurityApi secApi;
 
@@ -345,13 +348,17 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
         Response t1 = api.getTicket(ticket1Id);
         assertThat(t1.statusCode()).isEqualTo(200);
         ticket1ExpiresOnBefore = t1.body().path("expiresOn");
+        ticket1UpdatedAtBefore = t1.body().path("updatedAt");
 
         Response t2 = api.getTicket(ticket2Id);
         assertThat(t2.statusCode()).isEqualTo(200);
         ticket2ExpiresOnBefore = t2.body().path("expiresOn");
+        ticket2UpdatedAtBefore = t2.body().path("updatedAt");
 
         assertThat(ticket1ExpiresOnBefore).as("Ticket 1 expiresOn before toggle").isNotNull();
         assertThat(ticket2ExpiresOnBefore).as("Ticket 2 expiresOn before toggle").isNotNull();
+        assertThat(ticket1UpdatedAtBefore).as("Ticket 1 updatedAt before toggle").isNotNull();
+        assertThat(ticket2UpdatedAtBefore).as("Ticket 2 updatedAt before toggle").isNotNull();
     }
 
     @Test
@@ -371,11 +378,12 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
 
     @Test
     @Order(520)
-    void s1_verifyTicketsDncOnAndExpiresOnUnchanged() {
+    void s1_verifyTicketsDncOnAndTimestampsUnchanged() {
         Response t1 = api.getTicket(ticket1Id);
         assertThat(t1.statusCode()).isEqualTo(200);
         Boolean t1Dnc = t1.body().path("dnc");
         Number t1ExpiresOn = t1.body().path("expiresOn");
+        Number t1UpdatedAt = t1.body().path("updatedAt");
 
         assertThat(t1Dnc).as("Ticket 1 DNC should be true after partner DNC toggle ON").isTrue();
         assertThat(t1ExpiresOn).as("Ticket 1 expiresOn should not be null").isNotNull();
@@ -383,11 +391,16 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
                 .as("Ticket 1 expiresOn should NOT change when DNC is toggled — before: %d, after: %d",
                         ticket1ExpiresOnBefore.longValue(), t1ExpiresOn.longValue())
                 .isEqualTo(ticket1ExpiresOnBefore.longValue());
+        assertThat(t1UpdatedAt.longValue())
+                .as("Ticket 1 updatedAt should NOT change when DNC is toggled — before: %d, after: %d",
+                        ticket1UpdatedAtBefore.longValue(), t1UpdatedAt.longValue())
+                .isEqualTo(ticket1UpdatedAtBefore.longValue());
 
         Response t2 = api.getTicket(ticket2Id);
         assertThat(t2.statusCode()).isEqualTo(200);
         Boolean t2Dnc = t2.body().path("dnc");
         Number t2ExpiresOn = t2.body().path("expiresOn");
+        Number t2UpdatedAt = t2.body().path("updatedAt");
 
         assertThat(t2Dnc).as("Ticket 2 DNC should be true after partner DNC toggle ON").isTrue();
         assertThat(t2ExpiresOn).as("Ticket 2 expiresOn should not be null").isNotNull();
@@ -395,6 +408,10 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
                 .as("Ticket 2 expiresOn should NOT change when DNC is toggled — before: %d, after: %d",
                         ticket2ExpiresOnBefore.longValue(), t2ExpiresOn.longValue())
                 .isEqualTo(ticket2ExpiresOnBefore.longValue());
+        assertThat(t2UpdatedAt.longValue())
+                .as("Ticket 2 updatedAt should NOT change when DNC is toggled — before: %d, after: %d",
+                        ticket2UpdatedAtBefore.longValue(), t2UpdatedAt.longValue())
+                .isEqualTo(ticket2UpdatedAtBefore.longValue());
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -407,10 +424,12 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
         Response t1 = api.getTicket(ticket1Id);
         assertThat(t1.statusCode()).isEqualTo(200);
         ticket1ExpiresOnBefore = t1.body().path("expiresOn");
+        ticket1UpdatedAtBefore = t1.body().path("updatedAt");
 
         Response t2 = api.getTicket(ticket2Id);
         assertThat(t2.statusCode()).isEqualTo(200);
         ticket2ExpiresOnBefore = t2.body().path("expiresOn");
+        ticket2UpdatedAtBefore = t2.body().path("updatedAt");
     }
 
     @Test
@@ -429,28 +448,38 @@ public class CPDncToggleScenario extends BaseIntegrationTest {
 
     @Test
     @Order(620)
-    void s2_verifyTicketsDncOffAndExpiresOnUnchanged() {
+    void s2_verifyTicketsDncOffAndTimestampsUnchanged() {
         Response t1 = api.getTicket(ticket1Id);
         assertThat(t1.statusCode()).isEqualTo(200);
         Boolean t1Dnc = t1.body().path("dnc");
         Number t1ExpiresOn = t1.body().path("expiresOn");
+        Number t1UpdatedAt = t1.body().path("updatedAt");
 
         assertThat(t1Dnc).as("Ticket 1 DNC should be false after partner DNC toggle OFF").isFalse();
         assertThat(t1ExpiresOn.longValue())
                 .as("Ticket 1 expiresOn should NOT change on DNC toggle OFF — before: %d, after: %d",
                         ticket1ExpiresOnBefore.longValue(), t1ExpiresOn.longValue())
                 .isEqualTo(ticket1ExpiresOnBefore.longValue());
+        assertThat(t1UpdatedAt.longValue())
+                .as("Ticket 1 updatedAt should NOT change on DNC toggle OFF — before: %d, after: %d",
+                        ticket1UpdatedAtBefore.longValue(), t1UpdatedAt.longValue())
+                .isEqualTo(ticket1UpdatedAtBefore.longValue());
 
         Response t2 = api.getTicket(ticket2Id);
         assertThat(t2.statusCode()).isEqualTo(200);
         Boolean t2Dnc = t2.body().path("dnc");
         Number t2ExpiresOn = t2.body().path("expiresOn");
+        Number t2UpdatedAt = t2.body().path("updatedAt");
 
         assertThat(t2Dnc).as("Ticket 2 DNC should be false after partner DNC toggle OFF").isFalse();
         assertThat(t2ExpiresOn.longValue())
                 .as("Ticket 2 expiresOn should NOT change on DNC toggle OFF — before: %d, after: %d",
                         ticket2ExpiresOnBefore.longValue(), t2ExpiresOn.longValue())
                 .isEqualTo(ticket2ExpiresOnBefore.longValue());
+        assertThat(t2UpdatedAt.longValue())
+                .as("Ticket 2 updatedAt should NOT change on DNC toggle OFF — before: %d, after: %d",
+                        ticket2UpdatedAtBefore.longValue(), t2UpdatedAt.longValue())
+                .isEqualTo(ticket2UpdatedAtBefore.longValue());
     }
 
     // ═══════════════════════════════════════════════════════════════════

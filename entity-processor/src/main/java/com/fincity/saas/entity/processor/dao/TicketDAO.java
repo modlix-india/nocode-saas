@@ -121,6 +121,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         return Mono.from(
                 this.dslContext.update(ENTITY_PROCESSOR_TICKETS)
                         .set(ENTITY_PROCESSOR_TICKETS.DNC, dnc)
+                        .set(ENTITY_PROCESSOR_TICKETS.UPDATED_AT, ENTITY_PROCESSOR_TICKETS.UPDATED_AT)
                         .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
                         .and(ENTITY_PROCESSOR_TICKETS.DNC.ne(dnc)));
     }
