@@ -134,6 +134,11 @@ public class RoleV2Service
     }
 
     @Override
+    protected String describeEntity(RoleV2 entity) {
+        return entity == null ? null : entity.getName();
+    }
+
+    @Override
     protected Mono<RoleV2> updatableEntity(RoleV2 entity) {
         return this.read(entity.getId())
                 .map(existing -> {

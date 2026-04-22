@@ -80,7 +80,7 @@ public class DepartmentService
 
                 (ca, managed, sameClient) -> super.create(entity).map(created -> {
                     clientActivityService.createLog(created.getClientId(),
-                            "Department Create", "Department created");
+                            "Department Create", "Department created: " + created.getName());
                     return created;
                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.create"))
@@ -119,7 +119,7 @@ public class DepartmentService
                 (managed, canBeUpdated) -> super.update(entity),
                 (managed, canBeUpdated, updatedDepartment) -> {
                     clientActivityService.createLog(updatedDepartment.getClientId(),
-                            "Department Update", "Department updated");
+                            "Department Update", "Department updated: " + updatedDepartment.getName());
                     return this.cacheService
                             .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
                             .thenReturn(updatedDepartment);
@@ -140,7 +140,7 @@ public class DepartmentService
 
                 (canBeUpdated, updatedDepartment) -> {
                     clientActivityService.createLog(updatedDepartment.getClientId(),
-                            "Department Update", "Department updated");
+                            "Department Update", "Department updated: " + updatedDepartment.getName());
                     return this.cacheService
                             .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
                             .thenReturn(updatedDepartment);
@@ -166,7 +166,7 @@ public class DepartmentService
     public Mono<Integer> delete(ULong id) {
         return this.read(id).flatMap(entity -> super.delete(id).map(count -> {
             clientActivityService.createLog(entity.getClientId(),
-                    "Department Delete", "Department deleted");
+                    "Department Delete", "Department deleted: " + entity.getName());
             return count;
         }));
     }

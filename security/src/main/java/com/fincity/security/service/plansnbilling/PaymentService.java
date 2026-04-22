@@ -89,7 +89,9 @@ public class PaymentService
                     payment.setInvoiceId(invoiceId);
                     return this.dao.create(payment).doOnNext(created ->
                             clientActivityService.createLog(invoice.getClientId(),
-                                    "Payment Create", "Payment created"));
+                                    "Payment Create",
+                                    "Payment created for invoice " + invoice.getInvoiceNumber()
+                                            + ", amount: " + created.getPaymentAmount()));
                 })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -141,7 +143,9 @@ public class PaymentService
                                 existing.setPaymentDate(LocalDateTime.now());
                                 return this.dao.update(existing).doOnNext(updated ->
                                         clientActivityService.createLog(clientId,
-                                                "Payment Update", "Payment updated"));
+                                                "Payment Update",
+                                                "Payment updated [ref: " + updated.getPaymentReference()
+                                                        + ", status: " + updated.getPaymentStatus() + "]"));
                             })
                             .switchIfEmpty(this.messageResourceService.throwMessage(
                                     msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -197,7 +201,9 @@ public class PaymentService
                     payment.setPaymentDate(LocalDateTime.now());
                     return this.dao.update(payment).doOnNext(updated ->
                             clientActivityService.createLog(invoice.getClientId(),
-                                    "Payment Update", "Payment updated"));
+                                    "Payment Update",
+                                    "Payment updated [ref: " + updated.getPaymentReference()
+                                            + ", status: " + updated.getPaymentStatus() + "]"));
                 },
 
                 (ca, payment, invoice, updated) -> {

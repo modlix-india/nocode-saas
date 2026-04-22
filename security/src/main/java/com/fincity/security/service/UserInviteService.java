@@ -270,7 +270,7 @@ public class UserInviteService
 
                 (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(createdUser.getId(), CREATE,
-                            SecuritySoxLogObjectName.USER, "User created");
+                            SecuritySoxLogObjectName.USER, "User created: " + createdUser.getEmailId());
                     this.clientActivityService.createLog(createdUser.getClientId(),
                             "User Invite Accepted",
                             "User invite accepted, user created: " + createdUser.getEmailId());
