@@ -117,7 +117,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                     if (entity.getLimits() == null || entity.getLimits().isEmpty()) {
                         clientActivityService.createLog(created.getClientId(),
-                                "Plan Create", "Plan created");
+                                "Plan Create", "Plan created: " + created.getName());
                         return Mono.just(created);
                     }
 
@@ -126,7 +126,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                             .flatMap(this.planLimitDAO::create).collectList()
                             .map(created::setLimits)
                             .doOnNext(p -> clientActivityService.createLog(p.getClientId(),
-                                    "Plan Create", "Plan created"));
+                                    "Plan Create", "Plan created: " + p.getName()));
                 })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -196,7 +196,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                                 .map(cyclesAdded::setLimits);
 
                     return result.doOnNext(p -> clientActivityService.createLog(p.getClientId(),
-                            "Plan Update", "Plan updated"));
+                            "Plan Update", "Plan updated: " + p.getName()));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.update"))
                 .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_REGISTRATION_PLANS))
@@ -251,7 +251,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 (ca, existing, hasAccess) -> this.dao.delete(id).map(deleted -> {
                     clientActivityService.createLog(existing.getClientId(),
-                            "Plan Delete", "Plan deleted");
+                            "Plan Delete", "Plan deleted: " + existing.getName());
                     return deleted;
                 }),
 

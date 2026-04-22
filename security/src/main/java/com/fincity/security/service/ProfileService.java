@@ -317,6 +317,11 @@ public class ProfileService
     }
 
     @Override
+    protected String describeEntity(Profile entity) {
+        return entity == null ? null : entity.getName();
+    }
+
+    @Override
     protected Mono<Profile> updatableEntity(Profile entity) {
         return Mono.error(NotImplementedException::new);
     }

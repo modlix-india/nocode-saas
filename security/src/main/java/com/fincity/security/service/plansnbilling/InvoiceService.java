@@ -75,6 +75,11 @@ public class InvoiceService
     }
 
     @Override
+    protected String describeEntity(Invoice entity) {
+        return entity == null ? null : entity.getInvoiceNumber();
+    }
+
+    @Override
     protected ULong resolveClientId(Invoice entity) {
         return entity.getClientId();
     }

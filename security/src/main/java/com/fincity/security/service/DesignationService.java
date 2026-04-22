@@ -94,7 +94,7 @@ public class DesignationService
 
                 (ca, managed, sameClient) -> super.create(entity).map(created -> {
                     clientActivityService.createLog(created.getClientId(),
-                            "Designation Create", "Designation created");
+                            "Designation Create", "Designation created: " + created.getName());
                     return created;
                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.create"))
@@ -136,7 +136,7 @@ public class DesignationService
                 (managed, canBeUpdated) -> super.update(entity),
                 (managed, canBeUpdated, updatedDesignation) -> {
                     clientActivityService.createLog(updatedDesignation.getClientId(),
-                            "Designation Update", "Designation updated");
+                            "Designation Update", "Designation updated: " + updatedDesignation.getName());
                     return this.cacheService
                             .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
                             .thenReturn(updatedDesignation);
@@ -155,7 +155,7 @@ public class DesignationService
                 canBeUpdated -> super.update(key, fields),
                 (canBeUpdated, updatedDesignation) -> {
                     clientActivityService.createLog(updatedDesignation.getClientId(),
-                            "Designation Update", "Designation updated");
+                            "Designation Update", "Designation updated: " + updatedDesignation.getName());
                     return this.cacheService
                             .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
                             .thenReturn(updatedDesignation);
@@ -183,7 +183,7 @@ public class DesignationService
     public Mono<Integer> delete(ULong id) {
         return this.read(id).flatMap(entity -> super.delete(id).map(count -> {
             clientActivityService.createLog(entity.getClientId(),
-                    "Designation Delete", "Designation deleted");
+                    "Designation Delete", "Designation deleted: " + entity.getName());
             return count;
         }));
     }
