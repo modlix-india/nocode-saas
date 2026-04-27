@@ -395,17 +395,18 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         if (access.getUser() == null && access.getUserInherit() == null)
             return Mono.just(super.addAppCodeAndClientCode(condition, access));
 
-        return FlatMapUtil.flatMapMono(
-                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
-                        ruleCondition -> {
-                            AbstractCondition rawAccess = this.buildRawUserClientAccess(access);
-                            AbstractCondition combinedAccess = ComplexCondition.or(rawAccess, ruleCondition);
-                            AbstractCondition full = condition != null && !condition.isEmpty()
-                                    ? ComplexCondition.and(condition, combinedAccess)
-                                    : combinedAccess;
-                            return Mono.just(super.addAppCodeAndClientCode(full, access));
-                        })
-                .switchIfEmpty(super.processorAccessCondition(condition, access));
+        AbstractCondition rawAccess = this.buildRawUserClientAccess(access);
+
+        return this.productTicketRuRuleService
+                .getUserReadConditions(access)
+                .map(ruleCondition -> (AbstractCondition) ComplexCondition.or(rawAccess, ruleCondition))
+                .defaultIfEmpty(rawAccess)
+                .map(combinedAccess -> {
+                    AbstractCondition full = condition != null && !condition.isEmpty()
+                            ? ComplexCondition.and(condition, combinedAccess)
+                            : combinedAccess;
+                    return super.addAppCodeAndClientCode(full, access);
+                });
     }
 
     private AbstractCondition buildRawUserClientAccess(ProcessorAccess access) {
