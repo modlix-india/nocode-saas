@@ -48,6 +48,7 @@ public class Partner extends BaseUpdatableDto<Partner> {
     private ULong managerId;
 
     private String clientName;
+    private String clientStatusCode;
     private UInteger activeUsers = UInteger.valueOf(0);
     private ULong totalTickets = ULong.valueOf(0);
     private String userNames;
@@ -77,6 +78,7 @@ public class Partner extends BaseUpdatableDto<Partner> {
         this.clientId = partner.clientId;
         this.managerId = partner.managerId;
         this.clientName = partner.clientName;
+        this.clientStatusCode = partner.clientStatusCode;
         this.activeUsers = partner.activeUsers;
         this.totalTickets = partner.totalTickets;
         this.userNames = partner.userNames;
