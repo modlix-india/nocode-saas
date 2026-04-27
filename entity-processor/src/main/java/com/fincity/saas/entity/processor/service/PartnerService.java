@@ -346,7 +346,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     static boolean isPartnerBypassRole(Collection<? extends GrantedAuthority> authorities) {
         return SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner", authorities)
-                || SecurityContextUtil.hasAuthority("Authorities.ROLE_Client_Manager", authorities);
+                || SecurityContextUtil.hasAuthority("Authorities.ROLE_Client_MANAGE", authorities);
     }
 
     private Mono<Void> enrichPartners(List<Partner> partners, MultiValueMap<String, String> queryParams) {
