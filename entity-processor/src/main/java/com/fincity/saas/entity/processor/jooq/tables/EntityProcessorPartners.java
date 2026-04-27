@@ -114,6 +114,12 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_partners.CLIENT_STATUS_CODE</code>.
+     */
+    public final TableField<EntityProcessorPartnersRecord, String> CLIENT_STATUS_CODE = createField(DSL.name("CLIENT_STATUS_CODE"), SQLDataType.VARCHAR(8), this, "");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_partners.ACTIVE_USERS</code>.
      */
     public final TableField<EntityProcessorPartnersRecord, UInteger> ACTIVE_USERS = createField(DSL.name("ACTIVE_USERS"), SQLDataType.INTEGERUNSIGNED.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGERUNSIGNED)), this, "");

@@ -475,12 +475,15 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     private Mono<Map<ULong, com.fincity.saas.commons.security.model.ClientDenormData>> fetchClientNames(
             List<ULong> clientIds) {
         return Flux.from(
-                this.dslContext.select(SECURITY_CLIENT.ID, SECURITY_CLIENT.NAME)
+                this.dslContext.select(SECURITY_CLIENT.ID, SECURITY_CLIENT.NAME, SECURITY_CLIENT.STATUS_CODE)
                         .from(SECURITY_CLIENT)
                         .where(SECURITY_CLIENT.ID.in(clientIds)))
                 .collectMap(r -> r.get(SECURITY_CLIENT.ID),
                         r -> new com.fincity.saas.commons.security.model.ClientDenormData()
-                                .setClientName(r.get(SECURITY_CLIENT.NAME)));
+                                .setClientName(r.get(SECURITY_CLIENT.NAME))
+                                .setStatusCode(r.get(SECURITY_CLIENT.STATUS_CODE) == null
+                                        ? null
+                                        : r.get(SECURITY_CLIENT.STATUS_CODE).getLiteral()));
     }
 
     private Mono<Map<ULong, UserAggregation>> fetchUserAggregations(List<ULong> clientIds) {
