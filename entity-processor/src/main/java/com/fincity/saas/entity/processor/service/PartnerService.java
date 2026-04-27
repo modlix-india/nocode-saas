@@ -17,7 +17,9 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.LogUtil;
@@ -56,6 +58,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -274,16 +277,50 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     public Mono<Partner> read(ULong id, MultiValueMap<String, String> queryParams) {
-        return super.read(id)
-                .flatMap(partner -> this.enrichPartners(List.of(partner), queryParams).thenReturn(partner))
+        return FlatMapUtil.flatMapMono(
+                        () -> super.read(id),
+                        partner -> SecurityContextUtil.getUsersContextAuthentication(),
+                        (partner, ca) -> {
+                            if (isCallerAuthorizedForPartner(partner, ca)) return Mono.just(partner);
+                            return super.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                    ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
+                        },
+                        (partner, ca, authorized) ->
+                                this.enrichPartners(List.of(authorized), queryParams).thenReturn(authorized))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.read"));
     }
 
     public Mono<Page<Partner>> readPageFilter(
             Pageable pageable, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
-        return super.readPageFilter(pageable, condition)
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> super.readPageFilter(pageable, applyClientManagerScope(condition, ca)))
                 .flatMap(page -> this.enrichPartners(page.getContent(), queryParams).thenReturn(page))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPageFilter"));
+    }
+
+    static boolean isCallerAuthorizedForPartner(Partner partner, ContextAuthentication ca) {
+        if (isPartnerBypassRole(ca.getUser().getAuthorities())) return true;
+        if (partner == null || partner.getClientManagerIds() == null) return false;
+        String marker = "," + ca.getUser().getId().toString() + ",";
+        return partner.getClientManagerIds().contains(marker);
+    }
+
+    static AbstractCondition applyClientManagerScope(AbstractCondition condition, ContextAuthentication ca) {
+        if (isPartnerBypassRole(ca.getUser().getAuthorities())) return condition;
+
+        AbstractCondition managerFilter = FilterCondition.make(
+                        Partner.Fields.clientManagerIds,
+                        "%," + ca.getUser().getId().toString() + ",%")
+                .setOperator(FilterConditionOperator.LIKE);
+
+        if (condition == null || condition.isEmpty()) return managerFilter;
+        return ComplexCondition.and(condition, managerFilter);
+    }
+
+    static boolean isPartnerBypassRole(Collection<? extends GrantedAuthority> authorities) {
+        return SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner", authorities)
+                || SecurityContextUtil.hasAuthority("Authorities.ROLE_Client_Manager", authorities);
     }
 
     private Mono<Void> enrichPartners(List<Partner> partners, MultiValueMap<String, String> queryParams) {

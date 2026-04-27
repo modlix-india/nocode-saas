@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -49,6 +50,7 @@ public class PartnerController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Client_CREATE')")
     public Mono<ResponseEntity<Partner>> readById(@PathVariable ULong id, ServerHttpRequest request) {
         return this.service.read(id, request.getQueryParams()).map(ResponseEntity::ok)
                 .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -62,6 +64,7 @@ public class PartnerController {
     }
 
     @PostMapping("query")
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Client_CREATE')")
     public Mono<ResponseEntity<Page<Partner>>> readPageFilter(
             @RequestBody Query query, ServerHttpRequest request) {
         return this.service

@@ -240,6 +240,7 @@ public class PartnerDenormalizationService {
                     return Mono.from(
                             dslContext.update(ENTITY_PROCESSOR_PARTNERS)
                                     .set(ENTITY_PROCESSOR_PARTNERS.CLIENT_NAME, d.getClientName())
+                                    .set(ENTITY_PROCESSOR_PARTNERS.CLIENT_STATUS_CODE, d.getStatusCode())
                                     .set(ENTITY_PROCESSOR_PARTNERS.ACTIVE_USERS,
                                             UInteger.valueOf(d.getActiveUsers()))
                                     .set(ENTITY_PROCESSOR_PARTNERS.USER_NAMES, d.getUserNames())
