@@ -17,7 +17,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -279,43 +278,70 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> read(ULong id, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         () -> super.read(id),
-                        partner -> SecurityContextUtil.getUsersContextAuthentication(),
-                        (partner, ca) -> {
-                            if (isCallerAuthorizedForPartner(partner, ca)) return Mono.just(partner);
+                        partner -> super.hasAccess(),
+                        (partner, access) -> {
+                            if (isCallerAuthorizedForPartner(partner, access)) return Mono.just(partner);
                             return super.msgService.throwMessage(
                                     msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                     ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
                         },
-                        (partner, ca, authorized) ->
+                        (partner, access, authorized) ->
                                 this.enrichPartners(List.of(authorized), queryParams).thenReturn(authorized))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.read"));
     }
 
     public Mono<Page<Partner>> readPageFilter(
             Pageable pageable, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> super.readPageFilter(pageable, applyClientManagerScope(condition, ca)))
+        return super.hasAccess()
+                .flatMap(access -> super.readPageFilter(pageable, applyClientManagerScope(condition, access)))
                 .flatMap(page -> this.enrichPartners(page.getContent(), queryParams).thenReturn(page))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPageFilter"));
     }
 
-    static boolean isCallerAuthorizedForPartner(Partner partner, ContextAuthentication ca) {
-        if (isPartnerBypassRole(ca.getUser().getAuthorities())) return true;
+    static boolean isCallerAuthorizedForPartner(Partner partner, ProcessorAccess access) {
+        if (isPartnerBypassRole(access.getUser().getAuthorities())) return true;
         if (partner == null || partner.getClientManagerIds() == null) return false;
-        String marker = "," + ca.getUser().getId().toString() + ",";
-        return partner.getClientManagerIds().contains(marker);
+
+        String managerIds = partner.getClientManagerIds();
+        for (String id : collectScopeUserIds(access)) {
+            if (managerIds.contains("," + id + ",")) return true;
+        }
+        return false;
     }
 
-    static AbstractCondition applyClientManagerScope(AbstractCondition condition, ContextAuthentication ca) {
-        if (isPartnerBypassRole(ca.getUser().getAuthorities())) return condition;
+    static AbstractCondition applyClientManagerScope(AbstractCondition condition, ProcessorAccess access) {
+        if (isPartnerBypassRole(access.getUser().getAuthorities())) return condition;
 
-        AbstractCondition managerFilter = FilterCondition.make(
-                        Partner.Fields.clientManagerIds,
-                        "%," + ca.getUser().getId().toString() + ",%")
-                .setOperator(FilterConditionOperator.LIKE);
+        List<String> scopeIds = collectScopeUserIds(access);
+        List<AbstractCondition> likes = scopeIds.stream()
+                .map(id -> (AbstractCondition) FilterCondition.make(
+                                Partner.Fields.clientManagerIds, "%," + id + ",%")
+                        .setOperator(FilterConditionOperator.LIKE))
+                .toList();
+
+        AbstractCondition managerFilter = likes.size() == 1 ? likes.get(0) : ComplexCondition.or(likes);
 
         if (condition == null || condition.isEmpty()) return managerFilter;
         return ComplexCondition.and(condition, managerFilter);
+    }
+
+    /**
+     * IDs to match against {@code clientManagerIds}: the caller plus every user reporting under
+     * them in the org tree. {@link ProcessorAccess.UserInheritanceInfo#getSubOrg()} is populated
+     * by {@code IProcessorAccessService.getUserInheritanceInfo} via
+     * {@code getUserSubOrgInternal}.
+     */
+    private static List<String> collectScopeUserIds(ProcessorAccess access) {
+        List<String> ids = new ArrayList<>();
+        ULong selfId = access.getUserId();
+        if (selfId != null) ids.add(selfId.toString());
+
+        if (access.getUserInherit() != null && access.getUserInherit().getSubOrg() != null) {
+            for (ULong sub : access.getUserInherit().getSubOrg()) {
+                if (sub != null) ids.add(sub.toString());
+            }
+        }
+        return ids;
     }
 
     static boolean isPartnerBypassRole(Collection<? extends GrantedAuthority> authorities) {
