@@ -362,7 +362,16 @@ public class ProfileDAO extends AbstractUpdatableClientCheckDAO<SecurityProfileR
 
                 (rootProfile, diff) -> {
                     profile.setArrangement((Map<String, Object>) diff);
-                    return super.update(profile);
+                    return Mono.from(this.dslContext.update(SECURITY_PROFILE)
+                            .set(SECURITY_PROFILE.NAME, profile.getName())
+                            .set(SECURITY_PROFILE.TITLE, profile.getTitle())
+                            .set(SECURITY_PROFILE.DESCRIPTION, profile.getDescription())
+                            .set(SECURITY_PROFILE.ARRANGEMENT, profile.getArrangement())
+                            .set(SECURITY_PROFILE.DEFAULT_PROFILE,
+                                    profile.isDefaultProfile() ? ByteUtil.ONE : ByteUtil.ZERO)
+                            .set(SECURITY_PROFILE.UPDATED_BY, profile.getUpdatedBy())
+                            .where(SECURITY_PROFILE.ID.eq(profile.getId())))
+                            .thenReturn(profile);
                 },
 
                 (rootProfile, diff, updated) -> this.prepAndCreateRoleRelations(rootProfile, updated, arrangements)
