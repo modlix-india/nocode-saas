@@ -105,6 +105,9 @@ entity-collector:
       url: jdbc:mysql://localhost:3306/entity_collector
 
 ai:
+  adzump:
+      googleAds:
+        developerToken: 7U26WAwto0ESzLeoNJ6Zgw
   security:
     url: http://localhost:8080
   files:
@@ -118,6 +121,7 @@ ai:
     anthropicAPIKey: xxxx
     googleAPIKey: xxxx
     deepSeekAPIKey: xxxx
+    googleMapsAPIKey: xxxx
   componentCatalogUrl: https://apps.local.modlix.com/component-catalog.json
   db:
     url: jdbc:mysql://localhost:3306/ai?serverTimezone=UTC
