@@ -1,13 +1,19 @@
 package com.fincity.saas.ui.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
@@ -93,6 +99,77 @@ public class FunctionController
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
+                .map(ResponseEntity::ok);
+    }
+
+    // ── Surgical Function Endpoints ──────────────────────────────
+
+    /**
+     * Read specific steps from a function's definition by step name.
+     */
+    @SuppressWarnings("unchecked")
+    @GetMapping("/{id}/steps")
+    public Mono<ResponseEntity<Map<String, Object>>> readSteps(
+            @PathVariable String id,
+            @RequestParam(value = "names", required = false) List<String> names) {
+
+        return this.service.read(id)
+                .map(fn -> {
+                    Map<String, Object> definition = fn.getDefinition();
+                    if (definition == null)
+                        return ResponseEntity.ok(Map.<String, Object>of());
+
+                    Object stepsObj = definition.get("steps");
+                    if (!(stepsObj instanceof Map<?, ?> allSteps))
+                        return ResponseEntity.ok(Map.<String, Object>of());
+
+                    if (names == null || names.isEmpty())
+                        return ResponseEntity.ok((Map<String, Object>) allSteps);
+
+                    Map<String, Object> filtered = new HashMap<>();
+                    for (String name : names) {
+                        Object step = ((Map<String, Object>) allSteps).get(name);
+                        if (step != null)
+                            filtered.put(name, step);
+                    }
+                    return ResponseEntity.ok(filtered);
+                });
+    }
+
+    /**
+     * Patch steps within a function definition.
+     * Uses whole-document versioning (reads current, merges steps, saves).
+     */
+    @SuppressWarnings("unchecked")
+    @PatchMapping("/{id}/steps")
+    public Mono<ResponseEntity<com.fincity.saas.ui.document.UIFunction>> patchSteps(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+
+        Map<String, Object> stepsToMerge = (Map<String, Object>) request.getOrDefault("steps", Map.of());
+        String message = (String) request.getOrDefault("message", "Step update");
+        int expectedVersion = ((Number) request.getOrDefault("expectedVersion", 0)).intValue();
+
+        return this.service.read(id)
+                .flatMap(fn -> {
+                    if (expectedVersion > 0 && fn.getVersion() != expectedVersion)
+                        return Mono.error(new com.fincity.saas.commons.exeception.GenericException(
+                                org.springframework.http.HttpStatus.PRECONDITION_FAILED, "Version mismatch"));
+
+                    Map<String, Object> definition = fn.getDefinition();
+                    if (definition == null)
+                        definition = new HashMap<>();
+
+                    Object existing = definition.get("steps");
+                    Map<String, Object> currentSteps = existing instanceof Map<?, ?>
+                            ? new HashMap<>((Map<String, Object>) existing) : new HashMap<>();
+                    currentSteps.putAll(stepsToMerge);
+                    definition.put("steps", currentSteps);
+                    fn.setDefinition(definition);
+                    fn.setMessage(message);
+
+                    return this.service.update(fn);
+                })
                 .map(ResponseEntity::ok);
     }
 }

@@ -124,6 +124,17 @@ public class ClientService
         return entity.getId();
     }
 
+    @Override
+    protected String describeEntity(Client entity) {
+        if (entity == null)
+            return null;
+        String code = entity.getCode();
+        String name = entity.getName();
+        if (code != null && !code.isBlank() && name != null && !name.isBlank())
+            return code + " (" + name + ")";
+        return code != null && !code.isBlank() ? code : name;
+    }
+
     public Mono<Client> getClientBy(ServerHttpRequest request) {
 
         HttpHeaders header = request.getHeaders();
@@ -680,6 +691,22 @@ public class ClientService
             });
 
         return clientsMono;
+    }
+
+    public Mono<Map<BigInteger, com.fincity.saas.commons.security.model.ClientDenormData>> getClientsDenormData(
+            List<BigInteger> clientIds) {
+        List<ULong> uLongIds = clientIds.stream().map(ULong::valueOf).toList();
+        return this.dao.getClientsDenormData(uLongIds)
+                .map(m -> m.entrySet().stream().collect(Collectors.toMap(
+                        e -> e.getKey().toBigInteger(), Map.Entry::getValue)));
+    }
+
+    public Mono<Map<BigInteger, com.fincity.saas.commons.security.model.ClientDenormData>> getClientsDenormDataChangedSince(
+            List<BigInteger> clientIds, java.time.LocalDateTime since) {
+        List<ULong> uLongIds = clientIds.stream().map(ULong::valueOf).toList();
+        return this.dao.getClientsDenormDataChangedSince(uLongIds, since)
+                .map(m -> m.entrySet().stream().collect(Collectors.toMap(
+                        e -> e.getKey().toBigInteger(), Map.Entry::getValue)));
     }
 
     public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {

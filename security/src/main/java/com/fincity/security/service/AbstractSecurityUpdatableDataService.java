@@ -21,8 +21,6 @@ import reactor.core.publisher.Mono;
 public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>, O extends AbstractUpdatableDAO<R, I, D>>
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
-	private static final String UPDATED = " updated ";
-
 	@Autowired
 	private SoxLogService soxLogService;
 
@@ -34,6 +32,15 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 	protected abstract ULong resolveClientId(D entity);
 
+	protected String describeEntity(D entity) {
+		return null;
+	}
+
+	private String withIdentifier(String base, D entity) {
+		String identifier = describeEntity(entity);
+		return (identifier == null || identifier.isBlank()) ? base : base + ": " + identifier;
+	}
+
 	@Override
 	public Mono<D> create(D entity) {
 
@@ -42,13 +49,14 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
 			        .flatMap(description -> {
+			            String enriched = withIdentifier(description + " created", e);
 			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.CREATE)
 			                    .setObjectName(getSoxObjectName())
 			                    .setObjectId(ULongUtil.valueOf(e.getId()))
-			                    .setDescription(description + " created "))
+			                    .setDescription(enriched))
 			                    .subscribe();
 			            clientActivityService.createLog(resolveClientId(e),
-			                    description + " Create", description + " created");
+			                    description + " Create", enriched);
 			            return Mono.empty();
 			        })
 			        .subscribe();
@@ -67,13 +75,14 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
 			        .flatMap(description -> {
+			            String enriched = withIdentifier(description + " deleted", entity);
 			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.DELETE)
 			                    .setObjectName(getSoxObjectName())
-			                    .setDescription(description + " deleted ")
+			                    .setDescription(enriched)
 			                    .setObjectId(ULongUtil.valueOf(id)))
 			                    .subscribe();
 			            clientActivityService.createLog(clientId,
-			                    description + " Delete", description + " deleted");
+			                    description + " Delete", enriched);
 			            return Mono.empty();
 			        })
 			        .subscribe();
@@ -90,13 +99,14 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
 			        .flatMap(description -> {
+			            String enriched = withIdentifier(description + " updated", e);
 			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                    .setObjectName(getSoxObjectName())
 			                    .setObjectId(ULongUtil.valueOf(e.getId()))
-			                    .setDescription(description + UPDATED))
+			                    .setDescription(enriched))
 			                    .subscribe();
 			            clientActivityService.createLog(resolveClientId(e),
-			                    description + " Update", description + UPDATED);
+			                    description + " Update", enriched);
 			            return Mono.empty();
 			        })
 			        .subscribe();
@@ -117,13 +127,14 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 			this.dao.getPojoClass()
 			        .map(Class::getSimpleName)
 			        .flatMap(description -> {
+			            String enriched = withIdentifier(description + " updated", e);
 			            soxLogService.create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
 			                    .setObjectName(getSoxObjectName())
 			                    .setObjectId(ULongUtil.valueOf(e.getId()))
-			                    .setDescription(description + UPDATED))
+			                    .setDescription(enriched))
 			                    .subscribe();
 			            clientActivityService.createLog(resolveClientId(e),
-			                    description + " Update", description + UPDATED);
+			                    description + " Update", enriched);
 			            return Mono.empty();
 			        })
 			        .subscribe();

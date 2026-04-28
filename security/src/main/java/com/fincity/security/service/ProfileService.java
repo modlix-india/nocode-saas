@@ -140,9 +140,10 @@ public class ProfileService
                 },
 
                 (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
-                        hasAccessToRoles, cleanedEntity) -> this.dao
-                                .createUpdateProfile(cleanedEntity, ULong.valueOf(ca.getUser().getId()),
-                                        clientHierarchy)
+                        hasAccessToRoles, cleanedEntity) -> this
+                                .nullFieldsMatchingRoot(cleanedEntity, clientHierarchy)
+                                .flatMap(prepared -> this.dao.createUpdateProfile(prepared,
+                                        ULong.valueOf(ca.getUser().getId()), clientHierarchy))
                                 .flatMap(this::fillProfileArrangements)
 
         )
@@ -152,6 +153,28 @@ public class ProfileService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
                                 StringFormatter.format(msg, PROFILE))))));
+    }
+
+    private Mono<Profile> nullFieldsMatchingRoot(Profile entity, ClientHierarchy hierarchy) {
+
+        if (entity.getRootProfileId() == null)
+            return Mono.just(entity);
+
+        return this.dao.readRootProfile(entity.getRootProfileId(), hierarchy, false)
+                .map(rootProfile -> {
+
+                    if (safeEquals(entity.getName(), rootProfile.getName()))
+                        entity.setName(null);
+
+                    if (safeEquals(entity.getTitle(), rootProfile.getTitle()))
+                        entity.setTitle(null);
+
+                    if (safeEquals(entity.getDescription(), rootProfile.getDescription()))
+                        entity.setDescription(null);
+
+                    return entity;
+                })
+                .defaultIfEmpty(entity);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -291,6 +314,11 @@ public class ProfileService
     @Override
     protected ULong resolveClientId(Profile entity) {
         return entity.getClientId();
+    }
+
+    @Override
+    protected String describeEntity(Profile entity) {
+        return entity == null ? null : entity.getName();
     }
 
     @Override

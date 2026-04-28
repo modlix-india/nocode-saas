@@ -134,6 +134,15 @@ public class UserSubOrganizationService
     }
 
     @Override
+    protected String describeEntity(User entity) {
+        if (entity == null)
+            return null;
+        return entity.getEmailId() != null && !entity.getEmailId().isBlank()
+                ? entity.getEmailId()
+                : entity.getUserName();
+    }
+
+    @Override
     protected ULong resolveClientId(User entity) {
         return entity.getClientId();
     }

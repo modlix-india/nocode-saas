@@ -113,7 +113,7 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
     /**
      * The column <code>worker.worker_tasks.TASK_JOB_TYPE</code>.
      */
-    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(13).nullable(false).defaultValue(DSL.inline("SSL_RENEWAL", SQLDataType.VARCHAR)), this, "", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
+    public final TableField<WorkerTasksRecord, TaskJobType> TASK_JOB_TYPE = createField(DSL.name("TASK_JOB_TYPE"), SQLDataType.VARCHAR(20).nullable(false).defaultValue(DSL.inline("SSL_RENEWAL", SQLDataType.VARCHAR)), this, "", new EnumConverter<String, TaskJobType>(String.class, TaskJobType.class));
 
     /**
      * The column <code>worker.worker_tasks.JOB_DATA</code>.

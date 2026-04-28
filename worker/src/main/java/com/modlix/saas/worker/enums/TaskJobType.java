@@ -4,7 +4,9 @@ import org.jooq.EnumType;
 
 public enum TaskJobType implements EnumType {
     SSL_RENEWAL("SSL_RENEWAL"),
-    TOKEN_CLEANUP("TOKEN_CLEANUP");
+    TOKEN_CLEANUP("TOKEN_CLEANUP"),
+    PARTNER_DENORM_DELTA("PARTNER_DENORM_DELTA"),
+    PARTNER_DENORM_FULL("PARTNER_DENORM_FULL");
 
     private final String literal;
 

@@ -12,6 +12,7 @@ import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 import com.fincity.saas.ui.service.ApplicationService;
 import com.fincity.saas.ui.service.MobileAppService;
+import com.fincity.saas.ui.service.UIIndexService;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -24,6 +25,9 @@ public class ApplicationController
 
     @Autowired
     private MobileAppService mobileAppService;
+
+    @Autowired
+    private UIIndexService indexService;
 
     @GetMapping("/{appCode}/mobileApps")
     public Mono<ResponseEntity<List<MobileApp>>> listMobileApps(@PathVariable String appCode, @RequestParam(required = false) String clientCode) {
@@ -62,6 +66,19 @@ public class ApplicationController
     @PostMapping("/mobileApps/status/{statusID}")
     public Mono<ResponseEntity<Boolean>> updateStatus(@RequestBody MobileAppStatusUpdateRequest request, @PathVariable String statusID) {
         return this.service.updateStatus(statusID, request)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Lightweight application index — returns all entity names, IDs, versions,
+     * and section versions for an appCode in a single call.
+     */
+    @GetMapping("/{appCode}/index")
+    public Mono<ResponseEntity<Map<String, Object>>> getIndex(
+            @PathVariable String appCode,
+            @RequestParam(required = false) String clientCode) {
+
+        return indexService.buildIndex(appCode, clientCode)
                 .map(ResponseEntity::ok);
     }
 }
