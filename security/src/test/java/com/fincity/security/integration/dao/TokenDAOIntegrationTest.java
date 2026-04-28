@@ -31,12 +31,13 @@ class TokenDAOIntegrationTest extends AbstractIntegrationTest {
 	@BeforeEach
 	void setUp() {
 		setupMockBeans();
+		databaseClient.sql("DELETE FROM security_user_token").then().block();
 	}
 
 	@AfterEach
 	void tearDown() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
-				.then(databaseClient.sql("DELETE FROM security_user_token WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_user_token").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
