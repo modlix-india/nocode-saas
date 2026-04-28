@@ -105,6 +105,9 @@ entity-collector:
       url: jdbc:mysql://localhost:3306/entity_collector
 
 ai:
+  adzump:
+      googleAds:
+        developerToken: 7U26WAwto0ESzLeoNJ6Zgw
   security:
     url: http://localhost:8080
   files:
