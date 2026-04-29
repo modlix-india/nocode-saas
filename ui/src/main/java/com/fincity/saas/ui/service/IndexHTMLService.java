@@ -88,9 +88,6 @@ public class IndexHTMLService {
 
     );
 
-    private static final String ANALYTICS_MASK_TEXT_SELECTOR = "maskTextSelector";
-    private static final String ANALYTICS_BLOCK_SELECTOR = "blockSelector";
-
     private static final String POSTHOG_STUB =
             "!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){"
                     + "function g(t,e){var o=e.split(\".\");2==o.length&&(t=t[o[0]],e=o[1]),"
@@ -148,6 +145,12 @@ public class IndexHTMLService {
 
     @Value("${ui.cdnHostName:}")
     private String cdnHostName;
+
+    @Value("${ui.analytics.ingestionHost:}")
+    private String analyticsIngestionHost;
+
+    @Value("${ui.analytics.posthog.projectApiKey:}")
+    private String analyticsProjectApiKey;
 
     @Value("${ui.cdnStripAPIPrefix:true}")
     private boolean cdnStripAPIPrefix;
@@ -396,6 +399,9 @@ public class IndexHTMLService {
     @SuppressWarnings("unchecked")
     private String generateAnalyticsSnippet(Map<String, Object> appProps) {
 
+        if (StringUtil.safeIsBlank(analyticsProjectApiKey) || StringUtil.safeIsBlank(analyticsIngestionHost))
+            return "";
+
         Object analyticsObj = appProps.get("analytics");
         if (!(analyticsObj instanceof Map))
             return "";
@@ -405,11 +411,6 @@ public class IndexHTMLService {
         if (!Boolean.TRUE.equals(analytics.get("enabled")))
             return "";
 
-        String projectApiKey = StringUtil.safeValueOf(analytics.get("projectApiKey"), "");
-        String ingestionHost = StringUtil.safeValueOf(analytics.get("ingestionHost"), "");
-        if (StringUtil.safeIsBlank(projectApiKey) || StringUtil.safeIsBlank(ingestionHost))
-            return "";
-
         Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
                 ? (Map<String, Object>) analytics.get("sessionReplay")
                 : Map.of();
@@ -417,7 +418,7 @@ public class IndexHTMLService {
         boolean consentRequired = !Boolean.FALSE.equals(analytics.get("consentRequired"));
 
         Map<String, Object> initOptions = new HashMap<>();
-        initOptions.put("api_host", ingestionHost);
+        initOptions.put("api_host", analyticsIngestionHost);
         initOptions.put("person_profiles", "identified_only");
         initOptions.put("autocapture", analytics.getOrDefault("autocapture", true));
         initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
@@ -428,17 +429,11 @@ public class IndexHTMLService {
         if (replayEnabled) {
             Map<String, Object> recording = new HashMap<>();
             recording.put("maskAllInputs", sessionReplay.getOrDefault("maskAllInputs", true));
-            Object maskTextSelector = sessionReplay.get(ANALYTICS_MASK_TEXT_SELECTOR);
-            if (maskTextSelector != null)
-                recording.put(ANALYTICS_MASK_TEXT_SELECTOR, maskTextSelector);
-            Object blockSelector = sessionReplay.get(ANALYTICS_BLOCK_SELECTOR);
-            if (blockSelector != null)
-                recording.put(ANALYTICS_BLOCK_SELECTOR, blockSelector);
             initOptions.put("session_recording", recording);
         }
 
         String optionsJson = gson.toJson(initOptions);
-        String apiKeyJson = gson.toJson(projectApiKey);
+        String apiKeyJson = gson.toJson(analyticsProjectApiKey);
 
         StringBuilder snippet = new StringBuilder("<script>");
         snippet.append(POSTHOG_STUB);
