@@ -22,4 +22,8 @@ public class UIMessageResourceService extends AbstractMongoMessageResourceServic
     public static final String MOBILE_APP_BAD_REQUEST = "mobile_app_bad_request";
 
     public static final String MOBILE_APP_UNABLE_TO_GEN_KEYSTORE = "mobile_app_unable_to_gen_keystore";
+
+    public static final String ANALYTICS_FIELD_REQUIRED = "analytics_field_required";
+
+    public static final String ANALYTICS_INGESTION_HOST_NOT_ALLOWED = "analytics_ingestion_host_not_allowed";
 }

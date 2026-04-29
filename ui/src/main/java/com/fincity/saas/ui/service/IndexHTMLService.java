@@ -88,6 +88,33 @@ public class IndexHTMLService {
 
     );
 
+    private static final String ANALYTICS_MASK_TEXT_SELECTOR = "maskTextSelector";
+    private static final String ANALYTICS_BLOCK_SELECTOR = "blockSelector";
+
+    private static final String POSTHOG_STUB =
+            "!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){"
+                    + "function g(t,e){var o=e.split(\".\");2==o.length&&(t=t[o[0]],e=o[1]),"
+                    + "t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}"
+                    + "(p=t.createElement(\"script\")).type=\"text/javascript\",p.crossOrigin=\"anonymous\","
+                    + "p.async=!0,p.src=s.api_host+\"/static/array.js\","
+                    + "(r=t.getElementsByTagName(\"script\")[0]).parentNode.insertBefore(p,r);var u=e;"
+                    + "for(void 0!==a?u=e[a]=[]:a=\"posthog\",u.people=u.people||[],"
+                    + "u.toString=function(t){var e=\"posthog\";return\"posthog\"!==a&&(e+=\".\"+a),"
+                    + "t||(e+=\" (stub)\"),e},u.people.toString=function(){return u.toString(1)+\".people (stub)\"},"
+                    + "o=\"init capture register register_once unregister identify setPersonProperties group reset "
+                    + "opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing "
+                    + "startSessionRecording stopSessionRecording\".split(\" \"),"
+                    + "n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}"
+                    + "(document,window.posthog||[]);";
+
+    private static final String CONSENT_FALLBACK_BOOTSTRAP =
+            "window.addEventListener('DOMContentLoaded',function(){"
+                    + "setTimeout(function(){"
+                    + "if(!window.__MODLIX_CONSENT__||!window.__MODLIX_CONSENT__.mounted){"
+                    + "window.__MODLIX_FORCE_CONSENT__=true;"
+                    + "window.dispatchEvent(new CustomEvent('modlix:force-consent'));"
+                    + "}},250);});";
+
     private static final String DEFAULT_LOADER = "" +
             "<style>\n" +
             "\t._initloaderContainer {\n" +
@@ -322,6 +349,7 @@ public class IndexHTMLService {
                     .append("/manifest/manifest.json\" />");
         str.append(processFontPacks((Map<String, Object>) appProps.get("fontPacks")));
         str.append(processIconPacks((Map<String, Object>) appProps.get("iconPacks")));
+        str.append(generateAnalyticsSnippet(appProps));
         str.append(codeParts.get(1));
         str.append("</head><body>");
         str.append(codeParts.get(2));
@@ -363,6 +391,62 @@ public class IndexHTMLService {
         str.append("</body></html>");
 
         return Mono.just(new ObjectWithUniqueID<>(str.toString()).setHeaders(processCSPHeaders(appProps)));
+    }
+
+    @SuppressWarnings("unchecked")
+    private String generateAnalyticsSnippet(Map<String, Object> appProps) {
+
+        Object analyticsObj = appProps.get("analytics");
+        if (!(analyticsObj instanceof Map))
+            return "";
+
+        Map<String, Object> analytics = (Map<String, Object>) analyticsObj;
+
+        if (!Boolean.TRUE.equals(analytics.get("enabled")))
+            return "";
+
+        String projectApiKey = StringUtil.safeValueOf(analytics.get("projectApiKey"), "");
+        String ingestionHost = StringUtil.safeValueOf(analytics.get("ingestionHost"), "");
+        if (StringUtil.safeIsBlank(projectApiKey) || StringUtil.safeIsBlank(ingestionHost))
+            return "";
+
+        Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
+                ? (Map<String, Object>) analytics.get("sessionReplay")
+                : Map.of();
+        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get("enabled"));
+        boolean consentRequired = !Boolean.FALSE.equals(analytics.get("consentRequired"));
+
+        Map<String, Object> initOptions = new HashMap<>();
+        initOptions.put("api_host", ingestionHost);
+        initOptions.put("person_profiles", "identified_only");
+        initOptions.put("autocapture", analytics.getOrDefault("autocapture", true));
+        initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
+        initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
+        initOptions.put("disable_session_recording", !replayEnabled);
+        initOptions.put("opt_out_capturing_by_default", consentRequired);
+
+        if (replayEnabled) {
+            Map<String, Object> recording = new HashMap<>();
+            recording.put("maskAllInputs", sessionReplay.getOrDefault("maskAllInputs", true));
+            Object maskTextSelector = sessionReplay.get(ANALYTICS_MASK_TEXT_SELECTOR);
+            if (maskTextSelector != null)
+                recording.put(ANALYTICS_MASK_TEXT_SELECTOR, maskTextSelector);
+            Object blockSelector = sessionReplay.get(ANALYTICS_BLOCK_SELECTOR);
+            if (blockSelector != null)
+                recording.put(ANALYTICS_BLOCK_SELECTOR, blockSelector);
+            initOptions.put("session_recording", recording);
+        }
+
+        String optionsJson = gson.toJson(initOptions);
+        String apiKeyJson = gson.toJson(projectApiKey);
+
+        StringBuilder snippet = new StringBuilder("<script>");
+        snippet.append(POSTHOG_STUB);
+        snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");
+        if (consentRequired)
+            snippet.append(CONSENT_FALLBACK_BOOTSTRAP);
+        snippet.append("</script>");
+        return snippet.toString();
     }
 
     @SuppressWarnings("unchecked")
