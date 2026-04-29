@@ -44,6 +44,9 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
+    @Value("${ui.analytics.allowedIngestionHost:}")
+    private String allowedIngestionHost;
+
     @Autowired
     public ApplicationService(PageService pageService, UIFillerService fillerService,
             MobileAppService mobileAppService) {
@@ -74,15 +77,52 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     UIMessageResourceService.APP_NAME_MISMATCH);
 
-        return super.create(entity);
+        return validateAnalyticsConfig(entity).then(super.create(entity));
     }
 
     @Override
     public Mono<Application> update(Application entity) {
 
-        return FlatMapUtil.flatMapMono(
-                () -> super.update(entity),
-                this::evictAll);
+        return validateAnalyticsConfig(entity)
+                .then(FlatMapUtil.flatMapMono(
+                        () -> super.update(entity),
+                        this::evictAll));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<Void> validateAnalyticsConfig(Application entity) {
+
+        if (entity == null || entity.getProperties() == null)
+            return Mono.empty();
+
+        Object analyticsObj = entity.getProperties().get("analytics");
+        if (!(analyticsObj instanceof Map<?, ?> analyticsMap))
+            return Mono.empty();
+
+        Map<String, Object> analytics = (Map<String, Object>) analyticsMap;
+
+        if (!Boolean.TRUE.equals(analytics.get("enabled")))
+            return Mono.empty();
+
+        String projectApiKey = StringUtil.safeValueOf(analytics.get("projectApiKey"), "");
+        if (StringUtil.safeIsBlank(projectApiKey))
+            return this.messageResourceService.<Void>throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    UIMessageResourceService.ANALYTICS_FIELD_REQUIRED, "projectApiKey");
+
+        String ingestionHost = StringUtil.safeValueOf(analytics.get("ingestionHost"), "");
+        if (StringUtil.safeIsBlank(ingestionHost))
+            return this.messageResourceService.<Void>throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    UIMessageResourceService.ANALYTICS_FIELD_REQUIRED, "ingestionHost");
+
+        if (!StringUtil.safeIsBlank(allowedIngestionHost)
+                && !ingestionHost.equalsIgnoreCase(allowedIngestionHost))
+            return this.messageResourceService.<Void>throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    UIMessageResourceService.ANALYTICS_INGESTION_HOST_NOT_ALLOWED, ingestionHost);
+
+        return Mono.empty();
     }
 
     private Mono<Application> evictAll(Application e) {
