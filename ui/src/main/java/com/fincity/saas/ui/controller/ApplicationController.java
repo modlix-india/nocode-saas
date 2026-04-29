@@ -12,6 +12,7 @@ import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 import com.fincity.saas.ui.service.ApplicationService;
 import com.fincity.saas.ui.service.MobileAppService;
+import com.fincity.saas.ui.service.PostHogProvisioningService;
 import com.fincity.saas.ui.service.UIIndexService;
 import reactor.core.publisher.Mono;
 
@@ -28,6 +29,9 @@ public class ApplicationController
 
     @Autowired
     private UIIndexService indexService;
+
+    @Autowired
+    private PostHogProvisioningService postHogProvisioningService;
 
     @GetMapping("/{appCode}/mobileApps")
     public Mono<ResponseEntity<List<MobileApp>>> listMobileApps(@PathVariable String appCode, @RequestParam(required = false) String clientCode) {
@@ -79,6 +83,12 @@ public class ApplicationController
             @RequestParam(required = false) String clientCode) {
 
         return indexService.buildIndex(appCode, clientCode)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/{appCode}/analytics/provision")
+    public Mono<ResponseEntity<Map<String, Object>>> provisionAnalytics(@PathVariable String appCode) {
+        return postHogProvisioningService.provisionForApp(appCode)
                 .map(ResponseEntity::ok);
     }
 }
