@@ -90,13 +90,13 @@ In our hobby self-host, `/decide` 403s and the SDK doesn't request `?config=true
 
 **The fix** (in both `IndexHTMLService.java` and `htmlRenderer.ts`):
 
-1. Set `advanced_disable_decide: true` in init options to silence the 403 noise.
+1. Set `advanced_disable_flags: true` in init options to silence the 403 noise.
 2. Use the `loaded` callback to `register` the property manually:
 
 ```js
 posthog.init(KEY, {
   ...options,
-  advanced_disable_decide: true,
+  advanced_disable_flags: true,
   loaded: function(ph) {
     ph.persistence.register({
       '$session_recording_remote_config': {
@@ -117,7 +117,7 @@ If session replay stops working again, **first** check whether the SDK upgraded 
 
 ### 1b. Heatmaps need `enable_heatmaps: true` (same root cause)
 
-PostHog's heatmap collector (`Heatmaps.isEnabled`) checks `config.enable_heatmaps` first and falls back to `persistence.props['$heatmaps_enabled_server_side']`. The server-side flag is populated by `/decide`, which we have disabled (`advanced_disable_decide: true`) — so without the explicit config flag, no `$$heatmap` events are ever sent and the PostHog UI shows empty heatmaps.
+PostHog's heatmap collector (`Heatmaps.isEnabled`) checks `config.enable_heatmaps` first and falls back to `persistence.props['$heatmaps_enabled_server_side']`. The server-side flag is populated by `/decide`, which we have disabled (`advanced_disable_flags: true`) — so without the explicit config flag, no `$$heatmap` events are ever sent and the PostHog UI shows empty heatmaps.
 
 **The fix** (in both `IndexHTMLService.java` and `htmlRenderer.ts`): pass `enable_heatmaps: true` in the init options. We expose it as the per-app toggle `analytics.heatmaps.enabled` — opt-in (defaults to `false`); apps that want heatmaps must set it explicitly in the application document.
 
