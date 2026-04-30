@@ -54,6 +54,8 @@ public class IndexHTMLService {
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
+    private static final String KEY_ENABLED = "enabled";
+
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
             2, "BEFORE_BODY", 3);
 
@@ -408,13 +410,17 @@ public class IndexHTMLService {
 
         Map<String, Object> analytics = (Map<String, Object>) analyticsObj;
 
-        if (!Boolean.TRUE.equals(analytics.get("enabled")))
+        if (!Boolean.TRUE.equals(analytics.get(KEY_ENABLED)))
             return "";
 
         Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
                 ? (Map<String, Object>) analytics.get("sessionReplay")
                 : Map.of();
-        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get("enabled"));
+        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get(KEY_ENABLED));
+        Map<String, Object> heatmaps = analytics.get("heatmaps") instanceof Map
+                ? (Map<String, Object>) analytics.get("heatmaps")
+                : Map.of();
+        boolean heatmapsEnabled = Boolean.TRUE.equals(heatmaps.get(KEY_ENABLED));
         boolean consentRequired = !Boolean.FALSE.equals(analytics.get("consentRequired"));
 
         Map<String, Object> initOptions = new HashMap<>();
@@ -424,6 +430,7 @@ public class IndexHTMLService {
         initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
         initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
         initOptions.put("disable_session_recording", !replayEnabled);
+        initOptions.put("enable_heatmaps", heatmapsEnabled);
         initOptions.put("opt_out_capturing_by_default", consentRequired);
         initOptions.put("advanced_disable_decide", true);
 
