@@ -425,6 +425,7 @@ public class IndexHTMLService {
         initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
         initOptions.put("disable_session_recording", !replayEnabled);
         initOptions.put("opt_out_capturing_by_default", consentRequired);
+        initOptions.put("advanced_disable_decide", true);
 
         if (replayEnabled) {
             Map<String, Object> recording = new HashMap<>();
@@ -437,7 +438,13 @@ public class IndexHTMLService {
 
         StringBuilder snippet = new StringBuilder("<script>");
         snippet.append(POSTHOG_STUB);
-        snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");
+        if (replayEnabled) {
+            snippet.append("var __phOpts=").append(optionsJson).append(";");
+            snippet.append("__phOpts.loaded=function(ph){try{ph.persistence.register({'$session_recording_remote_config':{enabled:true,sampleRate:null,recorderVersion:'v2',endpoint:'/s/',linkedFlag:null,urlBlocklist:[],urlTriggers:[],eventTriggers:[]}});ph.sessionRecording&&ph.sessionRecording.startIfEnabledOrStop&&ph.sessionRecording.startIfEnabledOrStop();}catch(e){}};");
+            snippet.append("posthog.init(").append(apiKeyJson).append(",__phOpts);");
+        } else {
+            snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");
+        }
         if (consentRequired)
             snippet.append(CONSENT_FALLBACK_BOOTSTRAP);
         snippet.append("</script>");
