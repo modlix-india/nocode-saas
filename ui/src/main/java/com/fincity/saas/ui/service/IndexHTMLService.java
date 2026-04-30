@@ -432,7 +432,7 @@ public class IndexHTMLService {
         initOptions.put("disable_session_recording", !replayEnabled);
         initOptions.put("enable_heatmaps", heatmapsEnabled);
         initOptions.put("opt_out_capturing_by_default", consentRequired);
-        initOptions.put("advanced_disable_decide", true);
+        initOptions.put("advanced_disable_flags", true);
 
         if (replayEnabled) {
             Map<String, Object> recording = new HashMap<>();
