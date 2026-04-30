@@ -44,6 +44,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
+
     @Autowired
     public ApplicationService(PageService pageService, UIFillerService fillerService,
             MobileAppService mobileAppService) {

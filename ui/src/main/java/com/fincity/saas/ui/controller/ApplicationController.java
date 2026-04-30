@@ -81,4 +81,5 @@ public class ApplicationController
         return indexService.buildIndex(appCode, clientCode)
                 .map(ResponseEntity::ok);
     }
+
 }
