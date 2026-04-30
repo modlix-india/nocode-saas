@@ -17,6 +17,7 @@ Welcome to the **nocode-saas** contribution documentation. This guide covers eve
 | Deploy my changes | [Deployment & CI/CD](deployment-and-ci.md) |
 | Create a PR | [Git Workflow](git-workflow.md) |
 | Understand a specific module | [Module Reference](modules/README.md) |
+| Work on analytics (PostHog) | [Analytics — PostHog](analytics-posthog.md) |
 
 ## Recommended Reading Order
 
