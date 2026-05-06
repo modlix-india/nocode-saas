@@ -72,6 +72,10 @@ public class AuthenticationService implements IAuthenticationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
 
+    private static final String SSO_TARGET_APP = "SSO target app";
+
+    private static final String AUTHZUMP_APP_CODE = "authzump";
+
     private final UserService userService;
 
     private final ClientService clientService;
@@ -994,17 +998,50 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<Map<String, String>> makeOneTimeToken(MakeOneTimeTimeTokenRequest request,
             ServerHttpRequest httpRequest) {
 
+        boolean cookieAuth = httpRequest.getCookies().getFirst(HttpHeaders.AUTHORIZATION) != null;
+        String authMode = cookieAuth ? "COOKIE" : "BEARER";
+        String targetAppCode = request.getTargetAppCode();
+
         return FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.oneTimeTokenService.create(
+                ca -> {
+                    String sourceAppCode = ca.getVerifiedAppCode();
+
+                    // authzump is the platform's central SSO broker — mints to/from it
+                    // bypass the app-dependency trust check.
+                    if (StringUtil.safeIsBlank(targetAppCode)
+                            || targetAppCode.equals(sourceAppCode)
+                            || AUTHZUMP_APP_CODE.equals(targetAppCode)
+                            || AUTHZUMP_APP_CODE.equals(sourceAppCode))
+                        return Mono.just(Boolean.TRUE);
+
+                    if (StringUtil.safeIsBlank(sourceAppCode))
+                        return this.resourceService.<Boolean>throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                SSO_TARGET_APP);
+
+                    return this.appService.hasDependencyEitherDirection(sourceAppCode, targetAppCode)
+                            .flatMap(ok -> BooleanUtil.safeValueOf(ok)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : this.resourceService.<Boolean>throwMessage(
+                                            msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                            SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                            SSO_TARGET_APP));
+                },
+
+                (ca, depOk) -> this.oneTimeTokenService.create(
                         new OneTimeToken()
                                 .setIpAddress(getRemoteAddressFrom(httpRequest))
                                 .setUserId(ULong.valueOf(ca.getUser().getId()))
-                                .setRememberMe(request.isRememberMe())),
+                                .setRememberMe(request.isRememberMe())
+                                .setAuthMode(authMode)
+                                .setOriginAppCode(ca.getVerifiedAppCode())
+                                .setTargetAppCode(targetAppCode)),
 
-                (ca, token) -> Mono.just(Map.of("token", token.getToken(),
+                (ca, depOk, token) -> Mono.just(Map.of("token", token.getToken(),
                         "url", this.fillValues(request.getCallbackUrl(), token.getToken()))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeOneTimeToken"));
     }
@@ -1012,38 +1049,58 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<AuthenticationResponse> authenticateWithOneTimeToken(String token, ServerHttpRequest request,
             ServerHttpResponse response) {
 
-        String appCode = request.getHeaders().getFirst(AppService.AC);
-        String clientCode = request.getHeaders().getFirst(ClientService.CC);
+        String requestAppCode = request.getHeaders().getFirst(AppService.AC);
+        String requestClientCode = request.getHeaders().getFirst(ClientService.CC);
 
-        return FlatMapUtil.flatMapMono(
-                () -> this.oneTimeTokenService.getOneTimeToken(token),
+        return this.oneTimeTokenService.getOneTimeToken(token)
+                .flatMap(oneTimeToken -> {
+                    if (!StringUtil.safeIsBlank(oneTimeToken.getTargetAppCode())
+                            && !StringUtil.safeIsBlank(requestAppCode)
+                            && !oneTimeToken.getTargetAppCode().equals(requestAppCode))
+                        return this.resourceService.<AuthenticationResponse>throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                SSO_TARGET_APP);
 
-                oneTimeToken -> this.userService
-                        .findNonDeletedUserNClient(
-                                null,
-                                oneTimeToken.getUserId(),
-                                clientCode,
-                                appCode,
-                                null),
+                    String effectiveAppCode;
+                    if (!StringUtil.safeIsBlank(oneTimeToken.getTargetAppCode()))
+                        effectiveAppCode = oneTimeToken.getTargetAppCode();
+                    else if (!StringUtil.safeIsBlank(oneTimeToken.getOriginAppCode()))
+                        effectiveAppCode = oneTimeToken.getOriginAppCode();
+                    else
+                        effectiveAppCode = requestAppCode;
 
-                (oneTimeToken, tup) -> this.profileService.checkIfUserHasAnyProfile(tup.getT3().getId(), appCode),
+                    boolean cookieMode = "COOKIE".equals(oneTimeToken.getAuthMode());
 
-                (oneTimeToken, tup, hasProfile) -> this.userService
-                        .checkUserAndClient(tup, clientCode)
-                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                    return FlatMapUtil.<Tuple3<Client, Client, User>, Boolean, Boolean, User, AuthenticationResponse>flatMapMono(
 
-                (oneTimeToken, tup, hasProfile, linCCheck) -> this.checkUserStatus(tup.getT3()),
+                            () -> this.userService.findNonDeletedUserNClient(
+                                    null,
+                                    oneTimeToken.getUserId(),
+                                    requestClientCode,
+                                    effectiveAppCode,
+                                    null),
 
-                (oneTimeToken, tup, hasProfile, linCCheck, user) -> logAndMakeToken(
-                        new AuthenticationRequest()
-                                .setRememberMe(BooleanUtil.safeValueOf(oneTimeToken.getRememberMe())),
-                        hasProfile,
-                        request,
-                        response,
-                        appCode,
-                        user,
-                        tup.getT2(),
-                        tup.getT1()))
+                            tup -> this.profileService.checkIfUserHasAnyProfile(tup.getT3().getId(), effectiveAppCode),
+
+                            (tup, hasProfile) -> this.userService
+                                    .checkUserAndClient(tup, requestClientCode)
+                                    .flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                            (tup, hasProfile, linCCheck) -> this.checkUserStatus(tup.getT3()),
+
+                            (tup, hasProfile, linCCheck, user) -> logAndMakeToken(
+                                    new AuthenticationRequest()
+                                            .setRememberMe(BooleanUtil.safeValueOf(oneTimeToken.getRememberMe()))
+                                            .setCookie(cookieMode),
+                                    hasProfile,
+                                    request,
+                                    response,
+                                    effectiveAppCode,
+                                    user,
+                                    tup.getT2(),
+                                    tup.getT1()));
+                })
                 .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED,
                         msg -> new GenericException(HttpStatus.FORBIDDEN,
                                 msg)))

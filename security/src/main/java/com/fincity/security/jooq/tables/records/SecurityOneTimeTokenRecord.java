@@ -103,11 +103,62 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     }
 
     /**
+     * Setter for <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public SecurityOneTimeTokenRecord setAuthMode(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public String getAuthMode() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public SecurityOneTimeTokenRecord setOriginAppCode(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public String getOriginAppCode() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public SecurityOneTimeTokenRecord setTargetAppCode(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public String getTargetAppCode() {
+        return (String) get(7);
+    }
+
+    /**
      * Setter for <code>security.security_one_time_token.CREATED_AT</code>. Time
      * when this row is created
      */
     public SecurityOneTimeTokenRecord setCreatedAt(LocalDateTime value) {
-        set(5, value);
+        set(8, value);
         return this;
     }
 
@@ -116,7 +167,7 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(8);
     }
 
     // -------------------------------------------------------------------------
@@ -142,7 +193,7 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     /**
      * Create a detached, initialised SecurityOneTimeTokenRecord
      */
-    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, Byte rememberMe, LocalDateTime createdAt) {
+    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, Byte rememberMe, String authMode, String originAppCode, String targetAppCode, LocalDateTime createdAt) {
         super(SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN);
 
         setId(id);
@@ -150,6 +201,9 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
         setToken(token);
         setIpAddress(ipAddress);
         setRememberMe(rememberMe);
+        setAuthMode(authMode);
+        setOriginAppCode(originAppCode);
+        setTargetAppCode(targetAppCode);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();
     }

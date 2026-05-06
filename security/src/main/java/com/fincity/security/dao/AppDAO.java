@@ -550,6 +550,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .map(e -> e == 1);
     }
 
+    public Mono<Boolean> hasDependencyEitherDirection(ULong appAId, ULong appBId) {
+
+        return Mono.from(this.dslContext.selectCount()
+                .from(SECURITY_APP_DEPENDENCY)
+                .where(SECURITY_APP_DEPENDENCY.APP_ID.eq(appAId)
+                        .and(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(appBId))
+                        .or(SECURITY_APP_DEPENDENCY.APP_ID.eq(appBId)
+                                .and(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(appAId)))))
+                .map(r -> r.value1() > 0)
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.hasDependencyEitherDirection"));
+    }
+
     public Mono<List<AppDependency>> getAppDependencies(ULong appId) {
 
         return FlatMapUtil.flatMapMono(

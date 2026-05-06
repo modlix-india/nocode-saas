@@ -36,7 +36,10 @@ public class OneTimeTokenDAO extends AbstractDAO<SecurityOneTimeTokenRecord, ULo
                         .setUserId(rec.getUserId())
                         .setRememberMe(ByteUtil.ONE.equals(rec.getRememberMe()))
                         .setToken(rec.getToken())
-                        .setIpAddress(rec.getIpAddress())))
+                        .setIpAddress(rec.getIpAddress())
+                        .setAuthMode(rec.getAuthMode())
+                        .setOriginAppCode(rec.getOriginAppCode())
+                        .setTargetAppCode(rec.getTargetAppCode())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OneTimeTokenDAO.readOneTimeTokenAndDeleteBy"));
     }
 }

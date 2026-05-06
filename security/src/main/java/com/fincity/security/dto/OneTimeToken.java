@@ -24,4 +24,7 @@ public class OneTimeToken extends AbstractDTO<ULong, ULong> {
     private String token;
     private String ipAddress;
     private Boolean rememberMe;
+    private String authMode;
+    private String originAppCode;
+    private String targetAppCode;
 }

@@ -163,6 +163,9 @@ public class IndexHTMLService {
     @Value("${ui.cdnResizeOptionsType:none}")
     private String cdnResizeOptionsType;
 
+    @Value("${security.appCodeSuffix:}")
+    private String appCodeSuffix;
+
     private final ApplicationService appService;
     private final CacheService cacheService;
     private final ResourceLoader resourceLoader;
@@ -380,6 +383,11 @@ public class IndexHTMLService {
         str.append("window.domainAppCode='").append(appCode).append("';");
         str.append("window.domainClientCode='").append(clientCode).append("';");
 
+        if (Boolean.TRUE.equals(appProps.get("sso3"))) {
+            str.append("window.__SSO_BEACON_HOST__='").append(deriveBeaconHost(this.appCodeSuffix))
+                    .append("';");
+        }
+
         str.append("</script>");
 
         String jsURLPrefix = (this.cdnHostName == null || this.cdnHostName.isBlank())
@@ -499,6 +507,22 @@ public class IndexHTMLService {
                 })
                 .filter(e -> !StringUtil.safeIsBlank(e))
                 .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Map security.appCodeSuffix to the authzump beacon host:
+     *   ""        -> "authzump.ai"
+     *   ".dev"    -> "dev.authzump.ai"
+     *   ".stage"  -> "stage.authzump.ai"
+     *   ".local"  -> "local.authzump.ai"
+     */
+    private static String deriveBeaconHost(String appCodeSuffix) {
+        if (StringUtil.safeIsBlank(appCodeSuffix))
+            return "authzump.ai";
+        String trimmed = appCodeSuffix.startsWith(".") ? appCodeSuffix.substring(1) : appCodeSuffix;
+        int dotIdx = trimmed.indexOf('.');
+        String env = dotIdx >= 0 ? trimmed.substring(0, dotIdx) : trimmed;
+        return StringUtil.safeIsBlank(env) ? "authzump.ai" : env + ".authzump.ai";
     }
 
     @SuppressWarnings("unchecked")

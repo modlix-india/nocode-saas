@@ -90,6 +90,24 @@ public class SecurityOneTimeToken extends TableImpl<SecurityOneTimeTokenRecord> 
     public final TableField<SecurityOneTimeTokenRecord, Byte> REMEMBER_ME = createField(DSL.name("REMEMBER_ME"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to indicate if token should be permanent");
 
     /**
+     * The column <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> AUTH_MODE = createField(DSL.name("AUTH_MODE"), SQLDataType.VARCHAR(16).nullable(false).defaultValue(DSL.inline("BEARER", SQLDataType.VARCHAR)), this, "How the user authenticated when minting: COOKIE or BEARER");
+
+    /**
+     * The column <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> ORIGIN_APP_CODE = createField(DSL.name("ORIGIN_APP_CODE"), SQLDataType.VARCHAR(64), this, "App where the token was minted");
+
+    /**
+     * The column <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> TARGET_APP_CODE = createField(DSL.name("TARGET_APP_CODE"), SQLDataType.VARCHAR(64), this, "Intended consumer app; null for beacon-establishment tokens");
+
+    /**
      * The column <code>security.security_one_time_token.CREATED_AT</code>. Time
      * when this row is created
      */
