@@ -118,11 +118,79 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
     }
 
     /**
+     * Setter for <code>security.security_user_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at login
+     */
+    public SecurityUserTokenRecord setUserAgent(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at login
+     */
+    public String getUserAgent() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>security.security_user_token.DEVICE_TYPE</code>. Parsed
+     * device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public SecurityUserTokenRecord setDeviceType(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_token.DEVICE_TYPE</code>. Parsed
+     * device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public String getDeviceType() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>security.security_user_token.OS</code>. Parsed operating
+     * system from User-Agent
+     */
+    public SecurityUserTokenRecord setOs(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_token.OS</code>. Parsed operating
+     * system from User-Agent
+     */
+    public String getOs() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_user_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public SecurityUserTokenRecord setBrowser(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public String getBrowser() {
+        return (String) get(9);
+    }
+
+    /**
      * Setter for <code>security.security_user_token.LAST_USED_AT</code>. Last
      * time the token was used
      */
     public SecurityUserTokenRecord setLastUsedAt(LocalDateTime value) {
-        set(6, value);
+        set(10, value);
         return this;
     }
 
@@ -131,7 +199,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * time the token was used
      */
     public LocalDateTime getLastUsedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -139,7 +207,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * the user who created this row
      */
     public SecurityUserTokenRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(11, value);
         return this;
     }
 
@@ -148,7 +216,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(11);
     }
 
     /**
@@ -156,7 +224,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * when this row is created
      */
     public SecurityUserTokenRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(12, value);
         return this;
     }
 
@@ -165,7 +233,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -191,7 +259,7 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
     /**
      * Create a detached, initialised SecurityUserTokenRecord
      */
-    public SecurityUserTokenRecord(ULong id, ULong userId, String token, String partToken, LocalDateTime expiresAt, String ipAddress, LocalDateTime lastUsedAt, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityUserTokenRecord(ULong id, ULong userId, String token, String partToken, LocalDateTime expiresAt, String ipAddress, String userAgent, String deviceType, String os, String browser, LocalDateTime lastUsedAt, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityUserToken.SECURITY_USER_TOKEN);
 
         setId(id);
@@ -200,6 +268,10 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
         setPartToken(partToken);
         setExpiresAt(expiresAt);
         setIpAddress(ipAddress);
+        setUserAgent(userAgent);
+        setDeviceType(deviceType);
+        setOs(os);
+        setBrowser(browser);
         setLastUsedAt(lastUsedAt);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

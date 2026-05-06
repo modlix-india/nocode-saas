@@ -26,5 +26,9 @@ public class TokenObject extends AbstractDTO<ULong, ULong> {
     private String partToken;
     private LocalDateTime expiresAt;
     private String ipAddress;
+    private String userAgent;
+    private String deviceType;
+    private String os;
+    private String browser;
     private LocalDateTime lastUsedAt;
 }

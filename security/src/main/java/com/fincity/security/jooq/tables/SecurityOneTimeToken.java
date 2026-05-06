@@ -84,6 +84,30 @@ public class SecurityOneTimeToken extends TableImpl<SecurityOneTimeTokenRecord> 
     public final TableField<SecurityOneTimeTokenRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(50).nullable(false), this, "User IP from where he logged in");
 
     /**
+     * The column <code>security.security_one_time_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at mint time
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> USER_AGENT = createField(DSL.name("USER_AGENT"), SQLDataType.VARCHAR(512), this, "Raw User-Agent header captured at mint time");
+
+    /**
+     * The column <code>security.security_one_time_token.DEVICE_TYPE</code>.
+     * Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> DEVICE_TYPE = createField(DSL.name("DEVICE_TYPE"), SQLDataType.VARCHAR(32), this, "Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN");
+
+    /**
+     * The column <code>security.security_one_time_token.OS</code>. Parsed
+     * operating system from User-Agent
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> OS = createField(DSL.name("OS"), SQLDataType.VARCHAR(64), this, "Parsed operating system from User-Agent");
+
+    /**
+     * The column <code>security.security_one_time_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> BROWSER = createField(DSL.name("BROWSER"), SQLDataType.VARCHAR(64), this, "Parsed browser/client from User-Agent");
+
+    /**
      * The column <code>security.security_one_time_token.REMEMBER_ME</code>.
      * Flag to indicate if token should be permanent
      */
