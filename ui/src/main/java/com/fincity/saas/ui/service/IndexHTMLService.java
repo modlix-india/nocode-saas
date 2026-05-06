@@ -383,9 +383,12 @@ public class IndexHTMLService {
         str.append("window.domainAppCode='").append(appCode).append("';");
         str.append("window.domainClientCode='").append(clientCode).append("';");
 
+        // The authzump host is always exposed for social login; SSO3 cross-app
+        // beacon flows are gated on the explicit per-app sso3 flag.
+        String authzumpHost = deriveBeaconHost(this.appCodeSuffix);
+        str.append("window.__SOCIAL_LOGIN_HOST__='").append(authzumpHost).append("';");
         if (Boolean.TRUE.equals(appProps.get("sso3"))) {
-            str.append("window.__SSO_BEACON_HOST__='").append(deriveBeaconHost(this.appCodeSuffix))
-                    .append("';");
+            str.append("window.__SSO_BEACON_HOST__='").append(authzumpHost).append("';");
         }
 
         str.append("</script>");
