@@ -8,6 +8,8 @@ import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.PartnerDenormalizationService;
 import com.fincity.saas.entity.processor.service.PartnerService;
 import java.beans.PropertyEditorSupport;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -58,9 +60,28 @@ public class PartnerController {
 
     @PostMapping("/internal/denorm")
     public Mono<ResponseEntity<Map<String, Object>>> triggerDenormalization(
-            @RequestParam(defaultValue = "false") boolean delta) {
-        return (delta ? denormService.syncDelta() : denormService.syncFull())
-                .map(count -> ResponseEntity.ok(Map.of("partnersUpdated", count, "delta", delta)));
+            @RequestParam(defaultValue = "false") boolean delta,
+            @RequestParam(required = false) String since) {
+
+        if (!delta) {
+            return denormService.syncFull()
+                    .map(count -> {
+                        Map<String, Object> body = new HashMap<>();
+                        body.put("partnersUpdated", count);
+                        body.put("delta", false);
+                        return ResponseEntity.ok(body);
+                    });
+        }
+
+        LocalDateTime sinceTs = (since == null || since.isBlank()) ? null : LocalDateTime.parse(since);
+        return denormService.syncDelta(sinceTs)
+                .map(result -> {
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("partnersUpdated", result.partnersUpdated());
+                    body.put("nextSince", result.nextSince() == null ? null : result.nextSince().toString());
+                    body.put("delta", true);
+                    return ResponseEntity.ok(body);
+                });
     }
 
     @PostMapping("query")
