@@ -40,7 +40,6 @@ import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
-import static com.fincity.security.jooq.tables.SecurityClientManager.SECURITY_CLIENT_MANAGER;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
@@ -544,11 +543,6 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                                 .where(SECURITY_USER.CLIENT_ID.in(clientIds)
                                         .and(SECURITY_USER.UPDATED_AT.greaterThan(since))))
                         .map(r -> r.get(SECURITY_USER.CLIENT_ID)))
-                .concatWith(Flux.from(
-                        this.dslContext.selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID).from(SECURITY_CLIENT_MANAGER)
-                                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.in(clientIds)
-                                        .and(SECURITY_CLIENT_MANAGER.CREATED_AT.greaterThan(since))))
-                        .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID)))
                 .collect(java.util.stream.Collectors.toSet());
     }
 

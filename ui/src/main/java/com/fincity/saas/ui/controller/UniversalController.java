@@ -58,7 +58,7 @@ public class UniversalController {
             .badRequest()
             .build();
 
-    private final static String START = "<html><head><title>SSO</title><script>var designMode = window.self !== window.top;";
+    private final static String START = "<html><head><title>SSO</title><script>";
     private final static String END = "</script></head><body></body></html>";
 
     public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
@@ -160,6 +160,74 @@ public class UniversalController {
         return this.securityService.token(token).map(ResponseEntity::ok);
     }
 
+    @GetMapping(value = "/hassso", produces = MimeTypeUtils.TEXT_HTML_VALUE)
+    public Mono<ResponseEntity<String>> hassso(
+            @RequestParam String parentURL,
+            @RequestParam String targetAppCode,
+            @RequestParam(required = false, defaultValue = "") String targetClientCode,
+            @RequestParam(required = false) Boolean designMode) {
+
+        String safeParentURL = jsString(parentURL);
+        String safeTargetAppCode = jsString(targetAppCode);
+        String safeTargetClientCode = jsString(targetClientCode);
+        // The parent passes designMode explicitly because /hassso always runs in an iframe.
+        String designModeJs = designMode == null
+                ? "var designMode=window.self!==window.top;"
+                : "var designMode=" + designMode + ";";
+
+        String script =
+                "var parentURL=" + safeParentURL + ";" +
+                "var targetAppCode=" + safeTargetAppCode + ";" +
+                "var targetClientCode=" + safeTargetClientCode + ";" +
+                "var parentOrigin=new URL(parentURL).origin;" +
+                designModeJs +
+                "var tokenKey=(designMode?'designMode_':'')+'AuthToken';" +
+                "var expiryKey=(designMode?'designMode_':'')+'AuthTokenExpiry';" +
+                "function postNone(){window.parent.postMessage({type:'sso:none'},parentOrigin);}" +
+                "function postToken(t){window.parent.postMessage({type:'sso:token',token:t},parentOrigin);}" +
+                "var lsToken=localStorage.getItem(tokenKey);" +
+                "var lsExpiry=parseInt(localStorage.getItem(expiryKey)||'0',10)*1000;" +
+                "if(!lsToken||lsExpiry<Date.now()){postNone();}" +
+                "else{" +
+                "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
+                "fetch('/api/security/makeOneTimeToken',{method:'POST',headers:{'Content-Type':'application/json','Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
+                ".then(function(r){return r.ok?r.json():null;})" +
+                ".then(function(d){if(d&&d.token){postToken(d.token);}else{postNone();}})" +
+                ".catch(function(){postNone();});" +
+                "}";
+
+        String htmlContent = START + script + END;
+
+        return Mono.just(ResponseEntity.ok()
+                .header("Content-Security-Policy", "frame-ancestors *")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(htmlContent));
+    }
+
+    private static String jsString(String s) {
+        if (s == null)
+            return "''";
+        StringBuilder sb = new StringBuilder(s.length() + 2);
+        sb.append('\'');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\'' -> sb.append("\\'");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '<' -> sb.append("\\u003c");
+                case '>' -> sb.append("\\u003e");
+                case '&' -> sb.append("\\u0026");
+                case 0x2028 -> sb.append("\\u2028");
+                case 0x2029 -> sb.append("\\u2029");
+                default -> sb.append(c);
+            }
+        }
+        sb.append('\'');
+        return sb.toString();
+    }
+
     @GetMapping(value = "/sso/{token}", produces = MimeTypeUtils.TEXT_HTML_VALUE)
     public Mono<ResponseEntity<String>> ssoRedirection(@PathVariable String token,
             @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
@@ -168,6 +236,7 @@ public class UniversalController {
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
             @RequestParam(defaultValue = "false") boolean cookie,
+            @RequestParam(required = false) Boolean designMode,
             ServerHttpRequest request) {
 
         String addr = ipAddress;
@@ -175,9 +244,16 @@ public class UniversalController {
             addr = request.getRemoteAddress() == null ? "" : request.getRemoteAddress().getAddress().getHostAddress();
         }
 
+        // The caller passes designMode when /sso/{token} runs inside a hidden iframe
+        // (where window.self !== window.top would always be true). For top-level legacy
+        // callers (magic link, password reset) we fall back to the existing detection.
+        String designModeJs = designMode == null
+                ? "var designMode = window.self !== window.top;"
+                : "var designMode = " + designMode + ";";
+
         return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
                 .map(ca -> {
-                    String storeTokenScript = "var designMode = window.self !== window.top;" +
+                    String storeTokenScript = designModeJs +
                             "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
                             + ca.getAccessToken()
                             + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
