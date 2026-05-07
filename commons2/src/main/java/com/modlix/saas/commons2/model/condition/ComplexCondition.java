@@ -69,6 +69,7 @@ public class ComplexCondition extends AbstractCondition {
             return List.of();
 
         return this.conditions.stream()
+                .filter(Objects::nonNull)
                 .flatMap(c -> c.findConditionWithField(fieldName).stream())
                 .toList();
     }
@@ -83,6 +84,7 @@ public class ComplexCondition extends AbstractCondition {
             return this;
 
         List<AbstractCondition> updatedCond = this.conditions.stream()
+                .filter(Objects::nonNull)
                 .map(cond -> cond.removeConditionWithField(fieldName))
                 .filter(Objects::nonNull)
                 .toList();
