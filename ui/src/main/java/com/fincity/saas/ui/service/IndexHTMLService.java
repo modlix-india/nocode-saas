@@ -54,6 +54,8 @@ public class IndexHTMLService {
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
+    private static final String KEY_ENABLED = "enabled";
+
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
             2, "BEFORE_BODY", 3);
 
@@ -160,6 +162,9 @@ public class IndexHTMLService {
 
     @Value("${ui.cdnResizeOptionsType:none}")
     private String cdnResizeOptionsType;
+
+    @Value("${security.appCodeSuffix:}")
+    private String appCodeSuffix;
 
     private final ApplicationService appService;
     private final CacheService cacheService;
@@ -378,6 +383,14 @@ public class IndexHTMLService {
         str.append("window.domainAppCode='").append(appCode).append("';");
         str.append("window.domainClientCode='").append(clientCode).append("';");
 
+        // The authzump host is always exposed for social login; SSO3 cross-app
+        // beacon flows are gated on the explicit per-app sso3 flag.
+        String authzumpHost = deriveBeaconHost(this.appCodeSuffix);
+        str.append("window.__SOCIAL_LOGIN_HOST__='").append(authzumpHost).append("';");
+        if (Boolean.TRUE.equals(appProps.get("sso3"))) {
+            str.append("window.__SSO_BEACON_HOST__='").append(authzumpHost).append("';");
+        }
+
         str.append("</script>");
 
         String jsURLPrefix = (this.cdnHostName == null || this.cdnHostName.isBlank())
@@ -408,13 +421,17 @@ public class IndexHTMLService {
 
         Map<String, Object> analytics = (Map<String, Object>) analyticsObj;
 
-        if (!Boolean.TRUE.equals(analytics.get("enabled")))
+        if (!Boolean.TRUE.equals(analytics.get(KEY_ENABLED)))
             return "";
 
         Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
                 ? (Map<String, Object>) analytics.get("sessionReplay")
                 : Map.of();
-        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get("enabled"));
+        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get(KEY_ENABLED));
+        Map<String, Object> heatmaps = analytics.get("heatmaps") instanceof Map
+                ? (Map<String, Object>) analytics.get("heatmaps")
+                : Map.of();
+        boolean heatmapsEnabled = Boolean.TRUE.equals(heatmaps.get(KEY_ENABLED));
         boolean consentRequired = !Boolean.FALSE.equals(analytics.get("consentRequired"));
 
         Map<String, Object> initOptions = new HashMap<>();
@@ -424,8 +441,9 @@ public class IndexHTMLService {
         initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
         initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
         initOptions.put("disable_session_recording", !replayEnabled);
+        initOptions.put("enable_heatmaps", heatmapsEnabled);
         initOptions.put("opt_out_capturing_by_default", consentRequired);
-        initOptions.put("advanced_disable_decide", true);
+        initOptions.put("advanced_disable_flags", true);
 
         if (replayEnabled) {
             Map<String, Object> recording = new HashMap<>();
@@ -492,6 +510,22 @@ public class IndexHTMLService {
                 })
                 .filter(e -> !StringUtil.safeIsBlank(e))
                 .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Map security.appCodeSuffix to the authzump beacon host:
+     *   ""        -> "authzump.ai"
+     *   ".dev"    -> "dev.authzump.ai"
+     *   ".stage"  -> "stage.authzump.ai"
+     *   ".local"  -> "local.authzump.ai"
+     */
+    private static String deriveBeaconHost(String appCodeSuffix) {
+        if (StringUtil.safeIsBlank(appCodeSuffix))
+            return "authzump.ai";
+        String trimmed = appCodeSuffix.startsWith(".") ? appCodeSuffix.substring(1) : appCodeSuffix;
+        int dotIdx = trimmed.indexOf('.');
+        String env = dotIdx >= 0 ? trimmed.substring(0, dotIdx) : trimmed;
+        return StringUtil.safeIsBlank(env) ? "authzump.ai" : env + ".authzump.ai";
     }
 
     @SuppressWarnings("unchecked")
