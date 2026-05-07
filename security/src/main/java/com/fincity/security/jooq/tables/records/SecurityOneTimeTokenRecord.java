@@ -86,11 +86,79 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     }
 
     /**
+     * Setter for <code>security.security_one_time_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at mint time
+     */
+    public SecurityOneTimeTokenRecord setUserAgent(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at mint time
+     */
+    public String getUserAgent() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.DEVICE_TYPE</code>.
+     * Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public SecurityOneTimeTokenRecord setDeviceType(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.DEVICE_TYPE</code>.
+     * Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public String getDeviceType() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.OS</code>. Parsed
+     * operating system from User-Agent
+     */
+    public SecurityOneTimeTokenRecord setOs(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.OS</code>. Parsed
+     * operating system from User-Agent
+     */
+    public String getOs() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public SecurityOneTimeTokenRecord setBrowser(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public String getBrowser() {
+        return (String) get(7);
+    }
+
+    /**
      * Setter for <code>security.security_one_time_token.REMEMBER_ME</code>.
      * Flag to indicate if token should be permanent
      */
     public SecurityOneTimeTokenRecord setRememberMe(Byte value) {
-        set(4, value);
+        set(8, value);
         return this;
     }
 
@@ -99,7 +167,58 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
      * Flag to indicate if token should be permanent
      */
     public Byte getRememberMe() {
-        return (Byte) get(4);
+        return (Byte) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public SecurityOneTimeTokenRecord setAuthMode(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public String getAuthMode() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public SecurityOneTimeTokenRecord setOriginAppCode(String value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public String getOriginAppCode() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public SecurityOneTimeTokenRecord setTargetAppCode(String value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public String getTargetAppCode() {
+        return (String) get(11);
     }
 
     /**
@@ -107,7 +226,7 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
      * when this row is created
      */
     public SecurityOneTimeTokenRecord setCreatedAt(LocalDateTime value) {
-        set(5, value);
+        set(12, value);
         return this;
     }
 
@@ -116,7 +235,7 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -142,14 +261,21 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     /**
      * Create a detached, initialised SecurityOneTimeTokenRecord
      */
-    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, Byte rememberMe, LocalDateTime createdAt) {
+    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, String userAgent, String deviceType, String os, String browser, Byte rememberMe, String authMode, String originAppCode, String targetAppCode, LocalDateTime createdAt) {
         super(SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN);
 
         setId(id);
         setUserId(userId);
         setToken(token);
         setIpAddress(ipAddress);
+        setUserAgent(userAgent);
+        setDeviceType(deviceType);
+        setOs(os);
+        setBrowser(browser);
         setRememberMe(rememberMe);
+        setAuthMode(authMode);
+        setOriginAppCode(originAppCode);
+        setTargetAppCode(targetAppCode);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();
     }

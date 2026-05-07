@@ -921,6 +921,22 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 SecurityMessageResourceService.FORBIDDEN_CREATE, "App Dependency"));
     }
 
+    public Mono<Boolean> hasDependencyEitherDirection(String appCodeA, String appCodeB) {
+
+        if (StringUtil.safeIsBlank(appCodeA) || StringUtil.safeIsBlank(appCodeB))
+            return Mono.just(Boolean.FALSE);
+
+        if (appCodeA.equals(appCodeB))
+            return Mono.just(Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.dao.getByAppCode(appCodeA),
+                appA -> this.dao.getByAppCode(appCodeB),
+                (appA, appB) -> this.dao.hasDependencyEitherDirection(appA.getId(), appB.getId()))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasDependencyEitherDirection"));
+    }
+
     public Mono<Boolean> hasDeleteAccess(String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
 
