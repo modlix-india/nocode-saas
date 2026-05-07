@@ -95,6 +95,30 @@ public class SecurityUserToken extends TableImpl<SecurityUserTokenRecord> {
     public final TableField<SecurityUserTokenRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(50).nullable(false), this, "User IP from where he logged in");
 
     /**
+     * The column <code>security.security_user_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at login
+     */
+    public final TableField<SecurityUserTokenRecord, String> USER_AGENT = createField(DSL.name("USER_AGENT"), SQLDataType.VARCHAR(512), this, "Raw User-Agent header captured at login");
+
+    /**
+     * The column <code>security.security_user_token.DEVICE_TYPE</code>. Parsed
+     * device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public final TableField<SecurityUserTokenRecord, String> DEVICE_TYPE = createField(DSL.name("DEVICE_TYPE"), SQLDataType.VARCHAR(32), this, "Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN");
+
+    /**
+     * The column <code>security.security_user_token.OS</code>. Parsed operating
+     * system from User-Agent
+     */
+    public final TableField<SecurityUserTokenRecord, String> OS = createField(DSL.name("OS"), SQLDataType.VARCHAR(64), this, "Parsed operating system from User-Agent");
+
+    /**
+     * The column <code>security.security_user_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public final TableField<SecurityUserTokenRecord, String> BROWSER = createField(DSL.name("BROWSER"), SQLDataType.VARCHAR(64), this, "Parsed browser/client from User-Agent");
+
+    /**
      * The column <code>security.security_user_token.LAST_USED_AT</code>. Last
      * time the token was used
      */

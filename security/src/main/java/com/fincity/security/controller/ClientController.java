@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.math.BigInteger;
+import java.net.URI;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -184,6 +186,15 @@ public class ClientController
     public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request,
             @RequestParam SecurityAppRegIntegrationPlatform platform) {
         return this.clientRegistrationService.evokeRegisterWSocial(platform, request).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/socialRegister/evoke")
+    public Mono<ResponseEntity<Void>> evokeSocialRegisterRedirect(ServerHttpRequest request,
+            @RequestParam SecurityAppRegIntegrationPlatform platform) {
+        return this.clientRegistrationService.evokeRegisterWSocial(platform, request)
+                .map(consentUrl -> ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create(consentUrl))
+                        .<Void>build());
     }
 
     @GetMapping("/socialRegister/callback")

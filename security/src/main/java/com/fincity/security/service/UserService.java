@@ -60,6 +60,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.TokenObject;
+import com.fincity.security.util.UserAgentInfo;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.ClientLevelType;
@@ -1729,6 +1730,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
         final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+        UserAgentInfo ua = UserAgentInfo.from(httpRequest);
 
         Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(JWTGenerateTokenParameters.builder()
                 .userId(user.getId().toBigInteger())
@@ -1749,7 +1751,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 ? token.getT1()
                                 : token.getT1().substring(token.getT1().length() - 50))
                 .setExpiresAt(token.getT2())
-                .setIpAddress(hostAddress));
+                .setIpAddress(hostAddress)
+                .setUserAgent(ua.raw())
+                .setDeviceType(ua.deviceType())
+                .setOs(ua.os())
+                .setBrowser(ua.browser()));
     }
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {

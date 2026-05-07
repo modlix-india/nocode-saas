@@ -258,8 +258,6 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                         }
                     }
 
-                    object.getProperties().put("sso3", processForVariables(object.getProperties().get("sso3")));
-
                     if (shellPage == null) {
 
                         if (filler == null)

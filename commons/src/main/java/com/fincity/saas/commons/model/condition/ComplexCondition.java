@@ -2,6 +2,7 @@ package com.fincity.saas.commons.model.condition;
 
 import java.io.Serial;
 import java.util.List;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
@@ -57,7 +58,7 @@ public class ComplexCondition extends AbstractCondition {
 
         if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
-        return Flux.fromIterable(this.conditions).flatMap(c -> c.findConditionWithField(fieldName));
+        return Flux.fromIterable(this.conditions.stream().filter(Objects::nonNull).toList()).flatMap(c -> c.findConditionWithField(fieldName));
     }
 
     @Override
@@ -65,7 +66,7 @@ public class ComplexCondition extends AbstractCondition {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
         if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
-        return Flux.fromIterable(this.conditions).flatMap(c -> c.findConditionWithPrefix(prefix));
+        return Flux.fromIterable(this.conditions.stream().filter(Objects::nonNull).toList()).flatMap(c -> c.findConditionWithPrefix(prefix));
     }
 
     @Override
@@ -73,7 +74,7 @@ public class ComplexCondition extends AbstractCondition {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
         if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
-        return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndTrimPrefix(prefix));
+        return Flux.fromIterable(this.conditions.stream().filter(Objects::nonNull).toList()).flatMap(c -> c.findAndTrimPrefix(prefix));
     }
 
     @Override
@@ -81,7 +82,7 @@ public class ComplexCondition extends AbstractCondition {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
         if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
-        return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndCreatePrefix(prefix));
+        return Flux.fromIterable(this.conditions.stream().filter(Objects::nonNull).toList()).flatMap(c -> c.findAndCreatePrefix(prefix));
     }
 
     @Override
@@ -91,7 +92,7 @@ public class ComplexCondition extends AbstractCondition {
 
         if (conditions == null || conditions.isEmpty()) return Mono.just(this);
 
-        return Flux.fromIterable(conditions)
+        return Flux.fromIterable(conditions.stream().filter(Objects::nonNull).toList())
                 .flatMap(cond -> cond.removeConditionWithField(fieldName))
                 .collectList()
                 .flatMap(updatedCond -> {
