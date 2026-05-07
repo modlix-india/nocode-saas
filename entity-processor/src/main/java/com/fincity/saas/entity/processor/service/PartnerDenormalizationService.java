@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.model.ClientDenormData;
+import com.fincity.saas.entity.processor.model.response.DenormSyncResult;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -43,17 +44,34 @@ public class PartnerDenormalizationService {
         this.securityService = securityService;
     }
 
-    public Mono<Integer> syncDelta() {
-        logger.info("Starting partner denorm delta sync");
+    public Mono<DenormSyncResult> syncDelta(LocalDateTime sinceParam) {
+        logger.info("Starting partner denorm delta sync (since={})", sinceParam);
 
-        return syncTicketCountsDelta()
-                .flatMap(ticketUpdated -> syncSecurityDataDelta()
-                        .map(securityUpdated -> ticketUpdated + securityUpdated))
-                .doOnSuccess(count -> logger.info("Delta sync complete, {} partners updated", count))
+        return captureDbNow()
+                .flatMap(nextSince -> resolveSince(sinceParam)
+                        .flatMap(since -> syncTicketCountsDelta(since)
+                                .flatMap(ticketUpdated -> syncSecurityDataDelta(since)
+                                        .map(securityUpdated -> new DenormSyncResult(
+                                                ticketUpdated + securityUpdated, nextSince))))
+                        .switchIfEmpty(Mono.fromSupplier(() -> new DenormSyncResult(0, nextSince))))
+                .doOnSuccess(r -> logger.info("Delta sync complete, {} partners updated, nextSince={}",
+                        r.partnersUpdated(), r.nextSince()))
                 .onErrorResume(e -> {
                     logger.error("Delta sync failed: {}", e.getMessage(), e);
-                    return Mono.just(0);
+                    return Mono.just(new DenormSyncResult(0, sinceParam));
                 });
+    }
+
+    private Mono<LocalDateTime> captureDbNow() {
+        return Mono.from(dslContext.select(DSL.currentLocalDateTime()))
+                .map(org.jooq.Record1::value1);
+    }
+
+    private Mono<LocalDateTime> resolveSince(LocalDateTime sinceParam) {
+        if (sinceParam != null) return Mono.just(sinceParam);
+        return Mono.from(dslContext.select(DSL.min(ENTITY_PROCESSOR_PARTNERS.DENORM_UPDATED_AT))
+                .from(ENTITY_PROCESSOR_PARTNERS))
+                .flatMap(rec -> Mono.justOrEmpty(rec.value1()));
     }
 
     public Mono<Integer> syncFull() {
@@ -71,8 +89,7 @@ public class PartnerDenormalizationService {
 
     // ---- Ticket count sync ----
 
-    private Mono<Integer> syncTicketCountsDelta() {
-        // Find partners whose tickets changed since last denorm
+    private Mono<Integer> syncTicketCountsDelta(LocalDateTime since) {
         return Flux.from(
                 dslContext.select(
                         ENTITY_PROCESSOR_PARTNERS.ID,
@@ -88,11 +105,9 @@ public class PartnerDenormalizationService {
                                                         .eq(ENTITY_PROCESSOR_PARTNERS.CLIENT_CODE))
                                                 .and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID
                                                         .eq(ENTITY_PROCESSOR_PARTNERS.CLIENT_ID))
-                                                .and(ENTITY_PROCESSOR_PARTNERS.DENORM_UPDATED_AT.isNull()
-                                                        .or(ENTITY_PROCESSOR_TICKETS.CREATED_AT
-                                                                .greaterThan(ENTITY_PROCESSOR_PARTNERS.DENORM_UPDATED_AT))
+                                                .and(ENTITY_PROCESSOR_TICKETS.CREATED_AT.greaterThan(since)
                                                         .or(ENTITY_PROCESSOR_TICKETS.UPDATED_AT
-                                                                .greaterThan(ENTITY_PROCESSOR_PARTNERS.DENORM_UPDATED_AT)))))))
+                                                                .greaterThan(since)))))))
                 .collectList()
                 .flatMap(partners -> {
                     if (partners.isEmpty()) return Mono.just(0);
@@ -178,20 +193,9 @@ public class PartnerDenormalizationService {
 
     // ---- Security data sync ----
 
-    private Mono<Integer> syncSecurityDataDelta() {
-        // Get oldest DENORM_UPDATED_AT as the since timestamp
-        return Mono.from(
-                dslContext.select(DSL.min(ENTITY_PROCESSOR_PARTNERS.DENORM_UPDATED_AT))
-                        .from(ENTITY_PROCESSOR_PARTNERS))
-                .flatMap(rec -> {
-                    LocalDateTime since = rec.value1();
-                    // If any partner has never been synced, null min means we skip delta
-                    // (full sync will catch those)
-                    if (since == null) return Mono.just(0);
-
-                    return getAllPartnerClientIds()
-                            .flatMap(clientIds -> callSecurityDelta(clientIds, since));
-                });
+    private Mono<Integer> syncSecurityDataDelta(LocalDateTime since) {
+        return getAllPartnerClientIds()
+                .flatMap(clientIds -> callSecurityDelta(clientIds, since));
     }
 
     private Mono<Integer> syncSecurityDataFull() {
