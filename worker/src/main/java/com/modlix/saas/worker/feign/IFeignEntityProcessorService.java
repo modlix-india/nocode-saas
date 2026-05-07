@@ -10,5 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface IFeignEntityProcessorService {
 
     @PostMapping("/api/entity/processor/partners/internal/denorm")
-    Map<String, Object> triggerPartnerDenormalization(@RequestParam("delta") boolean delta);
+    Map<String, Object> triggerPartnerDenormalization(
+            @RequestParam("delta") boolean delta,
+            @RequestParam(value = "since", required = false) String since);
 }
