@@ -295,7 +295,7 @@ public class ClientRegistrationService {
 
     private Mono<String> getUrlPrefix(ServerHttpRequest request, ContextAuthentication ca) {
 
-        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+        String host = firstForwardedHost(request);
         String scheme = request.getHeaders().getFirst(X_FORWARDED_PROTO);
         String port = request.getHeaders().getFirst(X_FORWARDED_PORT);
 
@@ -805,7 +805,7 @@ public class ClientRegistrationService {
 
                             String state = UUID.randomUUID().toString();
 
-                            String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+                            String host = firstForwardedHost(request);
 
                             String urlPrefix = HTTPS + host;
 
@@ -829,7 +829,7 @@ public class ClientRegistrationService {
         if (request.getQueryParams().getFirst("code") == null)
             return invalidSocialCallback(request, response);
 
-        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+        String host = firstForwardedHost(request);
 
         String urlPrefix = HTTPS + host;
 
@@ -862,15 +862,27 @@ public class ClientRegistrationService {
 
                         (ca, app, appRegIntegrationToken, appRegIntegration, registerRequest) -> {
 
-                            String redirectUrl = appRegIntegrationToken
-                                    .getRequestParam()
-                                    .getOrDefault("signup", "false")
-                                    .equals("true")
-                                    ? appRegIntegration.getSignupUri()
-                                    : appRegIntegration.getLoginUri();
+                            Map<String, Object> rp = appRegIntegrationToken.getRequestParam();
+                            String customerRedirectUrl = rp == null ? null : (String) rp.get("redirectUrl");
+
+                            // If the customer app passed a redirectUrl when invoking
+                            // /socialRegister/evoke, send the user back there with the
+                            // social profile as query params. The customer's login page
+                            // is responsible for deciding login vs signup. Otherwise
+                            // fall back to the integration's configured loginUri/signupUri.
+                            String destination;
+                            if (!safeIsBlank(customerRedirectUrl)) {
+                                destination = customerRedirectUrl;
+                            } else {
+                                String legacyUri = "true".equals(rp == null ? null
+                                        : String.valueOf(rp.getOrDefault("signup", "false")))
+                                        ? appRegIntegration.getSignupUri()
+                                        : appRegIntegration.getLoginUri();
+                                destination = urlPrefix + legacyUri;
+                            }
 
                             UriComponentsBuilder uriBuilder = UriComponentsBuilder
-                                    .fromUri(URI.create(urlPrefix + redirectUrl))
+                                    .fromUri(URI.create(destination))
                                     .queryParam("sessionId", appRegIntegrationToken.getState())
                                     .queryParam("userName", registerRequest.getUserName())
                                     .queryParam("emailId", registerRequest.getEmailId())
@@ -881,14 +893,29 @@ public class ClientRegistrationService {
                                     .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
 
                             return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
-
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
     }
 
+    /**
+     * X-Forwarded-Host can carry multiple values (one per proxy hop) joined with
+     * commas, and any single value may include a `:port` suffix. The OAuth
+     * redirect_uri must be the original client-facing hostname, no port — pick the
+     * first comma-separated entry and strip the port.
+     */
+    private static String firstForwardedHost(ServerHttpRequest request) {
+        String raw = request.getHeaders().getFirst(X_FORWARDED_HOST);
+        if (raw == null || raw.isBlank())
+            return raw;
+        int comma = raw.indexOf(',');
+        String first = (comma >= 0 ? raw.substring(0, comma) : raw).trim();
+        int colon = first.indexOf(':');
+        return colon >= 0 ? first.substring(0, colon) : first;
+    }
+
     private Mono<Void> invalidSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
-        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+        String host = firstForwardedHost(request);
 
         String urlPrefix = HTTPS + host;
 

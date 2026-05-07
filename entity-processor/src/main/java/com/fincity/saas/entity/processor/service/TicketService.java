@@ -37,6 +37,7 @@ import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.dto.DiagnosticsLog;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
@@ -82,6 +83,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String DIAG_ACTION_ASSIGNMENT_INITIAL = "ASSIGNMENT_INITIAL";
     private static final String DIAG_REASON_RULE = "Initial assignment via rule";
     private static final String DIAG_REASON_LOGGED_IN_USER = "Initial assignment to logged-in user";
+    private static final String DIAG_LOG_FAILURE = "Failed to log diagnostics for ticket {}: {}";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
     private static final ClassSchema classSchema =
@@ -453,7 +455,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             "Generic ticket update",
                             Map.of())
                         .onErrorResume(e -> {
-                            logger.error("Failed to log diagnostics for ticket {}: {}", eTicket.getId(), e.getMessage());
+                            logger.error(DIAG_LOG_FAILURE, eTicket.getId(), e.getMessage());
                             return Mono.empty();
                         })
                         .thenReturn(eTicket));
@@ -463,6 +465,35 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             }
         )
         .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
+    }
+
+    @Override
+    public Mono<Ticket> create(ProcessorAccess access, Ticket entity) {
+        return super.create(access, entity)
+                .flatMap(created -> this.logInitialAssignment(access, entity, created).thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[ProcessorAccess, Ticket]"));
+    }
+
+    private Mono<DiagnosticsLog> logInitialAssignment(ProcessorAccess access, Ticket pTicket, Ticket created) {
+
+        if (created.getAssignedUserId() == null) return Mono.empty();
+
+        RuleResult rr = pTicket.getAssignmentRuleResult();
+
+        return this.diagnosticsService
+                .logAssignment(
+                        access,
+                        created.getId(),
+                        DIAG_ACTION_ASSIGNMENT_INITIAL,
+                        null,
+                        created.getAssignedUserId(),
+                        rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
+                        rr,
+                        pTicket.getEvaluationTrace())
+                .onErrorResume(e -> {
+                    logger.error(DIAG_LOG_FAILURE, created.getId(), e.getMessage());
+                    return Mono.empty();
+                });
     }
 
     @ReactiveTime
@@ -490,27 +521,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     ticket.setProductId(productIdentity.getT1().getId())
                                             .setDnc(productIdentity.getT2()));
                         },
-                        (access, productIdentity, pTicket) -> super.create(access, pTicket),
-                        (access, productIdentity, pTicket, created) -> {
-                            RuleResult rr = pTicket.getAssignmentRuleResult();
-                            this.diagnosticsService
-                                    .logAssignment(
-                                            access,
-                                            created.getId(),
-                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
-                                            null,
-                                            created.getAssignedUserId(),
-                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr,
-                                            pTicket.getEvaluationTrace())
-                                    .onErrorResume(e -> {
-                                        logger.error("Failed to log diagnostics for ticket {}: {}",
-                                                created.getId(), e.getMessage());
-                                        return Mono.empty();
-                                    })
-                                    .subscribe();
-                            return this.createNote(access, ticketRequest, created);
-                        },
+                        (access, productIdentity, pTicket) -> this.create(access, pTicket),
+                        (access, productIdentity, pTicket, created) ->
+                                this.createNote(access, ticketRequest, created),
                         (access, productIdentity, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
@@ -562,31 +575,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     });
                         },
                         (campaign, product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
-                        (campaign, product, ticket, pTicket) -> super.create(access, pTicket)
+                        (campaign, product, ticket, pTicket) -> this.create(access, pTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "campaign")),
-                        (campaign, product, ticket, pTicket, created) -> {
-                            RuleResult rr = pTicket.getAssignmentRuleResult();
-                            this.diagnosticsService
-                                    .logAssignment(
-                                            access,
-                                            created.getId(),
-                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
-                                            null,
-                                            created.getAssignedUserId(),
-                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr,
-                                            pTicket.getEvaluationTrace())
-                                    .onErrorResume(e -> {
-                                        logger.error("Failed to log diagnostics for ticket {}: {}",
-                                                created.getId(), e.getMessage());
-                                        return Mono.empty();
-                                    })
-                                    .subscribe();
-                            return this.createNote(access, cTicketRequest, created);
-                        },
+                        (campaign, product, ticket, pTicket, created) ->
+                                this.createNote(access, cTicketRequest, created),
                         (campaign, product, ticket, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
@@ -616,33 +611,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             return Mono.just(Ticket.of(cTicketRequest));
                         },
                         (product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, pTicket) -> super.create(access, pTicket)
+                        (product, ticket, pTicket) -> this.create(access, pTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "website")),
-                        (product, ticket, pTicket, created) -> {
-                            RuleResult rr = pTicket.getAssignmentRuleResult();
-                            this.diagnosticsService
-                                    .logAssignment(
-                                            access,
-                                            created.getId(),
-                                            DIAG_ACTION_ASSIGNMENT_INITIAL,
-                                            null,
-                                            created.getAssignedUserId(),
-                                            rr != null ? DIAG_REASON_RULE : DIAG_REASON_LOGGED_IN_USER,
-                                            rr,
-                                            pTicket.getEvaluationTrace())
-                                    .onErrorResume(e -> {
-                                        logger.error("Failed to log diagnostics for ticket {}: {}",
-                                                created.getId(), e.getMessage());
-                                        return Mono.empty();
-                                    })
-                                    .subscribe();
-                        //     return this.createNote(access, cTicketRequest, created);
-                                return Mono.just(true);
-                        },
-                        (product, ticket, pTicket, created, noteCreated) -> this.activityService
+                        (product, ticket, pTicket, created) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
@@ -1082,7 +1056,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                                     access, uTicket.getId(), "ASSIGNMENT_WALK_IN_FORM", oldUserId,
                                                     uTicket.getAssignedUserId(), "User assigned from walk-in form", null)
                                             .onErrorResume(e -> {
-                                                logger.error("Failed to log diagnostics for ticket {}: {}", uTicket.getId(), e.getMessage());
+                                                logger.error(DIAG_LOG_FAILURE, uTicket.getId(), e.getMessage());
                                                 return Mono.empty();
                                             }),
                                     this.activityService
@@ -1179,7 +1153,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                                     access, uTicket.getId(), action, oldUserId,
                                                     uTicket.getAssignedUserId(), comment, ruleResult)
                                             .onErrorResume(e -> {
-                                                logger.error("Failed to log diagnostics for ticket {}: {}", uTicket.getId(), e.getMessage());
+                                                logger.error(DIAG_LOG_FAILURE, uTicket.getId(), e.getMessage());
                                                 return Mono.empty();
                                             }),
                                     this.activityService

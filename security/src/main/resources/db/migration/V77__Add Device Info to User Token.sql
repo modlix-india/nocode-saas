@@ -1,0 +1,13 @@
+use security;
+
+ALTER TABLE `security_user_token`
+    ADD COLUMN `USER_AGENT` VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Raw User-Agent header captured at login' AFTER `IP_ADDRESS`,
+    ADD COLUMN `DEVICE_TYPE` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN' AFTER `USER_AGENT`,
+    ADD COLUMN `OS` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed operating system from User-Agent' AFTER `DEVICE_TYPE`,
+    ADD COLUMN `BROWSER` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed browser/client from User-Agent' AFTER `OS`;
+
+ALTER TABLE `security_one_time_token`
+    ADD COLUMN `USER_AGENT` VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Raw User-Agent header captured at mint time' AFTER `IP_ADDRESS`,
+    ADD COLUMN `DEVICE_TYPE` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN' AFTER `USER_AGENT`,
+    ADD COLUMN `OS` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed operating system from User-Agent' AFTER `DEVICE_TYPE`,
+    ADD COLUMN `BROWSER` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'Parsed browser/client from User-Agent' AFTER `OS`;
