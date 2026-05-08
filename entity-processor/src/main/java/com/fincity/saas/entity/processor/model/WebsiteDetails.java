@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.model;
 
 import com.fincity.saas.entity.processor.dto.AbstractLeadBase;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -24,4 +25,6 @@ public class WebsiteDetails extends AbstractLeadBase<WebsiteDetails> {
     private String utmKeyword;
     private String utmLoginCustomer;
     private String productURL;
+
+    private Map<String, Object> adData;
 }

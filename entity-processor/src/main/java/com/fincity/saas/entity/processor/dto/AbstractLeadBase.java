@@ -41,6 +41,7 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
     private LeadSubSource subSource;
     private LeadSource source;
     private Map<String, Object> customFields;
+    private Map<String, Object> adData;
 
     public T createLead(WebsiteDetails details) {
         this.setEmail(details.getEmail());
@@ -66,6 +67,7 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
         this.setCity(details.getCity());
         this.setWhatsappNumber(details.getWhatsappNumber());
         this.setCustomFields(details.getCustomFields());
+        this.setAdData(details.getAdData());
 
         this.setSource(LeadSource.lookupLiteral(String.valueOf(details.getSource())));
         this.setSubSource(LeadSubSource.lookupLiteral(String.valueOf(details.getSubSource())));

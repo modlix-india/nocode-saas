@@ -32,6 +32,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
@@ -590,11 +591,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> createForWebsite(CampaignTicketRequest cTicketRequest, String productCode) {
 
-        if (cTicketRequest.getCampaignDetails() != null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.WEBSITE_ENTITY_DATA_INVALID);
-
         if (cTicketRequest.getLeadDetails().getSource() == null)
             cTicketRequest.getLeadDetails().setSource("Website");
 
@@ -611,15 +607,45 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             return Mono.just(Ticket.of(cTicketRequest));
                         },
                         (product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, pTicket) -> this.create(access, pTicket)
+                        (product, ticket, pTicket) -> this.attachCampaignAttribution(access, pTicket, cTicketRequest),
+                        (product, ticket, pTicket, attributedTicket) -> this.create(access, attributedTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "website")),
-                        (product, ticket, pTicket, created) -> this.activityService
+                        (product, ticket, pTicket, attributedTicket, created) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
+    }
+
+    private Mono<Ticket> attachCampaignAttribution(
+            ProcessorAccess access, Ticket ticket, CampaignTicketRequest cTicketRequest) {
+
+        CampaignTicketRequest.CampaignDetails cd = cTicketRequest.getCampaignDetails();
+        if (cd == null || StringUtil.safeIsBlank(cd.getCampaignId())) return Mono.just(ticket);
+
+        return this.campaignService
+                .readByCampaignId(access, cd.getCampaignId())
+                .flatMap(campaign -> {
+                    ticket.setCampaignId(campaign.getId());
+                    if (StringUtil.safeIsBlank(cd.getAdSetId())) return Mono.just(ticket);
+
+                    return this.adsetService
+                            .readOrCreate(access, cd.getAdSetId(), cd.getAdSetName(), campaign.getId())
+                            .flatMap(adset -> {
+                                ticket.setAdsetId(adset.getId());
+                                if (StringUtil.safeIsBlank(cd.getAdId())) return Mono.just(ticket);
+
+                                return this.adService
+                                        .readOrCreate(
+                                                access, cd.getAdId(), cd.getAdName(), adset.getId(), campaign.getId())
+                                        .map(ad -> ticket.setAdId(ad.getId()))
+                                        .defaultIfEmpty(ticket);
+                            })
+                            .defaultIfEmpty(ticket);
+                })
+                .defaultIfEmpty(ticket);
     }
 
     public Mono<Ticket> createForPartnerImportDCRM(String appCode, String clientCode, TicketPartnerRequest request) {
