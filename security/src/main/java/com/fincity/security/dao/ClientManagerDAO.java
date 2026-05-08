@@ -1,5 +1,6 @@
 package com.fincity.security.dao;
 
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientManager.*;
 
 import java.util.Collection;
@@ -9,6 +10,7 @@ import java.util.Set;
 
 import org.jooq.Field;
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,32 +42,37 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .set(SECURITY_CLIENT_MANAGER.CLIENT_ID, clientId)
                 .set(SECURITY_CLIENT_MANAGER.MANAGER_ID, managerId)
                 .set(SECURITY_CLIENT_MANAGER.CREATED_BY, createdBy)
-                .onDuplicateKeyIgnore());
+                .onDuplicateKeyIgnore())
+                .flatMap(inserted -> inserted == 0
+                        ? Mono.just(inserted)
+                        : bumpClientUpdatedAt(List.of(clientId)).thenReturn(inserted));
     }
 
     public Mono<Integer> deleteByClientIdAndManagerId(ULong clientId, ULong managerId) {
         return Mono.from(this.dslContext
                 .deleteFrom(SECURITY_CLIENT_MANAGER)
-                .where(SECURITY_CLIENT_MANAGER
-                        .CLIENT_ID
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID
                         .eq(clientId)
-                        .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))));
+                        .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))))
+                .flatMap(deleted -> deleted == 0
+                        ? Mono.just(deleted)
+                        : bumpClientUpdatedAt(List.of(clientId)).thenReturn(deleted));
     }
 
     public Mono<Page<ULong>> getClientsOfManager(ULong managerId, Pageable pageable) {
 
         Mono<Integer> countMono = Mono.from(this.dslContext
-                        .selectCount()
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
+                .selectCount()
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
                 .map(Record1::value1);
 
         Mono<List<ULong>> listMono = Flux.from(this.dslContext
-                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))
-                        .limit(pageable.getPageSize())
-                        .offset(pageable.getOffset()))
+                .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))
+                .limit(pageable.getPageSize())
+                .offset(pageable.getOffset()))
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
                 .collectList();
 
@@ -75,12 +82,11 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
 
     public Mono<Boolean> isManagerForClient(ULong managerId, ULong clientId) {
         return Mono.from(this.dslContext
-                        .selectCount()
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER
-                                .MANAGER_ID
-                                .eq(managerId)
-                                .and(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))))
+                .selectCount()
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID
+                        .eq(managerId)
+                        .and(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))))
                 .map(r -> r.value1() > 0);
     }
 
@@ -94,9 +100,9 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
 
     public Mono<List<ULong>> getClientIdsOfManager(ULong managerId) {
         return Flux.from(this.dslContext
-                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
+                .select(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)))
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
                 .collectList();
     }
@@ -106,39 +112,89 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
             return Mono.just(List.of());
         }
         return Flux.from(this.dslContext
-                        .selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID)
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.in(managerIds)))
+                .selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.in(managerIds)))
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
                 .collectList();
     }
 
-    public Mono<Integer> migrateManagerAssignments(ULong fromManagerId, ULong toManagerId, ULong createdBy) {
+    public Mono<Integer> migrateManagerAssignments(ULong fromManagerId, ULong toManagerId, ULong createdBy,
+            boolean removeManager) {
 
-        return Mono.from(this.dslContext
-                .insertInto(SECURITY_CLIENT_MANAGER)
-                .columns(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID,
-                        SECURITY_CLIENT_MANAGER.CREATED_BY)
-                .select(this.dslContext
-                        .select(SECURITY_CLIENT_MANAGER.CLIENT_ID,
-                                org.jooq.impl.DSL.val(toManagerId),
-                                org.jooq.impl.DSL.val(createdBy))
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
-                .onDuplicateKeyIgnore())
-                .flatMap(inserted -> Mono.from(this.dslContext
-                        .deleteFrom(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
-                        .map(deleted -> inserted + deleted));
+        return Flux.from(this.dslContext
+                .selectDistinct(SECURITY_CLIENT_MANAGER.CLIENT_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                .map(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID))
+                .collectList()
+                .flatMap(affectedClientIds -> Mono.from(this.dslContext
+                        .insertInto(SECURITY_CLIENT_MANAGER)
+                        .columns(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID,
+                                SECURITY_CLIENT_MANAGER.CREATED_BY)
+                        .select(this.dslContext
+                                .select(SECURITY_CLIENT_MANAGER.CLIENT_ID,
+                                        DSL.val(toManagerId),
+                                        DSL.val(createdBy))
+                                .from(SECURITY_CLIENT_MANAGER)
+                                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                        .onDuplicateKeyIgnore())
+                        .flatMap(inserted -> {
+                            if (!removeManager)
+                                return bumpClientUpdatedAt(affectedClientIds).thenReturn(inserted);
+
+                            return Mono.from(this.dslContext
+                                    .deleteFrom(SECURITY_CLIENT_MANAGER)
+                                    .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(fromManagerId)))
+                                    .flatMap(deleted -> bumpClientUpdatedAt(affectedClientIds)
+                                            .thenReturn(inserted + deleted));
+                        }));
     }
 
     public Mono<ULong> getLatestManagerIdForClient(ULong clientId) {
         return Mono.from(this.dslContext
-                        .select(SECURITY_CLIENT_MANAGER.MANAGER_ID)
-                        .from(SECURITY_CLIENT_MANAGER)
-                        .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))
-                        .orderBy(SECURITY_CLIENT_MANAGER.CREATED_AT.desc())
-                        .limit(1))
+                .select(SECURITY_CLIENT_MANAGER.MANAGER_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))
+                .orderBy(SECURITY_CLIENT_MANAGER.CREATED_AT.desc())
+                .limit(1))
                 .map(r -> r.get(SECURITY_CLIENT_MANAGER.MANAGER_ID));
+    }
+
+    public Mono<Integer> deleteAllByClientId(ULong clientId) {
+        return Mono.from(this.dslContext
+                .deleteFrom(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId)))
+                .flatMap(deleted -> deleted == 0
+                        ? Mono.just(deleted)
+                        : bumpClientUpdatedAt(List.of(clientId)).thenReturn(deleted));
+    }
+
+    public Mono<Integer> addClientManagers(ULong clientId, Collection<ULong> managerIds, ULong createdBy) {
+        if (managerIds == null || managerIds.isEmpty())
+            return Mono.just(0);
+
+        var query = this.dslContext.insertInto(SECURITY_CLIENT_MANAGER)
+                .columns(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID,
+                        SECURITY_CLIENT_MANAGER.CREATED_BY);
+
+        for (ULong managerId : managerIds) {
+            query = query.values(clientId, managerId, createdBy);
+        }
+
+        return Mono.from(query.onDuplicateKeyIgnore())
+                .flatMap(inserted -> inserted == 0
+                        ? Mono.just(inserted)
+                        : bumpClientUpdatedAt(List.of(clientId)).thenReturn(inserted));
+    }
+
+    private Mono<Integer> bumpClientUpdatedAt(Collection<ULong> clientIds) {
+        if (clientIds == null || clientIds.isEmpty())
+            return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(SECURITY_CLIENT)
+                .set(SECURITY_CLIENT.UPDATED_AT, DSL.currentLocalDateTime())
+                .where(SECURITY_CLIENT.ID.in(clientIds)));
     }
 }

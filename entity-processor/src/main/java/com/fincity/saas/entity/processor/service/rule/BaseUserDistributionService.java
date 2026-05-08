@@ -5,7 +5,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
-import com.fincity.saas.commons.util.HashUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
@@ -34,53 +33,11 @@ public abstract class BaseUserDistributionService<
                 O extends BaseUserDistributionDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
-    private static final String USER_DISTRIBUTION = "userDistribution";
-    private static final String USER_DISTRIBUTION_MAPS = "userDistributionMaps";
-
     @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                this.evictRuleCache(entity),
-                (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted);
-    }
-
-    private String getUserDistributionCacheName(String appCode, String clientCode) {
-        return super.getCacheName(USER_DISTRIBUTION, appCode, clientCode);
-    }
-
-    private String getUserDistributionCacheKey(ProcessorAccess access) {
-        return super.getCacheKey(access.getAppCode(), access.getClientCode());
-    }
-
-    private String getUserDistributionMapCacheKey(ProcessorAccess access) {
-        return super.getCacheKey(access.getAppCode(), access.getClientCode(), USER_DISTRIBUTION_MAPS);
-    }
-
-    public String getUserCacheKey(ProcessorAccess access) {
-        return super.getCacheKey(
-                access.getAppCode(),
-                access.getClientCode(),
-                access.getUserId(),
-                access.getUser().getDesignationId(),
-                HashUtil.sha256Hash(access.getUser().getAuthorities()));
-    }
-
-    private Mono<Boolean> evictRuleCache(D entity) {
-        return Mono.zip(
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
-                        this.cacheService.evictAll(
-                                this.getUserDistributionCacheName(entity.getAppCode(), entity.getClientCode())),
-                        (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.evictRuleCache"));
-    }
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -160,36 +117,28 @@ public abstract class BaseUserDistributionService<
                     }
 
                     userIds.remove(null);
+                    userIds.retainAll(maps.allActiveUserIds());
                     return userIds;
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.getUsersByRuleId"));
     }
 
     private Mono<List<EntityProcessorUser>> getAllUserForClient(ProcessorAccess access) {
-        return super.cacheService.cacheValueOrGet(
-                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> super.securityService.getUsersForEntityProcessor(new UsersListRequest()
-                        .setClientCode(access.getClientCode())
-                        .setAppCode(access.getAppCode())),
-                this.getUserDistributionCacheKey(access));
+        return super.securityService.getUsersForEntityProcessor(new UsersListRequest()
+                .setClientCode(access.getClientCode())
+                .setAppCode(access.getAppCode()));
     }
 
     public Mono<EntityProcessorUser> getUserForClient(ProcessorAccess access) {
-        return super.cacheService.cacheValueOrGet(
-                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> super.securityService.getUserForEntityProcessor(
-                        access.getUserId().toBigInteger(),
-                        new UsersListRequest()
-                                .setClientCode(access.getClientCode())
-                                .setAppCode(access.getAppCode())),
-                this.getUserCacheKey(access));
+        return super.securityService.getUserForEntityProcessor(
+                access.getUserId().toBigInteger(),
+                new UsersListRequest()
+                        .setClientCode(access.getClientCode())
+                        .setAppCode(access.getAppCode()));
     }
 
     private Mono<UserMaps> getAllUserMappings(ProcessorAccess access) {
-        return super.cacheService.cacheValueOrGet(
-                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> this.getAllUserForClient(access).map(this::buildMaps),
-                this.getUserDistributionMapCacheKey(access));
+        return this.getAllUserForClient(access).map(this::buildMaps);
     }
 
     private UserMaps buildMaps(List<EntityProcessorUser> users) {
@@ -198,18 +147,21 @@ public abstract class BaseUserDistributionService<
         Map<ULong, Set<ULong>> profiles = new HashMap<>();
         Map<ULong, Set<ULong>> designations = new HashMap<>();
         Map<ULong, Set<ULong>> departments = new HashMap<>();
+        Set<ULong> allActiveUserIds = new HashSet<>();
 
-        if (users == null || users.isEmpty()) return new UserMaps(roles, profiles, designations, departments);
+        if (users == null || users.isEmpty())
+            return new UserMaps(roles, profiles, designations, departments, allActiveUserIds);
 
         for (EntityProcessorUser u : users) {
             ULong userId = ULong.valueOf(u.getId());
+            allActiveUserIds.add(userId);
             this.addToMap(roles, u.getRoleId(), userId);
             this.addToMap(designations, u.getDesignationId(), userId);
             this.addToMap(departments, u.getDepartmentId(), userId);
             this.addListToMap(profiles, u.getProfileIds(), userId);
         }
 
-        return new UserMaps(roles, profiles, designations, departments);
+        return new UserMaps(roles, profiles, designations, departments, allActiveUserIds);
     }
 
     private void addToMap(Map<ULong, Set<ULong>> map, Long key, ULong userId) {
@@ -223,20 +175,18 @@ public abstract class BaseUserDistributionService<
     }
 
     public Mono<List<D>> getUserDistributions(ProcessorAccess access, ULong ruleId) {
-        return super.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getUserDistributions(access, ruleId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), ruleId));
+        return this.dao.getUserDistributions(access, ruleId);
     }
 
     private record UserMaps(
             Map<ULong, Set<ULong>> roleMap,
             Map<ULong, Set<ULong>> profileMap,
             Map<ULong, Set<ULong>> desigMap,
-            Map<ULong, Set<ULong>> deptMap)
+            Map<ULong, Set<ULong>> deptMap,
+            Set<ULong> allActiveUserIds)
             implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 7644987612523651920L;
+        private static final long serialVersionUID = 7644987612523651921L;
     }
 }

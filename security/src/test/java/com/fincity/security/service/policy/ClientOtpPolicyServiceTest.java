@@ -51,6 +51,9 @@ class ClientOtpPolicyServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private AppService appService;
 
+	@Mock
+	private com.fincity.security.service.ClientActivityService clientActivityService;
+
 	private ClientOtpPolicyService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -77,6 +80,7 @@ class ClientOtpPolicyServiceTest extends AbstractServiceUnitTest {
 		service.setClientService(clientService);
 		service.setClientHierarchyService(clientHierarchyService);
 		service.setAppService(appService);
+		service.setClientActivityService(clientActivityService);
 
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
@@ -206,6 +210,8 @@ class ClientOtpPolicyServiceTest extends AbstractServiceUnitTest {
 						assertEquals((short) 4, result.getLength());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("client_otp_policy Create"), anyString());
 		}
 	}
 

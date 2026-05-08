@@ -18,6 +18,7 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.ClientDenormData;
 import com.fincity.saas.commons.security.model.Department;
 import com.fincity.saas.commons.security.model.Designation;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
@@ -271,6 +272,13 @@ public interface IFeignSecurityService {
     @GetMapping(value = "${security.feign.isUserClientManageClient:/api/security/clients/internal/isUserClientManageClient}")
     Mono<Boolean> isUserClientManageClient(@RequestParam String appCode, @RequestParam BigInteger userId,
             @RequestParam BigInteger userClientId, @RequestParam BigInteger targetClientId);
+
+    @PostMapping(value = "${security.feign.clientsDenormFull:/api/security/clients/internal/clients/denorm/full}")
+    Mono<Map<BigInteger, ClientDenormData>> getClientsDenormFull(@RequestBody List<BigInteger> clientIds);
+
+    @PostMapping(value = "${security.feign.clientsDenormDelta:/api/security/clients/internal/clients/denorm/delta}")
+    Mono<Map<BigInteger, ClientDenormData>> getClientsDenormDelta(
+            @RequestBody List<BigInteger> clientIds, @RequestParam("since") String since);
 
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
     Mono<Boolean> doesClientManageClient(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);

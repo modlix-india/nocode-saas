@@ -29,4 +29,9 @@ public class Version extends AbstractDTO<String, String> {
 
 	private Map<String, Object> object; // NOSONAR
 	private int versionNumber = 1;
+
+	// When non-null, this version record tracks a change to a specific
+	// sub-element (e.g. a component key or event function name) rather
+	// than the full document.
+	private String subElementKey;
 }

@@ -55,6 +55,9 @@ public class TicketCallService implements IRepositoryProvider {
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
+    private static final String DEFAULT_CALL_SOURCE = "Social Media";
+    private static final String DEFAULT_CALL_SUB_SOURCE = "Website Phone";
+
     public TicketCallService(
             TicketService ticketService,
             ProductCommService productCommService,
@@ -139,6 +142,7 @@ public class TicketCallService implements IRepositoryProvider {
                                         ticket.getId(),
                                         ticket.getProductId(),
                                         ticket.getAssignedUserId()))
+                                .flatMap(ticket -> ticketService.validateAssignedUser(access, ticket))
                                 .switchIfEmpty(Mono.defer(() -> this.createExotelTicket(access, from, productComm))),
                         (productComm, ticket) -> {
                             logger.info(
@@ -163,12 +167,11 @@ public class TicketCallService implements IRepositoryProvider {
 
         ULong productId = productComm.getProductId();
 
-        String source = productComm.getSource() != null ? productComm.getSource() : SourceUtil.DEFAULT_CALL_SOURCE;
-
-        String subSource =
-                productComm.getSubSource() != null ? productComm.getSubSource() : SourceUtil.DEFAULT_CALL_SUB_SOURCE;
-
         logger.info("Creating new ticket for productId: {}, from: {}", productId, from.getNumber());
+
+        String source = productComm.getSource() != null ? productComm.getSource() : DEFAULT_CALL_SOURCE;
+        String subSource =
+                productComm.getSubSource() != null ? productComm.getSubSource() : DEFAULT_CALL_SUB_SOURCE;
 
         return this.productService
                 .readById(access, productId)

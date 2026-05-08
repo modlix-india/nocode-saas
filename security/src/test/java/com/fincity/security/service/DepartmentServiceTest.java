@@ -53,6 +53,9 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ObjectMapper objectMapper;
 
+	@Mock
+	private ClientActivityService clientActivityService;
+
 	@InjectMocks
 	private DepartmentService service;
 
@@ -79,6 +82,11 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 		}
 
 		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(Department.class));
+
+		// Inject clientActivityService via reflection
+		var activityField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "clientActivityService");
+		activityField.setAccessible(true);
+		org.springframework.util.ReflectionUtils.setField(activityField, service, clientActivityService);
 
 		setupMessageResourceService(securityMessageResourceService);
 		setupCacheService(cacheService);
@@ -110,6 +118,8 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 						assertEquals("Engineering", result.getName());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("Department Create"), anyString());
 		}
 
 		@Test
@@ -127,6 +137,7 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Sales", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Department Create"), anyString());
 			verifyNoInteractions(clientService);
 		}
 
@@ -148,6 +159,7 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Marketing", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(targetClientId), eq("Department Create"), anyString());
 			verify(clientService).isUserClientManageClient(ca, targetClientId);
 		}
 
@@ -192,6 +204,7 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Department Update"), anyString());
 			verify(cacheService, atLeast(1)).evict("department", DEPT_ID);
 		}
 	}
@@ -216,6 +229,7 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Department Update"), anyString());
 			verify(cacheService, atLeast(1)).evict("department", DEPT_ID);
 		}
 	}
@@ -231,11 +245,15 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 		@Test
 		void delete_EvictsCache() {
 
+			Department existing = TestDataFactory.createDepartment(DEPT_ID, CLIENT_ID, "ToDelete");
+			when(dao.readById(DEPT_ID)).thenReturn(Mono.just(existing));
 			when(dao.delete(DEPT_ID)).thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.delete(DEPT_ID))
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(CLIENT_ID), eq("Department Delete"), anyString());
 		}
 	}
 

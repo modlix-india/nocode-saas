@@ -1,6 +1,7 @@
 package com.modlix.saas.worker.service;
 
 import com.modlix.saas.worker.dto.Task;
+import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
@@ -17,14 +18,17 @@ public class TaskExecutionService {
     private final TaskService taskService;
     private final SSLCertificateRenewalService sslCertificateRenewalService;
     private final TokenCleanupService tokenCleanupService;
+    private final PartnerDenormExecutionService partnerDenormExecutionService;
 
     private TaskExecutionService(
             TaskService taskService,
             SSLCertificateRenewalService sslCertificateRenewalService,
-            TokenCleanupService tokenCleanupService) {
+            TokenCleanupService tokenCleanupService,
+            PartnerDenormExecutionService partnerDenormExecutionService) {
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
+        this.partnerDenormExecutionService = partnerDenormExecutionService;
     }
 
     public boolean executeTask(String taskId, String taskData) {
@@ -65,6 +69,7 @@ public class TaskExecutionService {
         String result = switch (task.getTaskJobType()) {
             case SSL_RENEWAL -> sslCertificateRenewalService.execute(task);
             case TOKEN_CLEANUP -> tokenCleanupService.execute(task);
+            case PARTNER_DENORM_DELTA, PARTNER_DENORM_FULL -> partnerDenormExecutionService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);

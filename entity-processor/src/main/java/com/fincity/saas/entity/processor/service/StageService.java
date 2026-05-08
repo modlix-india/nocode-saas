@@ -27,6 +27,7 @@ import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -47,7 +48,6 @@ import reactor.util.function.Tuples;
 public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO>
         implements IRepositoryProvider {
 
-    private static final String STAGE_CACHE = "stage";
     private static final String NAMESPACE = "EntityProcessor.Stage";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -112,11 +112,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
-    protected String getCacheName() {
-        return STAGE_CACHE;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
@@ -165,13 +160,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(Stage entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evictAll("productTicketCRule"),
-                (stageEvicted, productTicketCRuleEvicted) -> stageEvicted && productTicketCRuleEvicted);
-    }
 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
@@ -185,26 +173,49 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<List<BaseValueResponse<Stage>>> getAllValuesInOrder(
             Platform platform, StageType stageType, ULong productTemplateId, ULong parentId) {
+        return this.getAllValuesInOrder(platform, stageType, productTemplateId, parentId, Boolean.FALSE);
+    }
+
+    public Mono<List<BaseValueResponse<Stage>>> getAllValuesInOrder(
+            Platform platform,
+            StageType stageType,
+            ULong productTemplateId,
+            ULong parentId,
+            Boolean includeDeleted) {
         return super.getAllValuesInOrder(platform, productTemplateId, parentId)
-                .map(stages -> {
-                    if (stageType == null) return stages;
-                    return stages.stream()
-                            .filter(stage -> stage.getParent().getStageType().equals(stageType))
-                            .toList();
-                })
+                .map(stages -> this.filterStages(stages, stageType, includeDeleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getAllValuesInOrder"));
     }
 
     public Mono<List<BaseValueResponse<Stage>>> getAllValues(
             Platform platform, StageType stageType, ULong productTemplateId, ULong parentId) {
+        return this.getAllValues(platform, stageType, productTemplateId, parentId, Boolean.FALSE);
+    }
+
+    public Mono<List<BaseValueResponse<Stage>>> getAllValues(
+            Platform platform,
+            StageType stageType,
+            ULong productTemplateId,
+            ULong parentId,
+            Boolean includeDeleted) {
         return super.getAllValues(platform, productTemplateId, parentId)
-                .map(stages -> {
-                    if (stageType == null) return stages;
-                    return stages.stream()
-                            .filter(stage -> stage.getParent().getStageType().equals(stageType))
-                            .toList();
-                })
+                .map(stages -> this.filterStages(stages, stageType, includeDeleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getAllValues"));
+    }
+
+    private List<BaseValueResponse<Stage>> filterStages(
+            List<BaseValueResponse<Stage>> stages, StageType stageType, Boolean includeDeleted) {
+        boolean include = Boolean.TRUE.equals(includeDeleted);
+        return stages.stream()
+                .filter(stage -> include || stage.getParent().isActive())
+                .filter(stage -> stageType == null
+                        || stageType.equals(stage.getParent().getStageType()))
+                .map(stage -> include
+                        ? stage
+                        : new BaseValueResponse<>(
+                                stage.getParent(),
+                                stage.getChild().stream().filter(Stage::isActive).toList()))
+                .toList();
     }
 
     public Mono<BaseValueResponse<Stage>> createRequest(StageRequest stageRequest) {
@@ -264,9 +275,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     parent.getPlatform(),
                                     productTemplateId.getULongId(),
                                     parent.getId()),
-                            valueEntry -> super.deleteMultiple(valueEntry.getValue()),
-                            (valueEntry, deleted) -> this.evictCache(parent)
-                                    .flatMap(evicted -> Mono.just(Tuples.of(parent, List.<Stage>of()))))
+                            valueEntry -> this.deleteMultiple(valueEntry.getValue()),
+                            (valueEntry, deleted) -> Mono.just(Tuples.of(parent, List.<Stage>of())))
                     .defaultIfEmpty(Tuples.of(parent, List.of()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.updateOrCreateChildren"));
 
@@ -319,11 +329,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .collectList()
                                     .flatMap(updatedChildren -> {
                                         if (!existingChildrenMap.isEmpty())
-                                            return super.deleteMultiple(existingChildrenMap.values())
-                                                    .flatMap(deleted -> this.evictCache(parent))
+                                            return this.deleteMultiple(existingChildrenMap.values())
                                                     .then(Mono.just(Tuples.of(parent, updatedChildren)));
-                                        return this.evictCache(parent)
-                                                .flatMap(evicted -> Mono.just(Tuples.of(parent, updatedChildren)));
+                                        return Mono.just(Tuples.of(parent, updatedChildren));
                                     });
                         })
                 .defaultIfEmpty(Tuples.of(parent, List.of()))
@@ -384,6 +392,38 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     return Mono.justOrEmpty(navigableMap.get(stage).first());
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStatus"));
+    }
+
+    public Mono<Stage> readInternal(ULong id) {
+        return this.dao.readInternal(id);
+    }
+
+    @Override
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, Stage entity) {
+
+        if (!this.canOutsideCreate() && access.isOutsideUser()) return super.throwOutsideUserAccess("delete");
+
+        return this.softDelete(access, entity);
+    }
+
+    @Override
+    public Mono<Integer> deleteMultiple(Collection<Stage> entities) {
+
+        if (entities == null || entities.isEmpty()) return Mono.just(0);
+
+        return super.hasAccess()
+                .flatMapMany(access -> Flux.fromIterable(entities).flatMap(entity -> this.softDelete(access, entity)))
+                .reduce(0, Integer::sum)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.deleteMultiple"));
+    }
+
+    private Mono<Integer> softDelete(ProcessorAccess access, Stage entity) {
+
+        if (entity == null || !entity.isActive()) return Mono.just(0);
+
+        entity.setActive(false);
+
+        return super.updateInternal(access, entity).map(e -> 1).defaultIfEmpty(0);
     }
 
     public Mono<ULong> getStage(ProcessorAccess access, ULong productTemplateId, ULong stageId) {

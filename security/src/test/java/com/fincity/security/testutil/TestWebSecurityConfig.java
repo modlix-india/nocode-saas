@@ -17,6 +17,7 @@ import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.function.server.HandlerStrategies;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -24,6 +25,8 @@ import org.springframework.web.reactive.result.method.annotation.ArgumentResolve
 import org.springframework.web.reactive.result.view.ViewResolver;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
+
+import org.jooq.types.ULong;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,6 +67,11 @@ public class TestWebSecurityConfig implements WebFluxConfigurer {
 		return builder -> builder
 				.serializationInclusion(JsonInclude.Include.NON_NULL)
 				.modules(new CommonsSerializationModule(), new SortSerializationModule());
+	}
+
+	@Override
+	public void addFormatters(FormatterRegistry registry) {
+		registry.addConverter(String.class, ULong.class, ULong::valueOf);
 	}
 
 	@Override

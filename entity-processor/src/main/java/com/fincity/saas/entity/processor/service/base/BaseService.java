@@ -7,7 +7,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
@@ -33,9 +32,6 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Getter
     protected ProcessorMessageResourceService msgService;
 
-    @Getter
-    protected CacheService cacheService;
-
     @Autowired
     protected void setMessageResourceService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
@@ -44,11 +40,6 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Autowired
     protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
-    }
-
-    @Autowired
-    protected void setCacheService(CacheService cacheService) {
-        this.cacheService = cacheService;
     }
 
     protected Mono<D> createInternal(ProcessorAccess access, D entity) {

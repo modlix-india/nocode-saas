@@ -107,4 +107,48 @@ class ClientManagerControllerTest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+
+    @Test
+    void syncManagers_returnsTrue() {
+
+        List<ULong> managerIds = List.of(ULong.valueOf(101), ULong.valueOf(102));
+        when(clientManagerService.syncManagers(eq(ULong.valueOf(20)), eq(managerIds)))
+                .thenReturn(Mono.just(Boolean.TRUE));
+
+        webTestClient.put()
+                .uri(BASE_PATH + "/20/managers")
+                .bodyValue(managerIds)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Boolean.class)
+                .isEqualTo(true);
+    }
+
+    @Test
+    void migrateClientManagersFrom_returnsMigratedCount() {
+
+        when(clientManagerService.migrateClientManagersFrom(eq(ULong.valueOf(101)), eq(ULong.valueOf(102)), eq(true)))
+                .thenReturn(Mono.just(5));
+
+        webTestClient.post()
+                .uri(BASE_PATH + "/migrateTo/102?fromUid=101&removeManager=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Integer.class)
+                .isEqualTo(5);
+    }
+
+    @Test
+    void migrateClientManagersFrom_preserveOriginal_returnsMigratedCount() {
+
+        when(clientManagerService.migrateClientManagersFrom(eq(ULong.valueOf(101)), eq(ULong.valueOf(102)), eq(false)))
+                .thenReturn(Mono.just(3));
+
+        webTestClient.post()
+                .uri(BASE_PATH + "/migrateTo/102?fromUid=101&removeManager=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Integer.class)
+                .isEqualTo(3);
+    }
 }

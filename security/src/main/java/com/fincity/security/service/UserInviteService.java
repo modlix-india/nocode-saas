@@ -55,10 +55,12 @@ public class UserInviteService
     private final ProfileService profileService;
     private final AppService appService;
     private final ClientHierarchyService clientHierarchyService;
+    private final ClientActivityService clientActivityService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
-            ProfileService profileService, AppService appService, ClientHierarchyService clientHierarchyService) {
+            ProfileService profileService, AppService appService, ClientHierarchyService clientHierarchyService,
+            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService) {
 
         this.msgService = msgService;
         this.clientService = clientService;
@@ -68,6 +70,7 @@ public class UserInviteService
         this.profileService = profileService;
         this.appService = appService;
         this.clientHierarchyService = clientHierarchyService;
+        this.clientActivityService = clientActivityService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
@@ -132,6 +135,9 @@ public class UserInviteService
                             invite.setInviteCode(
                                     UUID.randomUUID().toString().replace("-", ""));
                             return super.create(invite).flatMap(createdInvite -> {
+                                clientActivityService.createLog(createdInvite.getClientId(),
+                                        "User Invite Created",
+                                        "User invite created for " + createdInvite.getEmailId());
                                 Map<String, Object> result = new HashMap<>();
                                 result.put("userRequest", createdInvite);
                                 result.put("existingUser", Boolean.FALSE);
@@ -174,7 +180,9 @@ public class UserInviteService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.createWithInvitationInternal(request, userInvite),
+                ca -> this.createWithInvitationInternal(request, userInvite)
+                        .flatMap(createdUser -> this.deleteUserInvitation(userInvite.getInviteCode())
+                                .thenReturn(createdUser)),
 
                 (ca, createdUser) -> this
                         .getClientAuthenticationResponse(request, createdUser.getId(),
@@ -262,7 +270,10 @@ public class UserInviteService
 
                 (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(createdUser.getId(), CREATE,
-                            SecuritySoxLogObjectName.USER, "User created");
+                            SecuritySoxLogObjectName.USER, "User created: " + createdUser.getEmailId());
+                    this.clientActivityService.createLog(createdUser.getClientId(),
+                            "User Invite Accepted",
+                            "User invite accepted, user created: " + createdUser.getEmailId());
 
                     return this.userDao
                             .setPassword(createdUser.getId(), createdUser.getId(), password,

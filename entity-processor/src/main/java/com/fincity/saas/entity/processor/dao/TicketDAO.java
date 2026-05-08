@@ -58,6 +58,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     private ProductTicketRuRuleService productTicketRuRuleService;
     private TicketPeDuplicationRuleService ticketPeDuplicationRuleService;
 
+    private static final String LATEST_TASK_DUE_DATE = "latestTaskDueDate";
+
     protected TicketDAO() {
         super(
                 Ticket.class,
@@ -65,6 +67,28 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS.ID,
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
         this.productIdField = ENTITY_PROCESSOR_TICKETS.PRODUCT_ID;
+    }
+
+    @Override
+    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
+        if (LATEST_TASK_DUE_DATE.equals(fieldName)) {
+            // Correlated subquery for sorting/filtering by nearest task due date.
+            // MIN(future incomplete due dates), falling back to MAX(any incomplete due date).
+            // No .as() alias — JOOQ renders aliased fields as just the alias name in ORDER BY,
+            // which fails because this expression is not in the SELECT clause.
+            return DSL.coalesce(
+                    DSL.field(DSL.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                            .from(ENTITY_PROCESSOR_TASKS)
+                            .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                            .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
+                            .and(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))),
+                    DSL.field(DSL.select(DSL.max(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                            .from(ENTITY_PROCESSOR_TASKS)
+                            .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                            .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false))))
+            );
+        }
+        return super.getField(fieldName, selectJoinStep);
     }
 
     @Lazy
@@ -91,6 +115,15 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
                         .and(ENTITY_PROCESSOR_TICKETS.DNC.eq(dnc)))
                 .map(rec -> rec.into(this.pojoClass));
+    }
+
+    public Mono<Integer> updateDncByClientId(ULong clientId, Boolean dnc) {
+        return Mono.from(
+                this.dslContext.update(ENTITY_PROCESSOR_TICKETS)
+                        .set(ENTITY_PROCESSOR_TICKETS.DNC, dnc)
+                        .set(ENTITY_PROCESSOR_TICKETS.UPDATED_AT, ENTITY_PROCESSOR_TICKETS.UPDATED_AT)
+                        .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.ne(dnc)));
     }
 
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {
@@ -224,6 +257,38 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         }));
     }
 
+    public Flux<Ticket> readAllForBulkOp(
+            AbstractCondition condition,
+            String timezone,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        SelectJoinStep<Record> baseQuery = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+                dslContext.select(Arrays.asList(table.fields()))
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        Mono<SelectJoinStep<Record>> queryMono;
+
+        if (subQueryConditions != null && !subQueryConditions.isEmpty()) {
+            AbstractCondition activityCondition = subQueryConditions.get(SUBQUERY_ALIAS);
+            if (activityCondition != null && !activityCondition.isEmpty()) {
+                queryMono = this.buildActivitiesSubqueryTable(activityCondition)
+                        .map(subqueryTable -> (SelectJoinStep<Record>) baseQuery
+                                .join(subqueryTable)
+                                .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID))));
+            } else {
+                queryMono = Mono.just(baseQuery);
+            }
+        } else {
+            queryMono = Mono.just(baseQuery);
+        }
+
+        return queryMono.flatMapMany(query -> this.filter(condition, query, timezone)
+                .flatMapMany(jCondition -> Flux.from(query.where(jCondition.and(this.isActiveTrue())))
+                        .map(rec -> rec.into(this.pojoClass))));
+    }
+
     @SuppressWarnings("unchecked")
     public Mono<List<ULong>> readDistinctAssignedUserIds(
             AbstractCondition condition,
@@ -330,17 +395,18 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         if (access.getUser() == null && access.getUserInherit() == null)
             return Mono.just(super.addAppCodeAndClientCode(condition, access));
 
-        return FlatMapUtil.flatMapMono(
-                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
-                        ruleCondition -> {
-                            AbstractCondition rawAccess = this.buildRawUserClientAccess(access);
-                            AbstractCondition combinedAccess = ComplexCondition.or(rawAccess, ruleCondition);
-                            AbstractCondition full = condition != null && !condition.isEmpty()
-                                    ? ComplexCondition.and(condition, combinedAccess)
-                                    : combinedAccess;
-                            return Mono.just(super.addAppCodeAndClientCode(full, access));
-                        })
-                .switchIfEmpty(super.processorAccessCondition(condition, access));
+        AbstractCondition rawAccess = this.buildRawUserClientAccess(access);
+
+        return this.productTicketRuRuleService
+                .getUserReadConditions(access)
+                .map(ruleCondition -> (AbstractCondition) ComplexCondition.or(rawAccess, ruleCondition))
+                .defaultIfEmpty(rawAccess)
+                .map(combinedAccess -> {
+                    AbstractCondition full = condition != null && !condition.isEmpty()
+                            ? ComplexCondition.and(condition, combinedAccess)
+                            : combinedAccess;
+                    return super.addAppCodeAndClientCode(full, access);
+                });
     }
 
     private AbstractCondition buildRawUserClientAccess(ProcessorAccess access) {
@@ -437,7 +503,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         ULong id = (ULong) rec.get("id");
                         if (id != null) {
                             rec.put("latestComment", comments.get(id));
-                            rec.put("latestTaskDueDate", dueDates.get(id));
+                            rec.put(LATEST_TASK_DUE_DATE, dueDates.get(id));
                         }
                     });
 

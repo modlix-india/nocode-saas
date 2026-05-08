@@ -7,11 +7,46 @@ set -euo pipefail
 # Usage: ./copydb.sh <env>
 #   env: dev | stage | prod
 #
-# This script:
-#   1. SSHs into jumphost and runs mysqldump + gzip on remote
-#   2. SCPs the zipped dump back to local
-#   3. Drops and recreates local databases, then imports
+# Credentials are loaded from ~/.copydb/variables.sh
 # =============================================================================
+
+VARIABLES_FILE="$HOME/.copydb/variables.sh"
+
+if [[ ! -f "$VARIABLES_FILE" ]]; then
+    echo "ERROR: Missing credentials file: $VARIABLES_FILE"
+    echo ""
+    echo "Please create it with the following content:"
+    echo ""
+    echo "  mkdir -p ~/.copydb && cat > ~/.copydb/variables.sh << 'EOF'"
+    echo '  #!/bin/bash'
+    echo '  REMOTE_USER="<remote_db_user>"'
+    echo '  REMOTE_PASS="<remote_db_password>"'
+    echo '  SSH_KEY="<path_to_ssh_key>"'
+    echo '  SSH_USER="<ssh_user>"'
+    echo '  SSH_HOST="<ssh_jumphost>"'
+    echo '  LOCAL_USER="<local_db_user>"'
+    echo '  LOCAL_PASS="<local_db_password>"'
+    echo "  EOF"
+    echo ""
+    echo "Then: chmod 600 ~/.copydb/variables.sh"
+    exit 1
+fi
+
+source "$VARIABLES_FILE"
+
+# Validate all required variables are set
+REQUIRED_VARS=(REMOTE_USER REMOTE_PASS SSH_KEY SSH_USER SSH_HOST LOCAL_USER LOCAL_PASS)
+MISSING=()
+for VAR in "${REQUIRED_VARS[@]}"; do
+    if [[ -z "${!VAR:-}" ]]; then
+        MISSING+=("$VAR")
+    fi
+done
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+    echo "ERROR: Missing variables in $VARIABLES_FILE: ${MISSING[*]}"
+    exit 1
+fi
 
 ENV="${1:-}"
 
@@ -21,20 +56,13 @@ if [[ -z "$ENV" ]] || [[ ! "$ENV" =~ ^(dev|stage|prod)$ ]]; then
 fi
 
 # --- SSH Config ---
-SSH_KEY="/Users/kirangrandhi/kiran/fincity/infra/jumphost.key"
-SSH_USER="ubuntu"
-SSH_HOST="jumphost"
 SSH_OPTS="-i ${SSH_KEY} -o StrictHostKeyChecking=no"
 
 # --- Remote DB Config ---
-REMOTE_USER="admin"
-REMOTE_PASS="dpPass-123"
 REMOTE_HOST="${ENV}-mysql.sub10150624021.modlixvcn.oraclevcn.com"
 REMOTE_PORT=3306
 
 # --- Local DB Config ---
-LOCAL_USER="root"
-LOCAL_PASS="Kiran@123"
 LOCAL_HOST="127.0.0.1"
 LOCAL_PORT=3306
 

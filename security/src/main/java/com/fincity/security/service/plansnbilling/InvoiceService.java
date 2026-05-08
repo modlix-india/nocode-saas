@@ -74,6 +74,16 @@ public class InvoiceService
         return SecuritySoxLogObjectName.INVOICE;
     }
 
+    @Override
+    protected String describeEntity(Invoice entity) {
+        return entity == null ? null : entity.getInvoiceNumber();
+    }
+
+    @Override
+    protected ULong resolveClientId(Invoice entity) {
+        return entity.getClientId();
+    }
+
     public Mono<LocalDateTime> getNextInvoiceDate(ULong planId, ULong cycleId, LocalDateTime startDate,
             LocalDateTime latestInvoiceData) {
         return FlatMapUtil.flatMapMono(

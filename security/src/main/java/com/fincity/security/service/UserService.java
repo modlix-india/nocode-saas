@@ -60,6 +60,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.TokenObject;
+import com.fincity.security.util.UserAgentInfo;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.ClientLevelType;
@@ -96,6 +97,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
+    private static final String USER_CREATED_PREFIX = "User created: ";
 
     private static final String CACHE_NAME_USER_ROLE = "userRoles";
     private static final String CACHE_NAME_USER = "user";
@@ -120,6 +122,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     private UserSubOrganizationService userSubOrgService;
     private ClientManagerService clientManagerService;
+    private ClientActivityService clientActivityService;
 
     @Value("${jwt.key}")
     private String tokenKey;
@@ -168,6 +171,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     @Autowired
     private void setClientManagerService(ClientManagerService clientManagerService) {
         this.clientManagerService = clientManagerService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setClientActivityService(ClientActivityService clientActivityService) {
+        this.clientActivityService = clientActivityService;
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -407,6 +416,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return SecuritySoxLogObjectName.USER;
     }
 
+    @Override
+    protected String describeEntity(User entity) {
+        if (entity == null)
+            return null;
+        return entity.getEmailId() != null && !entity.getEmailId().isBlank()
+                ? entity.getEmailId()
+                : entity.getUserName();
+    }
+
+    @Override
+    protected ULong resolveClientId(User entity) {
+        return entity.getClientId();
+    }
+
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
     @Override
     public Mono<User> create(User entity) {
@@ -448,8 +471,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 },
                 (ca, user, isValid, pass, passValid, isAvailable, userCheckValid) -> this.dao.create(user),
                 (ca, user, isValid, pass, passValid, isAvailable, userCheckValid, createdUser) -> {
+                    String userLabel = describeEntity(createdUser);
                     this.soxLogService.createLog(
-                            createdUser.getId(), CREATE, getSoxObjectName(), "User created");
+                            createdUser.getId(), CREATE, getSoxObjectName(), USER_CREATED_PREFIX + userLabel);
+                    this.clientActivityService.createLog(
+                            createdUser.getClientId(), "User Create", USER_CREATED_PREFIX + userLabel);
                     return this.setPasswordEntities(createdUser, pass);
                 },
                 (ca, user, isValid, pass, passValid, isAvailable, userCheckValid, createdUser, passSet) -> Mono
@@ -700,13 +726,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<User>> readByClientIds(List<ULong> clientIds, AbstractCondition condition,
             MultiValueMap<String, String> queryParams) {
+        AbstractCondition clientIdCondition = new FilterCondition()
+                .setField("clientId")
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(clientIds);
+        AbstractCondition finalCondition = condition == null
+                ? clientIdCondition
+                : ComplexCondition.and(clientIdCondition, condition);
         return FlatMapUtil.flatMapMono(
-                () -> this.readAllFilter(ComplexCondition.and(new FilterCondition()
-                        .setField("clientId")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(clientIds), condition))
-                        .collectList(),
-                users -> this.fillDetails(users, queryParams));
+                () -> this.readAllFilter(finalCondition).collectList(),
+                users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
@@ -719,6 +748,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         return super.readPageFilter(pageable, condition);
 
                     ULong ownClientId = ULong.valueOf(ca.getUser().getClientId());
+                    boolean hasClientManage = SecurityContextUtil.hasAuthority(
+                            CLIENT_MANAGE_ROLE, ca.getAuthorities());
                     return this.userSubOrgService.getCurrentUserSubOrg()
                             .collectList()
                             .flatMap(subOrgIds -> this.clientManagerService
@@ -727,14 +758,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                             .filter(id -> !id.equals(ownClientId))
                                             .toList())
                                     .map(managedClientIds -> buildVisibilityCondition(
-                                            subOrgIds, managedClientIds, condition)))
+                                            ownClientId, hasClientManage, subOrgIds, managedClientIds,
+                                            condition)))
                             .flatMap(merged -> super.readPageFilter(pageable, merged));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.readPageFilter"));
     }
 
-    private AbstractCondition buildVisibilityCondition(List<ULong> subOrgIds,
-            List<ULong> managedClientIds, AbstractCondition condition) {
+    private static final String CLIENT_MANAGE_ROLE = "Authorities.ROLE_Client_MANAGE";
+
+    private AbstractCondition buildVisibilityCondition(ULong ownClientId, boolean hasClientManage,
+            List<ULong> subOrgIds, List<ULong> managedClientIds, AbstractCondition condition) {
 
         AbstractCondition subOrgCond = new FilterCondition()
                 .setField("id")
@@ -742,7 +776,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .setMultiValue(subOrgIds);
 
         AbstractCondition visibleCond;
-        if (managedClientIds == null || managedClientIds.isEmpty()) {
+
+        if (hasClientManage) {
+            AbstractCondition ownClientCond = new FilterCondition()
+                    .setField("clientId")
+                    .setOperator(FilterConditionOperator.EQUALS)
+                    .setValue(ownClientId);
+
+            if (managedClientIds == null || managedClientIds.isEmpty()) {
+                visibleCond = ComplexCondition.or(ownClientCond, subOrgCond);
+            } else {
+                AbstractCondition managedClientCond = new FilterCondition()
+                        .setField("clientId")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(managedClientIds);
+                visibleCond = ComplexCondition.or(ownClientCond, subOrgCond, managedClientCond);
+            }
+        } else if (managedClientIds == null || managedClientIds.isEmpty()) {
             visibleCond = subOrgCond;
         } else {
             AbstractCondition managedClientCond = new FilterCondition()
@@ -969,13 +1019,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .isUserClientManageClient(ca, user.getClientId())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
                 (ca, user, isManaged) -> this.<Boolean>checkSubOrgAndRun(ca, user.getClientId(), userId,
-                        this.dao.removeRoleForUser(userId, roleId)
+                        this.roleService.read(roleId).flatMap(role -> this.dao.removeRoleForUser(userId, roleId)
                                 .map(val -> {
                                     boolean removed = val > 0;
                                     if (removed)
-                                        super.unAssignLog(userId, UNASSIGNED_ROLE);
+                                        super.unAssignLog(userId, user.getClientId(),
+                                                UNASSIGNED_ROLE + ": " + role.getName());
                                     return removed;
-                                })),
+                                }))),
                 (ca, user, isManaged, removed) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
@@ -1003,12 +1054,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             .flatMap(BooleanUtil::safeValueOfWithEmpty),
                     (ca, user, sysOrManaged, roleApplicable) -> this.<Boolean>checkSubOrgAndRun(
                             ca, user.getClientId(), userId,
-                            this.dao.addRoleToUser(userId, roleId)
+                            this.roleService.read(roleId).flatMap(role -> this.dao.addRoleToUser(userId, roleId)
                                     .map(e -> {
                                         if (Boolean.TRUE.equals(e))
-                                            super.assignLog(userId, ASSIGNED_ROLE + roleId);
+                                            super.assignLog(userId, user.getClientId(),
+                                                    ASSIGNED_ROLE + role.getName());
                                         return e;
-                                    })),
+                                    }))),
                     (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this
                             .evictCache(userId, user.getClientId()).<Boolean>map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
@@ -1031,7 +1083,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .filter(BooleanUtil::safeValueOf),
                 (ca, user, sysManaged, profileAccess) -> this.<Boolean>checkSubOrgAndRun(
                         ca, user.getClientId(), userId,
-                        this.dao.addProfileToUser(userId, profileId).map(e -> e != 0)),
+                        this.profileService.readInternal(profileId)
+                                .flatMap(profile -> this.dao.addProfileToUser(userId, profileId)
+                                        .map(e -> e != 0)
+                                        .doOnNext(assigned -> {
+                                            if (Boolean.TRUE.equals(assigned))
+                                                clientActivityService.createLog(user.getClientId(),
+                                                        "Profile Assign",
+                                                        "Profile '" + profile.getName()
+                                                                + "' assigned to user: " + describeEntity(user));
+                                        }))),
                 (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
@@ -1051,7 +1112,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .filter(BooleanUtil::safeValueOf),
                 (ca, user, sysManaged) -> this.<Boolean>checkSubOrgAndRun(
                         ca, user.getClientId(), userId,
-                        this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0)),
+                        this.profileService.readInternal(profileId)
+                                .flatMap(profile -> this.dao.removeProfileForUser(userId, profileId)
+                                        .map(e -> e != 0)
+                                        .doOnNext(removed -> {
+                                            if (Boolean.TRUE.equals(removed))
+                                                clientActivityService.createLog(user.getClientId(),
+                                                        "Profile Unassign",
+                                                        "Profile '" + profile.getName()
+                                                                + "' removed from user: " + describeEntity(user));
+                                        }))),
                 (ca, user, sysManaged, profileRemoved) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
@@ -1322,11 +1392,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                 () -> this.setPassword(user.getId(), currentUserId, newPassword, passType), passSet -> {
+                    String userLabel = describeEntity(user);
                     this.soxLogService.createLog(
                             user.getId(),
                             SecuritySoxLogActionName.OTHER,
                             SecuritySoxLogObjectName.USER,
-                            StringFormatter.format("$ updated", passType));
+                            StringFormatter.format("$ updated for $", passType, userLabel));
+                    this.clientActivityService.createLog(
+                            user.getClientId(), "User Password Changed",
+                            StringFormatter.format("$ updated for $", passType, userLabel));
 
                     return ecService.createEvent(new EventQueObject()
                             .setAppCode(ca.getUrlAppCode())
@@ -1421,8 +1495,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         null),
                 (userExists, userCheckValid) -> this.dao.create(user),
                 (userExists, userCheckValid, createdUser) -> {
+                    String userLabel = describeEntity(createdUser);
                     this.soxLogService.createLog(
-                            createdUser.getId(), CREATE, getSoxObjectName(), "User created");
+                            createdUser.getId(), CREATE, getSoxObjectName(), USER_CREATED_PREFIX + userLabel);
+                    this.clientActivityService.createLog(
+                            createdUser.getClientId(), "User Create", USER_CREATED_PREFIX + userLabel);
 
                     return this.setPassword(createdUser.getId(), createdUser.getId(), password, passwordType);
                 },
@@ -1653,6 +1730,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         InetSocketAddress inetAddress = httpRequest.getRemoteAddress();
         final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+        UserAgentInfo ua = UserAgentInfo.from(httpRequest);
 
         Tuple2<String, LocalDateTime> token = JWTUtil.generateToken(JWTGenerateTokenParameters.builder()
                 .userId(user.getId().toBigInteger())
@@ -1673,7 +1751,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 ? token.getT1()
                                 : token.getT1().substring(token.getT1().length() - 50))
                 .setExpiresAt(token.getT2())
-                .setIpAddress(hostAddress));
+                .setIpAddress(hostAddress)
+                .setUserAgent(ua.raw())
+                .setDeviceType(ua.deviceType())
+                .setOs(ua.os())
+                .setBrowser(ua.browser()));
     }
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {

@@ -27,12 +27,10 @@ import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -40,7 +38,6 @@ import reactor.util.context.Context;
 public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO>
         implements IRepositoryProvider {
 
-    private static final String TASK_CACHE = "task";
     private static final String NAMESPACE = "EntityProcessor.Task";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -108,11 +105,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 Schema.ofRef(taskSchemaRef),
                 gson,
                 self::setTaskCancelled));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return TASK_CACHE;
     }
 
     @Override
@@ -297,18 +289,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                     statusName);
 
         return Mono.just(task).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkTaskStatus"));
-    }
-
-    public Mono<Boolean> evictCachesForTicket(ULong ticketId) {
-        return this.dao.readAllByTicketId(ticketId)
-                .collectList()
-                .flatMap(tasks -> this.evictCaches(Flux.fromIterable(tasks)));
-    }
-
-    public Mono<Boolean> evictCachesForOwner(ULong ownerId) {
-        return this.dao.readAllByOwnerId(ownerId)
-                .collectList()
-                .flatMap(tasks -> this.evictCaches(Flux.fromIterable(tasks)));
     }
 
     @Override

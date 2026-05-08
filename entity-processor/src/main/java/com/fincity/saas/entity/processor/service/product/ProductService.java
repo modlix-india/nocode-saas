@@ -42,7 +42,6 @@ import reactor.util.context.Context;
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_CACHE = "product";
     private static final String NAMESPACE = "EntityProcessor.Product";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -115,11 +114,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 gson,
                 (appCode, clientCode, productIds) -> self.getAllProducts(
                         ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), productIds)));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_CACHE;
     }
 
     @Override

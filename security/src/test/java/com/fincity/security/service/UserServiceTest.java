@@ -101,6 +101,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ClientManagerService clientManagerService;
 
+	@Mock
+	private ClientActivityService clientActivityService;
+
 	private ObjectMapper objectMapper = new ObjectMapper();
 
 	private UserService service;
@@ -171,6 +174,19 @@ class UserServiceTest extends AbstractServiceUnitTest {
 	private void injectLazyDependencies() {
 		setField(service, "userSubOrgService", userSubOrgService);
 		setField(service, "clientManagerService", clientManagerService);
+		setField(service, "clientActivityService", clientActivityService);
+
+		// Also inject clientActivityService into AbstractSecurityUpdatableDataService parent
+		var parentActivityField = org.springframework.util.ReflectionUtils.findField(
+				com.fincity.security.service.AbstractSecurityUpdatableDataService.class, "clientActivityService");
+		if (parentActivityField != null) {
+			parentActivityField.setAccessible(true);
+			try {
+				parentActivityField.set(service, clientActivityService);
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to inject clientActivityService into parent", e);
+			}
+		}
 	}
 
 	private void setField(Object target, String fieldName, Object value) {
@@ -722,6 +738,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			when(profileService.hasAccessToRoles(eq(BUS_CLIENT_ID), eq(Set.of(ROLE_ID))))
 					.thenReturn(Mono.just(true));
 
+			when(roleService.read(ROLE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createRoleV2(ROLE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestRole")));
+
 			when(dao.addRoleToUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(true));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -729,6 +748,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.assignRoleToUser(USER_ID, ROLE_ID))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Assign"), anyString());
 		}
 
 		@Test
@@ -749,6 +770,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			when(profileService.hasAccessToRoles(eq(BUS_CLIENT_ID), eq(Set.of(ROLE_ID))))
 					.thenReturn(Mono.just(true));
 
+			when(roleService.read(ROLE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createRoleV2(ROLE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestRole")));
+
 			when(dao.addRoleToUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(true));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -756,6 +780,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.assignRoleToUser(USER_ID, ROLE_ID))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Assign"), anyString());
 		}
 
 		@Test
@@ -816,6 +842,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
 
+			when(roleService.read(ROLE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createRoleV2(ROLE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestRole")));
+
 			when(dao.removeRoleForUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(1));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -823,6 +852,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.removeRoleFromUser(USER_ID, ROLE_ID))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Unassign"), anyString());
 		}
 
 		@Test
@@ -838,6 +869,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
 					.thenReturn(Mono.just(true));
 
+			when(roleService.read(ROLE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createRoleV2(ROLE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestRole")));
+
 			when(dao.removeRoleForUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(1));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -845,6 +879,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.removeRoleFromUser(USER_ID, ROLE_ID))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Unassign"), anyString());
 		}
 
 		@Test
@@ -888,6 +924,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(profileService.hasAccessToProfiles(eq(BUS_CLIENT_ID), eq(Set.of(PROFILE_ID))))
 					.thenReturn(Mono.just(true));
+
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createProfile(PROFILE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestProfile")));
 
 			when(dao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
 
@@ -957,6 +996,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
 					.thenReturn(Mono.just(true));
+
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createProfile(PROFILE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestProfile")));
 
 			when(dao.removeProfileForUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
 
@@ -1619,6 +1661,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.updatePassword(ULong.valueOf(10), reqPassword))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Password Changed"), anyString());
 		}
 
 		@Test
@@ -1653,6 +1697,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.updatePassword(reqPassword))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("User Password Changed"), anyString());
 		}
 	}
 
@@ -1904,6 +1950,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.create(entity))
 					.assertNext(user -> assertEquals("newuser", user.getUserName()))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Create"), anyString());
 		}
 
 		@Test
@@ -1963,6 +2011,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.create(entity))
 					.assertNext(user -> assertNotNull(user))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("User Create"), anyString());
 		}
 	}
 
@@ -2481,6 +2531,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.updatePassword(USER_ID, reqPassword))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Password Changed"), anyString());
 		}
 
 		@Test
@@ -2512,6 +2564,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.updatePassword(USER_ID, reqPassword))
 					.assertNext(result -> assertTrue(result))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Password Changed"), anyString());
 		}
 
 		@Test
@@ -2631,6 +2685,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 					appId, appClientId, urlClientId, client, user, AuthenticationPasswordType.PASSWORD))
 					.assertNext(createdUser -> assertEquals(USER_ID, createdUser.getId()))
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("User Create"), anyString());
 		}
 	}
 
@@ -3151,6 +3207,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
 
+			when(roleService.read(ROLE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createRoleV2(ROLE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestRole")));
+
 			when(dao.removeRoleForUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(0));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -3210,6 +3269,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(profileService.hasAccessToProfiles(eq(BUS_CLIENT_ID), eq(Set.of(PROFILE_ID))))
 					.thenReturn(Mono.just(true));
+
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(
+					TestDataFactory.createProfile(PROFILE_ID, BUS_CLIENT_ID, ULong.valueOf(100), "TestProfile")));
 
 			when(dao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(0));
 

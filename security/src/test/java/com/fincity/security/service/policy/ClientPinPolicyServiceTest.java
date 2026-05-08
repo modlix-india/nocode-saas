@@ -57,6 +57,9 @@ class ClientPinPolicyServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private AppService appService;
 
+	@Mock
+	private com.fincity.security.service.ClientActivityService clientActivityService;
+
 	private ClientPinPolicyService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -83,6 +86,7 @@ class ClientPinPolicyServiceTest extends AbstractServiceUnitTest {
 		service.setClientService(clientService);
 		service.setClientHierarchyService(clientHierarchyService);
 		service.setAppService(appService);
+		service.setClientActivityService(clientActivityService);
 
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
@@ -310,6 +314,8 @@ class ClientPinPolicyServiceTest extends AbstractServiceUnitTest {
 						assertEquals((short) 6, result.getLength());
 					})
 					.verifyComplete();
+
+			verify(clientActivityService, atLeastOnce()).createLog(eq(SYSTEM_CLIENT_ID), eq("client_pin_policy Create"), anyString());
 		}
 
 		@Test
@@ -342,6 +348,7 @@ class ClientPinPolicyServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertNotNull(result))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("client_pin_policy Update"), anyString());
 			verify(cacheService).evict(eq("clientPinPolicy"), eq(BUS_CLIENT_ID + ":" + APP_ID));
 		}
 
@@ -369,6 +376,7 @@ class ClientPinPolicyServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
 
+			verify(clientActivityService, atLeastOnce()).createLog(eq(BUS_CLIENT_ID), eq("client_pin_policy Delete"), anyString());
 			verify(cacheService).evict(eq("clientPinPolicy"), eq(BUS_CLIENT_ID + ":" + APP_ID));
 		}
 	}

@@ -41,7 +41,6 @@ public class ProductTemplateService
         extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_TEMPLATE = "productTemplate";
     private static final String NAMESPACE = "EntityProcessor.ProductTemplate";
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -91,11 +90,6 @@ public class ProductTemplateService
                 Schema.ofRef(dtoSchemaRef),
                 gson,
                 self::attachEntity));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_TEMPLATE;
     }
 
     @Override

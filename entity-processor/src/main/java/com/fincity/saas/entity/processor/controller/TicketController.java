@@ -24,6 +24,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketBulkReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
@@ -101,4 +102,12 @@ public class TicketController
         return this.service.readTicketUsers(query, timezone).map(ResponseEntity::ok);
     }
 
+    @PatchMapping("/bulk-reassign")
+    public Mono<ResponseEntity<Integer>> bulkReassign(
+            @RequestBody TicketBulkReassignRequest request, ServerHttpRequest serverRequest) {
+        String timezone = this.extractTimezone(serverRequest);
+        return this.service
+                .bulkReassignTickets(request.getQuery(), request.getUserIds(), request.getComment(), timezone)
+                .map(ResponseEntity::ok);
+    }
 }

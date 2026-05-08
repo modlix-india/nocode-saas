@@ -168,6 +168,12 @@ public class AuthenticationController {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
     }
 
+    @GetMapping(value = "/securityContextAuthentication", produces = { "application/json" })
+    public Mono<ResponseEntity<ContextAuthentication>> contextExternalAuthentication() {
+
+        return this.contextAuthentication();
+    }
+
     @PostMapping("user/access")
     public Mono<ResponseEntity<UserAccess>> getUserAccess(@RequestBody UserAppAccessRequest request,
             ServerHttpRequest httpRequest) {

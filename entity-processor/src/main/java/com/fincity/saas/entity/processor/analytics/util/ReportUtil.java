@@ -71,6 +71,8 @@ public class ReportUtil {
 
         requiredValueList = resolveRequiredValuesIfMissing(requiredValueList, perDateCountList, false);
 
+        if (requiredValueList.isEmpty()) return Flux.empty();
+
         Set<String> groupedValues = options.includeZero()
                 ? perDateCountList.stream().map(PerDateCount::getGroupedValue).collect(Collectors.toSet())
                 : Set.of();

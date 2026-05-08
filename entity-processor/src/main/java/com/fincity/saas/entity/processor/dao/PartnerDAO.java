@@ -67,4 +67,5 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                         .map(rec -> rec.into(this.pojoClass))
                         .collectList());
     }
+
 }

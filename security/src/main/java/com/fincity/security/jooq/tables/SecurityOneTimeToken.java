@@ -84,10 +84,52 @@ public class SecurityOneTimeToken extends TableImpl<SecurityOneTimeTokenRecord> 
     public final TableField<SecurityOneTimeTokenRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(50).nullable(false), this, "User IP from where he logged in");
 
     /**
+     * The column <code>security.security_one_time_token.USER_AGENT</code>. Raw
+     * User-Agent header captured at mint time
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> USER_AGENT = createField(DSL.name("USER_AGENT"), SQLDataType.VARCHAR(512), this, "Raw User-Agent header captured at mint time");
+
+    /**
+     * The column <code>security.security_one_time_token.DEVICE_TYPE</code>.
+     * Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> DEVICE_TYPE = createField(DSL.name("DEVICE_TYPE"), SQLDataType.VARCHAR(32), this, "Parsed device class: MOBILE/TABLET/DESKTOP/BOT/UNKNOWN");
+
+    /**
+     * The column <code>security.security_one_time_token.OS</code>. Parsed
+     * operating system from User-Agent
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> OS = createField(DSL.name("OS"), SQLDataType.VARCHAR(64), this, "Parsed operating system from User-Agent");
+
+    /**
+     * The column <code>security.security_one_time_token.BROWSER</code>. Parsed
+     * browser/client from User-Agent
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> BROWSER = createField(DSL.name("BROWSER"), SQLDataType.VARCHAR(64), this, "Parsed browser/client from User-Agent");
+
+    /**
      * The column <code>security.security_one_time_token.REMEMBER_ME</code>.
      * Flag to indicate if token should be permanent
      */
     public final TableField<SecurityOneTimeTokenRecord, Byte> REMEMBER_ME = createField(DSL.name("REMEMBER_ME"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to indicate if token should be permanent");
+
+    /**
+     * The column <code>security.security_one_time_token.AUTH_MODE</code>. How
+     * the user authenticated when minting: COOKIE or BEARER
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> AUTH_MODE = createField(DSL.name("AUTH_MODE"), SQLDataType.VARCHAR(16).nullable(false).defaultValue(DSL.inline("BEARER", SQLDataType.VARCHAR)), this, "How the user authenticated when minting: COOKIE or BEARER");
+
+    /**
+     * The column <code>security.security_one_time_token.ORIGIN_APP_CODE</code>.
+     * App where the token was minted
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> ORIGIN_APP_CODE = createField(DSL.name("ORIGIN_APP_CODE"), SQLDataType.VARCHAR(64), this, "App where the token was minted");
+
+    /**
+     * The column <code>security.security_one_time_token.TARGET_APP_CODE</code>.
+     * Intended consumer app; null for beacon-establishment tokens
+     */
+    public final TableField<SecurityOneTimeTokenRecord, String> TARGET_APP_CODE = createField(DSL.name("TARGET_APP_CODE"), SQLDataType.VARCHAR(64), this, "Intended consumer app; null for beacon-establishment tokens");
 
     /**
      * The column <code>security.security_one_time_token.CREATED_AT</code>. Time

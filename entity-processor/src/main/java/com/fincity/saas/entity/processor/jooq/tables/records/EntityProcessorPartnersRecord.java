@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -151,11 +152,147 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_NAME</code>.
+     */
+    public EntityProcessorPartnersRecord setClientName(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_NAME</code>.
+     */
+    public String getClientName() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_STATUS_CODE</code>.
+     */
+    public EntityProcessorPartnersRecord setClientStatusCode(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_STATUS_CODE</code>.
+     */
+    public String getClientStatusCode() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.ACTIVE_USERS</code>.
+     */
+    public EntityProcessorPartnersRecord setActiveUsers(UInteger value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.ACTIVE_USERS</code>.
+     */
+    public UInteger getActiveUsers() {
+        return (UInteger) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.TOTAL_TICKETS</code>.
+     */
+    public EntityProcessorPartnersRecord setTotalTickets(ULong value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.TOTAL_TICKETS</code>.
+     */
+    public ULong getTotalTickets() {
+        return (ULong) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.USER_NAMES</code>.
+     */
+    public EntityProcessorPartnersRecord setUserNames(String value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.USER_NAMES</code>.
+     */
+    public String getUserNames() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.USER_PHONES</code>.
+     */
+    public EntityProcessorPartnersRecord setUserPhones(String value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.USER_PHONES</code>.
+     */
+    public String getUserPhones() {
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_MANAGER_IDS</code>.
+     */
+    public EntityProcessorPartnersRecord setClientManagerIds(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.CLIENT_MANAGER_IDS</code>.
+     */
+    public String getClientManagerIds() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_partners.DENORM_UPDATED_AT</code>.
+     */
+    public EntityProcessorPartnersRecord setDenormUpdatedAt(LocalDateTime value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_partners.DENORM_UPDATED_AT</code>.
+     */
+    public LocalDateTime getDenormUpdatedAt() {
+        return (LocalDateTime) get(14);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_partners.MANAGER_ID</code>.
      * Partner manager user Id.
      */
     public EntityProcessorPartnersRecord setManagerId(ULong value) {
-        set(7, value);
+        set(15, value);
         return this;
     }
 
@@ -165,7 +302,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Partner manager user Id.
      */
     public ULong getManagerId() {
-        return (ULong) get(7);
+        return (ULong) get(15);
     }
 
     /**
@@ -174,7 +311,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Partner verification status.
      */
     public EntityProcessorPartnersRecord setPartnerVerificationStatus(PartnerVerificationStatus value) {
-        set(8, value);
+        set(16, value);
         return this;
     }
 
@@ -184,7 +321,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Partner verification status.
      */
     public PartnerVerificationStatus getPartnerVerificationStatus() {
-        return (PartnerVerificationStatus) get(8);
+        return (PartnerVerificationStatus) get(16);
     }
 
     /**
@@ -192,7 +329,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Do Not Call flag for this partner.
      */
     public EntityProcessorPartnersRecord setDnc(Boolean value) {
-        set(9, value);
+        set(17, value);
         return this;
     }
 
@@ -201,7 +338,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Do Not Call flag for this partner.
      */
     public Boolean getDnc() {
-        return (Boolean) get(9);
+        return (Boolean) get(17);
     }
 
     /**
@@ -210,7 +347,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this partner.
      */
     public EntityProcessorPartnersRecord setTempActive(Boolean value) {
-        set(10, value);
+        set(18, value);
         return this;
     }
 
@@ -220,7 +357,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this partner.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(10);
+        return (Boolean) get(18);
     }
 
     /**
@@ -229,7 +366,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * to check if this partner is active or not.
      */
     public EntityProcessorPartnersRecord setIsActive(Boolean value) {
-        set(11, value);
+        set(19, value);
         return this;
     }
 
@@ -239,7 +376,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * to check if this partner is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(11);
+        return (Boolean) get(19);
     }
 
     /**
@@ -248,7 +385,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorPartnersRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(20, value);
         return this;
     }
 
@@ -258,7 +395,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(20);
     }
 
     /**
@@ -267,7 +404,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorPartnersRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(21, value);
         return this;
     }
 
@@ -277,7 +414,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(21);
     }
 
     /**
@@ -286,7 +423,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorPartnersRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(22, value);
         return this;
     }
 
@@ -296,7 +433,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(22);
     }
 
     /**
@@ -305,7 +442,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorPartnersRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(23, value);
         return this;
     }
 
@@ -315,7 +452,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -341,7 +478,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorPartnersRecord
      */
-    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Boolean dnc, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, String clientName, String clientStatusCode, UInteger activeUsers, ULong totalTickets, String userNames, String userPhones, String clientManagerIds, LocalDateTime denormUpdatedAt, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Boolean dnc, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
         setId(id);
@@ -351,6 +488,14 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
         setName(name);
         setDescription(description);
         setClientId(clientId);
+        setClientName(clientName);
+        setClientStatusCode(clientStatusCode);
+        setActiveUsers(activeUsers);
+        setTotalTickets(totalTickets);
+        setUserNames(userNames);
+        setUserPhones(userPhones);
+        setClientManagerIds(clientManagerIds);
+        setDenormUpdatedAt(denormUpdatedAt);
         setManagerId(managerId);
         setPartnerVerificationStatus(partnerVerificationStatus);
         setDnc(dnc);

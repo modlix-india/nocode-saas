@@ -45,15 +45,6 @@ public abstract class BaseWalkInFormService<
         return Boolean.FALSE;
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getProductId())),
-                (baseEvicted, pEvicted) -> baseEvicted && pEvicted);
-    }
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -153,10 +144,7 @@ public abstract class BaseWalkInFormService<
     }
 
     private Mono<D> getWalkInFormInternal(ProcessorAccess access, ULong productId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getByProductId(access, productId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId));
+        return this.dao.getByProductId(access, productId);
     }
 
     protected <T extends BaseWalkInFormService<R, D, O>> List<ReactiveFunction> getWalkInFormFunctions(

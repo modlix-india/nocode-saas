@@ -38,8 +38,6 @@ public class TicketPeDuplicationRuleService
                 EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO>
         implements IRepositoryProvider {
 
-    private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
-
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -74,11 +72,6 @@ public class TicketPeDuplicationRuleService
     }
 
     @Override
-    protected String getCacheName() {
-        return TICKET_PE_DUPLICATION_RULE_CACHE;
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
@@ -88,14 +81,6 @@ public class TicketPeDuplicationRuleService
         return EntitySeries.TICKET_PE_DUPLICATION_RULES;
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(TicketPeDuplicationRule entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evict(
-                        this.getCacheName(), super.getCacheKey("rule", entity.getAppCode(), entity.getClientCode())),
-                (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted);
-    }
 
     @Override
     protected Mono<TicketPeDuplicationRule> updatableEntity(TicketPeDuplicationRule entity) {
@@ -128,8 +113,7 @@ public class TicketPeDuplicationRuleService
 
     @Override
     protected Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
-        return super.create(access, entity)
-                .flatMap(created -> this.evictCache(created).map(evicted -> created));
+        return super.create(access, entity);
     }
 
     public Mono<AbstractCondition> getTicketCondition(ProcessorAccess access, PhoneNumber phoneNumber, Email email) {
@@ -149,10 +133,7 @@ public class TicketPeDuplicationRuleService
     }
 
     private Mono<TicketPeDuplicationRule> getRuleInternal(ProcessorAccess access) {
-        return super.cacheService.cacheEmptyValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.readByAppCodeAndClientCode(access),
-                super.getCacheKey("rule", access.getAppCode(), access.getClientCode()));
+        return this.dao.readByAppCodeAndClientCode(access);
     }
 
     @Override

@@ -35,7 +35,6 @@ public class ProductTemplateWalkInFormService
                 ProductTemplateWalkInFormDAO>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE = "productTemplateWalkInForm";
     private static final String NAMESPACE = "EntityProcessor.ProductTemplateWalkInForm";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -60,11 +59,6 @@ public class ProductTemplateWalkInFormService
         this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductTemplateWalkInForm.class, classSchema, gson));
         this.functions.addAll(
                 super.getWalkInFormFunctions(NAMESPACE, ProductTemplateWalkInForm.class, classSchema, gson, self));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE;
     }
 
     @Override

@@ -20,6 +20,7 @@ import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
@@ -53,8 +54,6 @@ public class ProductTicketCRuleService
                 ProductTicketCRuleDAO,
                 TicketCUserDistribution>
         implements IRepositoryProvider {
-
-    private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -107,11 +106,6 @@ public class ProductTicketCRuleService
     }
 
     @Override
-    protected String getCacheName() {
-        return PRODUCT_TICKET_C_RULE;
-    }
-
-    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TICKET_C_RULE;
     }
@@ -136,34 +130,6 @@ public class ProductTicketCRuleService
                 .thenReturn(cEntity));
     }
 
-    @Override
-    protected Mono<Boolean> evictCache(ProductTicketCRule entity) {
-
-        if (entity.getProductId() != null)
-            return Mono.zip(
-                    super.evictCache(entity),
-                    super.cacheService.evict(
-                            this.getCacheName(),
-                            super.getCacheKey(
-                                    entity.getAppCode(),
-                                    entity.getClientCode(),
-                                    BaseRuleDto.Fields.productId,
-                                    entity.getProductId(),
-                                    entity.getStageId())),
-                    (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
-
-        return Mono.zip(
-                super.evictCache(entity),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                BaseRuleDto.Fields.productTemplateId,
-                                entity.getProductTemplateId(),
-                                entity.getStageId())),
-                (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
-    }
 
     public Flux<ProductTicketCRule> createMultiple(ProductTicketCRule rule, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
@@ -199,10 +165,31 @@ public class ProductTicketCRuleService
 
         return super.productService
                 .readById(access, productId)
-                .flatMap(product -> product.isOverrideCTemplate()
-                        ? this.getRulesWithOrderWithTemplateOverride(access, product, stageId)
-                        : this.getRulesWithOrderWithTemplateCombine(access, product, stageId))
+                .flatMap(product -> {
+                    Mono<Map<Integer, ProductTicketCRule>> rulesMono;
+                    if (stageId == null) {
+                        rulesMono = product.isOverrideCTemplate()
+                                ? this.getRulesWithOrderWithTemplateOverride(access, product, null)
+                                : this.getRulesWithOrderWithTemplateCombine(access, product, null);
+                    } else {
+                        rulesMono = this.resolveParentStageId(stageId)
+                                .flatMap(resolvedStageId -> product.isOverrideCTemplate()
+                                        ? this.getRulesWithOrderWithTemplateOverride(access, product, resolvedStageId)
+                                        : this.getRulesWithOrderWithTemplateCombine(access, product, resolvedStageId));
+                    }
+                    return rulesMono;
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.getRulesWithOrder"));
+    }
+
+    /**
+     * If the given stageId is a child stage, resolve it to its parent stage ID.
+     * Creation rules are stored with parent stage IDs, but tickets are assigned to child stages.
+     */
+    private Mono<ULong> resolveParentStageId(ULong stageId) {
+        return this.stageService.readInternal(stageId)
+                .map(stage -> stage.isChild() ? stage.getParentLevel_0() : stageId)
+                .defaultIfEmpty(stageId);
     }
 
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateOverride(
@@ -221,8 +208,6 @@ public class ProductTicketCRuleService
 
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateCombine(
             ProcessorAccess access, Product product, ULong stageId) {
-
-        if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return Mono.zip(
                 this.getProductRules(access, product.getId(), stageId)
@@ -254,34 +239,26 @@ public class ProductTicketCRuleService
     }
 
     private Mono<List<ProductTicketCRule>> getProductRules(ProcessorAccess access, ULong productId, ULong stageId) {
-
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getRules(access, productId, null, stageId),
-                super.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), BaseRuleDto.Fields.productId, productId, stageId));
+        return this.dao.getRules(access, productId, null, stageId);
     }
 
     private Mono<List<ProductTicketCRule>> getProductTemplateRules(
             ProcessorAccess access, ULong productTemplateId, ULong stageId) {
-
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getRules(access, null, productTemplateId, stageId),
-                super.getCacheKey(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        BaseRuleDto.Fields.productTemplateId,
-                        productTemplateId,
-                        stageId));
+        return this.dao.getRules(access, null, productTemplateId, stageId);
     }
 
-    public Mono<ULong> getUserAssignment(
+    private static ProcessorAccess resolveRuleAccess(ProcessorAccess access, Product product) {
+        if (product.getClientCode() == null) return access;
+        return ProcessorAccess.of(access.getAppCode(), product.getClientCode(),
+                access.isHasAccessFlag(), access.getUser(), access.getUserInherit());
+    }
+
+    public Mono<RuleResult> getUserAssignment(
             ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
         return getUserAssignment(access, productId, stageId, tokenPrefix, userId, ticket, true);
     }
 
-    public Mono<ULong> getUserAssignment(
+    public Mono<RuleResult> getUserAssignment(
             ProcessorAccess access,
             ULong productId,
             ULong stageId,
@@ -289,25 +266,88 @@ public class ProductTicketCRuleService
             ULong userId,
             Ticket ticket,
             boolean isCreate) {
-        return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
-                    if (productRule.isEmpty()) return Mono.empty();
+
+        Map<String, Object> trace = ticket.getEvaluationTrace();
+        if (trace != null) {
+            trace.put("productId", productId != null ? productId.toString() : null);
+            trace.put("stageId", stageId != null ? stageId.toString() : null);
+            trace.put("isCreate", isCreate);
+            trace.put("inputUserId", userId != null ? userId.toString() : null);
+            trace.put("appCode", access.getAppCode());
+            trace.put("clientCode", access.getClientCode());
+            trace.put("isOutsideUser", access.isOutsideUser());
+        }
+
+        // Rules and user distributions belong to the product owner's client.
+        // For outside users (e.g. Channel Partners), access.getEffectiveClientCode() returns
+        // the CP's managed client code, but rules are stored under the product's clientCode.
+        // Resolve the product's clientCode and use it for all rule/distribution lookups.
+        return FlatMapUtil.flatMapMono(
+                () -> access.isOutsideUser()
+                        ? super.productService.readById(access, productId)
+                                .map(product -> resolveRuleAccess(access, product))
+                        : Mono.just(access),
+                ruleAccess -> this.getRulesWithOrder(ruleAccess, productId, stageId),
+                (ruleAccess, productRule) -> {
+
+                    if (trace != null) {
+                        trace.put("rulesFound", productRule.size());
+                        trace.put("ruleOrders", productRule.keySet().toString());
+                        trace.put("ruleAccessClientCode", ruleAccess.getClientCode());
+                    }
+
+                    if (productRule.isEmpty()) {
+                        if (trace != null) trace.put("outcome", "NO_RULES_FOUND");
+                        return Mono.empty();
+                    }
 
                     // During updates/reassignment, if only the default rule exists, return empty (don't change
                     // assignment)
-                    if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
+                    if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) {
+                        if (trace != null) trace.put("outcome", "ONLY_DEFAULT_RULE_DURING_UPDATE");
+                        return Mono.empty();
+                    }
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
-                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement()),
-                            super::updateInternalForOutsideUser,
+                                    ruleAccess, productRule, tokenPrefix, userId, ticket.toJsonElement(), trace),
+                            eRule -> {
+                                if (trace != null) {
+                                    trace.put("executedRuleId",
+                                            eRule.getId() != null ? eRule.getId().toString() : null);
+                                    trace.put("executedRuleAssignedUserId",
+                                            eRule.getLastAssignedUserId() != null
+                                                    ? eRule.getLastAssignedUserId().toString() : null);
+                                }
+                                return super.updateInternalForOutsideUser(eRule);
+                            },
                             (eRule, uRule) -> {
                                 ULong assignedUserId = uRule.getLastAssignedUserId();
-                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
+                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) {
+                                    if (trace != null)
+                                        trace.put("outcome", "RULE_MATCHED_BUT_NO_USER_ASSIGNED");
                                     return Mono.empty();
-                                return Mono.just(assignedUserId);
+                                }
+                                if (trace != null) trace.put("outcome", "RULE_ASSIGNED");
+                                return Mono.just(new RuleResult()
+                                        .setUserId(assignedUserId)
+                                        .setRuleId(uRule.getId())
+                                        .setRuleOrder(uRule.getOrder())
+                                        .setDistributionType(uRule.getUserDistributionType())
+                                        .setProductId(uRule.getProductId())
+                                        .setProductTemplateId(uRule.getProductTemplateId())
+                                        .setStageId(uRule.getStageId()));
                             });
                 })
-                .onErrorResume(e -> Mono.empty())
+                .onErrorResume(e -> {
+                    if (trace != null) {
+                        trace.put("outcome", "ERROR");
+                        trace.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+                    }
+                    logger.error("Error in getUserAssignment for productId={}, stageId={}: {}",
+                            productId, stageId, e.getMessage(), e);
+                    return Mono.empty();
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
 

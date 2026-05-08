@@ -106,6 +106,7 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/schemas/repositoryFind",
                 "/api/entity/processor/schemas/repositoryFilter",
                 "/api/entity/collector/entry/**",
-                "/api/entity/processor/collector/entry/**");
+                "/api/entity/processor/collector/entry/**",
+                "/api/entity/processor/partners/internal/**");
     }
 }

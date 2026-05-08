@@ -8,6 +8,7 @@ import org.jooq.types.UNumber;
 import org.springframework.http.HttpStatus;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
@@ -38,7 +39,24 @@ public class UNumberDeserializer<R extends UNumber> extends StdDeserializer<R> {
 	@Override
 	public R deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 
-		String str = p.getValueAsString();
+		String str;
+
+		if (p.currentToken() == JsonToken.START_OBJECT) {
+			str = null;
+			while (p.nextToken() != JsonToken.END_OBJECT) {
+				if ("id".equals(p.currentName())) {
+					p.nextToken();
+					str = p.getValueAsString();
+				} else {
+					p.nextToken();
+					p.skipChildren();
+				}
+			}
+		} else {
+			str = p.getValueAsString();
+		}
+
+		if (str == null) return null;
 
 		try {
 			return (R) this.method.invoke(null, str);

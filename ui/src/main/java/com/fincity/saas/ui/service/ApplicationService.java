@@ -44,6 +44,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
+
     @Autowired
     public ApplicationService(PageService pageService, UIFillerService fillerService,
             MobileAppService mobileAppService) {
@@ -256,8 +257,6 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                             ((Map<String, String>) sso).put("redirectURL", processForVariables(url));
                         }
                     }
-
-                    object.getProperties().put("sso3", processForVariables(object.getProperties().get("sso3")));
 
                     if (shellPage == null) {
 

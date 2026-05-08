@@ -34,6 +34,8 @@ public class Application extends AbstractOverridableDTO<Application> {
     private Map<String, Object> properties; // NOSONAR
 
     private String defaultLanguage;
+    
+    private String urlClientCode;
 
     public Application(Application app) {
 

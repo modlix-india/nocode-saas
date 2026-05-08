@@ -83,6 +83,7 @@ public class EngineService {
 
         if (eTag == null || eTag.isEmpty()) {
             return this.appService.read(appCode, appCode, clientCode)
+                .map(e -> {e.getObject().setUrlClientCode(clientCode); return e;})
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, clientCode,
                             e.getUniqueId()))
                     .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))

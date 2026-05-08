@@ -44,9 +44,6 @@ public class ProductTicketRuRuleService
                 TicketRuUserDistribution>
         implements IRepositoryProvider {
 
-    private static final String PRODUCT_TICKET_RU_RULE = "productTicketRuRule";
-    private static final String CONDITION_CACHE = "ruleConditionCache";
-
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
@@ -76,43 +73,12 @@ public class ProductTicketRuRuleService
     }
 
     @Override
-    protected String getCacheName() {
-        return PRODUCT_TICKET_RU_RULE;
-    }
-
-    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TICKET_RU_RULE;
     }
 
-    private String getConditionCacheName(String appCode, String clientCode) {
-        return super.getCacheName(CONDITION_CACHE, appCode, clientCode);
-    }
-
-    private Mono<Boolean> evictConditionCache(String appCode, String clientCode) {
-        return super.cacheService.evictAll(this.getConditionCacheName(appCode, clientCode));
-    }
-
-    @Override
-    protected Mono<Boolean> evictCache(ProductTicketRuRule entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                this.evictConditionCache(entity.getAppCode(), entity.getClientCode()),
-                (baseEvicted, conditionEvicted) -> baseEvicted && conditionEvicted);
-    }
-
-    @Override
-    public Mono<ProductTicketRuRule> create(ProductTicketRuRule entity) {
-        return super.create(entity)
-                .flatMap(created -> this.evictConditionCache(entity.getAppCode(), entity.getClientCode())
-                        .map(evicted -> created));
-    }
-
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
-        return super.cacheService.cacheEmptyValueOrGet(
-                this.getConditionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> this.getUserReadConditionInternal(access),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId()));
+        return this.getUserReadConditionInternal(access);
     }
 
     private Mono<AbstractCondition> getUserReadConditionInternal(ProcessorAccess access) {
