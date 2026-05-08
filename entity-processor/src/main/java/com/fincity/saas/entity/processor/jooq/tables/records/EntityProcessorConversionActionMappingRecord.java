@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping;
 
 import java.math.BigDecimal;
@@ -122,21 +122,21 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM</code>.
+     * <code>entity_processor.entity_processor_conversion_action_mapping.CAMPAIGN_PLATFORM</code>.
      * Ad platform this mapping fires to.
      */
-    public EntityProcessorConversionActionMappingRecord setPlatform(Platform value) {
+    public EntityProcessorConversionActionMappingRecord setCampaignPlatform(CampaignPlatform value) {
         set(5, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM</code>.
+     * <code>entity_processor.entity_processor_conversion_action_mapping.CAMPAIGN_PLATFORM</code>.
      * Ad platform this mapping fires to.
      */
-    public Platform getPlatform() {
-        return (Platform) get(5);
+    public CampaignPlatform getCampaignPlatform() {
+        return (CampaignPlatform) get(5);
     }
 
     /**
@@ -441,7 +441,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Create a detached, initialised
      * EntityProcessorConversionActionMappingRecord
      */
-    public EntityProcessorConversionActionMappingRecord(ULong id, String code, String appCode, String clientCode, ULong productTemplateId, Platform platform, ULong triggerStageId, ULong triggerStatusId, String eventName, String platformActionId, BigDecimal defaultValue, String currency, String valueFieldPath, String testEventCode, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorConversionActionMappingRecord(ULong id, String code, String appCode, String clientCode, ULong productTemplateId, CampaignPlatform campaignPlatform, ULong triggerStageId, ULong triggerStatusId, String eventName, String platformActionId, BigDecimal defaultValue, String currency, String valueFieldPath, String testEventCode, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorConversionActionMapping.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING);
 
         setId(id);
@@ -449,7 +449,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
         setAppCode(appCode);
         setClientCode(clientCode);
         setProductTemplateId(productTemplateId);
-        setPlatform(platform);
+        setCampaignPlatform(campaignPlatform);
         setTriggerStageId(triggerStageId);
         setTriggerStatusId(triggerStatusId);
         setEventName(eventName);

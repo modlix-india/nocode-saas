@@ -9,7 +9,7 @@ CREATE TABLE entity_processor_conversion_action_mapping
     `APP_CODE`            CHAR(64)        NOT NULL COMMENT 'AppCode this mapping belongs to.',
     `CLIENT_CODE`         CHAR(8)         NOT NULL COMMENT 'ClientCode this mapping belongs to.',
     `PRODUCT_TEMPLATE_ID` BIGINT UNSIGNED          DEFAULT NULL COMMENT 'NULL = applies to all product templates for this client; otherwise scoped to one template.',
-    `PLATFORM`            ENUM ('GOOGLE','FACEBOOK','LINKEDIN','X') NOT NULL COMMENT 'Ad platform this mapping fires to.',
+    `CAMPAIGN_PLATFORM`   ENUM ('GOOGLE','FACEBOOK','LINKEDIN','X') NOT NULL COMMENT 'Ad platform this mapping fires to.',
     `TRIGGER_STAGE_ID`    BIGINT UNSIGNED NOT NULL COMMENT 'Stage whose entry triggers this conversion event.',
     `TRIGGER_STATUS_ID`   BIGINT UNSIGNED          DEFAULT NULL COMMENT 'Sub-status (also a stage row) that further narrows the trigger. NULL = any status under TRIGGER_STAGE_ID.',
     `EVENT_NAME`          VARCHAR(64)     NOT NULL COMMENT 'Platform-specific event name (e.g. Meta: Lead/Contact/Schedule; Google: conversion action label).',
@@ -27,7 +27,7 @@ CREATE TABLE entity_processor_conversion_action_mapping
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_CONVERSION_ACTION_MAPPING_CODE` (`CODE`),
-    UNIQUE KEY `UK2_CAM_AC_CC_PT_PLATFORM_STAGE_STATUS` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_TEMPLATE_ID`, `PLATFORM`, `TRIGGER_STAGE_ID`, `TRIGGER_STATUS_ID`),
+    UNIQUE KEY `UK2_CAM_AC_CC_PT_PLATFORM_STAGE_STATUS` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_TEMPLATE_ID`, `CAMPAIGN_PLATFORM`, `TRIGGER_STAGE_ID`, `TRIGGER_STATUS_ID`),
     INDEX `IDX1_CAM_AC_CC` (`APP_CODE`, `CLIENT_CODE`),
     INDEX `IDX2_CAM_TRIGGER` (`APP_CODE`, `CLIENT_CODE`, `TRIGGER_STAGE_ID`, `TRIGGER_STATUS_ID`, `IS_ACTIVE`),
     CONSTRAINT `FK1_CAM_TRIGGER_STAGE_ID` FOREIGN KEY (`TRIGGER_STAGE_ID`)

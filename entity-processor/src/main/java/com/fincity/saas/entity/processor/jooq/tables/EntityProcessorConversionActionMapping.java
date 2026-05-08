@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -104,10 +104,10 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM</code>.
+     * <code>entity_processor.entity_processor_conversion_action_mapping.CAMPAIGN_PLATFORM</code>.
      * Ad platform this mapping fires to.
      */
-    public final TableField<EntityProcessorConversionActionMappingRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(8).nullable(false), this, "Ad platform this mapping fires to.", new EnumConverter<String, Platform>(String.class, Platform.class));
+    public final TableField<EntityProcessorConversionActionMappingRecord, CampaignPlatform> CAMPAIGN_PLATFORM = createField(DSL.name("CAMPAIGN_PLATFORM"), SQLDataType.VARCHAR(8).nullable(false), this, "Ad platform this mapping fires to.", new EnumConverter<String, CampaignPlatform>(String.class, CampaignPlatform.class));
 
     /**
      * The column
