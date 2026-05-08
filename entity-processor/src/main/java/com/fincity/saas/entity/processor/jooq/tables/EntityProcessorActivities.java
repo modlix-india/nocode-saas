@@ -179,8 +179,9 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
+     * Activity Action categories for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "Activity Action categories for this Activity.", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
 
     /**
      * The column
@@ -310,7 +311,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX3_ACTIVITIES_ACTION_STAGE_TICKET_DATE, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX4_ACTIVITIES_ACTION_STATUS_TICKET_DATE, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX5_ACTIVITIES_TICKET_COMMENT);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX3_ACTIVITIES_ACTION_STAGE_TICKET_DATE, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX4_ACTIVITIES_ACTION_STATUS_TICKET_DATE);
     }
 
     @Override

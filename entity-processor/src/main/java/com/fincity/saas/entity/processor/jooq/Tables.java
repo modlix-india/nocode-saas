@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetr
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCollectorLog;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
@@ -77,6 +78,12 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_collector_log</code>.
      */
     public static final EntityProcessorCollectorLog ENTITY_PROCESSOR_COLLECTOR_LOG = EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>.
+     */
+    public static final EntityProcessorConversionActionMapping ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING = EntityProcessorConversionActionMapping.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING;
 
     /**
      * The table <code>entity_processor.entity_processor_diagnostics</code>.

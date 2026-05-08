@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetr
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCollectorLog;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
@@ -91,6 +92,12 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_collector_log</code>.
      */
     public final EntityProcessorCollectorLog ENTITY_PROCESSOR_COLLECTOR_LOG = EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>.
+     */
+    public final EntityProcessorConversionActionMapping ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING = EntityProcessorConversionActionMapping.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING;
 
     /**
      * The table <code>entity_processor.entity_processor_diagnostics</code>.
@@ -235,6 +242,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
             EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG,
+            EntityProcessorConversionActionMapping.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING,
             EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS,
             EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,

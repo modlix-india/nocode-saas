@@ -255,6 +255,14 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.AD_DATA</code>. Ad
+     * attribution data (gclid, fbclid, wbraid, gbraid, _gcl_au, _fbp, _fbc,
+     * etc.) captured at lead intake
+     */
+    public final TableField<EntityProcessorTicketsRecord, Map> AD_DATA = createField(DSL.name("AD_DATA"), SQLDataType.JSON, this, "Ad attribution data (gclid, fbclid, wbraid, gbraid, _gcl_au, _fbp, _fbc, etc.) captured at lead intake", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
