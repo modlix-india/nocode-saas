@@ -1,6 +1,7 @@
 package com.modlix.saas.worker.service;
 
 import com.modlix.saas.worker.dto.Task;
+import com.modlix.saas.worker.service.execution.CampaignSyncExecutionService;
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
@@ -19,16 +20,19 @@ public class TaskExecutionService {
     private final SSLCertificateRenewalService sslCertificateRenewalService;
     private final TokenCleanupService tokenCleanupService;
     private final PartnerDenormExecutionService partnerDenormExecutionService;
+    private final CampaignSyncExecutionService campaignSyncExecutionService;
 
     private TaskExecutionService(
             TaskService taskService,
             SSLCertificateRenewalService sslCertificateRenewalService,
             TokenCleanupService tokenCleanupService,
-            PartnerDenormExecutionService partnerDenormExecutionService) {
+            PartnerDenormExecutionService partnerDenormExecutionService,
+            CampaignSyncExecutionService campaignSyncExecutionService) {
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
         this.partnerDenormExecutionService = partnerDenormExecutionService;
+        this.campaignSyncExecutionService = campaignSyncExecutionService;
     }
 
     public boolean executeTask(String taskId, String taskData) {
@@ -70,6 +74,7 @@ public class TaskExecutionService {
             case SSL_RENEWAL -> sslCertificateRenewalService.execute(task);
             case TOKEN_CLEANUP -> tokenCleanupService.execute(task);
             case PARTNER_DENORM_DELTA, PARTNER_DENORM_FULL -> partnerDenormExecutionService.execute(task);
+            case CAMPAIGN_METRICS_SYNC, CAMPAIGN_DISCOVERY_SYNC -> campaignSyncExecutionService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);

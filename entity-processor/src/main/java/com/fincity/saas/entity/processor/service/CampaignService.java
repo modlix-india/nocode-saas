@@ -109,6 +109,12 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.readByCampaignId"));
     }
 
+    /** Cross-tenant: every active campaign with a known platform. Worker-driven syncs only. */
+    public reactor.core.publisher.Flux<Campaign> findAllActive() {
+        return this.dao.findAllActive()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.findAllActive"));
+    }
+
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
         return Mono.just(new ListFunctionRepository(this.functions));

@@ -8,6 +8,9 @@ import com.fincity.saas.entity.processor.util.MetaEntityUtil;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.CampaignMetric;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAd;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
@@ -95,6 +98,86 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     public Mono<CampaignDetails> buildCampaignDetails(
             Campaign campaign, String adId, String accessToken) {
         return MetaEntityUtil.buildCampaignDetails(adId, accessToken);
+    }
+
+    @Override
+    public Flux<DiscoveredCampaign> fetchCampaigns(
+            String platformAccountId, String platformLoginId, String accessToken) {
+
+        String account = normalizeAdAccountId(platformAccountId);
+        String path = META_VERSION + account + "/campaigns";
+        Map<String, String> params =
+                Map.of("access_token", accessToken, "fields", "id,name,objective,status", "limit", "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> new DiscoveredCampaign()
+                            .setCampaignId(node.path("id").asText())
+                            .setCampaignName(node.path("name").asText())
+                            .setCampaignType(node.path("objective").asText(null))
+                            .setStatus(node.path("status").asText(null)));
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAdset> fetchAdsets(
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String accessToken) {
+
+        String path = META_VERSION + externalCampaignId + "/adsets";
+        Map<String, String> params =
+                Map.of("access_token", accessToken, "fields", "id,name,status,campaign_id", "limit", "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> new DiscoveredAdset()
+                            .setAdsetId(node.path("id").asText())
+                            .setAdsetName(node.path("name").asText())
+                            .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
+                            .setStatus(node.path("status").asText(null)));
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAd> fetchAds(
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String externalAdsetId,
+            String accessToken) {
+
+        String path = META_VERSION + externalAdsetId + "/ads";
+        Map<String, String> params = Map.of(
+                "access_token",
+                accessToken,
+                "fields",
+                "id,name,status,adset_id,campaign_id",
+                "limit",
+                "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> new DiscoveredAd()
+                            .setAdId(node.path("id").asText())
+                            .setAdName(node.path("name").asText(null))
+                            .setAdsetId(node.path("adset_id").asText(externalAdsetId))
+                            .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
+                            .setStatus(node.path("status").asText(null)));
+        });
+    }
+
+    /** Meta ad-account IDs must be queried with the {@code act_} prefix. */
+    private static String normalizeAdAccountId(String accountId) {
+        if (accountId == null) return null;
+        return accountId.startsWith("act_") ? accountId : "act_" + accountId;
     }
 
     @Override

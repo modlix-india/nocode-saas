@@ -51,6 +51,32 @@ public class MetricsSyncService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MetricsSyncService.syncCampaigns"));
     }
 
+    /**
+     * Cross-tenant: walks every active campaign across all clients and syncs
+     * metrics. Used by the worker-driven hourly job. Failures on individual
+     * campaigns are swallowed (logged via sync_state) so one bad tenant doesn't
+     * block the rest.
+     */
+    public Mono<java.util.Map<String, Object>> syncAllActive() {
+        java.util.concurrent.atomic.AtomicInteger touched = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger errors = new java.util.concurrent.atomic.AtomicInteger();
+
+        return campaignService
+                .findAllActive()
+                .flatMap(
+                        campaign -> syncSingleCampaign(campaign.getId(), campaign.getAppCode(), campaign.getClientCode())
+                                .doOnSuccess(v -> touched.incrementAndGet())
+                                .onErrorResume(e -> {
+                                    errors.incrementAndGet();
+                                    return Mono.empty();
+                                }),
+                        3)
+                .then(Mono.fromSupplier(() -> java.util.Map.<String, Object>of(
+                        "campaignsTouched", touched.get(),
+                        "errors", errors.get())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MetricsSyncService.syncAllActive"));
+    }
+
     private Mono<Void> syncSingleCampaign(ULong campaignId, String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
                 () -> campaignService.read(campaignId),

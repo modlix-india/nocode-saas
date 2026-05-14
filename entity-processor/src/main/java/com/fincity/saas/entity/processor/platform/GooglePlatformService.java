@@ -6,6 +6,9 @@ import com.fincity.saas.entity.processor.util.GoogleEntityUtil;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.CampaignMetric;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAd;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
@@ -102,6 +105,82 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 null,
                 adId,
                 accessToken);
+    }
+
+    @Override
+    public Flux<DiscoveredCampaign> fetchCampaigns(
+            String platformAccountId, String platformLoginId, String accessToken) {
+
+        String gaql = "SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status "
+                + "FROM campaign WHERE campaign.status != 'REMOVED'";
+
+        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
+            JsonNode results = root.path("results");
+            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                JsonNode c = row.path("campaign");
+                return new DiscoveredCampaign()
+                        .setCampaignId(c.path("id").asText())
+                        .setCampaignName(c.path("name").asText())
+                        .setCampaignType(c.path("advertisingChannelType").asText(null))
+                        .setStatus(c.path("status").asText(null));
+            });
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAdset> fetchAdsets(
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String accessToken) {
+
+        String gaql = "SELECT ad_group.id, ad_group.name, ad_group.status, campaign.id "
+                + "FROM ad_group "
+                + "WHERE campaign.id = " + externalCampaignId
+                + " AND ad_group.status != 'REMOVED'";
+
+        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
+            JsonNode results = root.path("results");
+            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                JsonNode ag = row.path("adGroup");
+                return new DiscoveredAdset()
+                        .setAdsetId(ag.path("id").asText())
+                        .setAdsetName(ag.path("name").asText())
+                        .setCampaignId(row.path("campaign").path("id").asText())
+                        .setStatus(ag.path("status").asText(null));
+            });
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAd> fetchAds(
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String externalAdsetId,
+            String accessToken) {
+
+        String gaql = "SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.status, "
+                + "ad_group.id, campaign.id "
+                + "FROM ad_group_ad "
+                + "WHERE ad_group.id = " + externalAdsetId
+                + " AND ad_group_ad.status != 'REMOVED'";
+
+        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
+            JsonNode results = root.path("results");
+            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                JsonNode ad = row.path("adGroupAd").path("ad");
+                return new DiscoveredAd()
+                        .setAdId(ad.path("id").asText())
+                        .setAdName(ad.path("name").asText(null))
+                        .setAdsetId(row.path("adGroup").path("id").asText())
+                        .setCampaignId(row.path("campaign").path("id").asText())
+                        .setStatus(row.path("adGroupAd").path("status").asText(null));
+            });
+        });
     }
 
     private Mono<JsonNode> search(
