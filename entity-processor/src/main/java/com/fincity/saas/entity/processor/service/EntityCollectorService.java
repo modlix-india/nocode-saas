@@ -198,14 +198,23 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         .updateOnError(logId, "OAuth token fetch failed: " + ex.getMessage())
                                         .then(Mono.empty())),
 
-                        token -> websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE)
-                                ? GoogleEntityUtil.buildCampaignDetails(
-                                        websiteDetails.getUtmLoginCustomer(),
-                                        websiteDetails.getUtmCustomer(),
-                                        websiteDetails.getUtmKeyword(),
-                                        adId,
-                                        token)
-                                : MetaEntityUtil.buildCampaignDetails(adId, token),
+                        token -> {
+                            if (websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE)) {
+                                return this.getConnectionDetail(
+                                                integration.getInAppCode(),
+                                                integration.getClientCode(),
+                                                EntityUtil.GOOGLE_CONNECTION_NAME,
+                                                "developerToken")
+                                        .flatMap(devToken -> GoogleEntityUtil.buildCampaignDetails(
+                                                websiteDetails.getUtmLoginCustomer(),
+                                                websiteDetails.getUtmCustomer(),
+                                                websiteDetails.getUtmKeyword(),
+                                                adId,
+                                                token,
+                                                devToken));
+                            }
+                            return MetaEntityUtil.buildCampaignDetails(adId, token);
+                        },
 
                         (token, campaignDetails) -> {
                             response.setCampaignDetails(campaignDetails);

@@ -102,7 +102,11 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
     @Override
     public Flux<DiscoveredCampaign> fetchCampaigns(
-            String platformAccountId, String platformLoginId, String accessToken) {
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String accessToken) {
 
         String account = normalizeAdAccountId(platformAccountId);
         String path = META_VERSION + account + "/campaigns";
@@ -123,6 +127,8 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
     @Override
     public Flux<DiscoveredAdset> fetchAdsets(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,
@@ -146,6 +152,8 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
     @Override
     public Flux<DiscoveredAd> fetchAds(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,

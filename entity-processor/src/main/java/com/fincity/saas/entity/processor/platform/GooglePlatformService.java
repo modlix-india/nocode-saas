@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredAd;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
+import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
@@ -22,10 +23,18 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String DEVELOPER_TOKEN = "7U26WAwto0ESzLeoNJ6Zgw";
     private static final String API_VERSION = "/v20/";
+    private static final String GOOGLE_CONNECTION = "GOOGLE_API";
+    /** Key within Connection.connectionDetails that holds the per-client developer token. */
+    private static final String DEVELOPER_TOKEN_KEY = "developerToken";
 
     private static final WebClient webClient = WebClient.create();
+
+    private final AbstractConnectionService connectionService;
+
+    public GooglePlatformService(AbstractConnectionService connectionService) {
+        this.connectionService = connectionService;
+    }
 
     @Override
     public CampaignPlatform getPlatform() {
@@ -34,7 +43,15 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     @Override
     public String getConnectionName() {
-        return "GOOGLE_API";
+        return GOOGLE_CONNECTION;
+    }
+
+    private Mono<String> resolveDeveloperToken(String appCode, String clientCode) {
+        return this.connectionService
+                .getConnectionDetail(appCode, clientCode, GOOGLE_CONNECTION, DEVELOPER_TOKEN_KEY)
+                .switchIfEmpty(Mono.error(new IllegalStateException(
+                        "Google Connection '" + GOOGLE_CONNECTION + "' for client " + clientCode
+                                + " has no '" + DEVELOPER_TOKEN_KEY + "' in connectionDetails")));
     }
 
     @Override
@@ -59,15 +76,16 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 + "WHERE campaign.id = " + campaignId
                 + " AND segments.date BETWEEN '" + dateFrom + "' AND '" + dateTo + "'";
 
-        return search(loginCustomerId, customerId, gaql, accessToken)
-                .flatMapMany(root -> {
-                    JsonNode results = root.path("results");
-                    if (!results.isArray() || results.isEmpty()) {
-                        return Flux.empty();
-                    }
-                    return Flux.fromIterable(() -> results.elements())
-                            .map(row -> mapToCampaignMetric(row, campaign));
-                });
+        return resolveDeveloperToken(campaign.getAppCode(), campaign.getClientCode())
+                .flatMapMany(devToken -> search(loginCustomerId, customerId, gaql, accessToken, devToken)
+                        .flatMapMany(root -> {
+                            JsonNode results = root.path("results");
+                            if (!results.isArray() || results.isEmpty()) {
+                                return Flux.empty();
+                            }
+                            return Flux.fromIterable(() -> results.elements())
+                                    .map(row -> mapToCampaignMetric(row, campaign));
+                        }));
     }
 
     private CampaignMetric mapToCampaignMetric(JsonNode row, Campaign campaign) {
@@ -99,37 +117,47 @@ public class GooglePlatformService extends AbstractAdPlatformService {
     @Override
     public Mono<CampaignDetails> buildCampaignDetails(
             Campaign campaign, String adId, String accessToken) {
-        return GoogleEntityUtil.buildCampaignDetails(
-                campaign.getPlatformLoginId(),
-                campaign.getPlatformAccountId(),
-                null,
-                adId,
-                accessToken);
+        return resolveDeveloperToken(campaign.getAppCode(), campaign.getClientCode())
+                .flatMap(devToken -> GoogleEntityUtil.buildCampaignDetails(
+                        campaign.getPlatformLoginId(),
+                        campaign.getPlatformAccountId(),
+                        null,
+                        adId,
+                        accessToken,
+                        devToken));
     }
 
     @Override
     public Flux<DiscoveredCampaign> fetchCampaigns(
-            String platformAccountId, String platformLoginId, String accessToken) {
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String accessToken) {
 
         String gaql = "SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status "
                 + "FROM campaign WHERE campaign.status != 'REMOVED'";
 
-        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
-            JsonNode results = root.path("results");
-            if (!results.isArray() || results.isEmpty()) return Flux.empty();
-            return Flux.fromIterable(() -> results.elements()).map(row -> {
-                JsonNode c = row.path("campaign");
-                return new DiscoveredCampaign()
-                        .setCampaignId(c.path("id").asText())
-                        .setCampaignName(c.path("name").asText())
-                        .setCampaignType(c.path("advertisingChannelType").asText(null))
-                        .setStatus(c.path("status").asText(null));
-            });
-        });
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMapMany(devToken -> search(platformLoginId, platformAccountId, gaql, accessToken, devToken)
+                        .flatMapMany(root -> {
+                            JsonNode results = root.path("results");
+                            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+                            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                                JsonNode c = row.path("campaign");
+                                return new DiscoveredCampaign()
+                                        .setCampaignId(c.path("id").asText())
+                                        .setCampaignName(c.path("name").asText())
+                                        .setCampaignType(c.path("advertisingChannelType").asText(null))
+                                        .setStatus(c.path("status").asText(null));
+                            });
+                        }));
     }
 
     @Override
     public Flux<DiscoveredAdset> fetchAdsets(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,
@@ -140,22 +168,26 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 + "WHERE campaign.id = " + externalCampaignId
                 + " AND ad_group.status != 'REMOVED'";
 
-        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
-            JsonNode results = root.path("results");
-            if (!results.isArray() || results.isEmpty()) return Flux.empty();
-            return Flux.fromIterable(() -> results.elements()).map(row -> {
-                JsonNode ag = row.path("adGroup");
-                return new DiscoveredAdset()
-                        .setAdsetId(ag.path("id").asText())
-                        .setAdsetName(ag.path("name").asText())
-                        .setCampaignId(row.path("campaign").path("id").asText())
-                        .setStatus(ag.path("status").asText(null));
-            });
-        });
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMapMany(devToken -> search(platformLoginId, platformAccountId, gaql, accessToken, devToken)
+                        .flatMapMany(root -> {
+                            JsonNode results = root.path("results");
+                            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+                            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                                JsonNode ag = row.path("adGroup");
+                                return new DiscoveredAdset()
+                                        .setAdsetId(ag.path("id").asText())
+                                        .setAdsetName(ag.path("name").asText())
+                                        .setCampaignId(row.path("campaign").path("id").asText())
+                                        .setStatus(ag.path("status").asText(null));
+                            });
+                        }));
     }
 
     @Override
     public Flux<DiscoveredAd> fetchAds(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,
@@ -168,26 +200,29 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 + "WHERE ad_group.id = " + externalAdsetId
                 + " AND ad_group_ad.status != 'REMOVED'";
 
-        return search(platformLoginId, platformAccountId, gaql, accessToken).flatMapMany(root -> {
-            JsonNode results = root.path("results");
-            if (!results.isArray() || results.isEmpty()) return Flux.empty();
-            return Flux.fromIterable(() -> results.elements()).map(row -> {
-                JsonNode ad = row.path("adGroupAd").path("ad");
-                return new DiscoveredAd()
-                        .setAdId(ad.path("id").asText())
-                        .setAdName(ad.path("name").asText(null))
-                        .setAdsetId(row.path("adGroup").path("id").asText())
-                        .setCampaignId(row.path("campaign").path("id").asText())
-                        .setStatus(row.path("adGroupAd").path("status").asText(null));
-            });
-        });
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMapMany(devToken -> search(platformLoginId, platformAccountId, gaql, accessToken, devToken)
+                        .flatMapMany(root -> {
+                            JsonNode results = root.path("results");
+                            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+                            return Flux.fromIterable(() -> results.elements()).map(row -> {
+                                JsonNode ad = row.path("adGroupAd").path("ad");
+                                return new DiscoveredAd()
+                                        .setAdId(ad.path("id").asText())
+                                        .setAdName(ad.path("name").asText(null))
+                                        .setAdsetId(row.path("adGroup").path("id").asText())
+                                        .setCampaignId(row.path("campaign").path("id").asText())
+                                        .setStatus(row.path("adGroupAd").path("status").asText(null));
+                            });
+                        }));
     }
 
     private Mono<JsonNode> search(
             String loginCustomerId,
             String customerId,
             String gaql,
-            String accessToken) {
+            String accessToken,
+            String developerToken) {
 
         return webClient
                 .post()
@@ -198,8 +233,10 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                         .build())
                 .headers(h -> {
                     h.setBearerAuth(accessToken);
-                    h.add("developer-token", DEVELOPER_TOKEN);
-                    h.add("login-customer-id", loginCustomerId);
+                    h.add("developer-token", developerToken);
+                    if (loginCustomerId != null && !loginCustomerId.isBlank()) {
+                        h.add("login-customer-id", loginCustomerId);
+                    }
                 })
                 .bodyValue(Map.of("query", gaql))
                 .retrieve()

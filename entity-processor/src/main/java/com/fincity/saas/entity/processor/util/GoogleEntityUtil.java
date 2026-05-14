@@ -11,30 +11,30 @@ public final class GoogleEntityUtil {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String DEVELOPER_TOKEN = "7U26WAwto0ESzLeoNJ6Zgw";
-    // Bump the version to the one your account uses (v17 at the time of writing)
     private static final String API_VERSION = "/v20/";
 
     /**
      * Fetches Campaign, AdGroup and Ad details for a Google Ads Ad ID using GAQL search.
      *
-     * @param customerId Google Ads customer ID (without dashes)
-     * @param adId       the Ad ID to lookup (numeric string)
+     * @param customerId     Google Ads customer ID (without dashes)
+     * @param adId           the Ad ID to lookup (numeric string)
      * @param accessToken    OAuth2 access token (Bearer)
+     * @param developerToken per-client Google Ads developer token, resolved by caller from the Connection record
      */
     public static Mono<CampaignDetails> buildCampaignDetails(
             String loginCustomerId,
             String customerId,
             String keyword,
             String adId,
-            String accessToken) {
+            String accessToken,
+            String developerToken) {
 
         if (accessToken == null || accessToken.isBlank()) {
             return Mono.empty();
         }
 
         String gaql = buildGaqlForAdId(adId);
-        return search(loginCustomerId, customerId, gaql, accessToken)
+        return search(loginCustomerId, customerId, gaql, accessToken, developerToken)
                 .flatMap(root -> {
                     JsonNode results = root.path("results");
                     if (!results.isArray() || results.size() == 0) {
@@ -78,7 +78,8 @@ public final class GoogleEntityUtil {
             String loginCustomerId,
             String customerId,
             String gaql,
-            String accessToken) {
+            String accessToken,
+            String developerToken) {
 
         return webClient
                 .post()
@@ -89,8 +90,10 @@ public final class GoogleEntityUtil {
                         .build())
                 .headers(h -> {
                     h.setBearerAuth(accessToken);
-                    h.add("developer-token", DEVELOPER_TOKEN);
-                    h.add("login-customer-id", loginCustomerId);
+                    h.add("developer-token", developerToken);
+                    if (loginCustomerId != null && !loginCustomerId.isBlank()) {
+                        h.add("login-customer-id", loginCustomerId);
+                    }
                 })
                 .bodyValue(java.util.Map.of("query", gaql))
                 .retrieve()

@@ -30,13 +30,19 @@ public abstract class AbstractAdPlatformService {
      * does not write to local DB.
      */
     public abstract Flux<DiscoveredCampaign> fetchCampaigns(
-            String platformAccountId, String platformLoginId, String accessToken);
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String accessToken);
 
     /**
      * Lists all adsets under the given external campaign. Used when an admin
      * enables a campaign, so we mirror adsets locally.
      */
     public abstract Flux<DiscoveredAdset> fetchAdsets(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,
@@ -47,6 +53,8 @@ public abstract class AbstractAdPlatformService {
      * flow to mirror ads.
      */
     public abstract Flux<DiscoveredAd> fetchAds(
+            String appCode,
+            String clientCode,
             String platformAccountId,
             String platformLoginId,
             String externalCampaignId,

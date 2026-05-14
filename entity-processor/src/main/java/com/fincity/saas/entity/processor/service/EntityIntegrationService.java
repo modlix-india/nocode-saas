@@ -51,6 +51,16 @@ public class EntityIntegrationService
                         EntityCollectorMessageResourceService.INTEGRATION_NOT_FOUND));
     }
 
+    /**
+     * Per-tenant Meta webhook verify-token resolution. Returns {@code Mono.empty()}
+     * (not error) when no matching active integration exists, so callers can
+     * decide whether to fall back to a configured global value.
+     */
+    public Mono<EntityIntegration> findActiveByVerifyToken(
+            String verifyToken, EntityProcessorIntegrationsInSourceType inSourceType) {
+        return this.dao.findActiveByVerifyToken(verifyToken, inSourceType);
+    }
+
     @Override
     public Mono<EntityIntegration> create(EntityIntegration entity) {
 

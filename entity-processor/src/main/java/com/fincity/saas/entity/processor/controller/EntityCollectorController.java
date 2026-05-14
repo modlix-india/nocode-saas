@@ -1,8 +1,10 @@
 package com.fincity.saas.entity.processor.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorIntegrationsInSourceType;
 import com.fincity.saas.entity.processor.model.WebsiteDetails;
 import com.fincity.saas.entity.processor.service.EntityCollectorService;
+import com.fincity.saas.entity.processor.service.EntityIntegrationService;
 import com.fincity.saas.entity.processor.util.MetaEntityUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +19,16 @@ import java.util.Map;
 public class EntityCollectorController {
 
     private final EntityCollectorService entityCollectorService;
+    private final EntityIntegrationService entityIntegrationService;
 
+    /** Fallback when no per-tenant integration matches; preserves pre-Phase-5 behaviour. */
     @Value("${meta.webhook.verify-token:null}")
-    private String token;
+    private String fallbackToken;
 
-    public EntityCollectorController(EntityCollectorService entityCollectorService) {
+    public EntityCollectorController(
+            EntityCollectorService entityCollectorService, EntityIntegrationService entityIntegrationService) {
         this.entityCollectorService = entityCollectorService;
+        this.entityIntegrationService = entityIntegrationService;
     }
 
     @GetMapping("/social/facebook")
@@ -31,7 +37,10 @@ public class EntityCollectorController {
             @RequestParam(name = "hub.verify_token") String verifyToken,
             @RequestParam(name = "hub.challenge") String challenge) {
 
-        return MetaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge, token);
+        return this.entityIntegrationService
+                .findActiveByVerifyToken(verifyToken, EntityProcessorIntegrationsInSourceType.FACEBOOK_FORM)
+                .flatMap(integration -> MetaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge, verifyToken))
+                .switchIfEmpty(MetaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge, fallbackToken));
     }
 
     @PostMapping("/social/facebook")

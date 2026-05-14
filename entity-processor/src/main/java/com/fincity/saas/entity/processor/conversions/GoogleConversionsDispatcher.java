@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.ConversionActionMapping;
 import com.fincity.saas.entity.processor.dto.ConversionEvent;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.processor.util.ConversionsApiHashUtil;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,11 +39,19 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
     private static final String API_VERSION = "/v20/";
-    private static final String DEVELOPER_TOKEN = "7U26WAwto0ESzLeoNJ6Zgw";
+    private static final String GOOGLE_CONNECTION = "GOOGLE_API";
+    /** Key within Connection.connectionDetails that holds the per-client developer token. */
+    private static final String DEVELOPER_TOKEN_KEY = "developerToken";
     private static final DateTimeFormatter TS_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxx");
 
     private static final WebClient webClient = WebClient.create();
+
+    private final AbstractConnectionService connectionService;
+
+    public GoogleConversionsDispatcher(AbstractConnectionService connectionService) {
+        this.connectionService = connectionService;
+    }
 
     @Override
     public CampaignPlatform getPlatform() {
@@ -64,6 +73,26 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
                     "Google requires customerId (campaign.platformAccountId); was null", null));
         }
 
+        return this.connectionService
+                .getConnectionDetail(
+                        campaign.getAppCode(), campaign.getClientCode(), GOOGLE_CONNECTION, DEVELOPER_TOKEN_KEY)
+                .switchIfEmpty(Mono.error(new IllegalStateException(
+                        "Google Connection '" + GOOGLE_CONNECTION + "' for client " + campaign.getClientCode()
+                                + " has no '" + DEVELOPER_TOKEN_KEY + "' in connectionDetails")))
+                .flatMap(developerToken -> postClickConversion(
+                        event, mapping, ticket, accessToken, customerId, loginCustomerId, developerToken))
+                .onErrorResume(t -> Mono.just(DispatchResult.fail("Google dispatch failed: " + t.getMessage(), null)));
+    }
+
+    private Mono<DispatchResult> postClickConversion(
+            ConversionEvent event,
+            ConversionActionMapping mapping,
+            Ticket ticket,
+            String accessToken,
+            String customerId,
+            String loginCustomerId,
+            String developerToken) {
+
         Map<String, Object> conversion = buildConversion(event, mapping, ticket);
         Map<String, Object> payload = Map.of(
                 "conversions", List.of(conversion),
@@ -79,7 +108,7 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
                         .build())
                 .headers(h -> {
                     h.setBearerAuth(accessToken);
-                    h.add("developer-token", DEVELOPER_TOKEN);
+                    h.add("developer-token", developerToken);
                     if (loginCustomerId != null && !loginCustomerId.isBlank()) {
                         h.add("login-customer-id", loginCustomerId);
                     }

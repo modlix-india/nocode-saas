@@ -77,7 +77,11 @@ public class CampaignDiscoveryService {
                         access -> this.connectionService.getConnectionOAuth2Token(
                                 access.getAppCode(), access.getClientCode(), platform.getConnectionName()),
                         (access, token) -> platform.fetchCampaigns(
-                                        request.getPlatformAccountId(), request.getPlatformLoginId(), token)
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        request.getPlatformAccountId(),
+                                        request.getPlatformLoginId(),
+                                        token)
                                 .collectList(),
                         (access, token, discovered) -> this.annotateEnabled(access, discovered))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.listAvailable"));
@@ -170,6 +174,8 @@ public class CampaignDiscoveryService {
             String token) {
 
         return platform.fetchAdsets(
+                        access.getAppCode(),
+                        access.getClientCode(),
                         request.getPlatformAccountId(),
                         request.getPlatformLoginId(),
                         request.getExternalCampaignId(),
@@ -189,6 +195,8 @@ public class CampaignDiscoveryService {
         return this.adsetService
                 .readOrCreate(access, discoveredAdset.getAdsetId(), discoveredAdset.getAdsetName(), campaign.getId())
                 .flatMap(adset -> platform.fetchAds(
+                                access.getAppCode(),
+                                access.getClientCode(),
                                 request.getPlatformAccountId(),
                                 request.getPlatformLoginId(),
                                 request.getExternalCampaignId(),
@@ -237,6 +245,8 @@ public class CampaignDiscoveryService {
         return this.connectionService
                 .getConnectionOAuth2Token(campaign.getAppCode(), campaign.getClientCode(), platform.getConnectionName())
                 .flatMap(token -> platform.fetchAdsets(
+                                campaign.getAppCode(),
+                                campaign.getClientCode(),
                                 campaign.getPlatformAccountId(),
                                 campaign.getPlatformLoginId(),
                                 campaign.getCampaignId(),
@@ -248,6 +258,8 @@ public class CampaignDiscoveryService {
                                         discoveredAdset.getAdsetName(),
                                         campaign.getId())
                                 .flatMap(adset -> platform.fetchAds(
+                                                campaign.getAppCode(),
+                                                campaign.getClientCode(),
                                                 campaign.getPlatformAccountId(),
                                                 campaign.getPlatformLoginId(),
                                                 campaign.getCampaignId(),

@@ -33,4 +33,27 @@ public class EntityIntegrationDAO
                         .limit(1))
                 .map(r -> r.into(EntityIntegration.class));
     }
+
+    /**
+     * Per-tenant verify-token lookup for the Meta webhook handshake. Meta sends
+     * the {@code hub.verify_token} value the admin configured in their Developer
+     * Console — we accept the challenge iff any active integration row has that
+     * value in either {@code PRIMARY_VERIFY_TOKEN} or {@code SECONDARY_VERIFY_TOKEN}.
+     */
+    public Mono<EntityIntegration> findActiveByVerifyToken(
+            String verifyToken, EntityProcessorIntegrationsInSourceType inSourceType) {
+
+        Condition condition = ENTITY_PROCESSOR_INTEGRATIONS
+                .PRIMARY_VERIFY_TOKEN
+                .eq(verifyToken)
+                .or(ENTITY_PROCESSOR_INTEGRATIONS.SECONDARY_VERIFY_TOKEN.eq(verifyToken))
+                .and(ENTITY_PROCESSOR_INTEGRATIONS.IN_SOURCE_TYPE.eq(inSourceType))
+                .and(ENTITY_PROCESSOR_INTEGRATIONS.STATUS.eq(EntityProcessorIntegrationsStatus.ACTIVE));
+
+        return Mono.from(this.dslContext
+                        .selectFrom(ENTITY_PROCESSOR_INTEGRATIONS)
+                        .where(condition)
+                        .limit(1))
+                .map(r -> r.into(EntityIntegration.class));
+    }
 }
