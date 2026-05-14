@@ -32,11 +32,21 @@ public class CampaignReport {
     private BigDecimal cpm = BigDecimal.ZERO;
     private BigDecimal cpc = BigDecimal.ZERO;
     private BigDecimal cpl = BigDecimal.ZERO;
+    private BigDecimal cpmql = BigDecimal.ZERO;
+    private BigDecimal cpsql = BigDecimal.ZERO;
+    private BigDecimal cpw = BigDecimal.ZERO;
 
     // CRM metrics — DYNAMIC stage counts per product template
     private long totalMetaLeads;
     private long totalDcrmLeads;
     private Map<String, Long> leadsByStage;
+
+    /**
+     * Funnel-stage rollup using the {@code FUNNEL_STAGE} tag on
+     * {@code entity_processor_stages} (LEAD/MQL/SQL/WON/LOST/CUSTOM). Industry-
+     * agnostic — works regardless of a client's stage naming.
+     */
+    private Map<String, Long> leadsByFunnelStage;
 
     // Rejected / Difference
     private long rl;

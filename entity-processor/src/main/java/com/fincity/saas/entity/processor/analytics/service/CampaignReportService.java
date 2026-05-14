@@ -52,8 +52,10 @@ public class CampaignReportService implements IProcessorAccessService {
                 access -> campaignReportDAO.getAdMetrics(access, filter),
                 (access, adMetrics) -> campaignReportDAO.getTicketStageCounts(access, filter),
                 (access, adMetrics, ticketCounts) -> campaignReportDAO.getTicketSourceCounts(access, filter),
-                (access, adMetrics, ticketCounts, sourceCounts) -> {
-                    List<CampaignReport> merged = mergeAndCompute(adMetrics, ticketCounts, sourceCounts);
+                (access, adMetrics, ticketCounts, sourceCounts) ->
+                        campaignReportDAO.getTicketFunnelStageCounts(access, filter),
+                (access, adMetrics, ticketCounts, sourceCounts, funnelCounts) -> {
+                    List<CampaignReport> merged = mergeAndCompute(adMetrics, ticketCounts, sourceCounts, funnelCounts);
                     int start = (int) pageable.getOffset();
                     int end = Math.min(start + pageable.getPageSize(), merged.size());
                     List<CampaignReport> pageContent = start < merged.size()
@@ -71,14 +73,17 @@ public class CampaignReportService implements IProcessorAccessService {
                 (access, adMetrics) -> campaignReportDAO.getTicketStageCounts(access, filter),
                 (access, adMetrics, ticketCounts) -> campaignReportDAO.getTicketSourceCounts(access, filter),
                 (access, adMetrics, ticketCounts, sourceCounts) ->
-                        Mono.just(mergeAndCompute(adMetrics, ticketCounts, sourceCounts))
+                        campaignReportDAO.getTicketFunnelStageCounts(access, filter),
+                (access, adMetrics, ticketCounts, sourceCounts, funnelCounts) ->
+                        Mono.just(mergeAndCompute(adMetrics, ticketCounts, sourceCounts, funnelCounts))
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignReportService.getConsolidatedReportSummary"));
     }
 
     private List<CampaignReport> mergeAndCompute(
             List<CampaignReport> adMetrics,
             Map<ULong, Map<String, Long>> ticketCounts,
-            Map<ULong, Map<String, Long>> sourceCounts) {
+            Map<ULong, Map<String, Long>> sourceCounts,
+            Map<ULong, Map<String, Long>> funnelCounts) {
 
         List<CampaignReport> results = new ArrayList<>(adMetrics.size());
 
@@ -86,6 +91,10 @@ public class CampaignReportService implements IProcessorAccessService {
             // Merge ticket stage counts
             Map<String, Long> stages = ticketCounts.getOrDefault(report.getCampaignId(), Map.of());
             report.setLeadsByStage(new HashMap<>(stages));
+
+            // Funnel-stage rollup (LEAD/MQL/SQL/WON/LOST/CUSTOM/UNTAGGED)
+            Map<String, Long> funnel = funnelCounts.getOrDefault(report.getCampaignId(), Map.of());
+            report.setLeadsByFunnelStage(new HashMap<>(funnel));
 
             // Compute total CRM leads from stages
             long totalLeads = stages.values().stream().mapToLong(Long::longValue).sum();
@@ -113,6 +122,9 @@ public class CampaignReportService implements IProcessorAccessService {
 
             // Computed ad metrics
             computeAdMetrics(report, totalLeads);
+
+            // Funnel cost-per metrics from the funnel rollup
+            computeFunnelCostMetrics(report, funnel);
 
             // Computed percentage metrics
             computePercentageMetrics(report, stages, totalLeads);
@@ -149,6 +161,29 @@ public class CampaignReportService implements IProcessorAccessService {
         // CPL = spend / totalLeads
         if (totalLeads > 0) {
             report.setCpl(spend.divide(BigDecimal.valueOf(totalLeads), 2, RoundingMode.HALF_UP));
+        }
+    }
+
+    /**
+     * Computes CPMQL, CPSQL, CPW from the funnel-stage rollup. Each metric is
+     * {@code spend / count}; zero counts produce a zero-valued metric.
+     */
+    private void computeFunnelCostMetrics(CampaignReport report, Map<String, Long> funnel) {
+        BigDecimal spend = report.getSpend();
+        if (spend == null || spend.signum() <= 0) return;
+
+        long mql = funnel.getOrDefault("MQL", 0L);
+        long sql = funnel.getOrDefault("SQL", 0L);
+        long won = funnel.getOrDefault("WON", 0L);
+
+        if (mql > 0) {
+            report.setCpmql(spend.divide(BigDecimal.valueOf(mql), 2, RoundingMode.HALF_UP));
+        }
+        if (sql > 0) {
+            report.setCpsql(spend.divide(BigDecimal.valueOf(sql), 2, RoundingMode.HALF_UP));
+        }
+        if (won > 0) {
+            report.setCpw(spend.divide(BigDecimal.valueOf(won), 2, RoundingMode.HALF_UP));
         }
     }
 

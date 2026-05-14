@@ -138,6 +138,50 @@ public class CampaignReportDAO {
                 });
     }
 
+    /**
+     * Per-campaign rollup of ticket counts grouped by {@code FUNNEL_STAGE} tag
+     * (LEAD/MQL/SQL/WON/LOST/CUSTOM). Tickets whose current stage has no funnel
+     * tag are aggregated under the key {@code "UNTAGGED"} so callers can still
+     * see them without polluting funnel counts.
+     */
+    public Mono<Map<ULong, Map<String, Long>>> getTicketFunnelStageCounts(
+            ProcessorAccess access, CampaignReportFilter filter) {
+
+        Field<Integer> cnt = DSL.count().as("cnt");
+        Field<String> funnelStr = DSL.field(DSL.name(STAGES.getName(), "FUNNEL_STAGE"), String.class);
+
+        Condition condition = TICKETS.APP_CODE.eq(access.getAppCode())
+                .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
+                .and(TICKETS.CAMPAIGN_ID.isNotNull());
+
+        if (filter.getStartDate() != null && filter.getEndDate() != null) {
+            condition = condition.and(TICKETS.CREATED_AT.between(filter.getStartDate(), filter.getEndDate()));
+        }
+
+        if (filter.getCampaignIds() != null && !filter.getCampaignIds().isEmpty()) {
+            condition = condition.and(TICKETS.CAMPAIGN_ID.in(filter.getCampaignIds()));
+        }
+
+        return Flux.from(dslContext
+                        .select(TICKETS.CAMPAIGN_ID, funnelStr, cnt)
+                        .from(TICKETS)
+                        .leftJoin(STAGES).on(TICKETS.STAGE.eq(STAGES.ID))
+                        .where(condition)
+                        .groupBy(TICKETS.CAMPAIGN_ID, funnelStr))
+                .collectList()
+                .map(records -> {
+                    Map<ULong, Map<String, Long>> result = new HashMap<>();
+                    for (Record r : records) {
+                        ULong campaignId = r.get(TICKETS.CAMPAIGN_ID);
+                        String funnelStage = r.get(funnelStr);
+                        long count = r.get("cnt", Long.class);
+                        result.computeIfAbsent(campaignId, k -> new HashMap<>())
+                                .merge(funnelStage != null ? funnelStage : "UNTAGGED", count, Long::sum);
+                    }
+                    return result;
+                });
+    }
+
     public Mono<Map<ULong, Map<String, Long>>> getTicketSourceCounts(
             ProcessorAccess access, CampaignReportFilter filter) {
 
