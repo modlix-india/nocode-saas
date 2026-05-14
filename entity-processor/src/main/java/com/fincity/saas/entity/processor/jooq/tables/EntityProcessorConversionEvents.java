@@ -5,11 +5,11 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.enums.ConversionActionSource;
+import com.fincity.saas.entity.processor.enums.ConversionEventStatus;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorConversionEventsActionSource;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorConversionEventsStatus;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorConversionEventsRecord;
@@ -138,7 +138,7 @@ public class EntityProcessorConversionEvents extends TableImpl<EntityProcessorCo
      * Derived from ticket origin. website=fbp/fbc match;
      * system_generated=lead_id match.
      */
-    public final TableField<EntityProcessorConversionEventsRecord, EntityProcessorConversionEventsActionSource> ACTION_SOURCE = createField(DSL.name("ACTION_SOURCE"), SQLDataType.VARCHAR(16).nullable(false).asEnumDataType(EntityProcessorConversionEventsActionSource.class), this, "Derived from ticket origin. website=fbp/fbc match; system_generated=lead_id match.");
+    public final TableField<EntityProcessorConversionEventsRecord, ConversionActionSource> ACTION_SOURCE = createField(DSL.name("ACTION_SOURCE"), SQLDataType.VARCHAR(16).nullable(false), this, "Derived from ticket origin. website=fbp/fbc match; system_generated=lead_id match.", new EnumConverter<String, ConversionActionSource>(String.class, ConversionActionSource.class));
 
     /**
      * The column
@@ -153,7 +153,7 @@ public class EntityProcessorConversionEvents extends TableImpl<EntityProcessorCo
      * <code>entity_processor.entity_processor_conversion_events.STATUS</code>.
      * Lifecycle state of this outbox row.
      */
-    public final TableField<EntityProcessorConversionEventsRecord, EntityProcessorConversionEventsStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorConversionEventsStatus.class), this, "Lifecycle state of this outbox row.");
+    public final TableField<EntityProcessorConversionEventsRecord, ConversionEventStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)), this, "Lifecycle state of this outbox row.", new EnumConverter<String, ConversionEventStatus>(String.class, ConversionEventStatus.class));
 
     /**
      * The column

@@ -309,7 +309,7 @@
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.ConversionEventStatus</userType>
-                                            <includeExpression>entity_processor_conversion_events\.STATUS</includeExpression>
+                                            <includeExpression>.*entity_processor_conversion_events\.STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>

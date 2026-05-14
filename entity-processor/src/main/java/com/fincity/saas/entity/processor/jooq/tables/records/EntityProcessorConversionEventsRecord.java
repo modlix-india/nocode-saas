@@ -5,8 +5,8 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorConversionEventsActionSource;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorConversionEventsStatus;
+import com.fincity.saas.entity.processor.enums.ConversionActionSource;
+import com.fincity.saas.entity.processor.enums.ConversionEventStatus;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 
 import java.time.LocalDateTime;
@@ -204,7 +204,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * Derived from ticket origin. website=fbp/fbc match;
      * system_generated=lead_id match.
      */
-    public EntityProcessorConversionEventsRecord setActionSource(EntityProcessorConversionEventsActionSource value) {
+    public EntityProcessorConversionEventsRecord setActionSource(ConversionActionSource value) {
         set(9, value);
         return this;
     }
@@ -215,8 +215,8 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * Derived from ticket origin. website=fbp/fbc match;
      * system_generated=lead_id match.
      */
-    public EntityProcessorConversionEventsActionSource getActionSource() {
-        return (EntityProcessorConversionEventsActionSource) get(9);
+    public ConversionActionSource getActionSource() {
+        return (ConversionActionSource) get(9);
     }
 
     /**
@@ -245,7 +245,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_conversion_events.STATUS</code>.
      * Lifecycle state of this outbox row.
      */
-    public EntityProcessorConversionEventsRecord setStatus(EntityProcessorConversionEventsStatus value) {
+    public EntityProcessorConversionEventsRecord setStatus(ConversionEventStatus value) {
         set(11, value);
         return this;
     }
@@ -255,8 +255,8 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_conversion_events.STATUS</code>.
      * Lifecycle state of this outbox row.
      */
-    public EntityProcessorConversionEventsStatus getStatus() {
-        return (EntityProcessorConversionEventsStatus) get(11);
+    public ConversionEventStatus getStatus() {
+        return (ConversionEventStatus) get(11);
     }
 
     /**
@@ -491,7 +491,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorConversionEventsRecord
      */
-    public EntityProcessorConversionEventsRecord(ULong id, String code, String appCode, String clientCode, ULong ticketId, ULong mappingId, String eventId, String eventName, CampaignPlatform campaignPlatform, EntityProcessorConversionEventsActionSource actionSource, JSON payloadSnapshot, EntityProcessorConversionEventsStatus status, JSON platformResponse, String statusMessage, Integer attemptCount, LocalDateTime nextAttemptAt, LocalDateTime sentAt, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorConversionEventsRecord(ULong id, String code, String appCode, String clientCode, ULong ticketId, ULong mappingId, String eventId, String eventName, CampaignPlatform campaignPlatform, ConversionActionSource actionSource, JSON payloadSnapshot, ConversionEventStatus status, JSON platformResponse, String statusMessage, Integer attemptCount, LocalDateTime nextAttemptAt, LocalDateTime sentAt, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorConversionEvents.ENTITY_PROCESSOR_CONVERSION_EVENTS);
 
         setId(id);
