@@ -21,4 +21,8 @@ public interface IFeignEntityProcessorService {
     /** Walks every active enabled campaign across all tenants and re-mirrors adsets + ads. */
     @PostMapping("/api/entity/processor/campaigns/internal/sync-discovery")
     Map<String, Object> triggerCampaignDiscoverySync();
+
+    /** Drains one batch of pending conversion events from the outbox to Meta / Google. */
+    @PostMapping("/api/entity/processor/conversions/internal/drain")
+    Map<String, Object> triggerConversionsApiDispatch(@org.springframework.web.bind.annotation.RequestParam("batchSize") int batchSize);
 }

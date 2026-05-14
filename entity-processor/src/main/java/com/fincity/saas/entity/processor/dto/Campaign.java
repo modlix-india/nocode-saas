@@ -30,6 +30,7 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
     private CampaignPlatform campaignPlatform;
     private String platformAccountId;
     private String platformLoginId;
+    private String platformDatasetId;
     private ULong productId;
 
     public Campaign() {
@@ -45,6 +46,7 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
         this.campaignPlatform = campaign.campaignPlatform;
         this.platformAccountId = campaign.platformAccountId;
         this.platformLoginId = campaign.platformLoginId;
+        this.platformDatasetId = campaign.platformDatasetId;
         this.productId = campaign.productId;
     }
 

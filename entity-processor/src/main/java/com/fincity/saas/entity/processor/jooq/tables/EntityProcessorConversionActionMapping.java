@@ -8,8 +8,10 @@ import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents.EntityProcessorConversionEventsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorConversionActionMappingRecord;
 
 import java.math.BigDecimal;
@@ -350,6 +352,27 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
             _entityProcessorProductTemplates = new EntityProcessorProductTemplatesPath(this, Keys.FK3_CAM_PRODUCT_TEMPLATE_ID, null);
 
         return _entityProcessorProductTemplates;
+    }
+
+    private transient EntityProcessorConversionEventsPath _entityProcessorConversionEvents;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_events</code> table
+     */
+    public EntityProcessorConversionEventsPath entityProcessorConversionEvents() {
+        if (_entityProcessorConversionEvents == null)
+            _entityProcessorConversionEvents = new EntityProcessorConversionEventsPath(this, null, Keys.FK2_CE_MAPPING_ID.getInverseKey());
+
+        return _entityProcessorConversionEvents;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>entity_processor.entity_processor_tickets</code> table
+     */
+    public EntityProcessorTicketsPath entityProcessorTickets() {
+        return entityProcessorConversionEvents().entityProcessorTickets();
     }
 
     @Override

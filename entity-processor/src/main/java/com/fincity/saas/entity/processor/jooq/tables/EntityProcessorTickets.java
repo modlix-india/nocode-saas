@@ -10,6 +10,8 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents.EntityProcessorConversionEventsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
@@ -451,6 +453,19 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
         return _entityProcessorActivities;
     }
 
+    private transient EntityProcessorConversionEventsPath _entityProcessorConversionEvents;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_events</code> table
+     */
+    public EntityProcessorConversionEventsPath entityProcessorConversionEvents() {
+        if (_entityProcessorConversionEvents == null)
+            _entityProcessorConversionEvents = new EntityProcessorConversionEventsPath(this, null, Keys.FK1_CE_TICKET_ID.getInverseKey());
+
+        return _entityProcessorConversionEvents;
+    }
+
     private transient EntityProcessorNotesPath _entityProcessorNotes;
 
     /**
@@ -475,6 +490,15 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
             _entityProcessorTasks = new EntityProcessorTasksPath(this, null, Keys.FK3_TASKS_TICKET_ID.getInverseKey());
 
         return _entityProcessorTasks;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>
+     * table
+     */
+    public EntityProcessorConversionActionMappingPath entityProcessorConversionActionMapping() {
+        return entityProcessorConversionEvents().entityProcessorConversionActionMapping();
     }
 
     @Override

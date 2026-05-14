@@ -105,6 +105,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
     private final DiagnosticsService diagnosticsService;
+    private final ConversionActionMappingService conversionActionMappingService;
+    private final ConversionEventService conversionEventService;
 
     private ProductTicketExRuleService productTicketExRuleService;
 
@@ -133,6 +135,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy PartnerService partnerService,
             ProductCommService productCommService,
             DiagnosticsService diagnosticsService,
+            @Lazy ConversionActionMappingService conversionActionMappingService,
+            @Lazy ConversionEventService conversionEventService,
             Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
@@ -148,6 +152,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.partnerService = partnerService;
         this.productCommService = productCommService;
         this.diagnosticsService = diagnosticsService;
+        this.conversionActionMappingService = conversionActionMappingService;
+        this.conversionEventService = conversionEventService;
         this.gson = gson;
     }
 
@@ -963,6 +969,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String comment) {
 
         ULong oldStage = ticket.getStage();
+        ULong oldStatus = ticket.getStatus();
 
         boolean doReassignment = !oldStage.equals(stageId);
 
@@ -983,8 +990,54 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .thenReturn(uTicket),
                         (uTicket, cTask, fTicket) -> doReassignment
                                 ? this.reassignForStage(access, fTicket, reassignUserId, true)
-                                : Mono.just(fTicket)))
+                                : Mono.just(fTicket),
+                        (uTicket, cTask, fTicket, rTicket) -> this.enqueueConversionEventsForStageTransition(
+                                        access, rTicket, oldStage, oldStatus)
+                                .thenReturn(rTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+    }
+
+    /**
+     * Best-effort hook: looks up active conversion-action mappings for the new
+     * (stage, status, product_template) and enqueues an outbox event per match.
+     * Errors are swallowed — a downstream Meta/Google enqueue failure must not
+     * abort the user's stage update.
+     *
+     * <p>Per Meta CAPI doc Part 6.2, {@code action_source} must be derived from
+     * ticket origin: {@code system_generated} when {@code adData.lead_id} is set
+     * (lead-form webhook origin), otherwise {@code website}.
+     */
+    private Mono<Void> enqueueConversionEventsForStageTransition(
+            ProcessorAccess access, Ticket ticket, ULong oldStage, ULong oldStatus) {
+
+        if (java.util.Objects.equals(oldStage, ticket.getStage())
+                && java.util.Objects.equals(oldStatus, ticket.getStatus())) {
+            return Mono.empty();
+        }
+
+        com.fincity.saas.entity.processor.enums.ConversionActionSource source = deriveActionSource(ticket);
+
+        return this.conversionActionMappingService
+                .findActiveByTrigger(access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
+                .concatMap(mapping -> this.conversionEventService
+                        .enqueue(access, ticket, mapping, source)
+                        .onErrorResume(e -> {
+                            logger.warn(
+                                    "Failed to enqueue conversion event for ticket {} mapping {}: {}",
+                                    ticket.getId(),
+                                    mapping.getId(),
+                                    e.getMessage());
+                            return Mono.empty();
+                        }))
+                .then();
+    }
+
+    private static com.fincity.saas.entity.processor.enums.ConversionActionSource deriveActionSource(Ticket ticket) {
+        java.util.Map<String, Object> adData = ticket.getAdData();
+        if (adData != null && (adData.containsKey("lead_id") || adData.containsKey("leadgen_id"))) {
+            return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
+        }
+        return com.fincity.saas.entity.processor.enums.ConversionActionSource.WEBSITE;
     }
 
     private Mono<Boolean> createTask(ProcessorAccess access, TaskRequest taskRequest, Ticket ticket) {

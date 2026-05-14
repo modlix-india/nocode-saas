@@ -137,6 +137,15 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_campaigns.PLATFORM_DATASET_ID</code>.
+     * Meta Pixel/Dataset ID used as the {DATASET_ID} in CAPI events URL
+     * (https://graph.facebook.com/v24.0/{DATASET_ID}/events). For Google,
+     * UploadClickConversions does not need this and the field is left NULL.
+     */
+    public final TableField<EntityProcessorCampaignsRecord, String> PLATFORM_DATASET_ID = createField(DSL.name("PLATFORM_DATASET_ID"), SQLDataType.VARCHAR(64), this, "Meta Pixel/Dataset ID used as the {DATASET_ID} in CAPI events URL (https://graph.facebook.com/v24.0/{DATASET_ID}/events). For Google, UploadClickConversions does not need this and the field is left NULL.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_campaigns.PRODUCT_ID</code>.
      * Product Id campaign belongs to.
      */

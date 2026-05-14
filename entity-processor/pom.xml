@@ -308,6 +308,18 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ConversionEventStatus</userType>
+                                            <includeExpression>entity_processor_conversion_events\.STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ConversionActionSource</userType>
+                                            <includeExpression>.*\.ACTION_SOURCE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType</userType>
                                             <includeExpression>.*\DISTRIBUTION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
