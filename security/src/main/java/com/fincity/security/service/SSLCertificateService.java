@@ -17,6 +17,7 @@ import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -340,14 +341,17 @@ public class SSLCertificateService {
 
         return FlatMapUtil.flatMapMono(
 
-                // Use loginAndCreateNewOrder — ACME server returns the existing pending
-                // order for the same domains, giving us properly-constructed auth objects
-                // where auth.update() works correctly for polling.
-                () -> this.loginAndCreateNewOrder(request),
+                // Bind to the existing order stored on the request. Creating a new order
+                // here would force LE to issue fresh challenge tokens, invalidating any
+                // TXT / HTTP-01 value the user has already published. loginAndBindOrder
+                // falls back to creating a new order only when no stored order URL exists
+                // or bind fails (expired/replaced order).
+                () -> this.loginAndBindOrder(request),
 
                 order -> {
 
-                    // Save the order URL in case it changed
+                    // Persist the order URL only if it changed (it can change when bind
+                    // fell back to creating a new order — e.g. previous order expired).
                     this.requestDao.updateOrderUrl(request.getId(), order.getLocation().toString())
                         .subscribe();
 
@@ -368,8 +372,22 @@ public class SSLCertificateService {
                         || !newTokens.getT2().equals(challenge.getAuthorization());
 
                     if (tokensChanged) {
-                        logger.info("Challenge tokens changed for domain: {}, updating DB before triggering",
-                            challenge.getDomain());
+                        logger.warn(
+                            "Challenge tokens changed for domain: {}, type: {}, orderUrl: {}. "
+                                + "Stored token: '{}' -> new token: '{}'. "
+                                + "Stored authorization: '{}' -> new authorization: '{}'. "
+                                + "If DNS-01: publish a TXT record for '{}' with value '{}' BEFORE triggering — "
+                                + "previously published value will no longer validate.",
+                            challenge.getDomain(), challenge.getChallengeType(), order.getLocation(),
+                            challenge.getToken(), newTokens.getT1(),
+                            challenge.getAuthorization(), newTokens.getT2(),
+                            newTokens.getT1(), newTokens.getT2());
+                    } else {
+                        logger.info(
+                            "Triggering challenge for domain: {}, type: {}, orderUrl: {}. "
+                                + "Expected: token='{}', authorization(TXT/keyAuth value)='{}'.",
+                            challenge.getDomain(), challenge.getChallengeType(), order.getLocation(),
+                            newTokens.getT1(), newTokens.getT2());
                     }
 
                     return (tokensChanged
@@ -474,15 +492,61 @@ public class SSLCertificateService {
         chStatus = status.toString();
 
         if (status != Status.VALID) {
-            chError = ch.getError()
-                .map(this::formatProblemDetail)
-                .orElse("Unknown error");
-
-            logger.error("Challenge validation failed — Authorization status: {}, Domain: {}, Error: {}",
-                status, auth.getIdentifier().getDomain(), chError);
+            chError = extractAcmeFailureReason(auth, ch);
+            logChallengeFailure(status, auth, ch, chError);
         }
 
         return Tuples.of(chStatus, chError);
+    }
+
+    private String extractAcmeFailureReason(Authorization auth, Challenge ch) {
+        // Refresh challenge state explicitly — acme4j often only populates the
+        // error on the Challenge after a dedicated update() call, especially when
+        // Authorization went straight to INVALID.
+        try {
+            ch.update();
+        } catch (AcmeException refreshEx) {
+            logger.warn("Failed to refresh challenge state after INVALID for domain {}: {}",
+                auth.getIdentifier().getDomain(), refreshEx.getMessage());
+        }
+
+        String err = ch.getError().map(this::formatProblemDetail).orElse(null);
+        if (err != null) return err;
+
+        // Scan sibling challenges — sometimes the error is on a different challenge type
+        // (e.g. LE tried http-01 server-side and failed even though we wanted dns-01).
+        StringBuilder sibErr = new StringBuilder();
+        for (Challenge other : auth.getChallenges()) {
+            other.getError().ifPresent(p -> {
+                if (!sibErr.isEmpty()) sibErr.append(" || ");
+                sibErr.append("challenge(").append(other.getType()).append(") ")
+                    .append(formatProblemDetail(p));
+            });
+        }
+        if (!sibErr.isEmpty()) return sibErr.toString();
+
+        return "Unknown error (no problem detail returned by ACME server; "
+            + "check that DNS TXT / HTTP-01 file matches the expected value above, "
+            + "and that propagation is complete from authoritative resolvers)";
+    }
+
+    private void logChallengeFailure(Status status, Authorization auth, Challenge ch, String chError) {
+        Tuple2<String, String> expected = expectedChallengeArtifact(auth, ch);
+        logger.error(
+            "Challenge validation failed — Authorization status: {}, Domain: {}, "
+                + "Type: {}, ChallengeUrl: {}, Expected {}='{}', LE error: {}",
+            status, auth.getIdentifier().getDomain(), ch.getType(), ch.getLocation(),
+            expected.getT1(), expected.getT2(), chError);
+    }
+
+    private Tuple2<String, String> expectedChallengeArtifact(Authorization auth, Challenge ch) {
+        return switch (ch) {
+            case Dns01Challenge dch -> Tuples.of(
+                Dns01Challenge.toRRName(auth.getIdentifier().getDomain()), dch.getDigest());
+            case Http01Challenge hch -> Tuples.of(
+                "/.well-known/acme-challenge/" + hch.getToken(), hch.getAuthorization());
+            default -> Tuples.of("(unknown challenge type)", "(unknown)");
+        };
     }
 
     private String formatProblemDetail(Problem problem) {
@@ -891,7 +955,7 @@ public class SSLCertificateService {
                     if (allHttp01)
                         return this.renewHttp01Certificate(cert, request);
                     else
-                        return this.createNewChallengesForNonHttp01(cert, request);
+                        return this.createNewChallengesForNonHttp01(cert, request, challenges);
                 })
             .contextWrite(Context.of(LogUtil.METHOD_NAME, "SSLCertificateService.renewSingleCertificate"));
     }
@@ -959,7 +1023,30 @@ public class SSLCertificateService {
             .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private Mono<SingleRenewalOutcome> createNewChallengesForNonHttp01(SSLCertificate cert, SSLRequest existingRequest) {
+    // Let's Encrypt orders are valid for ~7 days. Reuse cutoff is 6 to leave
+    // room for manual DNS propagation and triggering.
+    private static final int LE_ORDER_REUSE_WINDOW_DAYS = 6;
+
+    private Mono<SingleRenewalOutcome> createNewChallengesForNonHttp01(
+        SSLCertificate cert, SSLRequest existingRequest, List<SSLChallenge> existingChallenges) {
+
+        // DNS-01 challenges require the operator to publish a TXT record manually.
+        // Regenerating the order rotates the tokens and invalidates whatever the
+        // operator has already published — so the worker must not regenerate
+        // while the existing LE order is still within its validity window.
+        if (hasUsableExistingOrder(existingChallenges)) {
+            logger.info(
+                "DNS-01 cert for urlId {} (request {}): existing order created within "
+                    + "{}-day reuse window — skipping daily regeneration to preserve "
+                    + "published TXT record(s). Manual trigger will use the existing order.",
+                cert.getUrlId(), existingRequest.getId(), LE_ORDER_REUSE_WINDOW_DAYS);
+            return Mono.just(new SingleRenewalOutcome(false, null));
+        }
+
+        logger.info(
+            "DNS-01 cert for urlId {} (request {}): existing order outside reuse window "
+                + "or no challenges present — regenerating challenges.",
+            cert.getUrlId(), existingRequest.getId());
 
         return this.createChallenges(existingRequest)
             .<SingleRenewalOutcome>map(challenges -> new SingleRenewalOutcome(false, null))
@@ -968,6 +1055,16 @@ public class SSLCertificateService {
                     cert.getUrlId(), e.getMessage());
                 return this.createNewRequestWithChallenges(cert, existingRequest);
             });
+    }
+
+    private boolean hasUsableExistingOrder(List<SSLChallenge> existingChallenges) {
+        if (existingChallenges == null || existingChallenges.isEmpty()) return false;
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(LE_ORDER_REUSE_WINDOW_DAYS);
+        return existingChallenges.stream()
+            .map(SSLChallenge::getCreatedAt)
+            .filter(java.util.Objects::nonNull)
+            .anyMatch(createdAt -> createdAt.isAfter(cutoff));
     }
 
     private Mono<SingleRenewalOutcome> createNewRequestWithChallenges(SSLCertificate cert, SSLRequest existingRequest) {
