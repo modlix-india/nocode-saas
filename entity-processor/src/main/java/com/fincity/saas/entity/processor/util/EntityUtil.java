@@ -17,7 +17,12 @@ import java.util.Map;
 @Slf4j
 public final class EntityUtil {
 
-    private static final WebClient webClient = WebClient.create();
+    // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
+    // responses (yearly daily-segmented data) blow past. Bump to 16 MB so large
+    // GAQL responses don't fail with DataBufferLimitException.
+    private static final WebClient webClient = WebClient.builder()
+            .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build();
 
     public static final String META_CONNECTION_NAME = "META_API";
     public static final String GOOGLE_CONNECTION_NAME = "GOOGLE_API";

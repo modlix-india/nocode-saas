@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -39,18 +40,22 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
     private static final String API_VERSION = "/v20/";
-    private static final String GOOGLE_CONNECTION = "GOOGLE_API";
-    /** Key within Connection.connectionDetails that holds the per-client developer token. */
-    private static final String DEVELOPER_TOKEN_KEY = "developerToken";
     private static final DateTimeFormatter TS_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxx");
 
-    private static final WebClient webClient = WebClient.create();
+    // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
+    // responses (yearly daily-segmented data) blow past. Bump to 16 MB so large
+    // GAQL responses don't fail with DataBufferLimitException.
+    private static final WebClient webClient = WebClient.builder()
+            .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build();
 
-    private final AbstractConnectionService connectionService;
+    @Value("${ai.adzump.googleAds.developerToken}")
+    private String googleDeveloperToken;
 
     public GoogleConversionsDispatcher(AbstractConnectionService connectionService) {
-        this.connectionService = connectionService;
+        // connectionService no longer needed here — developer-token comes from config,
+        // OAuth access token is resolved by the drain service and passed in.
     }
 
     @Override
@@ -72,15 +77,13 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
             return Mono.just(DispatchResult.fail(
                     "Google requires customerId (campaign.platformAccountId); was null", null));
         }
+        if (this.googleDeveloperToken == null || this.googleDeveloperToken.isBlank()) {
+            return Mono.just(DispatchResult.fail(
+                    "ai.adzump.googleAds.developerToken is not configured", null));
+        }
 
-        return this.connectionService
-                .getConnectionDetail(
-                        campaign.getAppCode(), campaign.getClientCode(), GOOGLE_CONNECTION, DEVELOPER_TOKEN_KEY)
-                .switchIfEmpty(Mono.error(new IllegalStateException(
-                        "Google Connection '" + GOOGLE_CONNECTION + "' for client " + campaign.getClientCode()
-                                + " has no '" + DEVELOPER_TOKEN_KEY + "' in connectionDetails")))
-                .flatMap(developerToken -> postClickConversion(
-                        event, mapping, ticket, accessToken, customerId, loginCustomerId, developerToken))
+        return postClickConversion(
+                        event, mapping, ticket, accessToken, customerId, loginCustomerId, this.googleDeveloperToken)
                 .onErrorResume(t -> Mono.just(DispatchResult.fail("Google dispatch failed: " + t.getMessage(), null)));
     }
 

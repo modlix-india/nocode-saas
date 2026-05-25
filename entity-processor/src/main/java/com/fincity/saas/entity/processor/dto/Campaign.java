@@ -55,7 +55,10 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
                 .setCampaignId(campaignRequest.getCampaignId())
                 .setCampaignName(campaignRequest.getCampaignName())
                 .setCampaignType(campaignRequest.getCampaignType())
-                .setCampaignPlatform(campaignRequest.getCampaignPlatform());
+                .setCampaignPlatform(campaignRequest.getCampaignPlatform())
+                .setPlatformAccountId(campaignRequest.getPlatformAccountId())
+                .setPlatformLoginId(campaignRequest.getPlatformLoginId())
+                .setPlatformDatasetId(campaignRequest.getPlatformDatasetId());
     }
 
     @Override

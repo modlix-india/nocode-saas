@@ -61,6 +61,22 @@ public abstract class AbstractAdPlatformService {
             String externalAdsetId,
             String accessToken);
 
+    /**
+     * Lazily backfill platform-context fields ({@code platformAccountId},
+     * {@code platformLoginId}, {@code platformDatasetId}) on a Campaign row
+     * that came in without them — e.g. created via the marketingai UI page
+     * whose {@code campaigns/req} payload omits these fields.
+     *
+     * <p>Called by {@code MetricsSyncService} before each metrics fetch. If
+     * the row already has the fields populated, this is a no-op.
+     *
+     * <p>Default implementation returns the input unchanged. Platform impls
+     * override when they can derive the missing fields from their API.
+     */
+    public Mono<Campaign> ensurePlatformContext(Campaign campaign, String accessToken) {
+        return Mono.just(campaign);
+    }
+
     public Mono<String> verifyWebhook(Map<String, String> params, String verifyToken) {
         return Mono.empty();
     }

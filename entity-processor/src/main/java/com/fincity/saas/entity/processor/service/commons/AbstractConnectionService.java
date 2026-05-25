@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.feign.IFeignCoreService;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.EntityCollectorMessageResourceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
@@ -21,6 +22,9 @@ public abstract class AbstractConnectionService {
     protected CacheService cacheService;
     protected IFeignCoreService coreService;
 
+    @Value("${entity-processor.marketing-app-code:marketingai}")
+    private String marketingAppCode;
+
     @Autowired
     private void setMsgService(EntityCollectorMessageResourceService msgService) {
         this.msgService = msgService;
@@ -34,6 +38,23 @@ public abstract class AbstractConnectionService {
     @Autowired
     private void setCoreService(IFeignCoreService coreService) {
         this.coreService = coreService;
+    }
+
+    /**
+     * OAuth2 token for an ad-platform Connection (META_API, GOOGLE_API, …).
+     * Routes the lookup through the configured marketing app code rather than
+     * the caller's session app, because lead-management apps (e.g. leadzump)
+     * don't own the ad-platform OAuth records — those live under a separate
+     * marketing app (default {@code marketingai}).
+     */
+    public Mono<String> getMarketingPlatformOAuth2Token(String clientCode, String connectionName) {
+        return this.getConnectionOAuth2Token(this.marketingAppCode, clientCode, connectionName);
+    }
+
+    /** Same as {@link #getConnectionDetail} but routed through the marketing app code. */
+    public Mono<String> getMarketingPlatformConnectionDetail(
+            String clientCode, String connectionName, String key) {
+        return this.getConnectionDetail(this.marketingAppCode, clientCode, connectionName, key);
     }
 
     public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {

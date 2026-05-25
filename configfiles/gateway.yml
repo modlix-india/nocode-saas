@@ -46,7 +46,7 @@ spring:
           predicates:
             - Path=/api/worker/**, /*/api/worker/**, /*/*/api/worker/**, /*/*/*/api/worker/**, /*/*/*/*/api/worker/**, /*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**, /*/*/*/*/*/*/*/*/api/worker/**,
         - id: entity-collector
-          uri: lb://entity-collector
+          uri: lb://entity-processor
           predicates:
             - Path=/api/entity/collector/**, /*/api/entity/collector/**, /*/*/api/entity/collector/**, /*/*/*/api/entity/collector/**, /*/*/*/*/api/entity/collector/**, /*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**,
         - id: ai

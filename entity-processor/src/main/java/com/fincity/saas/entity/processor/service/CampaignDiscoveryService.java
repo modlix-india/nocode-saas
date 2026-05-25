@@ -74,8 +74,8 @@ public class CampaignDiscoveryService {
 
         return FlatMapUtil.flatMapMono(
                         this.campaignService::hasAccess,
-                        access -> this.connectionService.getConnectionOAuth2Token(
-                                access.getAppCode(), access.getClientCode(), platform.getConnectionName()),
+                        access -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), platform.getConnectionName()),
                         (access, token) -> platform.fetchCampaigns(
                                         access.getAppCode(),
                                         access.getClientCode(),
@@ -131,8 +131,8 @@ public class CampaignDiscoveryService {
                             return this.upsertCampaign(access, request, product.getId());
                         },
                         (access, product, campaign) -> this.connectionService
-                                .getConnectionOAuth2Token(
-                                        access.getAppCode(), access.getClientCode(), platform.getConnectionName())
+                                .getMarketingPlatformOAuth2Token(
+                                        access.getClientCode(), platform.getConnectionName())
                                 .flatMap(token -> this.mirrorAdsetsAndAds(access, platform, campaign, request, token))
                                 .thenReturn(campaign))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.enable"));
@@ -243,7 +243,7 @@ public class CampaignDiscoveryService {
         ProcessorAccess access = ProcessorAccess.of(campaign.getAppCode(), campaign.getClientCode(), true, null, null);
 
         return this.connectionService
-                .getConnectionOAuth2Token(campaign.getAppCode(), campaign.getClientCode(), platform.getConnectionName())
+                .getMarketingPlatformOAuth2Token(campaign.getClientCode(), platform.getConnectionName())
                 .flatMap(token -> platform.fetchAdsets(
                                 campaign.getAppCode(),
                                 campaign.getClientCode(),

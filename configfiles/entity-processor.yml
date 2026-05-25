@@ -42,3 +42,13 @@ management:
 redis:
   cache:
     prefix: epro
+
+entity-processor:
+  # AppCode under which ad-platform Connection records (META_API, GOOGLE_API)
+  # and their OAuth tokens are stored in Core. Lead intake / ticket data lives
+  # under the lead-management app (e.g. leadzump), but the OAuth flow for ad
+  # platforms is centralised on a marketing app (default: marketingai). All
+  # connection lookups for ad-platform credentials route through this appCode
+  # regardless of the caller's session app. Override per-deployment if your
+  # marketing app is named differently.
+  marketing-app-code: marketingai

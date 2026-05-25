@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -38,6 +39,9 @@ public class EntityCollectorService extends AbstractConnectionService {
     private final EntityCollectorLogService entityCollectorLogService;
     private final ObjectMapper mapper;
     private static final Logger logger = LoggerFactory.getLogger(EntityCollectorService.class);
+
+    @Value("${ai.adzump.googleAds.developerToken}")
+    private String googleDeveloperToken;
 
     public EntityCollectorService(
             EntityIntegrationService entityIntegrationService,
@@ -200,18 +204,18 @@ public class EntityCollectorService extends AbstractConnectionService {
 
                         token -> {
                             if (websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE)) {
-                                return this.getConnectionDetail(
-                                                integration.getInAppCode(),
-                                                integration.getClientCode(),
-                                                EntityUtil.GOOGLE_CONNECTION_NAME,
-                                                "developerToken")
-                                        .flatMap(devToken -> GoogleEntityUtil.buildCampaignDetails(
-                                                websiteDetails.getUtmLoginCustomer(),
-                                                websiteDetails.getUtmCustomer(),
-                                                websiteDetails.getUtmKeyword(),
-                                                adId,
-                                                token,
-                                                devToken));
+                                if (this.googleDeveloperToken == null || this.googleDeveloperToken.isBlank()) {
+                                    return entityCollectorLogService
+                                            .updateOnError(logId, "ai.adzump.googleAds.developerToken is not configured")
+                                            .then(Mono.empty());
+                                }
+                                return GoogleEntityUtil.buildCampaignDetails(
+                                        websiteDetails.getUtmLoginCustomer(),
+                                        websiteDetails.getUtmCustomer(),
+                                        websiteDetails.getUtmKeyword(),
+                                        adId,
+                                        token,
+                                        this.googleDeveloperToken);
                             }
                             return MetaEntityUtil.buildCampaignDetails(adId, token);
                         },

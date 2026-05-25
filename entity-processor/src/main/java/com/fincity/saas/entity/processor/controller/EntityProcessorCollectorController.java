@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/entity/processor/collector/entry")
+@RequestMapping("/api/entity/processor/entry")
 public class EntityProcessorCollectorController {
 
     private final EntityCollectorService entityCollectorService;

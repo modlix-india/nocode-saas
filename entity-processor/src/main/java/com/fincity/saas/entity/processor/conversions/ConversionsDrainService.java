@@ -111,8 +111,7 @@ public class ConversionsDrainService {
                     return this.campaignService
                             .read(ticket.getCampaignId())
                             .flatMap(campaign -> this.connectionService
-                                    .getConnectionOAuth2Token(
-                                            campaign.getAppCode(),
+                                    .getMarketingPlatformOAuth2Token(
                                             campaign.getClientCode(),
                                             connectionNameFor(event.getCampaignPlatform()))
                                     .flatMap(token -> dispatcher.dispatch(event, mapping, ticket, campaign, token))

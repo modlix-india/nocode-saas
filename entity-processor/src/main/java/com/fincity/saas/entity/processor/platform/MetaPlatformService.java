@@ -14,12 +14,16 @@ import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class MetaPlatformService extends AbstractAdPlatformService {
+
+    private static final Logger log = LoggerFactory.getLogger(MetaPlatformService.class);
 
     private static final String META_VERSION = "/v22.0/";
     private static final String INSIGHTS_FIELDS = "impressions,clicks,spend,actions";
@@ -32,6 +36,47 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     @Override
     public String getConnectionName() {
         return "META_API";
+    }
+
+    /**
+     * For Meta, resolve {@code platformAccountId} (ad account id) by querying
+     * {@code GET /{campaignId}?fields=account_id} on Graph API. Only fires
+     * when the campaign row is missing {@code platformAccountId}.
+     *
+     * <p>Note: Meta metrics fetch ({@code GET /{campaignId}/insights}) works
+     * fine without {@code account_id} — it's keyed off campaign global ID.
+     * We backfill it here mainly to keep the row consistent for the Phase 4
+     * conversions dispatcher path that DOES need {@code platformDatasetId}
+     * (Pixel ID), and for future reporting/grouping queries.
+     */
+    @Override
+    public Mono<Campaign> ensurePlatformContext(Campaign campaign, String accessToken) {
+        if (campaign.getPlatformAccountId() != null && !campaign.getPlatformAccountId().isBlank()) {
+            return Mono.just(campaign);
+        }
+        if (campaign.getCampaignId() == null || campaign.getCampaignId().isBlank()) {
+            return Mono.just(campaign);
+        }
+        return MetaEntityUtil.fetchMetaGraphData(
+                        META_VERSION + campaign.getCampaignId(),
+                        Map.of("access_token", accessToken, "fields", "account_id"))
+                .map(body -> {
+                    String accountId = body.path("account_id").asText(null);
+                    if (accountId != null && !accountId.isBlank()) {
+                        log.info("Meta ensurePlatformContext: campaign {} → account_id {}",
+                                campaign.getCampaignId(), accountId);
+                        campaign.setPlatformAccountId(accountId);
+                    } else {
+                        log.warn("Meta ensurePlatformContext: campaign {} returned no account_id (body={})",
+                                campaign.getCampaignId(), body);
+                    }
+                    return campaign;
+                })
+                .onErrorResume(e -> {
+                    log.warn("Meta ensurePlatformContext failed for campaign {}: {}",
+                            campaign.getCampaignId(), e.toString());
+                    return Mono.just(campaign);
+                });
     }
 
     @Override

@@ -17,7 +17,11 @@ import com.fincity.saas.entity.processor.dto.EntityIntegration;
 import com.fincity.saas.entity.processor.dto.EntityResponse;
 import com.fincity.saas.entity.processor.service.EntityCollectorLogService;
 import com.fincity.saas.entity.processor.service.EntityCollectorMessageResourceService;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,16 +59,28 @@ public final class MetaEntityUtil {
     private static final String BASIC_ENTITY_FIELDS = "id,name";
     private static final String FACEBOOK = "facebook";
 
-    private static final WebClient webClient = WebClient.create();
+    // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
+    // responses (yearly daily-segmented data) blow past. Bump to 16 MB so large
+    // GAQL responses don't fail with DataBufferLimitException.
+    private static final WebClient webClient = WebClient.builder()
+            .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build();
 
     public static Mono<JsonNode> fetchMetaGraphData(String path, Map<String, String> queryParams) {
+        // Build a fully-encoded URI directly. We avoid the WebClient `uri(uriBuilder -> ...)`
+        // lambda form because Spring's DefaultUriBuilderFactory re-applies URI template
+        // expansion on the returned URI, which mis-parses values containing `{...}` (e.g.
+        // Meta's `time_range={"since":"...","until":"..."}` JSON parameter) as
+        // template variables and throws "Not enough variable values available to expand".
+        String query = queryParams.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+        URI uri = URI.create(SCHEME + "://" + META_HOST + path + (query.isEmpty() ? "" : "?" + query));
         return webClient
                 .get()
-                .uri(uriBuilder -> {
-                    var builder = uriBuilder.scheme(SCHEME).host(META_HOST).path(path);
-                    queryParams.forEach(builder::queryParam);
-                    return builder.build();
-                })
+                .uri(uri)
                 .retrieve()
                 .bodyToMono(JsonNode.class);
     }

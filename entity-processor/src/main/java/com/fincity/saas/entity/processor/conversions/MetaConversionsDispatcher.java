@@ -45,7 +45,12 @@ public class MetaConversionsDispatcher extends AbstractConversionsDispatcher {
     private static final String HOST = "graph.facebook.com";
     private static final String API_VERSION = "/v24.0/";
 
-    private static final WebClient webClient = WebClient.create();
+    // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
+    // responses (yearly daily-segmented data) blow past. Bump to 16 MB so large
+    // GAQL responses don't fail with DataBufferLimitException.
+    private static final WebClient webClient = WebClient.builder()
+            .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+            .build();
 
     @Override
     public CampaignPlatform getPlatform() {
