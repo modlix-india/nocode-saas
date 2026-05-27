@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.Adset;
 import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
@@ -13,7 +14,6 @@ import com.fincity.saas.entity.processor.model.request.EnableCampaignRequest;
 import com.fincity.saas.entity.processor.platform.AbstractAdPlatformService;
 import com.fincity.saas.entity.processor.platform.AdPlatformRegistry;
 import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
-import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -38,7 +38,6 @@ public class CampaignDiscoveryService {
     private final CampaignService campaignService;
     private final AdsetService adsetService;
     private final AdService adService;
-    private final ProductService productService;
     private final ProcessorMessageResourceService msgService;
 
     public CampaignDiscoveryService(
@@ -47,14 +46,12 @@ public class CampaignDiscoveryService {
             CampaignService campaignService,
             AdsetService adsetService,
             AdService adService,
-            ProductService productService,
             ProcessorMessageResourceService msgService) {
         this.platformRegistry = platformRegistry;
         this.connectionService = connectionService;
         this.campaignService = campaignService;
         this.adsetService = adsetService;
         this.adService = adService;
-        this.productService = productService;
         this.msgService = msgService;
     }
 
@@ -108,42 +105,51 @@ public class CampaignDiscoveryService {
         if (request.getCampaignPlatform() == null
                 || request.getExternalCampaignId() == null
                 || request.getExternalCampaignId().isBlank()
-                || request.getProductId() == null
-                || request.getProductId().getULongId() == null
                 || request.getPlatformAccountId() == null
                 || request.getPlatformAccountId().isBlank()) {
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.MISSING_PARAMETERS,
-                    "productId, campaignPlatform, externalCampaignId, platformAccountId");
+                    "campaignPlatform, externalCampaignId, platformAccountId");
         }
 
+        List<Identity> productIdentities = effectiveProductIdentities(request);
         AbstractAdPlatformService platform = this.platformRegistry.getService(request.getCampaignPlatform());
 
         return FlatMapUtil.flatMapMono(
                         this.campaignService::hasAccess,
-                        access -> this.productService.readByIdentity(access, request.getProductId()),
-                        (access, product) -> {
-                            if (!product.isActive())
-                                return this.msgService.<Campaign>throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE);
-                            return this.upsertCampaign(access, request, product.getId());
-                        },
-                        (access, product, campaign) -> this.connectionService
+                        access -> this.upsertCampaign(access, request),
+                        (access, campaign) -> productIdentities.isEmpty()
+                                ? Mono.just(campaign)
+                                : this.campaignService
+                                        .setProducts(campaign.getId(), productIdentities)
+                                        .thenReturn(campaign),
+                        (access, campaign, linkedCampaign) -> this.connectionService
                                 .getMarketingPlatformOAuth2Token(
                                         access.getClientCode(), platform.getConnectionName())
-                                .flatMap(token -> this.mirrorAdsetsAndAds(access, platform, campaign, request, token))
-                                .thenReturn(campaign))
+                                .flatMap(token ->
+                                        this.mirrorAdsetsAndAds(access, platform, linkedCampaign, request, token))
+                                .thenReturn(linkedCampaign))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.enable"));
     }
 
-    private Mono<Campaign> upsertCampaign(ProcessorAccess access, EnableCampaignRequest request, ULong productId) {
+    /**
+     * Resolves the products to link on enable: the many-to-many {@code productIds}
+     * when present, else the deprecated single {@code productId}, else none (the
+     * campaign is enabled with no product link — valid for auto-discovery).
+     */
+    private static List<Identity> effectiveProductIdentities(EnableCampaignRequest request) {
+        if (request.getProductIds() != null && !request.getProductIds().isEmpty()) return request.getProductIds();
+        if (request.getProductId() != null && request.getProductId().getULongId() != null)
+            return List.of(request.getProductId());
+        return List.of();
+    }
+
+    private Mono<Campaign> upsertCampaign(ProcessorAccess access, EnableCampaignRequest request) {
 
         return this.campaignService
                 .readByCampaignId(access, request.getExternalCampaignId())
                 .flatMap(existing -> {
-                    existing.setProductId(productId);
                     existing.setCampaignName(request.getExternalCampaignName());
                     existing.setCampaignType(request.getCampaignType());
                     existing.setCampaignPlatform(request.getCampaignPlatform());
@@ -159,8 +165,7 @@ public class CampaignDiscoveryService {
                             .setCampaignType(request.getCampaignType())
                             .setCampaignPlatform(request.getCampaignPlatform())
                             .setPlatformAccountId(request.getPlatformAccountId())
-                            .setPlatformLoginId(request.getPlatformLoginId())
-                            .setProductId(productId);
+                            .setPlatformLoginId(request.getPlatformLoginId());
                     fresh.setActive(Boolean.TRUE);
                     return this.campaignService.create(fresh);
                 }));

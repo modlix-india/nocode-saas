@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import java.io.Serial;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -31,7 +32,21 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
     private String platformAccountId;
     private String platformLoginId;
     private String platformDatasetId;
+
+    /**
+     * DEPRECATED single-product FK (column {@code PRODUCT_ID}). Holds the
+     * "primary" product only; superseded by the many-to-many
+     * {@code entity_processor_campaign_products} join. New code reads
+     * {@link #productIds}.
+     */
     private ULong productId;
+
+    /**
+     * Linked product ids from the join table. Not a persisted column — populated
+     * on demand (e.g. by the products endpoint or report hydration); null when
+     * not hydrated.
+     */
+    private transient List<ULong> productIds;
 
     public Campaign() {
         super();
@@ -48,6 +63,7 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
         this.platformLoginId = campaign.platformLoginId;
         this.platformDatasetId = campaign.platformDatasetId;
         this.productId = campaign.productId;
+        this.productIds = campaign.productIds == null ? null : new java.util.ArrayList<>(campaign.productIds);
     }
 
     public static Campaign of(CampaignRequest campaignRequest) {

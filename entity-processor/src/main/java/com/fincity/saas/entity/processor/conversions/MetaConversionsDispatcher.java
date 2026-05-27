@@ -9,6 +9,8 @@ import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.ConversionActionSource;
 import com.fincity.saas.entity.processor.util.ConversionsApiHashUtil;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,7 +118,7 @@ public class MetaConversionsDispatcher extends AbstractConversionsDispatcher {
 
         Map<String, Object> singleEvent = new HashMap<>();
         singleEvent.put("event_name", event.getEventName());
-        singleEvent.put("event_time", Instant.now().getEpochSecond());
+        singleEvent.put("event_time", eventTimeSeconds(event));
         singleEvent.put("event_id", event.getEventId());
         singleEvent.put("action_source", event.getActionSource().getWireValue());
         singleEvent.put("user_data", userData);
@@ -163,6 +165,18 @@ public class MetaConversionsDispatcher extends AbstractConversionsDispatcher {
         }
 
         return ud;
+    }
+
+    /**
+     * Conversion time is when the stage transition that enqueued this event
+     * actually happened (stored UTC on the outbox row), NOT the deferred worker
+     * dispatch time. Dispatch runs on a worker tick with retry backoff, so
+     * {@code now()} would drift {@code event_time} off the true conversion moment.
+     * Falls back to now only if the row somehow has no createdAt.
+     */
+    private static long eventTimeSeconds(ConversionEvent event) {
+        LocalDateTime createdAt = event.getCreatedAt();
+        return createdAt != null ? createdAt.toEpochSecond(ZoneOffset.UTC) : Instant.now().getEpochSecond();
     }
 
     private Map<String, Object> buildCustomData(ConversionEvent event, ConversionActionMapping mapping) {

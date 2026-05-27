@@ -14,11 +14,19 @@ import com.fincity.saas.entity.processor.dao.ConversionActionMappingDAO;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.ConversionActionMapping;
 import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorConversionActionMappingRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredConversionAction;
+import com.fincity.saas.entity.processor.model.request.ApplyFunnelMappingRequest;
 import com.fincity.saas.entity.processor.model.request.ConversionActionMappingRequest;
+import com.fincity.saas.entity.processor.model.request.CreateGoogleConversionActionRequest;
 import com.fincity.saas.entity.processor.model.request.SeedConversionDefaultsRequest;
+import com.fincity.saas.entity.processor.platform.GooglePlatformService;
+import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
+import java.util.concurrent.atomic.AtomicInteger;
+import reactor.core.publisher.Flux;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
@@ -47,6 +55,9 @@ public class ConversionActionMappingService
 
     private final StageDAO stageDAO;
     private final Gson gson;
+    private final CampaignService campaignService;
+    private final AbstractConnectionService connectionService;
+    private final GooglePlatformService googlePlatformService;
 
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
@@ -55,9 +66,17 @@ public class ConversionActionMappingService
     @Lazy
     private ConversionActionMappingService self;
 
-    public ConversionActionMappingService(StageDAO stageDAO, Gson gson) {
+    public ConversionActionMappingService(
+            StageDAO stageDAO,
+            Gson gson,
+            CampaignService campaignService,
+            AbstractConnectionService connectionService,
+            GooglePlatformService googlePlatformService) {
         this.stageDAO = stageDAO;
         this.gson = gson;
+        this.campaignService = campaignService;
+        this.connectionService = connectionService;
+        this.googlePlatformService = googlePlatformService;
     }
 
     @PostConstruct
@@ -203,6 +222,150 @@ public class ConversionActionMappingService
                     return super.createInternal(access, mapping);
                 }));
     }
+
+    /**
+     * Self-contained funnel apply: for each funnel stage in the request, tags every
+     * chosen deal-stage with that funnel stage ({@code FUNNEL_STAGE}) and upserts a
+     * stage-level conversion mapping (triggerStatusId null = any status in stage) for
+     * the platform. Additive: stages/mappings not in the request are left untouched
+     * (remove via the per-stage editor). Returns {@code {mappings: N}} upsert count.
+     */
+    public Mono<Map<String, Object>> applyFunnel(ApplyFunnelMappingRequest request) {
+
+        if (request.getProductTemplateId() == null
+                || request.getProductTemplateId().getULongId() == null
+                || request.getCampaignPlatform() == null
+                || request.getFunnels() == null
+                || request.getFunnels().isEmpty()) {
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "productTemplateId, campaignPlatform, funnels");
+        }
+
+        ULong productTemplateId = request.getProductTemplateId().getULongId();
+        CampaignPlatform platform = request.getCampaignPlatform();
+        AtomicInteger count = new AtomicInteger();
+
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> Flux.fromIterable(request.getFunnels().entrySet())
+                                .concatMap(entry -> {
+                                    ApplyFunnelMappingRequest.FunnelMapping fm = entry.getValue();
+                                    if (fm == null || fm.getStageIds() == null || fm.getStageIds().isEmpty())
+                                        return Flux.empty();
+                                    return Flux.fromIterable(fm.getStageIds())
+                                            .filter(id -> id != null && id.getULongId() != null)
+                                            .concatMap(id -> this.applyOneFunnelStage(
+                                                    access, productTemplateId, platform, entry.getKey(),
+                                                    id.getULongId(), fm))
+                                            .doOnNext(m -> count.incrementAndGet());
+                                })
+                                .then(Mono.fromSupplier(() -> Map.<String, Object>of("mappings", count.get()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConversionActionMappingService.applyFunnel"));
+    }
+
+    private Mono<ConversionActionMapping> applyOneFunnelStage(
+            ProcessorAccess access,
+            ULong productTemplateId,
+            CampaignPlatform platform,
+            FunnelStage funnel,
+            ULong stageId,
+            ApplyFunnelMappingRequest.FunnelMapping fm) {
+
+        return this.stageDAO
+                .setFunnelStage(access, stageId, funnel)
+                .then(this.dao
+                        .findExisting(access, productTemplateId, platform, stageId, null)
+                        .flatMap(existing -> super.update(access, existing
+                                .setEventName(fm.getEventName())
+                                .setPlatformActionId(fm.getPlatformActionId())
+                                .setDefaultValue(fm.getDefaultValue())
+                                .setCurrency(fm.getCurrency())
+                                .setValueFieldPath(fm.getValueFieldPath())
+                                .setTestEventCode(fm.getTestEventCode())))
+                        .switchIfEmpty(Mono.defer(() -> super.createInternal(access, new ConversionActionMapping()
+                                .setProductTemplateId(productTemplateId)
+                                .setCampaignPlatform(platform)
+                                .setTriggerStageId(stageId)
+                                .setEventName(fm.getEventName())
+                                .setPlatformActionId(fm.getPlatformActionId())
+                                .setDefaultValue(fm.getDefaultValue())
+                                .setCurrency(fm.getCurrency())
+                                .setValueFieldPath(fm.getValueFieldPath())
+                                .setTestEventCode(fm.getTestEventCode())))));
+    }
+
+    /**
+     * Lists the Google Ads conversion actions in the client's connected account
+     * for the mapping picker. Account is resolved from any of the client's Google
+     * campaigns unless {@code customerId} is supplied. Returns an empty list when
+     * no Google account can be resolved (fresh client with no synced campaign).
+     */
+    public Mono<List<DiscoveredConversionAction>> listGoogleConversionActions(
+            String customerId, String loginCustomerId) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> resolveGoogleAccount(customerId, loginCustomerId),
+                        (access, acct) -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), this.googlePlatformService.getConnectionName()),
+                        (access, acct, token) -> this.googlePlatformService
+                                .fetchConversionActions(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        acct.customerId(),
+                                        acct.loginCustomerId(),
+                                        token)
+                                .collectList())
+                .switchIfEmpty(Mono.just(List.of()))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ConversionActionMappingService.listGoogleConversionActions"));
+    }
+
+    /**
+     * Creates a Google Ads conversion action in the client's connected account so
+     * a fresh client can provision one without leaving Modlix. The returned
+     * {@code resourceName} is ready to drop into a mapping's {@code platformActionId}.
+     */
+    public Mono<DiscoveredConversionAction> createGoogleConversionAction(CreateGoogleConversionActionRequest request) {
+
+        if (request.getName() == null || request.getName().isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "name");
+
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> resolveGoogleAccount(request.getCustomerId(), request.getLoginCustomerId())
+                                .switchIfEmpty(Mono.error(new GenericException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "No connected Google Ads account found for this client. Connect Google and"
+                                                + " sync a campaign first, or pass customerId explicitly."))),
+                        (access, acct) -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), this.googlePlatformService.getConnectionName()),
+                        (access, acct, token) -> this.googlePlatformService.createConversionAction(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                acct.customerId(),
+                                acct.loginCustomerId(),
+                                request.getName(),
+                                request.getCategory(),
+                                token))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ConversionActionMappingService.createGoogleConversionAction"));
+    }
+
+    /** Explicit ids when supplied; else the client's first Google campaign with a resolved account. */
+    private Mono<GoogleAccount> resolveGoogleAccount(String customerId, String loginCustomerId) {
+        if (customerId != null && !customerId.isBlank())
+            return Mono.just(new GoogleAccount(customerId, loginCustomerId));
+        return this.campaignService
+                .findPlatformAccount(CampaignPlatform.GOOGLE)
+                .map(c -> new GoogleAccount(c.getPlatformAccountId(), c.getPlatformLoginId()));
+    }
+
+    private record GoogleAccount(String customerId, String loginCustomerId) {}
 
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {

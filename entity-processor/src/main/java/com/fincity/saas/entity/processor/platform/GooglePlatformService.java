@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredAd;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredConversionAction;
 import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -281,6 +282,101 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 .bodyValue(Map.of("query", gaql))
                 .retrieve()
                 .bodyToMono(JsonNode.class);
+    }
+
+    private static final String CONVERSION_ACTION = "conversionAction";
+
+    /**
+     * Lists the conversion actions defined in a Google Ads account, for the
+     * mapping picker. Each {@code resourceName} is exactly what a mapping's
+     * {@code platformActionId} must be set to.
+     */
+    public Flux<DiscoveredConversionAction> fetchConversionActions(
+            String appCode, String clientCode, String customerId, String loginCustomerId, String accessToken) {
+
+        String gaql = "SELECT conversion_action.id, conversion_action.name, conversion_action.resource_name, "
+                + "conversion_action.status, conversion_action.type, conversion_action.category "
+                + "FROM conversion_action WHERE conversion_action.status != 'REMOVED'";
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMapMany(devToken -> search(loginCustomerId, customerId, gaql, accessToken, devToken)
+                        .flatMapMany(root -> {
+                            JsonNode results = root.path("results");
+                            if (!results.isArray() || results.isEmpty()) return Flux.empty();
+                            return Flux.fromIterable(results::elements).map(row -> {
+                                JsonNode ca = row.path(CONVERSION_ACTION);
+                                return new DiscoveredConversionAction()
+                                        .setResourceName(ca.path("resourceName").asText(null))
+                                        .setId(ca.path("id").asText(null))
+                                        .setName(ca.path("name").asText(null))
+                                        .setStatus(ca.path("status").asText(null))
+                                        .setType(ca.path("type").asText(null))
+                                        .setCategory(ca.path("category").asText(null));
+                            });
+                        }));
+    }
+
+    /**
+     * Creates an {@code UPLOAD_CLICKS} conversion action in the account so a fresh
+     * client can provision one in-app. Returns the created action with its
+     * {@code resourceName} parsed from the mutate response. {@code category}
+     * defaults to {@code DEFAULT}.
+     */
+    public Mono<DiscoveredConversionAction> createConversionAction(
+            String appCode,
+            String clientCode,
+            String customerId,
+            String loginCustomerId,
+            String name,
+            String category,
+            String accessToken) {
+
+        String cat = (category == null || category.isBlank()) ? "DEFAULT" : category;
+        Map<String, Object> create = new java.util.HashMap<>();
+        create.put("name", name);
+        create.put("type", "UPLOAD_CLICKS");
+        create.put("category", cat);
+        create.put("status", "ENABLED");
+        create.put("countingType", "ONE_PER_CLICK");
+        Map<String, Object> body = Map.of("operations", java.util.List.of(Map.of("create", create)));
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMap(devToken -> webClient
+                        .post()
+                        .uri(uriBuilder -> uriBuilder
+                                .scheme(SCHEME)
+                                .host(HOST)
+                                .path(API_VERSION + "customers/" + customerId + "/conversionActions:mutate")
+                                .build())
+                        .headers(h -> {
+                            h.setBearerAuth(accessToken);
+                            h.add("developer-token", devToken);
+                            if (loginCustomerId != null && !loginCustomerId.isBlank()) {
+                                h.add("login-customer-id", loginCustomerId);
+                            }
+                        })
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .map(root -> {
+                            JsonNode results = root.path("results");
+                            String resourceName = results.isArray() && !results.isEmpty()
+                                    ? results.get(0).path("resourceName").asText(null)
+                                    : null;
+                            String id = null;
+                            if (resourceName != null) {
+                                int slash = resourceName.lastIndexOf('/');
+                                if (slash >= 0 && slash < resourceName.length() - 1)
+                                    id = resourceName.substring(slash + 1);
+                            }
+                            return new DiscoveredConversionAction()
+                                    .setResourceName(resourceName)
+                                    .setId(id)
+                                    .setName(name)
+                                    .setStatus("ENABLED")
+                                    .setType("UPLOAD_CLICKS")
+                                    .setCategory(cat);
+                        }));
     }
 
     /**

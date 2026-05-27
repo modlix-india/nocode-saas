@@ -12,7 +12,9 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
@@ -21,6 +23,7 @@ import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -114,6 +117,71 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     public reactor.core.publisher.Flux<Campaign> findAllActive() {
         return this.dao.findAllActive()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.findAllActive"));
+    }
+
+    /**
+     * Resolves the caller-tenant's account context on a platform from any campaign
+     * that carries it (account-level identifiers are shared across the client's
+     * campaigns). Empty when no campaign with a resolved account exists yet.
+     */
+    public Mono<Campaign> findPlatformAccount(CampaignPlatform platform) {
+        return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.dao.findAccountForClient(access, platform))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.findPlatformAccount"));
+    }
+
+    /**
+     * Product ids linked to a campaign, without a caller security gate. For
+     * internal/worker flows (e.g. ticket attribution) that run under a system
+     * {@code ProcessorAccess} rather than a JWT context. Use {@link #getProductIds}
+     * for user-facing calls.
+     */
+    public Mono<List<ULong>> findLinkedProductIds(ULong campaignId) {
+        return this.dao.findProductIdsForCampaign(campaignId)
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.findLinkedProductIds"));
+    }
+
+    /** Product ids linked to a campaign via the many-to-many join. */
+    public Mono<List<ULong>> getProductIds(ULong campaignId) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> this.read(campaignId),
+                        (access, campaign) -> this.dao.findProductIdsForCampaign(campaignId).collectList())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.getProductIds"));
+    }
+
+    /**
+     * Replaces a campaign's full product link set (set semantics). Each identity
+     * is validated to be an active product in the caller's tenant. The deprecated
+     * {@code PRODUCT_ID} column is synced to the primary (first) product. Returns
+     * the campaign with {@code productIds} hydrated.
+     */
+    public Mono<Campaign> setProducts(ULong campaignId, List<Identity> productIdentities) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> this.read(campaignId),
+                        (access, campaign) -> this.resolveActiveProductIds(access, productIdentities),
+                        (access, campaign, productIds) -> this.dao
+                                .setProducts(access, campaignId, productIds)
+                                .then(this.dao.updatePrimaryProduct(
+                                        campaignId, productIds.isEmpty() ? null : productIds.get(0)))
+                                .thenReturn(campaign
+                                        .setProductId(productIds.isEmpty() ? null : productIds.get(0))
+                                        .setProductIds(productIds)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.setProducts"));
+    }
+
+    private Mono<List<ULong>> resolveActiveProductIds(ProcessorAccess access, List<Identity> identities) {
+        if (identities == null || identities.isEmpty()) return Mono.just(List.of());
+        return reactor.core.publisher.Flux.fromIterable(identities)
+                .concatMap(identity -> this.productService
+                        .readByIdentity(access, identity)
+                        .flatMap(product -> product.isActive()
+                                ? Mono.just(product.getId())
+                                : this.msgService.<ULong>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_NOT_ACTIVE)))
+                .collectList();
     }
 
     @Override

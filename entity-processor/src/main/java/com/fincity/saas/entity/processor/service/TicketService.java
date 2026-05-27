@@ -38,9 +38,11 @@ import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.DiagnosticsLog;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
@@ -557,7 +559,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
                                         this.campaignService.getEntityName(),
                                         cTicketRequest.getCampaignDetails().getCampaignId())),
-                        campaign -> this.productService.readById(access, campaign.getProductId()),
+                        campaign -> this.resolveCampaignProduct(access, campaign),
                         (campaign, product) -> {
                             if (!product.isActive())
                                 return this.msgService.<Ticket>throwMessage(
@@ -652,6 +654,26 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             .defaultIfEmpty(ticket);
                 })
                 .defaultIfEmpty(ticket);
+    }
+
+    /**
+     * Resolves the product a campaign lead should be attributed to, under
+     * many-to-many. Uses the deprecated "primary" {@code PRODUCT_ID} when set
+     * (kept in sync with the first linked product); otherwise falls back to the
+     * single linked product from the join. If a campaign has zero or multiple
+     * products and no primary, attribution cannot be disambiguated and a clear
+     * error is raised rather than silently picking one.
+     */
+    private Mono<Product> resolveCampaignProduct(ProcessorAccess access, Campaign campaign) {
+        if (campaign.getProductId() != null)
+            return this.productService.readById(access, campaign.getProductId());
+
+        return this.campaignService.findLinkedProductIds(campaign.getId()).flatMap(productIds -> productIds.size() == 1
+                ? this.productService.readById(access, productIds.get(0))
+                : this.msgService.<Product>throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.MISSING_PARAMETERS,
+                        "product for campaign " + campaign.getCampaignId()));
     }
 
     public Mono<Ticket> createForPartnerImportDCRM(String appCode, String clientCode, TicketPartnerRequest request) {

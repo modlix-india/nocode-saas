@@ -8,7 +8,9 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.processor.util.ConversionsApiHashUtil;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -149,7 +151,7 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
         // platform_action_id is a fully-qualified resource name, e.g.
         // "customers/1234/conversionActions/567"
         conversion.put("conversion_action", mapping.getPlatformActionId());
-        conversion.put("conversion_date_time", OffsetDateTime.now().format(TS_FORMAT));
+        conversion.put("conversion_date_time", conversionDateTime(event.getCreatedAt()));
         conversion.put("order_id", event.getEventId());
         if (mapping.getDefaultValue() != null) conversion.put("conversion_value", mapping.getDefaultValue());
         if (mapping.getCurrency() != null) conversion.put("currency_code", mapping.getCurrency());
@@ -175,6 +177,16 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
         if (!userIdentifiers.isEmpty()) conversion.put("user_identifiers", userIdentifiers);
 
         return conversion;
+    }
+
+    /**
+     * Google attributes on conversion_date_time within the click lookback window,
+     * so it must be the actual stage-transition time (stored UTC on the outbox
+     * row), not the deferred worker dispatch time. Falls back to now if absent.
+     */
+    private static String conversionDateTime(LocalDateTime createdAt) {
+        OffsetDateTime odt = createdAt != null ? createdAt.atOffset(ZoneOffset.UTC) : OffsetDateTime.now(ZoneOffset.UTC);
+        return odt.format(TS_FORMAT);
     }
 
     private static Map<String, Object> jsonNodeToMap(JsonNode node) {

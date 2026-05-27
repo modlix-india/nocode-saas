@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.analytics.dao;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds.ENTITY_PROCESSOR_ADS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS;
+import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts.ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
@@ -15,6 +16,7 @@ import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
@@ -41,6 +43,7 @@ import reactor.core.publisher.Mono;
 public class CampaignReportDAO {
 
     private static final EntityProcessorCampaignMetrics METRICS = ENTITY_PROCESSOR_CAMPAIGN_METRICS;
+    private static final EntityProcessorCampaignProducts CAMPAIGN_PRODUCTS = ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS;
     private static final EntityProcessorCampaigns CAMPAIGNS = ENTITY_PROCESSOR_CAMPAIGNS;
     private static final EntityProcessorTickets TICKETS = ENTITY_PROCESSOR_TICKETS;
     private static final EntityProcessorStages STAGES = ENTITY_PROCESSOR_STAGES;
@@ -140,8 +143,16 @@ public class CampaignReportDAO {
                 ? METRICS.METRIC_DATE.between(fromDate, toDate)
                 : DSL.noCondition();
 
-        Condition campaignScope = CAMPAIGNS.PRODUCT_ID
-                .eq(productId)
+        // Scope to campaigns linked to the product via the many-to-many join,
+        // not the deprecated single CAMPAIGNS.PRODUCT_ID column.
+        Condition campaignScope = CAMPAIGNS.ID
+                .in(DSL.select(CAMPAIGN_PRODUCTS.CAMPAIGN_ID)
+                        .from(CAMPAIGN_PRODUCTS)
+                        .where(CAMPAIGN_PRODUCTS
+                                .PRODUCT_ID
+                                .eq(productId)
+                                .and(CAMPAIGN_PRODUCTS.APP_CODE.eq(access.getAppCode()))
+                                .and(CAMPAIGN_PRODUCTS.CLIENT_CODE.eq(access.getClientCode()))))
                 .and(CAMPAIGNS.IS_ACTIVE.isTrue())
                 .and(CAMPAIGNS.APP_CODE.eq(access.getAppCode()))
                 .and(CAMPAIGNS.CLIENT_CODE.eq(access.getClientCode()));
