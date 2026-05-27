@@ -126,11 +126,49 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
     }
 
     /**
+     * Setter for
+     * <code>entity_processor.entity_processor_ads.THUMBNAIL_URL</code>. Ad
+     * creative thumbnail/image URL from the platform.
+     */
+    public EntityProcessorAdsRecord setThumbnailUrl(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_ads.THUMBNAIL_URL</code>. Ad
+     * creative thumbnail/image URL from the platform.
+     */
+    public String getThumbnailUrl() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_ads.CREATIVE_TYPE</code>.
+     * Creative type: IMAGE / VIDEO / CAROUSEL / etc.
+     */
+    public EntityProcessorAdsRecord setCreativeType(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_ads.CREATIVE_TYPE</code>.
+     * Creative type: IMAGE / VIDEO / CAROUSEL / etc.
+     */
+    public String getCreativeType() {
+        return (String) get(7);
+    }
+
+    /**
      * Setter for <code>entity_processor.entity_processor_ads.ADSET_ID</code>.
      * Adset this ad belongs to.
      */
     public EntityProcessorAdsRecord setAdsetId(ULong value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -139,7 +177,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Adset this ad belongs to.
      */
     public ULong getAdsetId() {
-        return (ULong) get(6);
+        return (ULong) get(8);
     }
 
     /**
@@ -148,7 +186,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * this ad belongs to (denormalized).
      */
     public EntityProcessorAdsRecord setCampaignId(ULong value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -158,7 +196,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * this ad belongs to (denormalized).
      */
     public ULong getCampaignId() {
-        return (ULong) get(7);
+        return (ULong) get(9);
     }
 
     /**
@@ -167,7 +205,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * active flag.
      */
     public EntityProcessorAdsRecord setTempActive(Boolean value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -177,7 +215,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * active flag.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(8);
+        return (Boolean) get(10);
     }
 
     /**
@@ -185,7 +223,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Flag to check if this ad is active or not.
      */
     public EntityProcessorAdsRecord setIsActive(Boolean value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -194,7 +232,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Flag to check if this ad is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(9);
+        return (Boolean) get(11);
     }
 
     /**
@@ -202,7 +240,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * ID of the user who created this row.
      */
     public EntityProcessorAdsRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -211,7 +249,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(12);
     }
 
     /**
@@ -219,7 +257,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Time when this row is created.
      */
     public EntityProcessorAdsRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -228,7 +266,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(13);
     }
 
     /**
@@ -236,7 +274,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * ID of the user who updated this row.
      */
     public EntityProcessorAdsRecord setUpdatedBy(ULong value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -245,7 +283,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(14);
     }
 
     /**
@@ -253,7 +291,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Time when this row is updated.
      */
     public EntityProcessorAdsRecord setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -262,7 +300,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -288,7 +326,7 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
     /**
      * Create a detached, initialised EntityProcessorAdsRecord
      */
-    public EntityProcessorAdsRecord(ULong id, String code, String appCode, String clientCode, String adId, String adName, ULong adsetId, ULong campaignId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorAdsRecord(ULong id, String code, String appCode, String clientCode, String adId, String adName, String thumbnailUrl, String creativeType, ULong adsetId, ULong campaignId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorAds.ENTITY_PROCESSOR_ADS);
 
         setId(id);
@@ -297,6 +335,8 @@ public class EntityProcessorAdsRecord extends UpdatableRecordImpl<EntityProcesso
         setClientCode(clientCode);
         setAdId(adId);
         setAdName(adName);
+        setThumbnailUrl(thumbnailUrl);
+        setCreativeType(creativeType);
         setAdsetId(adsetId);
         setCampaignId(campaignId);
         setTempActive(tempActive);

@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
+import com.fincity.saas.entity.processor.model.request.SetCampaignProductsRequest;
 import com.fincity.saas.entity.processor.service.AdService;
 import com.fincity.saas.entity.processor.service.AdsetService;
 import com.fincity.saas.entity.processor.service.CampaignService;
@@ -13,7 +14,9 @@ import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,5 +52,20 @@ public class CampaignController
             @RequestParam(required = false) List<ULong> campaignIds,
             @RequestParam(required = false) List<ULong> adsetIds) {
         return this.adService.listIdAndName(campaignIds, adsetIds).map(ResponseEntity::ok);
+    }
+
+    /** Replaces the campaign's full product link set (many-to-many, set semantics). */
+    @PutMapping("/{campaignId}/products")
+    public Mono<ResponseEntity<Campaign>> setProducts(
+            @PathVariable ULong campaignId, @RequestBody SetCampaignProductsRequest request) {
+        return this.service
+                .setProducts(campaignId, request == null ? null : request.getProductIds())
+                .map(ResponseEntity::ok);
+    }
+
+    /** Lists the product ids currently linked to a campaign. */
+    @GetMapping("/{campaignId}/products")
+    public Mono<ResponseEntity<List<ULong>>> getProducts(@PathVariable ULong campaignId) {
+        return this.service.getProductIds(campaignId).map(ResponseEntity::ok);
     }
 }

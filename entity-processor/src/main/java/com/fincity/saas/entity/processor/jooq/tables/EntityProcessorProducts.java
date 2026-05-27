@@ -8,6 +8,7 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts.EntityProcessorCampaignProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
@@ -341,19 +342,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         return _entityProcessorProductWalkInForms;
     }
 
-    private transient EntityProcessorCampaignsPath _entityProcessorCampaigns;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_campaigns</code> table
-     */
-    public EntityProcessorCampaignsPath entityProcessorCampaigns() {
-        if (_entityProcessorCampaigns == null)
-            _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
-
-        return _entityProcessorCampaigns;
-    }
-
     private transient EntityProcessorProductCommsPath _entityProcessorProductComms;
 
     /**
@@ -423,6 +411,19 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         return _entityProcessorTicketDuplicationRules;
     }
 
+    private transient EntityProcessorCampaignProductsPath _entityProcessorCampaignProducts;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_campaign_products</code> table
+     */
+    public EntityProcessorCampaignProductsPath entityProcessorCampaignProducts() {
+        if (_entityProcessorCampaignProducts == null)
+            _entityProcessorCampaignProducts = new EntityProcessorCampaignProductsPath(this, null, Keys.FK2_CP_PRODUCT.getInverseKey());
+
+        return _entityProcessorCampaignProducts;
+    }
+
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
 
     /**
@@ -434,6 +435,14 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorTickets = new EntityProcessorTicketsPath(this, null, Keys.FK2_TICKETS_PRODUCT_ID.getInverseKey());
 
         return _entityProcessorTickets;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>entity_processor.entity_processor_campaigns</code> table
+     */
+    public EntityProcessorCampaignsPath entityProcessorCampaigns() {
+        return entityProcessorCampaignProducts().entityProcessorCampaigns();
     }
 
     @Override

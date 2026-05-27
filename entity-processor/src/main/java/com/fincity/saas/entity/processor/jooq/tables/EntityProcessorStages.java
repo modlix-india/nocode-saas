@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
@@ -159,6 +161,14 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * type can be Open or Closed.
      */
     public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)), this, "Stage type can be Open or Closed.", new EnumConverter<String, StageType>(String.class, StageType.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_stages.FUNNEL_STAGE</code>.
+     * Semantic funnel position of this stage. Industry-agnostic. Drives default
+     * conversion-event firing to ad platforms (Meta, Google, etc.).
+     */
+    public final TableField<EntityProcessorStagesRecord, FunnelStage> FUNNEL_STAGE = createField(DSL.name("FUNNEL_STAGE"), SQLDataType.VARCHAR(6), this, "Semantic funnel position of this stage. Industry-agnostic. Drives default conversion-event firing to ad platforms (Meta, Google, etc.).", new EnumConverter<String, FunnelStage>(String.class, FunnelStage.class));
 
     /**
      * The column
@@ -350,6 +360,34 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _fk3StagesParentLevel_1 = new EntityProcessorStagesPath(this, Keys.FK3_STAGES_PARENT_LEVEL_1, null);
 
         return _fk3StagesParentLevel_1;
+    }
+
+    private transient EntityProcessorConversionActionMappingPath _fk1CamTriggerStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>
+     * table, via the <code>FK1_CAM_TRIGGER_STAGE_ID</code> key
+     */
+    public EntityProcessorConversionActionMappingPath fk1CamTriggerStageId() {
+        if (_fk1CamTriggerStageId == null)
+            _fk1CamTriggerStageId = new EntityProcessorConversionActionMappingPath(this, null, Keys.FK1_CAM_TRIGGER_STAGE_ID.getInverseKey());
+
+        return _fk1CamTriggerStageId;
+    }
+
+    private transient EntityProcessorConversionActionMappingPath _fk2CamTriggerStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>
+     * table, via the <code>FK2_CAM_TRIGGER_STATUS_ID</code> key
+     */
+    public EntityProcessorConversionActionMappingPath fk2CamTriggerStatusId() {
+        if (_fk2CamTriggerStatusId == null)
+            _fk2CamTriggerStatusId = new EntityProcessorConversionActionMappingPath(this, null, Keys.FK2_CAM_TRIGGER_STATUS_ID.getInverseKey());
+
+        return _fk2CamTriggerStatusId;
     }
 
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk2ProductTemplateWalkInFormsStageId;

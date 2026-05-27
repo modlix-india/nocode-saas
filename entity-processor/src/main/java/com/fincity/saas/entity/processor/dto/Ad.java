@@ -24,6 +24,8 @@ public class Ad extends BaseUpdatableDto<Ad> {
 
     private String adId;
     private String adName;
+    private String thumbnailUrl;
+    private String creativeType;
     private ULong adsetId;
     private ULong campaignId;
 
@@ -37,6 +39,8 @@ public class Ad extends BaseUpdatableDto<Ad> {
         super(ad);
         this.adId = ad.adId;
         this.adName = ad.adName;
+        this.thumbnailUrl = ad.thumbnailUrl;
+        this.creativeType = ad.creativeType;
         this.adsetId = ad.adsetId;
         this.campaignId = ad.campaignId;
     }
