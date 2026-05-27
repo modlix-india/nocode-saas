@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds.EntityProcessorAdsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets.EntityProcessorAdsetsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics.EntityProcessorCampaignMetricsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts.EntityProcessorCampaignProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState.EntityProcessorCampaignSyncStatePath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
@@ -147,9 +148,10 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
     /**
      * The column
      * <code>entity_processor.entity_processor_campaigns.PRODUCT_ID</code>.
-     * Product Id campaign belongs to.
+     * DEPRECATED. Migrated to entity_processor_campaign_products. Kept for
+     * backward compat; holds primary product only.
      */
-    public final TableField<EntityProcessorCampaignsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Id campaign belongs to.");
+    public final TableField<EntityProcessorCampaignsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED, this, "DEPRECATED. Migrated to entity_processor_campaign_products. Kept for backward compat; holds primary product only.");
 
     /**
      * The column
@@ -265,7 +267,7 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_CAMPAIGNS_IDX0_CAMPAIGNS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_CAMPAIGNS_FK1_CAMPAIGNS_PRODUCT_ID, Indexes.ENTITY_PROCESSOR_CAMPAIGNS_IDX0_CAMPAIGNS_AC_CC);
     }
 
     @Override
@@ -283,24 +285,6 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK1_CAMPAIGNS_ID, Keys.KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK2_CAMPAIGNS_CODE);
     }
 
-    @Override
-    public List<ForeignKey<EntityProcessorCampaignsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_CAMPAIGNS_PRODUCT_ID);
-    }
-
-    private transient EntityProcessorProductsPath _entityProcessorProducts;
-
-    /**
-     * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_products</code> table.
-     */
-    public EntityProcessorProductsPath entityProcessorProducts() {
-        if (_entityProcessorProducts == null)
-            _entityProcessorProducts = new EntityProcessorProductsPath(this, Keys.FK1_CAMPAIGNS_PRODUCT_ID, null);
-
-        return _entityProcessorProducts;
-    }
-
     private transient EntityProcessorAdsetsPath _entityProcessorAdsets;
 
     /**
@@ -312,6 +296,19 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
             _entityProcessorAdsets = new EntityProcessorAdsetsPath(this, null, Keys.FK1_ADSETS_CAMPAIGN_ID.getInverseKey());
 
         return _entityProcessorAdsets;
+    }
+
+    private transient EntityProcessorCampaignProductsPath _entityProcessorCampaignProducts;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_campaign_products</code> table
+     */
+    public EntityProcessorCampaignProductsPath entityProcessorCampaignProducts() {
+        if (_entityProcessorCampaignProducts == null)
+            _entityProcessorCampaignProducts = new EntityProcessorCampaignProductsPath(this, null, Keys.FK1_CP_CAMPAIGN.getInverseKey());
+
+        return _entityProcessorCampaignProducts;
     }
 
     private transient EntityProcessorCampaignMetricsPath _entityProcessorCampaignMetrics;
@@ -351,6 +348,14 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
             _entityProcessorAds = new EntityProcessorAdsPath(this, null, Keys.FK2_ADS_CAMPAIGN_ID.getInverseKey());
 
         return _entityProcessorAds;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>entity_processor.entity_processor_products</code> table
+     */
+    public EntityProcessorProductsPath entityProcessorProducts() {
+        return entityProcessorCampaignProducts().entityProcessorProducts();
     }
 
     @Override

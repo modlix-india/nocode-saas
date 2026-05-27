@@ -232,7 +232,8 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Setter for
      * <code>entity_processor.entity_processor_campaigns.PRODUCT_ID</code>.
-     * Product Id campaign belongs to.
+     * DEPRECATED. Migrated to entity_processor_campaign_products. Kept for
+     * backward compat; holds primary product only.
      */
     public EntityProcessorCampaignsRecord setProductId(ULong value) {
         set(11, value);
@@ -242,7 +243,8 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Getter for
      * <code>entity_processor.entity_processor_campaigns.PRODUCT_ID</code>.
-     * Product Id campaign belongs to.
+     * DEPRECATED. Migrated to entity_processor_campaign_products. Kept for
+     * backward compat; holds primary product only.
      */
     public ULong getProductId() {
         return (ULong) get(11);
