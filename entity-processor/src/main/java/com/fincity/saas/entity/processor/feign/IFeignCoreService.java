@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.feign;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -19,4 +20,10 @@ public interface IFeignCoreService {
             @RequestParam String clientCode,
             @RequestParam String urlClientCode,
             @RequestParam String connectionType);
+
+    @GetMapping("${core.connection.getOAuth2Token:/api/core/connections/internal/oauth2/token/{connectionName}}")
+    Mono<String> getConnectionOAuth2Token(
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @PathVariable("connectionName") String connectionName);
 }

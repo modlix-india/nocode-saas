@@ -53,6 +53,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private Boolean dnc = Boolean.FALSE;
     private Tag tag;
     private Map<String, Object> metaData;
+    private Map<String, Object> adData;
 
     private ULong productTemplateId = null;
     private LocalDateTime latestTaskDueDate;
@@ -97,6 +98,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.dnc = ticket.dnc;
         this.tag = ticket.tag;
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
+        this.adData = CloneUtil.cloneMapObject(ticket.adData);
         this.productTemplateId = ticket.productTemplateId;
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
@@ -166,6 +168,11 @@ public class Ticket extends BaseProcessorDto<Ticket> {
             if (!StringUtil.safeIsBlank(cd.getKeyword())) metaData.put("keyword", cd.getKeyword());
 
             if (!metaData.isEmpty()) ticket.setMetaData(metaData);
+        }
+
+        if (campaignTicketRequest.getLeadDetails().getAdData() != null
+                && !campaignTicketRequest.getLeadDetails().getAdData().isEmpty()) {
+            ticket.setAdData(new HashMap<>(campaignTicketRequest.getLeadDetails().getAdData()));
         }
 
         return ticket;

@@ -101,6 +101,20 @@ public class EntityProcessorAds extends TableImpl<EntityProcessorAdsRecord> {
     public final TableField<EntityProcessorAdsRecord, String> AD_NAME = createField(DSL.name("AD_NAME"), SQLDataType.VARCHAR(256), this, "External Ad Name.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_ads.THUMBNAIL_URL</code>. Ad
+     * creative thumbnail/image URL from the platform.
+     */
+    public final TableField<EntityProcessorAdsRecord, String> THUMBNAIL_URL = createField(DSL.name("THUMBNAIL_URL"), SQLDataType.VARCHAR(1024), this, "Ad creative thumbnail/image URL from the platform.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_ads.CREATIVE_TYPE</code>.
+     * Creative type: IMAGE / VIDEO / CAROUSEL / etc.
+     */
+    public final TableField<EntityProcessorAdsRecord, String> CREATIVE_TYPE = createField(DSL.name("CREATIVE_TYPE"), SQLDataType.VARCHAR(64), this, "Creative type: IMAGE / VIDEO / CAROUSEL / etc.");
+
+    /**
      * The column <code>entity_processor.entity_processor_ads.ADSET_ID</code>.
      * Adset this ad belongs to.
      */

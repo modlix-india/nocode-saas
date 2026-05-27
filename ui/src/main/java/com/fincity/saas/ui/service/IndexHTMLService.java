@@ -451,6 +451,13 @@ public class IndexHTMLService {
             initOptions.put("session_recording", recording);
         }
 
+        double sampleRate = 0.1;
+        if (sessionReplay.get("sampleRate") instanceof Number rawSampleRate) {
+            double v = rawSampleRate.doubleValue();
+            if (v >= 0 && v <= 1) sampleRate = v;
+        }
+        String sampleRateLiteral = sampleRate >= 1 ? "null" : Double.toString(sampleRate);
+
         String optionsJson = gson.toJson(initOptions);
         String apiKeyJson = gson.toJson(analyticsProjectApiKey);
 
@@ -458,7 +465,7 @@ public class IndexHTMLService {
         snippet.append(POSTHOG_STUB);
         if (replayEnabled) {
             snippet.append("var __phOpts=").append(optionsJson).append(";");
-            snippet.append("__phOpts.loaded=function(ph){try{ph.persistence.register({'$session_recording_remote_config':{enabled:true,sampleRate:null,recorderVersion:'v2',endpoint:'/s/',linkedFlag:null,urlBlocklist:[],urlTriggers:[],eventTriggers:[]}});ph.sessionRecording&&ph.sessionRecording.startIfEnabledOrStop&&ph.sessionRecording.startIfEnabledOrStop();}catch(e){}};");
+            snippet.append("__phOpts.loaded=function(ph){try{ph.persistence.register({'$session_recording_remote_config':{enabled:true,sampleRate:").append(sampleRateLiteral).append(",recorderVersion:'v2',endpoint:'/s/',linkedFlag:null,urlBlocklist:[],urlTriggers:[],eventTriggers:[]}});ph.sessionRecording&&ph.sessionRecording.startIfEnabledOrStop&&ph.sessionRecording.startIfEnabledOrStop();}catch(e){}};");
             snippet.append("posthog.init(").append(apiKeyJson).append(",__phOpts);");
         } else {
             snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");

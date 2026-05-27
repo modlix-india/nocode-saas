@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
@@ -266,11 +267,32 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_stages.FUNNEL_STAGE</code>.
+     * Semantic funnel position of this stage. Industry-agnostic. Drives default
+     * conversion-event firing to ad platforms (Meta, Google, etc.).
+     */
+    public EntityProcessorStagesRecord setFunnelStage(FunnelStage value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_stages.FUNNEL_STAGE</code>.
+     * Semantic funnel position of this stage. Industry-agnostic. Drives default
+     * conversion-event firing to ad platforms (Meta, Google, etc.).
+     */
+    public FunnelStage getFunnelStage() {
+        return (FunnelStage) get(13);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
      * flag will tell whether this stage will end in a success or not.
      */
     public EntityProcessorStagesRecord setIsSuccess(Boolean value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -280,7 +302,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * flag will tell whether this stage will end in a success or not.
      */
     public Boolean getIsSuccess() {
-        return (Boolean) get(13);
+        return (Boolean) get(14);
     }
 
     /**
@@ -289,7 +311,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * flag will tell whether this stage will end in a failure or not.
      */
     public EntityProcessorStagesRecord setIsFailure(Boolean value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -299,7 +321,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * flag will tell whether this stage will end in a failure or not.
      */
     public Boolean getIsFailure() {
-        return (Boolean) get(14);
+        return (Boolean) get(15);
     }
 
     /**
@@ -308,7 +330,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * Temporary active flag for this product.
      */
     public EntityProcessorStagesRecord setTempActive(Boolean value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -318,7 +340,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * Temporary active flag for this product.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(15);
+        return (Boolean) get(16);
     }
 
     /**
@@ -327,7 +349,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public EntityProcessorStagesRecord setIsActive(Boolean value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -337,7 +359,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(16);
+        return (Boolean) get(17);
     }
 
     /**
@@ -346,7 +368,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public EntityProcessorStagesRecord setCreatedBy(ULong value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -356,7 +378,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(18);
     }
 
     /**
@@ -365,7 +387,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public EntityProcessorStagesRecord setCreatedAt(LocalDateTime value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -375,7 +397,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(19);
     }
 
     /**
@@ -384,7 +406,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public EntityProcessorStagesRecord setUpdatedBy(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -394,7 +416,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -403,7 +425,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public EntityProcessorStagesRecord setUpdatedAt(LocalDateTime value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -413,7 +435,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(21);
     }
 
     // -------------------------------------------------------------------------
@@ -439,7 +461,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorStagesRecord
      */
-    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Platform platform, ULong productTemplateId, Boolean isParent, ULong parentLevel_0, ULong parentLevel_1, Integer order, StageType stageType, Boolean isSuccess, Boolean isFailure, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Platform platform, ULong productTemplateId, Boolean isParent, ULong parentLevel_0, ULong parentLevel_1, Integer order, StageType stageType, FunnelStage funnelStage, Boolean isSuccess, Boolean isFailure, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorStages.ENTITY_PROCESSOR_STAGES);
 
         setId(id);
@@ -455,6 +477,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
         setParentLevel_1(parentLevel_1);
         setOrder(order);
         setStageType(stageType);
+        setFunnelStage(funnelStage);
         setIsSuccess(isSuccess);
         setIsFailure(isFailure);
         setTempActive(tempActive);

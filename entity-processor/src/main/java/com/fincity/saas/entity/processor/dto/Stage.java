@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
@@ -27,6 +28,7 @@ public class Stage extends BaseValueDto<Stage> {
     private StageType stageType = StageType.OPEN;
     private Boolean isSuccess;
     private Boolean isFailure;
+    private FunnelStage funnelStage;
 
     public Stage() {
         super();
@@ -41,6 +43,7 @@ public class Stage extends BaseValueDto<Stage> {
         this.stageType = stage.stageType;
         this.isSuccess = stage.isSuccess;
         this.isFailure = stage.isFailure;
+        this.funnelStage = stage.funnelStage;
     }
 
     public static Stage ofParent(StageRequest stageRequest) {
@@ -52,6 +55,7 @@ public class Stage extends BaseValueDto<Stage> {
                 .setStageType(stageRequest.getStageType())
                 .setIsSuccess(stageRequest.getIsSuccess())
                 .setIsFailure(stageRequest.getIsFailure())
+                .setFunnelStage(stageRequest.getFunnelStage())
                 .setPlatform(stageRequest.getPlatform())
                 .setOrder(stageRequest.getOrder());
     }
@@ -70,6 +74,8 @@ public class Stage extends BaseValueDto<Stage> {
                         stageRequest.getIsSuccess() != null ? stageRequest.getIsSuccess() : parents[0].getIsSuccess())
                 .setIsFailure(
                         stageRequest.getIsFailure() != null ? stageRequest.getIsFailure() : parents[0].getIsFailure())
+                .setFunnelStage(
+                        stageRequest.getFunnelStage() != null ? stageRequest.getFunnelStage() : parents[0].getFunnelStage())
                 .setOrder(order)
                 .setPlatform(platform);
     }

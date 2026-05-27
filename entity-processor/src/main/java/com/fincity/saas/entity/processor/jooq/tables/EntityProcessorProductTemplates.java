@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketExRules.EntityProcessorProductTicketExRulesPath;
@@ -359,6 +360,20 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
             _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK1_TDR_PTID.getInverseKey());
 
         return _entityProcessorTicketDuplicationRules;
+    }
+
+    private transient EntityProcessorConversionActionMappingPath _entityProcessorConversionActionMapping;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_conversion_action_mapping</code>
+     * table
+     */
+    public EntityProcessorConversionActionMappingPath entityProcessorConversionActionMapping() {
+        if (_entityProcessorConversionActionMapping == null)
+            _entityProcessorConversionActionMapping = new EntityProcessorConversionActionMappingPath(this, null, Keys.FK3_CAM_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorConversionActionMapping;
     }
 
     @Override
