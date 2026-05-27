@@ -59,7 +59,12 @@ public class CampaignReport implements Serializable {
     private String productName;
     /** Ad creative thumbnail URL; populated for AD-level rows that have a creative. */
     private String thumbnailUrl;
-    /** True when this row has a creative thumbnail — lets the UI hide the image cell cleanly. */
+    /**
+     * True when this row has a creative thumbnail. Bound directly to the Image's
+     * visibility, which in Modlix is "visible when true" — so only ad rows with a real
+     * thumbnail show the image; campaign/adset rows (default false) hide it. Default
+     * false is deliberate so any row that doesn't set it hides the empty image cell.
+     */
     private boolean hasCreative;
 
     // ---- ad-platform metrics ----
