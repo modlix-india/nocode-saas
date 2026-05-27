@@ -19,4 +19,6 @@ public class DiscoveredAd implements Serializable {
     private String adsetId;
     private String campaignId;
     private String status;
+    private String thumbnailUrl;
+    private String creativeType;
 }

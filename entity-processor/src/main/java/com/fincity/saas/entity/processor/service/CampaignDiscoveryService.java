@@ -206,6 +206,8 @@ public class CampaignDiscoveryService {
                                 access,
                                 discoveredAd.getAdId(),
                                 discoveredAd.getAdName(),
+                                discoveredAd.getThumbnailUrl(),
+                                discoveredAd.getCreativeType(),
                                 adset.getId(),
                                 campaign.getId()))
                         .then()
@@ -269,6 +271,8 @@ public class CampaignDiscoveryService {
                                                 access,
                                                 discoveredAd.getAdId(),
                                                 discoveredAd.getAdName(),
+                                                discoveredAd.getThumbnailUrl(),
+                                                discoveredAd.getCreativeType(),
                                                 adset.getId(),
                                                 campaign.getId()))
                                         .then()))

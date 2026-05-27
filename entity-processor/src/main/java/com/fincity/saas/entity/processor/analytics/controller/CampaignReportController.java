@@ -1,11 +1,8 @@
 package com.fincity.saas.entity.processor.analytics.controller;
 
-import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
-import com.fincity.saas.entity.processor.analytics.model.CampaignReportFilter;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTreeRequest;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTreeResponse;
 import com.fincity.saas.entity.processor.analytics.service.CampaignReportService;
-import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,27 +21,9 @@ public class CampaignReportController {
         this.campaignReportService = campaignReportService;
     }
 
-    @PostMapping("/report")
-    @PreAuthorize("hasAuthority('Authorities.Campaign_READ')")
-    public Mono<ResponseEntity<Page<CampaignReport>>> getConsolidatedReport(
-            Pageable pageable, @RequestBody(required = false) CampaignReportFilter filter) {
-
-        CampaignReportFilter effectiveFilter = (filter == null) ? new CampaignReportFilter() : filter;
-
-        return campaignReportService
-                .getConsolidatedReport(pageable, effectiveFilter)
-                .map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/report/summary")
-    @PreAuthorize("hasAuthority('Authorities.Campaign_READ')")
-    public Mono<ResponseEntity<List<CampaignReport>>> getConsolidatedReportSummary(
-            @RequestBody(required = false) CampaignReportFilter filter) {
-
-        CampaignReportFilter effectiveFilter = (filter == null) ? new CampaignReportFilter() : filter;
-
-        return campaignReportService
-                .getConsolidatedReportSummary(effectiveFilter)
-                .map(ResponseEntity::ok);
+    @PostMapping("/tree")
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
+    public Mono<ResponseEntity<CampaignTreeResponse>> getCampaignTree(@RequestBody CampaignTreeRequest request) {
+        return campaignReportService.getCampaignTree(request).map(ResponseEntity::ok);
     }
 }

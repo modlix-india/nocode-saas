@@ -2,17 +2,24 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.dao.AdDAO;
+import com.fincity.saas.entity.processor.dao.AdsetDAO;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.platform.AbstractAdPlatformService;
 import com.fincity.saas.entity.processor.platform.AdPlatformRegistry;
 import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.dto.CampaignMetric;
 import com.fincity.saas.entity.processor.dto.CampaignSyncState;
 import com.fincity.saas.entity.processor.service.CampaignMetricService;
 import com.fincity.saas.entity.processor.service.CampaignService;
 import com.fincity.saas.entity.processor.service.CampaignSyncStateService;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +39,8 @@ public class MetricsSyncService {
     private final CampaignSyncStateService syncStateService;
     private final CampaignService campaignService;
     private final CampaignDAO campaignDAO;
+    private final AdsetDAO adsetDAO;
+    private final AdDAO adDAO;
 
     public MetricsSyncService(
             AdPlatformRegistry platformRegistry,
@@ -39,13 +48,17 @@ public class MetricsSyncService {
             CampaignMetricService campaignMetricService,
             CampaignSyncStateService syncStateService,
             CampaignService campaignService,
-            CampaignDAO campaignDAO) {
+            CampaignDAO campaignDAO,
+            AdsetDAO adsetDAO,
+            AdDAO adDAO) {
         this.platformRegistry = platformRegistry;
         this.connectionService = connectionService;
         this.campaignMetricService = campaignMetricService;
         this.syncStateService = syncStateService;
         this.campaignService = campaignService;
         this.campaignDAO = campaignDAO;
+        this.adsetDAO = adsetDAO;
+        this.adDAO = adDAO;
     }
 
     /**
@@ -147,11 +160,87 @@ public class MetricsSyncService {
                                         resolved, origAccountId, origLoginId, origDatasetId)
                                 .thenReturn(resolved))
                         .flatMap(resolved -> platform.fetchCampaignMetrics(resolved, token, dateFromStr, dateTo)
-                                .collectList()))
+                                .collectList()
+                                .flatMap(adRows -> expandToGrains(resolved, adRows))))
                 .flatMap(campaignMetricService::bulkUpsert)
                 .then(syncStateService.markComplete(syncState, dateTo))
                 .then()
                 .onErrorResume(e -> syncStateService.markFailed(syncState, e.getMessage()).then());
+    }
+
+    /**
+     * The platform fetch returns one row per ad per day (ad-grain), each carrying
+     * the platform's external adset/ad ids. The campaign report reads three
+     * separate metric grains:
+     * <ul>
+     *   <li>ad-grain: {@code ADSET_ID} + {@code AD_ID} set</li>
+     *   <li>adset-grain: {@code ADSET_ID} set, {@code AD_ID} null</li>
+     *   <li>campaign-grain: both null</li>
+     * </ul>
+     * so we resolve the external ids to our internal FK ids and roll the ad rows
+     * up into all three grains. Before this, every per-ad row collapsed onto the
+     * campaign-grain unique key, leaving only the last ad's numbers — under-counting
+     * campaign totals and producing zero adset/ad rows.
+     *
+     * <p>Campaign-grain sums EVERY fetched row (even ads not yet discovered into
+     * {@code entity_processor_ads}) so campaign totals stay correct; the adset and
+     * ad grains only include rows whose external id resolved to an internal id.
+     */
+    private Mono<List<CampaignMetric>> expandToGrains(Campaign campaign, List<CampaignMetric> adRows) {
+        if (adRows == null || adRows.isEmpty()) return Mono.just(List.of());
+
+        return Mono.zip(
+                        adsetDAO.externalToInternalIdMap(
+                                campaign.getAppCode(), campaign.getClientCode(), campaign.getId()),
+                        adDAO.externalToInternalIdMap(
+                                campaign.getAppCode(), campaign.getClientCode(), campaign.getId()))
+                .map(maps -> {
+                    Map<String, ULong> adsetMap = maps.getT1();
+                    Map<String, ULong> adMap = maps.getT2();
+
+                    Map<String, CampaignMetric> campaignGrain = new HashMap<>();
+                    Map<String, CampaignMetric> adsetGrain = new HashMap<>();
+                    Map<String, CampaignMetric> adGrain = new HashMap<>();
+
+                    for (CampaignMetric r : adRows) {
+                        ULong adsetId =
+                                r.getExternalAdsetId() == null ? null : adsetMap.get(r.getExternalAdsetId());
+                        ULong adId = r.getExternalAdId() == null ? null : adMap.get(r.getExternalAdId());
+                        String date = String.valueOf(r.getMetricDate());
+
+                        accumulate(campaignGrain, date, r, null, null);
+                        if (adsetId != null) accumulate(adsetGrain, adsetId + "|" + date, r, adsetId, null);
+                        if (adId != null) accumulate(adGrain, adId + "|" + date, r, adsetId, adId);
+                    }
+
+                    List<CampaignMetric> out = new ArrayList<>(
+                            campaignGrain.size() + adsetGrain.size() + adGrain.size());
+                    out.addAll(campaignGrain.values());
+                    out.addAll(adsetGrain.values());
+                    out.addAll(adGrain.values());
+                    return out;
+                });
+    }
+
+    /** Folds {@code src}'s numbers into the accumulator at {@code key}, tagging the target grain via {@code adsetId}/{@code adId}. */
+    private static void accumulate(
+            Map<String, CampaignMetric> acc, String key, CampaignMetric src, ULong adsetId, ULong adId) {
+        CampaignMetric m = acc.computeIfAbsent(key, k -> new CampaignMetric()
+                .setAppCode(src.getAppCode())
+                .setClientCode(src.getClientCode())
+                .setCampaignId(src.getCampaignId())
+                .setAdsetId(adsetId)
+                .setAdId(adId)
+                .setMetricDate(src.getMetricDate())
+                .setPlatform(src.getPlatform())
+                .setCurrency(src.getCurrency())
+                .setSpend(BigDecimal.ZERO));
+        m.setImpressions(m.getImpressions() + src.getImpressions());
+        m.setClicks(m.getClicks() + src.getClicks());
+        m.setSpend((m.getSpend() == null ? BigDecimal.ZERO : m.getSpend())
+                .add(src.getSpend() == null ? BigDecimal.ZERO : src.getSpend()));
+        m.setPlatformWL(m.getPlatformWL() + src.getPlatformWL());
+        m.setPlatformFL(m.getPlatformFL() + src.getPlatformFL());
     }
 
     /**

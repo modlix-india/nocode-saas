@@ -25,4 +25,15 @@ public class CampaignMetric {
     private long platformFL;
     private String currency;
     private CampaignPlatform platform;
+
+    /**
+     * External (platform) adset id captured at fetch time. Not a table column —
+     * an in-memory carrier used by {@code MetricsSyncService} to resolve the
+     * internal {@link #adsetId} and to roll ad-grain rows up into adset/campaign
+     * grains. {@code CampaignMetricDAO.bulkUpsert} never reads it.
+     */
+    private String externalAdsetId;
+
+    /** External (platform) ad id captured at fetch time. See {@link #externalAdsetId}. */
+    private String externalAdId;
 }

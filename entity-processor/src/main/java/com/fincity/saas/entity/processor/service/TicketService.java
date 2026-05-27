@@ -576,7 +576,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                                         return this.adService
                                                 .readOrCreate(access, details.getAdId(), details.getAdName(),
-                                                        adset.getId(), campaign.getId())
+                                                        null, null, adset.getId(), campaign.getId())
                                                 .map(ad -> ticket.setAdId(ad.getId()))
                                                 .defaultIfEmpty(ticket);
                                     });
@@ -645,7 +645,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                                 return this.adService
                                         .readOrCreate(
-                                                access, cd.getAdId(), cd.getAdName(), adset.getId(), campaign.getId())
+                                                access, cd.getAdId(), cd.getAdName(), null, null, adset.getId(), campaign.getId())
                                         .map(ad -> ticket.setAdId(ad.getId()))
                                         .defaultIfEmpty(ticket);
                             })

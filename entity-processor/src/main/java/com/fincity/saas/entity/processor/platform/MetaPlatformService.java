@@ -26,7 +26,11 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     private static final Logger log = LoggerFactory.getLogger(MetaPlatformService.class);
 
     private static final String META_VERSION = "/v22.0/";
-    private static final String INSIGHTS_FIELDS = "impressions,clicks,spend,actions";
+    // ad_id/adset_id/campaign_id must be requested explicitly — at level=ad the
+    // insights edge returns only the fields you ask for (plus the date), so
+    // without these the rows carry no breakdown id and collapse to campaign grain.
+    private static final String INSIGHTS_FIELDS =
+            "impressions,clicks,spend,actions,ad_id,adset_id,campaign_id";
 
     @Override
     public CampaignPlatform getPlatform() {
@@ -126,6 +130,12 @@ public class MetaPlatformService extends AbstractAdPlatformService {
             }
         }
 
+        // level=ad insights include adset_id / ad_id on every row. Capture them
+        // so MetricsSyncService can resolve internal ids and emit adset/ad-grain
+        // rows (otherwise every per-ad row collapses to campaign grain).
+        String externalAdsetId = row.path("adset_id").asText(null);
+        String externalAdId = row.path("ad_id").asText(null);
+
         return new CampaignMetric()
                 .setCampaignId(campaign.getId())
                 .setAppCode(campaign.getAppCode())
@@ -136,7 +146,9 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                 .setSpend(spend)
                 .setPlatformWL(platformWL)
                 .setPlatformFL(platformFL)
-                .setPlatform(CampaignPlatform.FACEBOOK);
+                .setPlatform(CampaignPlatform.FACEBOOK)
+                .setExternalAdsetId(externalAdsetId)
+                .setExternalAdId(externalAdId);
     }
 
     @Override
@@ -210,7 +222,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                 "access_token",
                 accessToken,
                 "fields",
-                "id,name,status,adset_id,campaign_id",
+                "id,name,status,adset_id,campaign_id,creative{thumbnail_url,image_url,object_type}",
                 "limit",
                 "200");
 
@@ -218,12 +230,20 @@ public class MetaPlatformService extends AbstractAdPlatformService {
             JsonNode data = response.path("data");
             if (!data.isArray()) return Flux.empty();
             return Flux.fromIterable(() -> data.elements())
-                    .map(node -> new DiscoveredAd()
-                            .setAdId(node.path("id").asText())
-                            .setAdName(node.path("name").asText(null))
-                            .setAdsetId(node.path("adset_id").asText(externalAdsetId))
-                            .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
-                            .setStatus(node.path("status").asText(null)));
+                    .map(node -> {
+                        JsonNode creative = node.path("creative");
+                        String thumb = creative.path("thumbnail_url").asText(null);
+                        if (thumb == null || thumb.isBlank())
+                            thumb = creative.path("image_url").asText(null);
+                        return new DiscoveredAd()
+                                .setAdId(node.path("id").asText())
+                                .setAdName(node.path("name").asText(null))
+                                .setAdsetId(node.path("adset_id").asText(externalAdsetId))
+                                .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
+                                .setStatus(node.path("status").asText(null))
+                                .setThumbnailUrl(thumb)
+                                .setCreativeType(creative.path("object_type").asText(null));
+                    });
         });
     }
 

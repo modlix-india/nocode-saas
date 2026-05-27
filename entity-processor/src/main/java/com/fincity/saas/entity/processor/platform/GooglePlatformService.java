@@ -112,6 +112,12 @@ public class GooglePlatformService extends AbstractAdPlatformService {
         String dateStr = segments.path("date").asText();
         LocalDate metricDate = LocalDate.parse(dateStr);
 
+        // The GAQL selects ad_group.id and ad_group_ad.ad.id; Google's REST
+        // response returns them camelCased. Capture so MetricsSyncService can
+        // resolve internal ids and emit adset/ad-grain rows.
+        String externalAdsetId = row.path("adGroup").path("id").asText(null);
+        String externalAdId = row.path("adGroupAd").path("ad").path("id").asText(null);
+
         return new CampaignMetric()
                 .setCampaignId(campaign.getId())
                 .setAppCode(campaign.getAppCode())
@@ -122,7 +128,9 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                 .setSpend(spend)
                 .setPlatformWL((long) conversions)
                 .setPlatformFL((long) allConversions)
-                .setPlatform(CampaignPlatform.GOOGLE);
+                .setPlatform(CampaignPlatform.GOOGLE)
+                .setExternalAdsetId(externalAdsetId)
+                .setExternalAdId(externalAdId);
     }
 
     @Override
@@ -195,6 +203,16 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                         }));
     }
 
+    /** "RESPONSIVE_SEARCH_AD" -> "Responsive Search Ad" for a readable fallback ad label. */
+    private static String capitalizeWords(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (String p : s.toLowerCase().split(" ")) {
+            if (p.isEmpty()) continue;
+            sb.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1)).append(' ');
+        }
+        return sb.toString().trim();
+    }
+
     @Override
     public Flux<DiscoveredAd> fetchAds(
             String appCode,
@@ -205,7 +223,7 @@ public class GooglePlatformService extends AbstractAdPlatformService {
             String externalAdsetId,
             String accessToken) {
 
-        String gaql = "SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.status, "
+        String gaql = "SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.type, ad_group_ad.status, "
                 + "ad_group.id, campaign.id "
                 + "FROM ad_group_ad "
                 + "WHERE ad_group.id = " + externalAdsetId
@@ -218,9 +236,20 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                             if (!results.isArray() || results.isEmpty()) return Flux.empty();
                             return Flux.fromIterable(() -> results.elements()).map(row -> {
                                 JsonNode ad = row.path("adGroupAd").path("ad");
+                                String id = ad.path("id").asText();
+                                String name = ad.path("name").asText(null);
+                                // Google search/responsive ads usually have no name — fall back to
+                                // a readable label from the ad type + id so the row isn't blank.
+                                if (name == null || name.isBlank()) {
+                                    String type = ad.path("type").asText(null);
+                                    name = (type != null && !type.isBlank()
+                                                    ? capitalizeWords(type.replace('_', ' '))
+                                                    : "Ad")
+                                            + " (" + id + ")";
+                                }
                                 return new DiscoveredAd()
-                                        .setAdId(ad.path("id").asText())
-                                        .setAdName(ad.path("name").asText(null))
+                                        .setAdId(id)
+                                        .setAdName(name)
                                         .setAdsetId(row.path("adGroup").path("id").asText())
                                         .setCampaignId(row.path("campaign").path("id").asText())
                                         .setStatus(row.path("adGroupAd").path("status").asText(null));
