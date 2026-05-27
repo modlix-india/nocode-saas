@@ -6,11 +6,13 @@ import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.model.request.FunnelTagGroup;
 import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.StageService;
 import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,5 +68,10 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @PostMapping("/funnel/tags")
+    public Mono<ResponseEntity<Map<String, Object>>> setFunnelTags(@RequestBody List<FunnelTagGroup> groups) {
+        return this.service.setFunnelTags(groups).map(ResponseEntity::ok);
     }
 }

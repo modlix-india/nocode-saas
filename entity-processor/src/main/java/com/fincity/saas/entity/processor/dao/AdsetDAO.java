@@ -32,6 +32,29 @@ public class AdsetDAO extends BaseUpdatableDAO<EntityProcessorAdsetsRecord, Adse
                 .map(e -> e.into(this.pojoClass));
     }
 
+    /**
+     * Maps each adset's external platform id ({@code ADSET_ID}) to its internal
+     * primary key ({@code ID}) for one campaign. No {@link ProcessorAccess}
+     * needed — used by the worker-driven metrics sync (no JWT context) to turn
+     * the platform ad/adset ids on fetched metrics into our FK ids.
+     */
+    public Mono<java.util.Map<String, ULong>> externalToInternalIdMap(
+            String appCode, String clientCode, ULong campaignId) {
+
+        return Flux.from(this.dslContext
+                        .select(ENTITY_PROCESSOR_ADSETS.ADSET_ID, ENTITY_PROCESSOR_ADSETS.ID)
+                        .from(ENTITY_PROCESSOR_ADSETS)
+                        .where(ENTITY_PROCESSOR_ADSETS
+                                .APP_CODE
+                                .eq(appCode)
+                                .and(ENTITY_PROCESSOR_ADSETS.CLIENT_CODE.eq(clientCode))
+                                .and(ENTITY_PROCESSOR_ADSETS.CAMPAIGN_ID.eq(campaignId))
+                                .and(ENTITY_PROCESSOR_ADSETS.ADSET_ID.isNotNull())))
+                .collectMap(
+                        r -> r.get(ENTITY_PROCESSOR_ADSETS.ADSET_ID),
+                        r -> r.get(ENTITY_PROCESSOR_ADSETS.ID));
+    }
+
     public Mono<List<IdAndValue<ULong, String>>> listIdAndName(ProcessorAccess access, List<ULong> campaignIds) {
 
         var condition = ENTITY_PROCESSOR_ADSETS

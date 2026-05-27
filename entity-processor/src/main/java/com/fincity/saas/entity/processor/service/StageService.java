@@ -19,6 +19,7 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.FunnelTagGroup;
 import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
@@ -424,6 +425,37 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         entity.setActive(false);
 
         return super.updateInternal(access, entity).map(e -> 1).defaultIfEmpty(0);
+    }
+
+    /**
+     * Bulk funnel-stage tagging. Accepts the stage tree (parent + child nodes,
+     * other stage fields ignored) with {@code funnelStage} set on whichever nodes
+     * the admin marked, and writes {@code FUNNEL_STAGE} on each. A null
+     * funnelStage clears the tag. Returns {@code {tagged: N}} rows updated.
+     */
+    public Mono<Map<String, Object>> setFunnelTags(List<FunnelTagGroup> groups) {
+
+        if (groups == null || groups.isEmpty()) return Mono.just(Map.of("tagged", 0));
+
+        java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger();
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> Flux.fromIterable(groups)
+                                .concatMap(group -> {
+                                    List<FunnelTagGroup.Ref> refs = new ArrayList<>();
+                                    if (group.getParent() != null) refs.add(group.getParent());
+                                    if (group.getChild() != null) refs.addAll(group.getChild());
+                                    return Flux.fromIterable(refs)
+                                            .filter(r -> r != null
+                                                    && r.getId() != null
+                                                    && r.getId().getULongId() != null)
+                                            .concatMap(r -> this.dao
+                                                    .setFunnelStage(access, r.getId().getULongId(), r.getFunnelStage())
+                                                    .doOnNext(count::addAndGet));
+                                })
+                                .then(Mono.fromSupplier(() -> Map.<String, Object>of("tagged", count.get()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.setFunnelTags"));
     }
 
     public Mono<ULong> getStage(ProcessorAccess access, ULong productTemplateId, ULong stageId) {

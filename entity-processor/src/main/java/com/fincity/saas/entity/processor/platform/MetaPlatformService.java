@@ -1,0 +1,288 @@
+package com.fincity.saas.entity.processor.platform;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fincity.saas.entity.processor.dto.CampaignDetails;
+import com.fincity.saas.entity.processor.dto.EntityIntegration;
+import com.fincity.saas.entity.processor.dto.EntityResponse;
+import com.fincity.saas.entity.processor.util.MetaEntityUtil;
+import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.dto.CampaignMetric;
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAd;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredAdset;
+import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@Service
+public class MetaPlatformService extends AbstractAdPlatformService {
+
+    private static final Logger log = LoggerFactory.getLogger(MetaPlatformService.class);
+
+    private static final String META_VERSION = "/v22.0/";
+    // ad_id/adset_id/campaign_id must be requested explicitly — at level=ad the
+    // insights edge returns only the fields you ask for (plus the date), so
+    // without these the rows carry no breakdown id and collapse to campaign grain.
+    private static final String INSIGHTS_FIELDS =
+            "impressions,clicks,spend,actions,ad_id,adset_id,campaign_id";
+
+    @Override
+    public CampaignPlatform getPlatform() {
+        return CampaignPlatform.FACEBOOK;
+    }
+
+    @Override
+    public String getConnectionName() {
+        return "META_API";
+    }
+
+    /**
+     * For Meta, resolve {@code platformAccountId} (ad account id) by querying
+     * {@code GET /{campaignId}?fields=account_id} on Graph API. Only fires
+     * when the campaign row is missing {@code platformAccountId}.
+     *
+     * <p>Note: Meta metrics fetch ({@code GET /{campaignId}/insights}) works
+     * fine without {@code account_id} — it's keyed off campaign global ID.
+     * We backfill it here mainly to keep the row consistent for the Phase 4
+     * conversions dispatcher path that DOES need {@code platformDatasetId}
+     * (Pixel ID), and for future reporting/grouping queries.
+     */
+    @Override
+    public Mono<Campaign> ensurePlatformContext(Campaign campaign, String accessToken) {
+        if (campaign.getPlatformAccountId() != null && !campaign.getPlatformAccountId().isBlank()) {
+            return Mono.just(campaign);
+        }
+        if (campaign.getCampaignId() == null || campaign.getCampaignId().isBlank()) {
+            return Mono.just(campaign);
+        }
+        return MetaEntityUtil.fetchMetaGraphData(
+                        META_VERSION + campaign.getCampaignId(),
+                        Map.of("access_token", accessToken, "fields", "account_id"))
+                .map(body -> {
+                    String accountId = body.path("account_id").asText(null);
+                    if (accountId != null && !accountId.isBlank()) {
+                        log.info("Meta ensurePlatformContext: campaign {} → account_id {}",
+                                campaign.getCampaignId(), accountId);
+                        campaign.setPlatformAccountId(accountId);
+                    } else {
+                        log.warn("Meta ensurePlatformContext: campaign {} returned no account_id (body={})",
+                                campaign.getCampaignId(), body);
+                    }
+                    return campaign;
+                })
+                .onErrorResume(e -> {
+                    log.warn("Meta ensurePlatformContext failed for campaign {}: {}",
+                            campaign.getCampaignId(), e.toString());
+                    return Mono.just(campaign);
+                });
+    }
+
+    @Override
+    public Flux<CampaignMetric> fetchCampaignMetrics(
+            Campaign campaign, String accessToken, String dateFrom, String dateTo) {
+
+        String path = META_VERSION + campaign.getCampaignId() + "/insights";
+        String timeRange = "{\"since\":\"" + dateFrom + "\",\"until\":\"" + dateTo + "\"}";
+
+        Map<String, String> queryParams = Map.of(
+                "access_token", accessToken,
+                "fields", INSIGHTS_FIELDS,
+                "time_range", timeRange,
+                "level", "ad",
+                "time_increment", "1");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, queryParams)
+                .flatMapMany(response -> {
+                    JsonNode data = response.path("data");
+                    if (!data.isArray()) {
+                        return Flux.empty();
+                    }
+                    return Flux.fromIterable(() -> data.elements())
+                            .map(row -> mapToCampaignMetric(row, campaign));
+                });
+    }
+
+    private CampaignMetric mapToCampaignMetric(JsonNode row, Campaign campaign) {
+        long impressions = row.path("impressions").asLong(0);
+        long clicks = row.path("clicks").asLong(0);
+        BigDecimal spend = new BigDecimal(row.path("spend").asText("0"));
+        String dateStr = row.path("date_start").asText();
+        LocalDate metricDate = LocalDate.parse(dateStr);
+
+        long platformWL = 0;
+        long platformFL = 0;
+        JsonNode actions = row.path("actions");
+        if (actions.isArray()) {
+            for (JsonNode action : actions) {
+                String actionType = action.path("action_type").asText();
+                long value = action.path("value").asLong(0);
+                if ("lead".equals(actionType)) {
+                    platformWL += value;
+                } else if ("offsite_conversion.fb_pixel_lead".equals(actionType)) {
+                    platformFL += value;
+                }
+            }
+        }
+
+        // level=ad insights include adset_id / ad_id on every row. Capture them
+        // so MetricsSyncService can resolve internal ids and emit adset/ad-grain
+        // rows (otherwise every per-ad row collapses to campaign grain).
+        String externalAdsetId = row.path("adset_id").asText(null);
+        String externalAdId = row.path("ad_id").asText(null);
+
+        return new CampaignMetric()
+                .setCampaignId(campaign.getId())
+                .setAppCode(campaign.getAppCode())
+                .setClientCode(campaign.getClientCode())
+                .setMetricDate(metricDate)
+                .setImpressions(impressions)
+                .setClicks(clicks)
+                .setSpend(spend)
+                .setPlatformWL(platformWL)
+                .setPlatformFL(platformFL)
+                .setPlatform(CampaignPlatform.FACEBOOK)
+                .setExternalAdsetId(externalAdsetId)
+                .setExternalAdId(externalAdId);
+    }
+
+    @Override
+    public Mono<CampaignDetails> buildCampaignDetails(
+            Campaign campaign, String adId, String accessToken) {
+        return MetaEntityUtil.buildCampaignDetails(adId, accessToken);
+    }
+
+    @Override
+    public Flux<DiscoveredCampaign> fetchCampaigns(
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String accessToken) {
+
+        String account = normalizeAdAccountId(platformAccountId);
+        String path = META_VERSION + account + "/campaigns";
+        Map<String, String> params =
+                Map.of("access_token", accessToken, "fields", "id,name,objective,status", "limit", "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> new DiscoveredCampaign()
+                            .setCampaignId(node.path("id").asText())
+                            .setCampaignName(node.path("name").asText())
+                            .setCampaignType(node.path("objective").asText(null))
+                            .setStatus(node.path("status").asText(null)));
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAdset> fetchAdsets(
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String accessToken) {
+
+        String path = META_VERSION + externalCampaignId + "/adsets";
+        Map<String, String> params =
+                Map.of("access_token", accessToken, "fields", "id,name,status,campaign_id", "limit", "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> new DiscoveredAdset()
+                            .setAdsetId(node.path("id").asText())
+                            .setAdsetName(node.path("name").asText())
+                            .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
+                            .setStatus(node.path("status").asText(null)));
+        });
+    }
+
+    @Override
+    public Flux<DiscoveredAd> fetchAds(
+            String appCode,
+            String clientCode,
+            String platformAccountId,
+            String platformLoginId,
+            String externalCampaignId,
+            String externalAdsetId,
+            String accessToken) {
+
+        String path = META_VERSION + externalAdsetId + "/ads";
+        Map<String, String> params = Map.of(
+                "access_token",
+                accessToken,
+                "fields",
+                "id,name,status,adset_id,campaign_id,creative{thumbnail_url,image_url,object_type}",
+                "limit",
+                "200");
+
+        return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
+            JsonNode data = response.path("data");
+            if (!data.isArray()) return Flux.empty();
+            return Flux.fromIterable(() -> data.elements())
+                    .map(node -> {
+                        JsonNode creative = node.path("creative");
+                        String thumb = creative.path("thumbnail_url").asText(null);
+                        if (thumb == null || thumb.isBlank())
+                            thumb = creative.path("image_url").asText(null);
+                        return new DiscoveredAd()
+                                .setAdId(node.path("id").asText())
+                                .setAdName(node.path("name").asText(null))
+                                .setAdsetId(node.path("adset_id").asText(externalAdsetId))
+                                .setCampaignId(node.path("campaign_id").asText(externalCampaignId))
+                                .setStatus(node.path("status").asText(null))
+                                .setThumbnailUrl(thumb)
+                                .setCreativeType(creative.path("object_type").asText(null));
+                    });
+        });
+    }
+
+    /** Meta ad-account IDs must be queried with the {@code act_} prefix. */
+    private static String normalizeAdAccountId(String accountId) {
+        if (accountId == null) return null;
+        return accountId.startsWith("act_") ? accountId : "act_" + accountId;
+    }
+
+    @Override
+    public Mono<String> verifyWebhook(Map<String, String> params, String verifyToken) {
+        String mode = params.get("hub.mode");
+        String token = params.get("hub.verify_token");
+        String challenge = params.get("hub.challenge");
+        return MetaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge, token)
+                .map(response -> response.getBody());
+    }
+
+    @Override
+    public Mono<EntityResponse> processWebhookPayload(
+            JsonNode payload, EntityIntegration integration, String accessToken) {
+        return MetaEntityUtil.extractMetaPayload(payload)
+                .flatMap(extractedList -> {
+                    if (extractedList.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    // Process the first extracted payload entry
+                    MetaEntityUtil.ExtractPayload extracted = extractedList.get(0);
+                    return MetaEntityUtil.fetchMetaData(
+                                    extracted.leadGenId(), extracted.formId(), accessToken, null, null)
+                            .flatMap(tuple -> MetaEntityUtil.normalizeMetaEntity(
+                                    tuple.getT1(),
+                                    tuple.getT2(),
+                                    extracted.adId(),
+                                    accessToken,
+                                    integration,
+                                    null,
+                                    null,
+                                    null));
+                });
+    }
+}

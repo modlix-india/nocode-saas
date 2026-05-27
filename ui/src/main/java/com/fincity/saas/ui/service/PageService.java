@@ -229,6 +229,16 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                         comp.setDisplayOrder(updated.getDisplayOrder());
                     if (updated.getBindingPath() != null)
                         comp.setBindingPath(updated.getBindingPath());
+                    if (updated.getBindingPath2() != null)
+                        comp.setBindingPath2(updated.getBindingPath2());
+                    if (updated.getBindingPath3() != null)
+                        comp.setBindingPath3(updated.getBindingPath3());
+                    if (updated.getBindingPath4() != null)
+                        comp.setBindingPath4(updated.getBindingPath4());
+                    if (updated.getBindingPath5() != null)
+                        comp.setBindingPath5(updated.getBindingPath5());
+                    if (updated.getBindingPath6() != null)
+                        comp.setBindingPath6(updated.getBindingPath6());
 
                     // Increment per-component version
                     if (cv == null) cv = new HashMap<>();
