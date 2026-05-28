@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fincity.saas.entity.processor.enums.FunnelStage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
@@ -31,6 +32,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private StageType stageType;
     private Boolean isSuccess;
     private Boolean isFailure;
+    private FunnelStage funnelStage;
     private Integer order;
 
     public boolean isStageTypeValid() {

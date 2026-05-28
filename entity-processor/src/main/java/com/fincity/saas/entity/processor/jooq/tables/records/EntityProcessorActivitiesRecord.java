@@ -310,6 +310,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
+     * Activity Action categories for this Activity.
      */
     public EntityProcessorActivitiesRecord setActivityAction(ActivityAction value) {
         set(15, value);
@@ -319,6 +320,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
+     * Activity Action categories for this Activity.
      */
     public ActivityAction getActivityAction() {
         return (ActivityAction) get(15);

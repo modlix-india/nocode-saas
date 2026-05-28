@@ -32,14 +32,17 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.DiagnosticsLog;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
@@ -104,6 +107,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
     private final DiagnosticsService diagnosticsService;
+    private final ConversionActionMappingService conversionActionMappingService;
+    private final ConversionEventService conversionEventService;
 
     private ProductTicketExRuleService productTicketExRuleService;
 
@@ -132,6 +137,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy PartnerService partnerService,
             ProductCommService productCommService,
             DiagnosticsService diagnosticsService,
+            @Lazy ConversionActionMappingService conversionActionMappingService,
+            @Lazy ConversionEventService conversionEventService,
             Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
@@ -147,6 +154,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.partnerService = partnerService;
         this.productCommService = productCommService;
         this.diagnosticsService = diagnosticsService;
+        this.conversionActionMappingService = conversionActionMappingService;
+        this.conversionEventService = conversionEventService;
         this.gson = gson;
     }
 
@@ -550,7 +559,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
                                         this.campaignService.getEntityName(),
                                         cTicketRequest.getCampaignDetails().getCampaignId())),
-                        campaign -> this.productService.readById(access, campaign.getProductId()),
+                        campaign -> this.resolveCampaignProduct(access, campaign),
                         (campaign, product) -> {
                             if (!product.isActive())
                                 return this.msgService.<Ticket>throwMessage(
@@ -569,7 +578,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                                         return this.adService
                                                 .readOrCreate(access, details.getAdId(), details.getAdName(),
-                                                        adset.getId(), campaign.getId())
+                                                        null, null, adset.getId(), campaign.getId())
                                                 .map(ad -> ticket.setAdId(ad.getId()))
                                                 .defaultIfEmpty(ticket);
                                     });
@@ -590,11 +599,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> createForWebsite(CampaignTicketRequest cTicketRequest, String productCode) {
 
-        if (cTicketRequest.getCampaignDetails() != null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.WEBSITE_ENTITY_DATA_INVALID);
-
         if (cTicketRequest.getLeadDetails().getSource() == null)
             cTicketRequest.getLeadDetails().setSource("Website");
 
@@ -611,15 +615,65 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             return Mono.just(Ticket.of(cTicketRequest));
                         },
                         (product, ticket) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, pTicket) -> this.create(access, pTicket)
+                        (product, ticket, pTicket) -> this.attachCampaignAttribution(access, pTicket, cTicketRequest),
+                        (product, ticket, pTicket, attributedTicket) -> this.create(access, attributedTicket)
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.TICKET_CREATION_FAILED,
                                         "website")),
-                        (product, ticket, pTicket, created) -> this.activityService
+                        (product, ticket, pTicket, attributedTicket, created) -> this.activityService
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
+    }
+
+    private Mono<Ticket> attachCampaignAttribution(
+            ProcessorAccess access, Ticket ticket, CampaignTicketRequest cTicketRequest) {
+
+        CampaignTicketRequest.CampaignDetails cd = cTicketRequest.getCampaignDetails();
+        if (cd == null || StringUtil.safeIsBlank(cd.getCampaignId())) return Mono.just(ticket);
+
+        return this.campaignService
+                .readByCampaignId(access, cd.getCampaignId())
+                .flatMap(campaign -> {
+                    ticket.setCampaignId(campaign.getId());
+                    if (StringUtil.safeIsBlank(cd.getAdSetId())) return Mono.just(ticket);
+
+                    return this.adsetService
+                            .readOrCreate(access, cd.getAdSetId(), cd.getAdSetName(), campaign.getId())
+                            .flatMap(adset -> {
+                                ticket.setAdsetId(adset.getId());
+                                if (StringUtil.safeIsBlank(cd.getAdId())) return Mono.just(ticket);
+
+                                return this.adService
+                                        .readOrCreate(
+                                                access, cd.getAdId(), cd.getAdName(), null, null, adset.getId(), campaign.getId())
+                                        .map(ad -> ticket.setAdId(ad.getId()))
+                                        .defaultIfEmpty(ticket);
+                            })
+                            .defaultIfEmpty(ticket);
+                })
+                .defaultIfEmpty(ticket);
+    }
+
+    /**
+     * Resolves the product a campaign lead should be attributed to, under
+     * many-to-many. Uses the deprecated "primary" {@code PRODUCT_ID} when set
+     * (kept in sync with the first linked product); otherwise falls back to the
+     * single linked product from the join. If a campaign has zero or multiple
+     * products and no primary, attribution cannot be disambiguated and a clear
+     * error is raised rather than silently picking one.
+     */
+    private Mono<Product> resolveCampaignProduct(ProcessorAccess access, Campaign campaign) {
+        if (campaign.getProductId() != null)
+            return this.productService.readById(access, campaign.getProductId());
+
+        return this.campaignService.findLinkedProductIds(campaign.getId()).flatMap(productIds -> productIds.size() == 1
+                ? this.productService.readById(access, productIds.get(0))
+                : this.msgService.<Product>throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.MISSING_PARAMETERS,
+                        "product for campaign " + campaign.getCampaignId()));
     }
 
     public Mono<Ticket> createForPartnerImportDCRM(String appCode, String clientCode, TicketPartnerRequest request) {
@@ -937,6 +991,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String comment) {
 
         ULong oldStage = ticket.getStage();
+        ULong oldStatus = ticket.getStatus();
 
         boolean doReassignment = !oldStage.equals(stageId);
 
@@ -957,8 +1012,54 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .thenReturn(uTicket),
                         (uTicket, cTask, fTicket) -> doReassignment
                                 ? this.reassignForStage(access, fTicket, reassignUserId, true)
-                                : Mono.just(fTicket)))
+                                : Mono.just(fTicket),
+                        (uTicket, cTask, fTicket, rTicket) -> this.enqueueConversionEventsForStageTransition(
+                                        access, rTicket, oldStage, oldStatus)
+                                .thenReturn(rTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+    }
+
+    /**
+     * Best-effort hook: looks up active conversion-action mappings for the new
+     * (stage, status, product_template) and enqueues an outbox event per match.
+     * Errors are swallowed — a downstream Meta/Google enqueue failure must not
+     * abort the user's stage update.
+     *
+     * <p>Per Meta CAPI doc Part 6.2, {@code action_source} must be derived from
+     * ticket origin: {@code system_generated} when {@code adData.lead_id} is set
+     * (lead-form webhook origin), otherwise {@code website}.
+     */
+    private Mono<Void> enqueueConversionEventsForStageTransition(
+            ProcessorAccess access, Ticket ticket, ULong oldStage, ULong oldStatus) {
+
+        if (java.util.Objects.equals(oldStage, ticket.getStage())
+                && java.util.Objects.equals(oldStatus, ticket.getStatus())) {
+            return Mono.empty();
+        }
+
+        com.fincity.saas.entity.processor.enums.ConversionActionSource source = deriveActionSource(ticket);
+
+        return this.conversionActionMappingService
+                .findActiveByTrigger(access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
+                .concatMap(mapping -> this.conversionEventService
+                        .enqueue(access, ticket, mapping, source)
+                        .onErrorResume(e -> {
+                            logger.warn(
+                                    "Failed to enqueue conversion event for ticket {} mapping {}: {}",
+                                    ticket.getId(),
+                                    mapping.getId(),
+                                    e.getMessage());
+                            return Mono.empty();
+                        }))
+                .then();
+    }
+
+    private static com.fincity.saas.entity.processor.enums.ConversionActionSource deriveActionSource(Ticket ticket) {
+        java.util.Map<String, Object> adData = ticket.getAdData();
+        if (adData != null && (adData.containsKey("lead_id") || adData.containsKey("leadgen_id"))) {
+            return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
+        }
+        return com.fincity.saas.entity.processor.enums.ConversionActionSource.WEBSITE;
     }
 
     private Mono<Boolean> createTask(ProcessorAccess access, TaskRequest taskRequest, Ticket ticket) {

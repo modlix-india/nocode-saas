@@ -8,7 +8,19 @@ public enum CampaignPlatform implements EnumType {
     GOOGLE("GOOGLE"),
     FACEBOOK("FACEBOOK"),
     LINKEDIN("LINKEDIN"),
-    X("X");
+    X("X"),
+    TIKTOK("TIKTOK"),
+    MICROSOFT("MICROSOFT"),
+    AMAZON("AMAZON"),
+    PINTEREST("PINTEREST"),
+    REDDIT("REDDIT"),
+    SNAPCHAT("SNAPCHAT"),
+    QUORA("QUORA"),
+    YAHOO("YAHOO"),
+    YANDEX("YANDEX"),
+    DUCKDUCKGO("DUCKDUCKGO"),
+    MASTODON("MASTODON"),
+    DISCORD("DISCORD");
 
     private final String literal;
 

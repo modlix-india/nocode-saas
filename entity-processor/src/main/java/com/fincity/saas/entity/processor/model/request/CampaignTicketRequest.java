@@ -62,6 +62,9 @@ public class CampaignTicketRequest implements Serializable, INoteRequest {
         // Any extra payload
         private Map<String, Object> customFields;
 
+        // Ad attribution (gclid, fbclid, wbraid, gbraid, _gcl_au, _fbp, _fbc, etc.)
+        private Map<String, Object> adData;
+
         // Convenience helpers (optional)
         public boolean hasIdentifyInfo() {
             return (email != null && email.getAddress() != null) || (phone != null && phone.getNumber() != null);

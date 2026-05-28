@@ -21,4 +21,10 @@ public class CampaignRequest implements Serializable {
     private String campaignType;
     private CampaignPlatform campaignPlatform;
     private Identity productId;
+
+    // Platform context (optional on create — MetricsSyncService.ensurePlatformContext
+    // lazily backfills these on first sync if absent, so old UI clients keep working).
+    private String platformAccountId; // Meta: ad_account_id;     Google: customer_id
+    private String platformLoginId;   // Meta: n/a;               Google: MCC login_customer_id
+    private String platformDatasetId; // Meta: Pixel/Dataset ID;  Google: n/a
 }
