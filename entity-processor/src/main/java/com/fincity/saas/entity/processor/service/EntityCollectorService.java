@@ -24,11 +24,13 @@ import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -126,6 +128,8 @@ public class EntityCollectorService extends AbstractConnectionService {
 
     public Mono<Map<String, Object>> processWebsiteFormEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
 
+        enrichWebsiteAdData(websiteBody, request);
+
         return FlatMapUtil.flatMapMonoWithNull(
 
                 () -> Mono.just(EntityUtil.getHost(request)),
@@ -157,6 +161,48 @@ public class EntityCollectorService extends AbstractConnectionService {
                         EntityProcessorCollectorLogStatus.SUCCESS,
                         sMessage),
                 (host, integration, logId, response, responseLog, sMessage, result, uLog) -> Mono.just(result));
+    }
+
+    /**
+     * Stamps the inbound HTTP context onto {@code WebsiteDetails.adData} so the
+     * downstream Meta / Google Conversions API dispatchers can read them off the
+     * ticket. Caller-provided adData values (e.g. {@code gclid} sent by the Purva
+     * landing-page form) take precedence over what we infer here.
+     *
+     * <ul>
+     *   <li>{@code client_ip_address} — from {@code X-Forwarded-For} / remote addr
+     *       (Meta CAPI Part 6.4, website action_source only).</li>
+     *   <li>{@code client_user_agent} — from the {@code User-Agent} request header.</li>
+     *   <li>{@code fbc} / {@code fbp} — from the browser cookies {@code _fbc} / {@code _fbp}
+     *       (Meta CAPI Part 6.6 — same cookies travel across Lead/MQL/SQL via the ticket).</li>
+     * </ul>
+     */
+    private static void enrichWebsiteAdData(WebsiteDetails websiteBody, ServerHttpRequest request) {
+
+        Map<String, Object> adData = websiteBody.getAdData() != null
+                ? new HashMap<>(websiteBody.getAdData())
+                : new HashMap<>();
+
+        String ip = getClientIpAddress(request);
+        if (ip != null && !ip.isBlank() && !"UNKNOWN".equals(ip)) {
+            adData.putIfAbsent("client_ip_address", ip);
+        }
+
+        String ua = request.getHeaders().getFirst("User-Agent");
+        if (ua != null && !ua.isBlank()) {
+            adData.putIfAbsent("client_user_agent", ua);
+        }
+
+        HttpCookie fbp = request.getCookies().getFirst("_fbp");
+        if (fbp != null && !fbp.getValue().isBlank()) {
+            adData.putIfAbsent("fbp", fbp.getValue());
+        }
+        HttpCookie fbc = request.getCookies().getFirst("_fbc");
+        if (fbc != null && !fbc.getValue().isBlank()) {
+            adData.putIfAbsent("fbc", fbc.getValue());
+        }
+
+        if (!adData.isEmpty()) websiteBody.setAdData(adData);
     }
 
     private Mono<EntityResponse> handleWebsiteEntity(WebsiteDetails websiteDetails, EntityIntegration integration, ULong logId) {
