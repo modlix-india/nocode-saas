@@ -137,10 +137,10 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
     /**
      * The column
      * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACTION_ID</code>.
-     * Platform-side identifier: Meta custom_conversion_id; Google conversion
-     * action resource name.
+     * Platform-side identifier: Meta custom_conversion_id (optional); Google
+     * conversion action resource name (required for Google dispatch).
      */
-    public final TableField<EntityProcessorConversionActionMappingRecord, String> PLATFORM_ACTION_ID = createField(DSL.name("PLATFORM_ACTION_ID"), SQLDataType.VARCHAR(128).nullable(false), this, "Platform-side identifier: Meta custom_conversion_id; Google conversion action resource name.");
+    public final TableField<EntityProcessorConversionActionMappingRecord, String> PLATFORM_ACTION_ID = createField(DSL.name("PLATFORM_ACTION_ID"), SQLDataType.VARCHAR(128), this, "Platform-side identifier: Meta custom_conversion_id (optional); Google conversion action resource name (required for Google dispatch).");
 
     /**
      * The column

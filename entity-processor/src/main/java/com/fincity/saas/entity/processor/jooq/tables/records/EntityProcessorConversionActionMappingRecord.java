@@ -203,8 +203,8 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
     /**
      * Setter for
      * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACTION_ID</code>.
-     * Platform-side identifier: Meta custom_conversion_id; Google conversion
-     * action resource name.
+     * Platform-side identifier: Meta custom_conversion_id (optional); Google
+     * conversion action resource name (required for Google dispatch).
      */
     public EntityProcessorConversionActionMappingRecord setPlatformActionId(String value) {
         set(9, value);
@@ -214,8 +214,8 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
     /**
      * Getter for
      * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACTION_ID</code>.
-     * Platform-side identifier: Meta custom_conversion_id; Google conversion
-     * action resource name.
+     * Platform-side identifier: Meta custom_conversion_id (optional); Google
+     * conversion action resource name (required for Google dispatch).
      */
     public String getPlatformActionId() {
         return (String) get(9);
