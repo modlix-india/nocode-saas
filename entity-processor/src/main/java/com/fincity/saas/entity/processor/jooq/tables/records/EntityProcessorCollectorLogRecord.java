@@ -158,11 +158,30 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_collector_log.CREATED_BY</code>.
+     * ID of the user who created this row.
+     */
+    public EntityProcessorCollectorLogRecord setCreatedBy(ULong value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_collector_log.CREATED_BY</code>.
+     * ID of the user who created this row.
+     */
+    public ULong getCreatedBy() {
+        return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_collector_log.CREATED_AT</code>.
      * Time when this row is created.
      */
     public EntityProcessorCollectorLogRecord setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -172,7 +191,26 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_collector_log.UPDATED_BY</code>.
+     * ID of the user who last updated this row.
+     */
+    public EntityProcessorCollectorLogRecord setUpdatedBy(ULong value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_collector_log.UPDATED_BY</code>.
+     * ID of the user who last updated this row.
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(9);
     }
 
     /**
@@ -181,7 +219,7 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public EntityProcessorCollectorLogRecord setUpdatedAt(LocalDateTime value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -191,7 +229,7 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -217,7 +255,7 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorCollectorLogRecord
      */
-    public EntityProcessorCollectorLogRecord(ULong id, ULong entityIntegrationId, JSON incomingEntityData, String ipAddress, JSON outgoingEntityData, EntityProcessorCollectorLogStatus status, String statusMessage, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public EntityProcessorCollectorLogRecord(ULong id, ULong entityIntegrationId, JSON incomingEntityData, String ipAddress, JSON outgoingEntityData, EntityProcessorCollectorLogStatus status, String statusMessage, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorCollectorLog.ENTITY_PROCESSOR_COLLECTOR_LOG);
 
         setId(id);
@@ -227,7 +265,9 @@ public class EntityProcessorCollectorLogRecord extends UpdatableRecordImpl<Entit
         setOutgoingEntityData(outgoingEntityData);
         setStatus(status);
         setStatusMessage(statusMessage);
+        setCreatedBy(createdBy);
         setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
