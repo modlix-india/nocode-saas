@@ -110,10 +110,24 @@ public class EntityProcessorCollectorLog extends TableImpl<EntityProcessorCollec
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_collector_log.CREATED_BY</code>.
+     * ID of the user who created this row.
+     */
+    public final TableField<EntityProcessorCollectorLogRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_collector_log.CREATED_AT</code>.
      * Time when this row is created.
      */
     public final TableField<EntityProcessorCollectorLogRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_collector_log.UPDATED_BY</code>.
+     * ID of the user who last updated this row.
+     */
+    public final TableField<EntityProcessorCollectorLogRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who last updated this row.");
 
     /**
      * The column
