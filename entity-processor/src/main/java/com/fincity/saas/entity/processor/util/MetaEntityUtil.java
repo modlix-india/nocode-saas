@@ -166,7 +166,20 @@ public final class MetaEntityUtil {
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> buildCampaignDetails(adId, token),
                         campaignDetails -> buildLeadDetails(incomingLead, formDetails),
-                        (campaignDetails, leadDetails) -> Mono.just(buildEntityResponse(leadDetails, campaignDetails, integration)),
+                        (campaignDetails, leadDetails) -> {
+                            // Stamp the leadgen id onto adData so Meta Conversions API can pick it up
+                            // as user_data.lead_id for system_generated events (Meta CAPI Part 6.3).
+                            String leadgenId = incomingLead.path(ID).asText(null);
+                            if (leadgenId != null && !leadgenId.isBlank()) {
+                                Map<String, Object> adData = leadDetails.getAdData() != null
+                                        ? new HashMap<>(leadDetails.getAdData())
+                                        : new HashMap<>();
+                                adData.put("lead_id", leadgenId);
+                                adData.put(LEADGEN_ID, leadgenId);
+                                leadDetails.setAdData(adData);
+                            }
+                            return Mono.just(buildEntityResponse(leadDetails, campaignDetails, integration));
+                        },
                         (campaignDetails, leadDetails, response) -> Mono.just(response))
                 .switchIfEmpty(messageService
                         .getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
