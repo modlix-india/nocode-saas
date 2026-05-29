@@ -110,6 +110,19 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     }
 
     /**
+     * Lists every ad account this access token can read. Backs the operator-facing
+     * account picker in {@code campaignConfig} so a campaign whose own ad account
+     * has no pixel can borrow a pixel from a sibling account. Returns the raw
+     * {@code data} array — each entry is {id ("act_..."), account_id, name, account_status}.
+     */
+    public Mono<JsonNode> listAccounts(String accessToken) {
+        return MetaEntityUtil.fetchMetaGraphData(
+                        META_VERSION + "me/adaccounts",
+                        Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,account_id,name,account_status"))
+                .map(body -> body.path("data"));
+    }
+
+    /**
      * Creates a new pixel/dataset on the given ad account. Backs the "Create new"
      * inline button on the operator's pixel picker. Returns the new pixel as
      * {id, name} JSON.
