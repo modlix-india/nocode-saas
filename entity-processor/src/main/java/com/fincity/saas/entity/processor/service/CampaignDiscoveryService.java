@@ -296,4 +296,51 @@ public class CampaignDiscoveryService {
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.disable"));
     }
+
+    /**
+     * Lists available pixels/datasets on the given Meta ad account so the operator
+     * can pick the one to bind to a campaign for CAPI dispatch. Returns the raw
+     * pixels {@code data} array from Meta — UI maps {id, name, is_unavailable}.
+     */
+    public Mono<com.fasterxml.jackson.databind.JsonNode> listMetaPixels(String accountId) {
+        if (accountId == null || accountId.isBlank()) {
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "accountId");
+        }
+        com.fincity.saas.entity.processor.platform.MetaPlatformService meta =
+                (com.fincity.saas.entity.processor.platform.MetaPlatformService)
+                        this.platformRegistry.getService(
+                                com.fincity.saas.entity.processor.enums.CampaignPlatform.FACEBOOK);
+        return FlatMapUtil.flatMapMono(
+                        this.campaignService::hasAccess,
+                        access -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), meta.getConnectionName()),
+                        (access, token) -> meta.listPixels(accountId, token))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.listMetaPixels"));
+    }
+
+    /**
+     * Creates a new pixel/dataset on the given Meta ad account. Returns the new
+     * pixel JSON ({id, name}) which the UI uses to populate the picker selection.
+     */
+    public Mono<com.fasterxml.jackson.databind.JsonNode> createMetaPixel(String accountId, String name) {
+        if (accountId == null || accountId.isBlank() || name == null || name.isBlank()) {
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "accountId, name");
+        }
+        com.fincity.saas.entity.processor.platform.MetaPlatformService meta =
+                (com.fincity.saas.entity.processor.platform.MetaPlatformService)
+                        this.platformRegistry.getService(
+                                com.fincity.saas.entity.processor.enums.CampaignPlatform.FACEBOOK);
+        return FlatMapUtil.flatMapMono(
+                        this.campaignService::hasAccess,
+                        access -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), meta.getConnectionName()),
+                        (access, token) -> meta.createPixel(accountId, name, token))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.createMetaPixel"));
+    }
 }
