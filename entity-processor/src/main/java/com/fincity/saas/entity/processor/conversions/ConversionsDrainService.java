@@ -1,7 +1,11 @@
 package com.fincity.saas.entity.processor.conversions;
 
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.dao.CampaignDAO;
+import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.ConversionEvent;
+import com.fincity.saas.entity.processor.platform.AbstractAdPlatformService;
+import com.fincity.saas.entity.processor.platform.AdPlatformRegistry;
 import com.fincity.saas.entity.processor.service.CampaignService;
 import com.fincity.saas.entity.processor.service.ConversionActionMappingService;
 import com.fincity.saas.entity.processor.service.ConversionEventService;
@@ -36,6 +40,8 @@ public class ConversionsDrainService {
     private final TicketService ticketService;
     private final CampaignService campaignService;
     private final AbstractConnectionService connectionService;
+    private final AdPlatformRegistry adPlatformRegistry;
+    private final CampaignDAO campaignDAO;
 
     public ConversionsDrainService(
             ConversionEventService eventService,
@@ -43,13 +49,17 @@ public class ConversionsDrainService {
             ConversionsDispatcherRegistry registry,
             TicketService ticketService,
             CampaignService campaignService,
-            AbstractConnectionService connectionService) {
+            AbstractConnectionService connectionService,
+            AdPlatformRegistry adPlatformRegistry,
+            CampaignDAO campaignDAO) {
         this.eventService = eventService;
         this.mappingService = mappingService;
         this.registry = registry;
         this.ticketService = ticketService;
         this.campaignService = campaignService;
         this.connectionService = connectionService;
+        this.adPlatformRegistry = adPlatformRegistry;
+        this.campaignDAO = campaignDAO;
     }
 
     /** Drains one batch. Returns {@code {dispatched, failed, skipped}} counters. */
@@ -63,15 +73,13 @@ public class ConversionsDrainService {
                 .findDispatchable(batchSize <= 0 ? DEFAULT_BATCH_SIZE : batchSize)
                 .concatMap(event -> this.dispatchOne(event)
                         .doOnNext(outcome -> {
-                            if (outcome == Outcome.DISPATCHED) dispatched.incrementAndGet();
-                            else if (outcome == Outcome.FAILED) failed.incrementAndGet();
-                            else skipped.incrementAndGet();
+                            switch (outcome) {
+                                case DISPATCHED -> dispatched.incrementAndGet();
+                                case FAILED -> failed.incrementAndGet();
+                                case SKIPPED -> skipped.incrementAndGet();
+                            }
                         })
-                        .onErrorResume(t -> {
-                            logger.warn("Drain error for event {}: {}", event.getEventId(), t.getMessage());
-                            failed.incrementAndGet();
-                            return Mono.empty();
-                        }))
+                        .onErrorResume(t -> this.persistFailureAndContinue(event, failed, t)))
                 .then(Mono.fromSupplier(() -> {
                     Map<String, Object> result = new HashMap<>();
                     result.put("dispatched", dispatched.get());
@@ -94,34 +102,119 @@ public class ConversionsDrainService {
                 .get(event.getCampaignPlatform())
                 .map(dispatcher -> this.runDispatch(event, dispatcher))
                 .orElseGet(() -> this.eventService
-                        .markFailed(event, "No dispatcher registered for platform " + event.getCampaignPlatform())
+                        // Terminal: a missing dispatcher will never appear via retry.
+                        .markSkipped(event, "No dispatcher registered for platform " + event.getCampaignPlatform())
                         .thenReturn(Outcome.SKIPPED));
     }
 
     private Mono<Outcome> runDispatch(ConversionEvent event, AbstractConversionsDispatcher dispatcher) {
 
+        // Worker-only no-auth lookups; the user-facing read variant would reject the
+        // no-JWT context with a login-required error. Same pattern MetricsSyncService uses.
         return this.mappingService
-                .read(event.getMappingId())
-                .flatMap(mapping -> this.ticketService.read(event.getTicketId()).flatMap(ticket -> {
-                    if (ticket.getCampaignId() == null) {
-                        return this.eventService
-                                .markFailed(event, "Ticket has no CAMPAIGN_ID; cannot resolve platform credentials")
-                                .thenReturn(Outcome.SKIPPED);
-                    }
-                    return this.campaignService
-                            .read(ticket.getCampaignId())
-                            .flatMap(campaign -> this.connectionService
-                                    .getMarketingPlatformOAuth2Token(
-                                            campaign.getClientCode(),
-                                            connectionNameFor(event.getCampaignPlatform()))
-                                    .flatMap(token -> dispatcher.dispatch(event, mapping, ticket, campaign, token))
-                                    .flatMap(result -> result.success()
-                                            ? this.eventService.markSent(event, result.message()).thenReturn(Outcome.DISPATCHED)
-                                            : this.eventService.markFailed(event, result.message()).thenReturn(Outcome.FAILED)));
-                }))
+                .findById(event.getMappingId())
+                .flatMap(mapping -> this.ticketService
+                        .findById(event.getTicketId())
+                        .flatMap(ticket -> dispatchForTicket(event, dispatcher, mapping, ticket)))
+                // Terminal: the referenced mapping or ticket has been deleted; no retry will revive it.
                 .switchIfEmpty(this.eventService
-                        .markFailed(event, "Mapping or ticket missing for this event")
+                        .markSkipped(event, "Mapping or ticket missing for this event")
                         .thenReturn(Outcome.SKIPPED));
+    }
+
+    private Mono<Outcome> dispatchForTicket(
+            ConversionEvent event,
+            AbstractConversionsDispatcher dispatcher,
+            com.fincity.saas.entity.processor.dto.ConversionActionMapping mapping,
+            com.fincity.saas.entity.processor.dto.Ticket ticket) {
+
+        if (ticket.getCampaignId() == null) {
+            // Terminal: a ticket without campaign attribution will never gain one on retry.
+            // The enqueue gate now prevents this, but legacy rows exist.
+            return this.eventService
+                    .markSkipped(event, "Ticket has no CAMPAIGN_ID; cannot resolve platform credentials")
+                    .thenReturn(Outcome.SKIPPED);
+        }
+        return this.campaignService
+                .findById(ticket.getCampaignId())
+                .flatMap(campaign -> this.connectionService
+                        .getMarketingPlatformOAuth2Token(
+                                campaign.getClientCode(), connectionNameFor(event.getCampaignPlatform()))
+                        .flatMap(token -> resolveAndDispatch(event, dispatcher, mapping, ticket, campaign, token)));
+    }
+
+    private Mono<Outcome> resolveAndDispatch(
+            ConversionEvent event,
+            AbstractConversionsDispatcher dispatcher,
+            com.fincity.saas.entity.processor.dto.ConversionActionMapping mapping,
+            com.fincity.saas.entity.processor.dto.Ticket ticket,
+            Campaign campaign,
+            String token) {
+
+        // Self-heal platform context (e.g. Meta pixel id) before dispatch — same pattern
+        // MetricsSyncService uses. Persist any newly-resolved ids so the next dispatch
+        // doesn't re-query the platform.
+        final String origAccountId = campaign.getPlatformAccountId();
+        final String origLoginId = campaign.getPlatformLoginId();
+        final String origDatasetId = campaign.getPlatformDatasetId();
+        AbstractAdPlatformService platform = this.adPlatformRegistry.getService(event.getCampaignPlatform());
+
+        return platform
+                .ensurePlatformContext(campaign, token)
+                .flatMap(resolved -> persistResolvedIfChanged(resolved, origAccountId, origLoginId, origDatasetId)
+                        .thenReturn(resolved))
+                .flatMap(resolved -> dispatcher.dispatch(event, mapping, ticket, resolved, token))
+                .flatMap(result -> result.success()
+                        ? this.eventService.markSent(event, result.message()).thenReturn(Outcome.DISPATCHED)
+                        : this.eventService.markFailed(event, result.message()).thenReturn(Outcome.FAILED));
+    }
+
+    /** Mirror of {@code MetricsSyncService.persistResolvedIfChanged} — keeps the two self-heal paths in sync. */
+    private Mono<Void> persistResolvedIfChanged(
+            Campaign resolved, String origAccountId, String origLoginId, String origDatasetId) {
+        String accountId = diff(origAccountId, resolved.getPlatformAccountId());
+        String loginId = diff(origLoginId, resolved.getPlatformLoginId());
+        String datasetId = diff(origDatasetId, resolved.getPlatformDatasetId());
+        if (accountId == null && loginId == null && datasetId == null) {
+            return Mono.empty();
+        }
+        return this.campaignDAO
+                .updatePlatformIds(resolved.getId(), accountId, loginId, datasetId)
+                .doOnNext(n -> logger.info(
+                        "Drain backfilled platform-context for campaign id={} (rows={}, accountId={}, loginId={}, datasetId={})",
+                        resolved.getId(), n, accountId, loginId, datasetId))
+                .then()
+                .onErrorResume(e -> {
+                    logger.warn("Failed to persist resolved platform-context for campaign id={}: {}",
+                            resolved.getId(), e.toString());
+                    return Mono.empty();
+                });
+    }
+
+    /** Returns {@code resolved} only when it's a non-blank value that differs from {@code original}. */
+    private static String diff(String original, String resolved) {
+        if (resolved == null || resolved.isBlank()) return null;
+        if (resolved.equals(original)) return null;
+        return resolved;
+    }
+
+    private Mono<Outcome> persistFailureAndContinue(ConversionEvent event, AtomicInteger failed, Throwable t) {
+        logger.warn("Drain error for event {}: {}", event.getEventId(), t.getMessage(), t);
+        failed.incrementAndGet();
+        return this.eventService
+                .markFailed(event, truncate(t.getMessage()))
+                .thenReturn(Outcome.FAILED)
+                .onErrorResume(persistEx -> {
+                    logger.warn("Failed to persist error on event {}: {}",
+                            event.getEventId(), persistEx.getMessage());
+                    return Mono.just(Outcome.FAILED);
+                });
+    }
+
+    /** Keep STATUS_MESSAGE within the TEXT column's safe bound. */
+    private static String truncate(String s) {
+        if (s == null) return null;
+        return s.length() > 4000 ? s.substring(0, 4000) : s;
     }
 
     private static String connectionNameFor(com.fincity.saas.entity.processor.enums.CampaignPlatform platform) {

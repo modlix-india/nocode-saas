@@ -79,6 +79,15 @@ public class ConversionActionMappingService
         this.googlePlatformService = googlePlatformService;
     }
 
+    /**
+     * Cross-tenant id lookup without {@code hasAccess()}. Worker-driven flows only
+     * (e.g. {@code ConversionsDrainService}); never expose via a public controller.
+     */
+    public Mono<ConversionActionMapping> findById(ULong id) {
+        return this.dao.readById(id)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConversionActionMappingService.findById"));
+    }
+
     @PostConstruct
     private void init() {
 
