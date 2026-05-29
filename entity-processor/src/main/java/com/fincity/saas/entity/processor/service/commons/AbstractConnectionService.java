@@ -58,7 +58,12 @@ public abstract class AbstractConnectionService {
     }
 
     public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {
+        // Treat blank/empty as missing so a misconfigured Connection fails fast at the
+        // caller (e.g. ConversionsDrainService.markFailed) instead of being sent to the
+        // platform as an empty Authorization, which some platforms (Meta) silently
+        // accept and respond to with empty data — masquerading as a real "no data" answer.
         return this.getCoreToken(appCode, clientCode, connectionName)
+                .filter(token -> token != null && !token.isBlank())
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         EntityCollectorMessageResourceService.TOKEN_UNAVAILABLE,

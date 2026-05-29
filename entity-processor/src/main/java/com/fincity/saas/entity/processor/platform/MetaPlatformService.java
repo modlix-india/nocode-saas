@@ -26,6 +26,8 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     private static final Logger log = LoggerFactory.getLogger(MetaPlatformService.class);
 
     private static final String META_VERSION = "/v22.0/";
+    private static final String P_ACCESS_TOKEN = "access_token";
+    private static final String P_FIELDS = "fields";
     // ad_id/adset_id/campaign_id must be requested explicitly — at level=ad the
     // insights edge returns only the fields you ask for (plus the date), so
     // without these the rows carry no breakdown id and collapse to campaign grain.
@@ -43,18 +45,28 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     }
 
     /**
-     * For Meta, resolve {@code platformAccountId} (ad account id) by querying
-     * {@code GET /{campaignId}?fields=account_id} on Graph API. Only fires
-     * when the campaign row is missing {@code platformAccountId}.
+     * For Meta, resolve {@code platformAccountId} (ad account id) and
+     * {@code platformDatasetId} (Pixel ID) when the row is missing them.
      *
-     * <p>Note: Meta metrics fetch ({@code GET /{campaignId}/insights}) works
-     * fine without {@code account_id} — it's keyed off campaign global ID.
-     * We backfill it here mainly to keep the row consistent for the Phase 4
-     * conversions dispatcher path that DOES need {@code platformDatasetId}
-     * (Pixel ID), and for future reporting/grouping queries.
+     * <ul>
+     *   <li>{@code platformAccountId} comes from {@code GET /{campaignId}?fields=account_id}.</li>
+     *   <li>{@code platformDatasetId} comes from {@code GET /act_{accountId}/adspixels}.
+     *       If exactly one available pixel is returned, use it. If multiple, pick the first
+     *       available one and log a warning so the operator can override via the
+     *       client's META_API connection {@code connectionDetails.defaultPixelId} or by
+     *       editing the campaign row directly.</li>
+     * </ul>
+     *
+     * <p>Meta metrics fetch ({@code GET /{campaignId}/insights}) works fine without
+     * either id, so the discovery path doesn't fail when these are unresolved; the
+     * Phase 4 CAPI dispatch path is the consumer that requires {@code platformDatasetId}.
      */
     @Override
     public Mono<Campaign> ensurePlatformContext(Campaign campaign, String accessToken) {
+        return ensureAccountId(campaign, accessToken).flatMap(c -> ensurePixelId(c, accessToken));
+    }
+
+    private Mono<Campaign> ensureAccountId(Campaign campaign, String accessToken) {
         if (campaign.getPlatformAccountId() != null && !campaign.getPlatformAccountId().isBlank()) {
             return Mono.just(campaign);
         }
@@ -63,7 +75,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
         }
         return MetaEntityUtil.fetchMetaGraphData(
                         META_VERSION + campaign.getCampaignId(),
-                        Map.of("access_token", accessToken, "fields", "account_id"))
+                        Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "account_id"))
                 .map(body -> {
                     String accountId = body.path("account_id").asText(null);
                     if (accountId != null && !accountId.isBlank()) {
@@ -77,10 +89,77 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                     return campaign;
                 })
                 .onErrorResume(e -> {
-                    log.warn("Meta ensurePlatformContext failed for campaign {}: {}",
+                    log.warn("Meta ensurePlatformContext (account_id) failed for campaign {}: {}",
                             campaign.getCampaignId(), e.toString());
                     return Mono.just(campaign);
                 });
+    }
+
+    private Mono<Campaign> ensurePixelId(Campaign campaign, String accessToken) {
+        if (campaign.getPlatformDatasetId() != null && !campaign.getPlatformDatasetId().isBlank()) {
+            return Mono.just(campaign);
+        }
+        String accountId = campaign.getPlatformAccountId();
+        if (accountId == null || accountId.isBlank()) {
+            return Mono.just(campaign);
+        }
+        // Meta API returns account ids without the "act_" prefix on /{campaign}?fields=account_id,
+        // but the adspixels edge requires it. Normalize here.
+        String actPrefixed = accountId.startsWith("act_") ? accountId : "act_" + accountId;
+        return MetaEntityUtil.fetchMetaGraphData(
+                        META_VERSION + actPrefixed + "/adspixels",
+                        Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,name,is_unavailable"))
+                .map(body -> {
+                    String pixelId = pickPixel(body, campaign);
+                    if (pixelId != null) {
+                        log.info("Meta ensurePlatformContext: campaign {} → pixel_id {}",
+                                campaign.getCampaignId(), pixelId);
+                        campaign.setPlatformDatasetId(pixelId);
+                    }
+                    return campaign;
+                })
+                .onErrorResume(e -> {
+                    log.warn("Meta ensurePlatformContext (pixel_id) failed for campaign {}: {}",
+                            campaign.getCampaignId(), e.toString());
+                    return Mono.just(campaign);
+                });
+    }
+
+    /**
+     * Returns the pixel id to bind to the campaign row. Picks the only available
+     * pixel; if there are multiple, picks the first available and logs a warning so
+     * the operator knows to override via the connection's {@code defaultPixelId}
+     * or by editing the campaign row.
+     */
+    private static String pickPixel(JsonNode body, Campaign campaign) {
+        JsonNode data = body.path("data");
+        if (!data.isArray() || data.isEmpty()) {
+            // Dump the raw body so the operator can tell apart "account has no pixels"
+            // (data: []) from "token lacks ads_management scope" (error object) from
+            // "paginated, all on next page" (paging.next). Without this we silently
+            // treat all three the same.
+            log.warn("Meta adspixels: account {} returned no pixels for campaign {} (raw body={})",
+                    campaign.getPlatformAccountId(), campaign.getCampaignId(), body);
+            return null;
+        }
+        String firstAvailable = null;
+        int availableCount = 0;
+        for (JsonNode pixel : data) {
+            String id = pixel.path("is_unavailable").asBoolean(false)
+                    ? null
+                    : pixel.path("id").asText(null);
+            if (id != null && !id.isBlank()) {
+                availableCount++;
+                if (firstAvailable == null) firstAvailable = id;
+            }
+        }
+        if (availableCount > 1) {
+            log.warn("Meta adspixels: account {} has {} available pixels for campaign {}; picked {}. "
+                            + "If this isn't the right one, set defaultPixelId on the META_API connection "
+                            + "or edit the campaign row's platform_dataset_id.",
+                    campaign.getPlatformAccountId(), availableCount, campaign.getCampaignId(), firstAvailable);
+        }
+        return firstAvailable;
     }
 
     @Override
@@ -91,8 +170,8 @@ public class MetaPlatformService extends AbstractAdPlatformService {
         String timeRange = "{\"since\":\"" + dateFrom + "\",\"until\":\"" + dateTo + "\"}";
 
         Map<String, String> queryParams = Map.of(
-                "access_token", accessToken,
-                "fields", INSIGHTS_FIELDS,
+                P_ACCESS_TOKEN, accessToken,
+                P_FIELDS, INSIGHTS_FIELDS,
                 "time_range", timeRange,
                 "level", "ad",
                 "time_increment", "1");
@@ -168,7 +247,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
         String account = normalizeAdAccountId(platformAccountId);
         String path = META_VERSION + account + "/campaigns";
         Map<String, String> params =
-                Map.of("access_token", accessToken, "fields", "id,name,objective,status", "limit", "200");
+                Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,name,objective,status", "limit", "200");
 
         return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
             JsonNode data = response.path("data");
@@ -193,7 +272,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
         String path = META_VERSION + externalCampaignId + "/adsets";
         Map<String, String> params =
-                Map.of("access_token", accessToken, "fields", "id,name,status,campaign_id", "limit", "200");
+                Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,name,status,campaign_id", "limit", "200");
 
         return MetaEntityUtil.fetchMetaGraphData(path, params).flatMapMany(response -> {
             JsonNode data = response.path("data");
@@ -219,9 +298,9 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
         String path = META_VERSION + externalAdsetId + "/ads";
         Map<String, String> params = Map.of(
-                "access_token",
+                P_ACCESS_TOKEN,
                 accessToken,
-                "fields",
+                P_FIELDS,
                 "id,name,status,adset_id,campaign_id,creative{thumbnail_url,image_url,object_type}",
                 "limit",
                 "200");

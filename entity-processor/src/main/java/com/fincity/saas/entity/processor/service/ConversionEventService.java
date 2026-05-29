@@ -135,6 +135,15 @@ public class ConversionEventService
                 .then();
     }
 
+    /**
+     * Terminal: marks the event SKIPPED with no retry. Use for conditions that
+     * cannot self-correct on the next tick (e.g. ticket has no platform attribution,
+     * referenced mapping/ticket deleted, dispatcher unregistered for platform).
+     */
+    public Mono<Void> markSkipped(ConversionEvent event, String message) {
+        return this.dao.markSkipped(event.getId(), message).then();
+    }
+
     /** Exponential backoff with cap: 30s, 60s, 120s, ..., max 1h. */
     private static Duration backoff(int attempt) {
         long seconds = Math.min(BACKOFF_CAP_SECONDS, BACKOFF_BASE_SECONDS * (1L << Math.min(attempt - 1, 8)));
