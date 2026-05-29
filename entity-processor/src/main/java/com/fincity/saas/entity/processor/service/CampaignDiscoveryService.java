@@ -322,6 +322,26 @@ public class CampaignDiscoveryService {
     }
 
     /**
+     * Lists every Meta ad account the connected OAuth token can read. Backs the
+     * operator-facing ad-account picker in {@code campaignConfig}. The UI uses
+     * this to populate an account dropdown so a campaign whose own ad account has
+     * no pixel can be re-bound to a sibling account that does — pixels are
+     * Business-Manager assets and can be shared across accounts.
+     */
+    public Mono<com.fasterxml.jackson.databind.JsonNode> listMetaAccounts() {
+        com.fincity.saas.entity.processor.platform.MetaPlatformService meta =
+                (com.fincity.saas.entity.processor.platform.MetaPlatformService)
+                        this.platformRegistry.getService(
+                                com.fincity.saas.entity.processor.enums.CampaignPlatform.FACEBOOK);
+        return FlatMapUtil.flatMapMono(
+                        this.campaignService::hasAccess,
+                        access -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), meta.getConnectionName()),
+                        (access, token) -> meta.listAccounts(token))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.listMetaAccounts"));
+    }
+
+    /**
      * Creates a new pixel/dataset on the given Meta ad account. Returns the new
      * pixel JSON ({id, name}) which the UI uses to populate the picker selection.
      */
