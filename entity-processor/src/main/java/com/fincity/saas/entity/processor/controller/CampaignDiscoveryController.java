@@ -49,6 +49,16 @@ public class CampaignDiscoveryController {
     }
 
     /**
+     * Lists every Meta ad account the OAuth token can see. Backs the operator-facing
+     * ad-account picker in campaignConfig, used to rebind a campaign to a sibling
+     * account that has a pixel assigned.
+     */
+    @GetMapping("/meta/accounts")
+    public Mono<ResponseEntity<JsonNode>> listMetaAccounts() {
+        return this.discoveryService.listMetaAccounts().map(ResponseEntity::ok);
+    }
+
+    /**
      * Lists pixels/datasets available on a Meta ad account. Operator UI uses this
      * to populate the pixel picker in campaignConfig. Mirrors the Google
      * conversion-action listing pattern.
