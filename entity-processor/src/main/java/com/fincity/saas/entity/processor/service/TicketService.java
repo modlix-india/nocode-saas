@@ -159,6 +159,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.gson = gson;
     }
 
+    /**
+     * Cross-tenant id lookup without {@code hasAccess()}. Worker-driven flows only
+     * (e.g. {@code ConversionsDrainService}); never expose via a public controller.
+     */
+    public Mono<Ticket> findById(ULong id) {
+        return this.dao.readById(id)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.findById"));
+    }
+
     @PostConstruct
     private void init() {
 
@@ -1025,6 +1034,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
      * Errors are swallowed — a downstream Meta/Google enqueue failure must not
      * abort the user's stage update.
      *
+     * <p>Two attribution gates prevent enqueuing non-ad-platform tickets:
+     * <ol>
+     *   <li>{@code ticket.campaignId == null} — partner-referred / walk-in / direct
+     *       tickets have no ad-platform attribution and cannot become conversion events.</li>
+     *   <li>{@code campaign.platform != mapping.platform} — a Meta mapping must not
+     *       fire for a Google-attributed ticket (and vice versa); doing so would
+     *       feed wrong-platform conversions back to the ad platform and inflate its
+     *       reported ROAS.</li>
+     * </ol>
+     *
      * <p>Per Meta CAPI doc Part 6.2, {@code action_source} must be derived from
      * ticket origin: {@code system_generated} when {@code adData.lead_id} is set
      * (lead-form webhook origin), otherwise {@code website}.
@@ -1037,21 +1056,35 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return Mono.empty();
         }
 
+        // Gate 1: no campaign attribution → no conversion event.
+        if (ticket.getCampaignId() == null) {
+            return Mono.empty();
+        }
+
         com.fincity.saas.entity.processor.enums.ConversionActionSource source = deriveActionSource(ticket);
 
-        return this.conversionActionMappingService
-                .findActiveByTrigger(access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
-                .concatMap(mapping -> this.conversionEventService
-                        .enqueue(access, ticket, mapping, source)
-                        .onErrorResume(e -> {
-                            logger.warn(
-                                    "Failed to enqueue conversion event for ticket {} mapping {}: {}",
-                                    ticket.getId(),
-                                    mapping.getId(),
-                                    e.getMessage());
-                            return Mono.empty();
-                        }))
-                .then();
+        return this.campaignService
+                .findById(ticket.getCampaignId())
+                .flatMap(campaign -> this.conversionActionMappingService
+                        .findActiveByTrigger(
+                                access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
+                        // Gate 2: only fire mappings whose platform matches the ticket's source platform.
+                        .filter(mapping -> java.util.Objects.equals(
+                                mapping.getCampaignPlatform(), campaign.getCampaignPlatform()))
+                        .concatMap(mapping -> this.conversionEventService
+                                .enqueue(access, ticket, mapping, source)
+                                .onErrorResume(e -> {
+                                    logger.warn(
+                                            "Failed to enqueue conversion event for ticket {} mapping {}: {}",
+                                            ticket.getId(),
+                                            mapping.getId(),
+                                            e.getMessage());
+                                    return Mono.empty();
+                                }))
+                        .then())
+                // Campaign row vanished between ticket attribution and stage transition — treat
+                // as no-attribution so we don't enqueue.
+                .switchIfEmpty(Mono.empty());
     }
 
     private static com.fincity.saas.entity.processor.enums.ConversionActionSource deriveActionSource(Ticket ticket) {
