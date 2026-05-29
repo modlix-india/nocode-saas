@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.dao;
 
+import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds.ENTITY_PROCESSOR_ADS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS;
@@ -11,8 +12,10 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicke
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport.Level;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
+import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.FunnelStage;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
@@ -49,6 +52,14 @@ public class CampaignReportDAO {
     private static final EntityProcessorStages STAGES = ENTITY_PROCESSOR_STAGES;
     private static final EntityProcessorAdsets ADSETS = ENTITY_PROCESSOR_ADSETS;
     private static final EntityProcessorAds ADS = ENTITY_PROCESSOR_ADS;
+    private static final EntityProcessorActivities ACTIVITIES = ENTITY_PROCESSOR_ACTIVITIES;
+
+    // Activity actions that carry a stage assignment: CREATE captures the initial
+    // stage at ticket creation, STAGE_UPDATE captures each subsequent move. Joining
+    // on both lets us count distinct tickets per stage they EVER passed through —
+    // not just the stage they currently sit in (which is what TICKETS.STAGE gives).
+    private static final List<ActivityAction> STAGE_BEARING_ACTIONS =
+            List.of(ActivityAction.CREATE, ActivityAction.STAGE_UPDATE);
 
     private final DSLContext dslContext;
 
@@ -212,37 +223,48 @@ public class CampaignReportDAO {
 
     /**
      * For each campaign linked to {@code productId}, returns a map keyed by
-     * stage ID with ticket counts. Tickets are filtered by {@code CREATED_AT}
-     * within the supplied datetime range.
+     * stage ID with ticket counts. The count for stage S is the number of
+     * distinct tickets that EVER passed through S, sourced from the activities
+     * log (CREATE for initial stage, STAGE_UPDATE for each subsequent move).
+     * Tickets are still cohort-filtered by ticket {@code CREATED_AT} in the
+     * supplied range so the report bucket matches the leads-acquired window.
+     *
+     * <p>Previously this read {@code TICKETS.STAGE} (the current stage), which
+     * meant a ticket that progressed FRESH → VISIT → BOOKING → LOST only
+     * counted in LOST. That made the funnel columns FRESH/VISIT/BOOKING look
+     * empty for any campaign whose leads had moved past those stages.
      */
     public Mono<Map<ULong, Map<ULong, Long>>> getStageCountsByCampaign(
             ProcessorAccess access, ULong productId, LocalDateTime startDate, LocalDateTime endDate) {
 
-        Field<Integer> cnt = DSL.count().as("cnt");
+        Field<Integer> cnt = DSL.countDistinct(ACTIVITIES.TICKET_ID).as("cnt");
 
         Condition condition = TICKETS.APP_CODE
                 .eq(access.getAppCode())
                 .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
                 .and(TICKETS.PRODUCT_ID.eq(productId))
                 .and(TICKETS.CAMPAIGN_ID.isNotNull())
-                .and(TICKETS.STAGE.isNotNull())
-                .and(TICKETS.IS_ACTIVE.isTrue());
+                .and(TICKETS.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.STAGE_ID.isNotNull())
+                .and(ACTIVITIES.ACTIVITY_ACTION.in(STAGE_BEARING_ACTIONS));
 
         if (startDate != null && endDate != null) {
             condition = condition.and(TICKETS.CREATED_AT.between(startDate, endDate));
         }
 
         return Flux.from(dslContext
-                        .select(TICKETS.CAMPAIGN_ID, TICKETS.STAGE, cnt)
-                        .from(TICKETS)
+                        .select(TICKETS.CAMPAIGN_ID, ACTIVITIES.STAGE_ID, cnt)
+                        .from(ACTIVITIES)
+                        .join(TICKETS).on(TICKETS.ID.eq(ACTIVITIES.TICKET_ID))
                         .where(condition)
-                        .groupBy(TICKETS.CAMPAIGN_ID, TICKETS.STAGE))
+                        .groupBy(TICKETS.CAMPAIGN_ID, ACTIVITIES.STAGE_ID))
                 .collectList()
                 .map(records -> {
                     Map<ULong, Map<ULong, Long>> result = new HashMap<>();
                     for (Record r : records) {
                         ULong campaignId = r.get(TICKETS.CAMPAIGN_ID);
-                        ULong stageId = r.get(TICKETS.STAGE);
+                        ULong stageId = r.get(ACTIVITIES.STAGE_ID);
                         long count = r.get("cnt", Long.class);
                         result.computeIfAbsent(campaignId, k -> new HashMap<>()).put(stageId, count);
                     }
@@ -358,31 +380,34 @@ public class CampaignReportDAO {
 
         if (campaignIds == null || campaignIds.isEmpty()) return Mono.just(Map.of());
 
-        Field<Integer> cnt = DSL.count().as("cnt");
+        Field<Integer> cnt = DSL.countDistinct(ACTIVITIES.TICKET_ID).as("cnt");
         Condition condition = TICKETS.APP_CODE
                 .eq(access.getAppCode())
                 .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
                 .and(TICKETS.PRODUCT_ID.eq(productId))
                 .and(TICKETS.CAMPAIGN_ID.in(campaignIds))
                 .and(TICKETS.ADSET_ID.isNotNull())
-                .and(TICKETS.STAGE.isNotNull())
-                .and(TICKETS.IS_ACTIVE.isTrue());
+                .and(TICKETS.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.STAGE_ID.isNotNull())
+                .and(ACTIVITIES.ACTIVITY_ACTION.in(STAGE_BEARING_ACTIONS));
 
         if (startDate != null && endDate != null) {
             condition = condition.and(TICKETS.CREATED_AT.between(startDate, endDate));
         }
 
         return Flux.from(dslContext
-                        .select(TICKETS.ADSET_ID, TICKETS.STAGE, cnt)
-                        .from(TICKETS)
+                        .select(TICKETS.ADSET_ID, ACTIVITIES.STAGE_ID, cnt)
+                        .from(ACTIVITIES)
+                        .join(TICKETS).on(TICKETS.ID.eq(ACTIVITIES.TICKET_ID))
                         .where(condition)
-                        .groupBy(TICKETS.ADSET_ID, TICKETS.STAGE))
+                        .groupBy(TICKETS.ADSET_ID, ACTIVITIES.STAGE_ID))
                 .collectList()
                 .map(records -> {
                     Map<ULong, Map<ULong, Long>> result = new HashMap<>();
                     for (Record r : records) {
                         result.computeIfAbsent(r.get(TICKETS.ADSET_ID), k -> new HashMap<>())
-                                .put(r.get(TICKETS.STAGE), r.get("cnt", Long.class));
+                                .put(r.get(ACTIVITIES.STAGE_ID), r.get("cnt", Long.class));
                     }
                     return result;
                 });
@@ -445,31 +470,34 @@ public class CampaignReportDAO {
 
         if (adsetIds == null || adsetIds.isEmpty()) return Mono.just(Map.of());
 
-        Field<Integer> cnt = DSL.count().as("cnt");
+        Field<Integer> cnt = DSL.countDistinct(ACTIVITIES.TICKET_ID).as("cnt");
         Condition condition = TICKETS.APP_CODE
                 .eq(access.getAppCode())
                 .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
                 .and(TICKETS.PRODUCT_ID.eq(productId))
                 .and(TICKETS.ADSET_ID.in(adsetIds))
                 .and(TICKETS.AD_ID.isNotNull())
-                .and(TICKETS.STAGE.isNotNull())
-                .and(TICKETS.IS_ACTIVE.isTrue());
+                .and(TICKETS.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.STAGE_ID.isNotNull())
+                .and(ACTIVITIES.ACTIVITY_ACTION.in(STAGE_BEARING_ACTIONS));
 
         if (startDate != null && endDate != null) {
             condition = condition.and(TICKETS.CREATED_AT.between(startDate, endDate));
         }
 
         return Flux.from(dslContext
-                        .select(TICKETS.AD_ID, TICKETS.STAGE, cnt)
-                        .from(TICKETS)
+                        .select(TICKETS.AD_ID, ACTIVITIES.STAGE_ID, cnt)
+                        .from(ACTIVITIES)
+                        .join(TICKETS).on(TICKETS.ID.eq(ACTIVITIES.TICKET_ID))
                         .where(condition)
-                        .groupBy(TICKETS.AD_ID, TICKETS.STAGE))
+                        .groupBy(TICKETS.AD_ID, ACTIVITIES.STAGE_ID))
                 .collectList()
                 .map(records -> {
                     Map<ULong, Map<ULong, Long>> result = new HashMap<>();
                     for (Record r : records) {
                         result.computeIfAbsent(r.get(TICKETS.AD_ID), k -> new HashMap<>())
-                                .put(r.get(TICKETS.STAGE), r.get("cnt", Long.class));
+                                .put(r.get(ACTIVITIES.STAGE_ID), r.get("cnt", Long.class));
                     }
                     return result;
                 });
