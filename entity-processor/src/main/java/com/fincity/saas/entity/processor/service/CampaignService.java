@@ -120,6 +120,16 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     }
 
     /**
+     * Cross-tenant id lookup without {@code hasAccess()}. Worker-driven flows only
+     * (e.g. {@code ConversionsDrainService}); never expose via a public controller.
+     * Sibling of {@link #findAllActive()}.
+     */
+    public Mono<Campaign> findById(ULong id) {
+        return this.dao.readById(id)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.findById"));
+    }
+
+    /**
      * Resolves the caller-tenant's account context on a platform from any campaign
      * that carries it (account-level identifiers are shared across the client's
      * campaigns). Empty when no campaign with a resolved account exists yet.

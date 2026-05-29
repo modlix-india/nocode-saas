@@ -80,4 +80,20 @@ public class ConversionEventDAO extends BaseUpdatableDAO<EntityProcessorConversi
                         .where(ENTITY_PROCESSOR_CONVERSION_EVENTS.ID.eq(id)))
                 .map(Integer::valueOf);
     }
+
+    /**
+     * Terminal state — explicitly clears {@code NEXT_ATTEMPT_AT} so the dispatcher's
+     * {@code findDispatchable} ({@code IS NULL OR <= NOW()}) doesn't pick it up again.
+     * Used for non-retryable conditions (ticket missing campaign attribution, dispatcher
+     * not registered for platform, etc.).
+     */
+    public Mono<Integer> markSkipped(ULong id, String statusMessage) {
+        return Mono.from(this.dslContext
+                        .update(this.table)
+                        .set(ENTITY_PROCESSOR_CONVERSION_EVENTS.STATUS, ConversionEventStatus.SKIPPED)
+                        .set(ENTITY_PROCESSOR_CONVERSION_EVENTS.STATUS_MESSAGE, statusMessage)
+                        .setNull(ENTITY_PROCESSOR_CONVERSION_EVENTS.NEXT_ATTEMPT_AT)
+                        .where(ENTITY_PROCESSOR_CONVERSION_EVENTS.ID.eq(id)))
+                .map(rows -> rows == null ? 0 : rows);
+    }
 }
