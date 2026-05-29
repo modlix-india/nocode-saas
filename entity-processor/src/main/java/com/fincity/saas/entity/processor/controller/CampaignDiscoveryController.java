@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.model.discovery.DiscoveredCampaign;
 import com.fincity.saas.entity.processor.model.request.DiscoverCampaignsRequest;
@@ -9,10 +10,12 @@ import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -44,4 +47,26 @@ public class CampaignDiscoveryController {
     public Mono<ResponseEntity<Campaign>> disable(@PathVariable ULong campaignId) {
         return this.discoveryService.disable(campaignId).map(ResponseEntity::ok);
     }
+
+    /**
+     * Lists pixels/datasets available on a Meta ad account. Operator UI uses this
+     * to populate the pixel picker in campaignConfig. Mirrors the Google
+     * conversion-action listing pattern.
+     */
+    @GetMapping("/meta/pixels")
+    public Mono<ResponseEntity<JsonNode>> listMetaPixels(@RequestParam String accountId) {
+        return this.discoveryService.listMetaPixels(accountId).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Creates a new pixel/dataset on a Meta ad account. Body: {@code {accountId, name}}.
+     * Returns the new pixel as {@code {id, name}} JSON.
+     */
+    @PostMapping("/meta/pixels")
+    public Mono<ResponseEntity<JsonNode>> createMetaPixel(@RequestBody CreatePixelRequest request) {
+        return this.discoveryService.createMetaPixel(request.accountId(), request.name())
+                .map(ResponseEntity::ok);
+    }
+
+    public record CreatePixelRequest(String accountId, String name) {}
 }

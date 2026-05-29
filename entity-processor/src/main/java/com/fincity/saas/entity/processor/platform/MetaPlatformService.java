@@ -28,6 +28,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     private static final String META_VERSION = "/v22.0/";
     private static final String P_ACCESS_TOKEN = "access_token";
     private static final String P_FIELDS = "fields";
+    private static final String ADSPIXELS_EDGE = "/adspixels";
     // ad_id/adset_id/campaign_id must be requested explicitly — at level=ad the
     // insights edge returns only the fields you ask for (plus the date), so
     // without these the rows carry no breakdown id and collapse to campaign grain.
@@ -95,6 +96,31 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                 });
     }
 
+    /**
+     * Lists all pixels/datasets owned by the given ad account. Backs the operator-facing
+     * pixel picker in {@code campaignConfig}. Returns the raw {@code data} array from
+     * Meta — caller maps each entry's {id, name, is_unavailable}.
+     */
+    public Mono<JsonNode> listPixels(String accountId, String accessToken) {
+        String actPrefixed = accountId.startsWith("act_") ? accountId : "act_" + accountId;
+        return MetaEntityUtil.fetchMetaGraphData(
+                        META_VERSION + actPrefixed + ADSPIXELS_EDGE,
+                        Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,name,is_unavailable"))
+                .map(body -> body.path("data"));
+    }
+
+    /**
+     * Creates a new pixel/dataset on the given ad account. Backs the "Create new"
+     * inline button on the operator's pixel picker. Returns the new pixel as
+     * {id, name} JSON.
+     */
+    public Mono<JsonNode> createPixel(String accountId, String name, String accessToken) {
+        String actPrefixed = accountId.startsWith("act_") ? accountId : "act_" + accountId;
+        return MetaEntityUtil.postMetaGraphData(
+                META_VERSION + actPrefixed + ADSPIXELS_EDGE,
+                Map.of(P_ACCESS_TOKEN, accessToken, "name", name));
+    }
+
     private Mono<Campaign> ensurePixelId(Campaign campaign, String accessToken) {
         if (campaign.getPlatformDatasetId() != null && !campaign.getPlatformDatasetId().isBlank()) {
             return Mono.just(campaign);
@@ -107,7 +133,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
         // but the adspixels edge requires it. Normalize here.
         String actPrefixed = accountId.startsWith("act_") ? accountId : "act_" + accountId;
         return MetaEntityUtil.fetchMetaGraphData(
-                        META_VERSION + actPrefixed + "/adspixels",
+                        META_VERSION + actPrefixed + ADSPIXELS_EDGE,
                         Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "id,name,is_unavailable"))
                 .map(body -> {
                     String pixelId = pickPixel(body, campaign);
