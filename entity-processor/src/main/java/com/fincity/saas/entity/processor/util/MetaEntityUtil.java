@@ -85,6 +85,27 @@ public final class MetaEntityUtil {
                 .bodyToMono(JsonNode.class);
     }
 
+    /**
+     * POST to Meta Graph API as form-encoded body (the shape Meta expects for write
+     * operations like creating a dataset/pixel). Same URI-encoding guardrails as
+     * {@link #fetchMetaGraphData}.
+     */
+    public static Mono<JsonNode> postMetaGraphData(String path, Map<String, String> formParams) {
+        URI uri = URI.create(SCHEME + "://" + META_HOST + path);
+        String body = formParams.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+        return webClient
+                .post()
+                .uri(uri)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(JsonNode.class);
+    }
+
     private static Map<String, String> buildParams(String token, String fields) {
         return Map.of(ACCESS_TOKEN, token, META_FIELD, fields);
     }
