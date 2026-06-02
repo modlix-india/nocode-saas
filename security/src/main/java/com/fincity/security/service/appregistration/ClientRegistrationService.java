@@ -871,7 +871,7 @@ public class ClientRegistrationService {
                             // is responsible for deciding login vs signup. Otherwise
                             // fall back to the integration's configured loginUri/signupUri.
                             String destination;
-                            if (!safeIsBlank(customerRedirectUrl)) {
+                            if (!safeIsBlank(customerRedirectUrl) && isAllowedSocialRedirect(customerRedirectUrl, rp)) {
                                 destination = customerRedirectUrl;
                             } else {
                                 String legacyUri = "true".equals(rp == null ? null
@@ -895,6 +895,48 @@ public class ClientRegistrationService {
                             return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
+    }
+
+    /**
+     * Guards the social-profile redirect against open-redirect abuse. The
+     * callback appends the user's email, name and the session token as query
+     * params, so the destination must be trusted.
+     * <p>
+     * Web callers redirect over http(s) (the app is served from the same
+     * platform), which we continue to allow. Mobile wrappers cannot receive an
+     * https redirect into their embedded WebView, so they pass a custom URL
+     * scheme; we only honour it when it matches the
+     * {@code modlix.<clientCode>.<appCode>} convention for the very app that
+     * initiated this flow, so only that app's installed build can capture the
+     * callback. Anything else falls back to the configured loginUri.
+     */
+    private static boolean isAllowedSocialRedirect(String redirectUrl, Map<String, Object> rp) {
+
+        String scheme;
+        try {
+            scheme = URI.create(redirectUrl).getScheme();
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
+
+        if (scheme == null)
+            return false;
+
+        scheme = scheme.toLowerCase();
+
+        if (scheme.equals("http") || scheme.equals("https"))
+            return true;
+
+        if (rp == null)
+            return false;
+
+        Object appCode = rp.get("appCode");
+        Object clientCode = rp.get("clientCode");
+        if (appCode == null || clientCode == null)
+            return false;
+
+        String expected = ("modlix." + clientCode + "." + appCode).toLowerCase();
+        return scheme.equals(expected);
     }
 
     /**
