@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorIntegrationsInSourceType;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorIntegrationsStatus;
 import java.io.Serial;
@@ -19,6 +20,7 @@ public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
 
     private String appCode;
     private String clientCode;
+    private String code = UniqueUtil.shortUUID();
     private String inAppCode;
     private String outAppCode;
     private String primaryTarget;
