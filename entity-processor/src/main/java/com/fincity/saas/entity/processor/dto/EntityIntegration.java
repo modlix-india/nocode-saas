@@ -17,6 +17,7 @@ public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
     @Serial
     private static final long serialVersionUID = 774068654647877436L;
 
+    private String appCode;
     private String clientCode;
     private String inAppCode;
     private String outAppCode;
