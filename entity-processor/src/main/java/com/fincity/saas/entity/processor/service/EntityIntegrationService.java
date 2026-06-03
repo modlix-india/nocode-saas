@@ -70,7 +70,10 @@ public class EntityIntegrationService
 
                 ca -> verifyTargetUrl(ca, entity),
 
-                (ca, verified) -> super.create(entity));
+                (ca, verified) -> {
+                    if (entity.getAppCode() == null) entity.setAppCode(ca.getUrlAppCode());
+                    return super.create(entity);
+                });
     }
 
     @Override
