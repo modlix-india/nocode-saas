@@ -915,7 +915,7 @@ public class ClientRegistrationService {
         String scheme;
         try {
             scheme = URI.create(redirectUrl).getScheme();
-        } catch (IllegalArgumentException _) {
+        } catch (IllegalArgumentException e) {
             return false;
         }
 
