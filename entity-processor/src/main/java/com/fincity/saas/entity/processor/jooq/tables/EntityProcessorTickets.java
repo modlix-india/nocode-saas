@@ -5,7 +5,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
-import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -46,7 +45,6 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -217,9 +215,9 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT / WARM / COLD
+     * Deal Tag
      */
-    public final TableField<EntityProcessorTicketsRecord, Tag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4), this, "Deal Tag - HOT / WARM / COLD", new EnumConverter<String, Tag>(String.class, Tag.class));
+    public final TableField<EntityProcessorTicketsRecord, String> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(32), this, "Deal Tag");
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do

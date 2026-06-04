@@ -29,6 +29,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkI
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTags;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
@@ -61,6 +62,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSourcesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTagsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTaskTypesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTasksRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketCUserDistributionsRecord;
@@ -152,6 +154,8 @@ public class Keys {
     public static final UniqueKey<EntityProcessorSourcesRecord> KEY_ENTITY_PROCESSOR_SOURCES_UK1_SOURCES_AC_CC_PID_NAME = Internal.createUniqueKey(EntityProcessorSources.ENTITY_PROCESSOR_SOURCES, DSL.name("KEY_entity_processor_sources_UK1_SOURCES_AC_CC_PID_NAME"), new TableField[] { EntityProcessorSources.ENTITY_PROCESSOR_SOURCES.APP_CODE, EntityProcessorSources.ENTITY_PROCESSOR_SOURCES.CLIENT_CODE, EntityProcessorSources.ENTITY_PROCESSOR_SOURCES.PARENT_ID, EntityProcessorSources.ENTITY_PROCESSOR_SOURCES.NAME }, true);
     public static final UniqueKey<EntityProcessorStagesRecord> KEY_ENTITY_PROCESSOR_STAGES_PRIMARY = Internal.createUniqueKey(EntityProcessorStages.ENTITY_PROCESSOR_STAGES, DSL.name("KEY_entity_processor_stages_PRIMARY"), new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.ID }, true);
     public static final UniqueKey<EntityProcessorStagesRecord> KEY_ENTITY_PROCESSOR_STAGES_UK1_STAGES_CODE = Internal.createUniqueKey(EntityProcessorStages.ENTITY_PROCESSOR_STAGES, DSL.name("KEY_entity_processor_stages_UK1_STAGES_CODE"), new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.CODE }, true);
+    public static final UniqueKey<EntityProcessorTagsRecord> KEY_ENTITY_PROCESSOR_TAGS_PRIMARY = Internal.createUniqueKey(EntityProcessorTags.ENTITY_PROCESSOR_TAGS, DSL.name("KEY_entity_processor_tags_PRIMARY"), new TableField[] { EntityProcessorTags.ENTITY_PROCESSOR_TAGS.ID }, true);
+    public static final UniqueKey<EntityProcessorTagsRecord> KEY_ENTITY_PROCESSOR_TAGS_UK1_TAGS_AC_CC_NAME = Internal.createUniqueKey(EntityProcessorTags.ENTITY_PROCESSOR_TAGS, DSL.name("KEY_entity_processor_tags_UK1_TAGS_AC_CC_NAME"), new TableField[] { EntityProcessorTags.ENTITY_PROCESSOR_TAGS.APP_CODE, EntityProcessorTags.ENTITY_PROCESSOR_TAGS.CLIENT_CODE, EntityProcessorTags.ENTITY_PROCESSOR_TAGS.NAME }, true);
     public static final UniqueKey<EntityProcessorTaskTypesRecord> KEY_ENTITY_PROCESSOR_TASK_TYPES_PRIMARY = Internal.createUniqueKey(EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES, DSL.name("KEY_entity_processor_task_types_PRIMARY"), new TableField[] { EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.ID }, true);
     public static final UniqueKey<EntityProcessorTaskTypesRecord> KEY_ENTITY_PROCESSOR_TASK_TYPES_UK1_TASK_TYPES_CODE = Internal.createUniqueKey(EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES, DSL.name("KEY_entity_processor_task_types_UK1_TASK_TYPES_CODE"), new TableField[] { EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.CODE }, true);
     public static final UniqueKey<EntityProcessorTaskTypesRecord> KEY_ENTITY_PROCESSOR_TASK_TYPES_UK2_TASK_TYPES_NAME = Internal.createUniqueKey(EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES, DSL.name("KEY_entity_processor_task_types_UK2_TASK_TYPES_NAME"), new TableField[] { EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.APP_CODE, EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.CLIENT_CODE, EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.NAME, EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES.CONTENT_ENTITY_SERIES }, true);
