@@ -295,7 +295,9 @@ public class GooglePlatformService extends AbstractAdPlatformService {
             String appCode, String clientCode, String customerId, String loginCustomerId, String accessToken) {
 
         String gaql = "SELECT conversion_action.id, conversion_action.name, conversion_action.resource_name, "
-                + "conversion_action.status, conversion_action.type, conversion_action.category "
+                + "conversion_action.status, conversion_action.type, conversion_action.category, "
+                + "conversion_action.counting_type, conversion_action.click_through_lookback_window_days, "
+                + "conversion_action.primary_for_goal "
                 + "FROM conversion_action WHERE conversion_action.status != 'REMOVED'";
 
         return resolveDeveloperToken(appCode, clientCode)
@@ -305,13 +307,19 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                             if (!results.isArray() || results.isEmpty()) return Flux.empty();
                             return Flux.fromIterable(results::elements).map(row -> {
                                 JsonNode ca = row.path(CONVERSION_ACTION);
+                                JsonNode windowNode = ca.path("clickThroughLookbackWindowDays");
+                                JsonNode primaryNode = ca.path("primaryForGoal");
                                 return new DiscoveredConversionAction()
                                         .setResourceName(ca.path("resourceName").asText(null))
                                         .setId(ca.path("id").asText(null))
                                         .setName(ca.path("name").asText(null))
                                         .setStatus(ca.path("status").asText(null))
                                         .setType(ca.path("type").asText(null))
-                                        .setCategory(ca.path("category").asText(null));
+                                        .setCategory(ca.path("category").asText(null))
+                                        .setCountingType(ca.path("countingType").asText(null))
+                                        .setClickThroughLookbackWindowDays(
+                                                windowNode.isNumber() ? windowNode.asInt() : null)
+                                        .setPrimaryForGoal(primaryNode.isBoolean() ? primaryNode.asBoolean() : null);
                             });
                         }));
     }
@@ -319,8 +327,11 @@ public class GooglePlatformService extends AbstractAdPlatformService {
     /**
      * Creates an {@code UPLOAD_CLICKS} conversion action in the account so a fresh
      * client can provision one in-app. Returns the created action with its
-     * {@code resourceName} parsed from the mutate response. {@code category}
-     * defaults to {@code DEFAULT}.
+     * {@code resourceName} parsed from the mutate response. Defaults applied when
+     * params are null: {@code category=DEFAULT}, {@code countingType=ONE_PER_CLICK},
+     * {@code clickThroughLookbackWindowDays=30} (clamped to 1..90),
+     * {@code primaryForGoal=true}. Callers should validate {@code countingType} at
+     * the service layer; this method clamps silently.
      */
     public Mono<DiscoveredConversionAction> createConversionAction(
             String appCode,
@@ -329,15 +340,24 @@ public class GooglePlatformService extends AbstractAdPlatformService {
             String loginCustomerId,
             String name,
             String category,
+            String countingType,
+            Integer clickThroughLookbackWindowDays,
+            Boolean primaryForGoal,
             String accessToken) {
 
         String cat = (category == null || category.isBlank()) ? "DEFAULT" : category;
+        String ct = (countingType == null || countingType.isBlank()) ? "ONE_PER_CLICK" : countingType;
+        int window = (clickThroughLookbackWindowDays == null) ? 30 : Math.clamp(clickThroughLookbackWindowDays, 1, 90);
+        boolean primary = primaryForGoal == null || primaryForGoal;
+
         Map<String, Object> create = new java.util.HashMap<>();
         create.put("name", name);
         create.put("type", "UPLOAD_CLICKS");
         create.put("category", cat);
         create.put("status", "ENABLED");
-        create.put("countingType", "ONE_PER_CLICK");
+        create.put("countingType", ct);
+        create.put("clickThroughLookbackWindowDays", window);
+        create.put("primaryForGoal", primary);
         Map<String, Object> body = Map.of("operations", java.util.List.of(Map.of("create", create)));
 
         return resolveDeveloperToken(appCode, clientCode)
@@ -375,7 +395,10 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                                     .setName(name)
                                     .setStatus("ENABLED")
                                     .setType("UPLOAD_CLICKS")
-                                    .setCategory(cat);
+                                    .setCategory(cat)
+                                    .setCountingType(ct)
+                                    .setClickThroughLookbackWindowDays(window)
+                                    .setPrimaryForGoal(primary);
                         }));
     }
 

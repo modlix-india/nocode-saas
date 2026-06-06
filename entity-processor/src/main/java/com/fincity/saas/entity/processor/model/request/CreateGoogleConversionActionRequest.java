@@ -23,6 +23,10 @@ public class CreateGoogleConversionActionRequest implements Serializable {
 
     private String name;
     private String category;
+    private String type;
+    private String countingType;
+    private Integer clickThroughLookbackWindowDays;
+    private Boolean primaryForGoal;
     private String customerId;
     private String loginCustomerId;
 }

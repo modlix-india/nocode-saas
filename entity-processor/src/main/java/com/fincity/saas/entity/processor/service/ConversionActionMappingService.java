@@ -344,6 +344,12 @@ public class ConversionActionMappingService
                     ProcessorMessageResourceService.MISSING_PARAMETERS,
                     "name");
 
+        String ct = request.getCountingType();
+        if (ct != null && !ct.isBlank() && !"ONE_PER_CLICK".equals(ct) && !"MANY_PER_CLICK".equals(ct))
+            return Mono.error(new GenericException(
+                    HttpStatus.BAD_REQUEST,
+                    "countingType must be ONE_PER_CLICK or MANY_PER_CLICK; got '" + ct + "'"));
+
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> resolveGoogleAccount(request.getCustomerId(), request.getLoginCustomerId())
@@ -360,6 +366,9 @@ public class ConversionActionMappingService
                                 acct.loginCustomerId(),
                                 request.getName(),
                                 request.getCategory(),
+                                request.getCountingType(),
+                                request.getClickThroughLookbackWindowDays(),
+                                request.getPrimaryForGoal(),
                                 token))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "ConversionActionMappingService.createGoogleConversionAction"));
