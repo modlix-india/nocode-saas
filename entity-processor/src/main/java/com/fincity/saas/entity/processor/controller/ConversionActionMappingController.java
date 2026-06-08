@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.service.ConversionActionMappingService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -60,5 +61,22 @@ public class ConversionActionMappingController
     public Mono<ResponseEntity<DiscoveredConversionAction>> createGoogleConversionAction(
             @RequestBody CreateGoogleConversionActionRequest request) {
         return this.service.createGoogleConversionAction(request).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Soft-deletes a Google Ads conversion action by resource name (sets status
+     * to REMOVED on Google's side). {@code resourceName} is the full Google
+     * resource path (e.g.
+     * {@code customers/4220436668/conversionActions/7640505544}). Pass it
+     * URL-encoded as a query param.
+     */
+    @DeleteMapping("/google/conversion-actions")
+    public Mono<ResponseEntity<Void>> removeGoogleConversionAction(
+            @RequestParam String resourceName,
+            @RequestParam(required = false) String customerId,
+            @RequestParam(required = false) String loginCustomerId) {
+        return this.service
+                .removeGoogleConversionAction(resourceName, customerId, loginCustomerId)
+                .<ResponseEntity<Void>>thenReturn(ResponseEntity.noContent().build());
     }
 }
