@@ -344,6 +344,12 @@ public class ConversionActionMappingService
                     ProcessorMessageResourceService.MISSING_PARAMETERS,
                     "name");
 
+        String ct = request.getCountingType();
+        if (ct != null && !ct.isBlank() && !"ONE_PER_CLICK".equals(ct) && !"MANY_PER_CLICK".equals(ct))
+            return Mono.error(new GenericException(
+                    HttpStatus.BAD_REQUEST,
+                    "countingType must be ONE_PER_CLICK or MANY_PER_CLICK; got '" + ct + "'"));
+
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> resolveGoogleAccount(request.getCustomerId(), request.getLoginCustomerId())
@@ -360,9 +366,58 @@ public class ConversionActionMappingService
                                 acct.loginCustomerId(),
                                 request.getName(),
                                 request.getCategory(),
+                                request.getCountingType(),
+                                request.getClickThroughLookbackWindowDays(),
+                                request.getPrimaryForGoal(),
                                 token))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "ConversionActionMappingService.createGoogleConversionAction"));
+    }
+
+    /**
+     * Soft-deletes a Google Ads conversion action by resource name (sets its
+     * status to REMOVED). Mirrors {@link #createGoogleConversionAction} — same
+     * tenant/access/account resolution path, then delegates to the platform
+     * service's remove call. The account is parsed from the resource name when
+     * not provided so the operator's "delete this picker entry" flow doesn't
+     * need to re-pick the account.
+     *
+     * @param resourceName     full Google resource name (required, e.g.
+     *                         {@code customers/4220436668/conversionActions/7640505544})
+     * @param customerId       optional override; defaults to the id parsed from
+     *                         resourceName
+     * @param loginCustomerId  optional MCC override; defaults to client's
+     *                         resolved Google account
+     */
+    public Mono<Void> removeGoogleConversionAction(
+            String resourceName, String customerId, String loginCustomerId) {
+
+        if (resourceName == null || resourceName.isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "resourceName");
+
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> resolveGoogleAccount(customerId, loginCustomerId)
+                                .switchIfEmpty(Mono.error(new GenericException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "No connected Google Ads account found for this client."))),
+                        (access, acct) -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), this.googlePlatformService.getConnectionName()),
+                        (access, acct, token) -> this.googlePlatformService
+                                .removeConversionAction(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        acct.customerId(),
+                                        acct.loginCustomerId(),
+                                        resourceName,
+                                        token)
+                                .thenReturn(true))
+                .then()
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ConversionActionMappingService.removeGoogleConversionAction"));
     }
 
     /** Explicit ids when supplied; else the client's first Google campaign with a resolved account. */
