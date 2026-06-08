@@ -26,4 +26,7 @@ public class DiscoveredConversionAction implements Serializable {
     private String status;
     private String type;
     private String category;
+    private String countingType;
+    private Integer clickThroughLookbackWindowDays;
+    private Boolean primaryForGoal;
 }
