@@ -378,6 +378,13 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                         .bodyValue(body)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
+                        .doOnError(
+                                org.springframework.web.reactive.function.client.WebClientResponseException.class,
+                                ex -> log.error(
+                                        "Google conversionActions:mutate rejected payload {} with status {}: {}",
+                                        body,
+                                        ex.getStatusCode(),
+                                        ex.getResponseBodyAsString()))
                         .map(root -> {
                             JsonNode results = root.path("results");
                             String resourceName = results.isArray() && !results.isEmpty()
@@ -400,6 +407,49 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                                     .setClickThroughLookbackWindowDays(window)
                                     .setPrimaryForGoal(primary);
                         }));
+    }
+
+    /**
+     * Removes (soft-deletes) a conversion action by resource name. Google's
+     * {@code conversionActions:mutate} {@code remove} operation flips
+     * {@code status} to {@code REMOVED} server-side; the row stays in the
+     * account but stops counting and stops appearing in
+     * {@link #fetchConversionActions} (which filters on {@code status != REMOVED}).
+     *
+     * @param resourceName e.g. {@code customers/4220436668/conversionActions/7640505544}
+     */
+    public Mono<Void> removeConversionAction(
+            String appCode, String clientCode, String customerId, String loginCustomerId,
+            String resourceName, String accessToken) {
+
+        Map<String, Object> body = Map.of("operations", java.util.List.of(Map.of("remove", resourceName)));
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMap(devToken -> webClient
+                        .post()
+                        .uri(uriBuilder -> uriBuilder
+                                .scheme(SCHEME)
+                                .host(HOST)
+                                .path(API_VERSION + "customers/" + customerId + "/conversionActions:mutate")
+                                .build())
+                        .headers(h -> {
+                            h.setBearerAuth(accessToken);
+                            h.add("developer-token", devToken);
+                            if (loginCustomerId != null && !loginCustomerId.isBlank()) {
+                                h.add("login-customer-id", loginCustomerId);
+                            }
+                        })
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .doOnError(
+                                org.springframework.web.reactive.function.client.WebClientResponseException.class,
+                                ex -> log.error(
+                                        "Google conversionActions:mutate (remove) rejected payload {} with status {}: {}",
+                                        body,
+                                        ex.getStatusCode(),
+                                        ex.getResponseBodyAsString()))
+                        .then());
     }
 
     /**
