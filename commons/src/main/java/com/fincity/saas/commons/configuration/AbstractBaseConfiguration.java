@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.configuration;
 
+import java.io.OutputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -62,6 +63,9 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Value("${redis.codec:object}")
     private String codecType;
+
+    @Value("${cache.local.max-weight-bytes:67108864}")
+    private long localCacheMaxWeightBytes;
 
     private RedisCodec<String, Object> objectCodec;
 
@@ -188,8 +192,14 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
+        // Bound the local (L1) cache by approximate memory, not entry count: entries are large,
+        // highly variable definition objects, so a flat maximumSize is a poor memory proxy.
+        // The limit is per cache instance and configurable via cache.local.max-weight-bytes.
         return Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofMinutes(5));
+            .expireAfterAccess(Duration.ofMinutes(5))
+            .maximumWeight(this.localCacheMaxWeightBytes)
+            .weigher(this::weighCacheEntry)
+            .recordStats();
     }
 
     @Bean
@@ -197,5 +207,32 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
         CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
         caffeineCacheManager.setCaffeine(caffeine);
         return caffeineCacheManager;
+    }
+
+    private int weighCacheEntry(Object key, Object value) {
+        long weight = key instanceof String s ? (long) s.length() * 2 : 16L;
+        // Stream the serialised payload through a counter (no buffer allocation); compact
+        // (non-indented) so the weight tracks payload size rather than pretty-print whitespace.
+        try (ByteCountingOutputStream counter = new ByteCountingOutputStream()) {
+            this.objectMapper.writer().without(SerializationFeature.INDENT_OUTPUT).writeValue(counter, value);
+            weight += counter.count;
+        } catch (Exception e) {
+            weight += 4096L; // nominal weight when a value cannot be serialised
+        }
+        return (int) Math.min(weight, Integer.MAX_VALUE);
+    }
+
+    private static final class ByteCountingOutputStream extends OutputStream {
+        private long count;
+
+        @Override
+        public void write(int b) {
+            this.count++;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            this.count += len;
+        }
     }
 }
