@@ -67,6 +67,9 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
     @Value("${cache.local.max-weight-bytes:67108864}")
     private long localCacheMaxWeightBytes;
 
+    @Value("${cache.local.expire-after-write-minutes:60}")
+    private long localCacheExpireAfterWriteMinutes;
+
     private RedisCodec<String, Object> objectCodec;
 
     protected AbstractBaseConfiguration(ObjectMapper objectMapper) {
@@ -192,14 +195,20 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
-        // Bound the local (L1) cache by approximate memory, not entry count: entries are large,
-        // highly variable definition objects, so a flat maximumSize is a poor memory proxy.
-        // The limit is per cache instance and configurable via cache.local.max-weight-bytes.
-        return Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofMinutes(5))
+        // Bound the local (L1) cache by approximate memory (cache.local.max-weight-bytes): entries
+        // are large, highly variable definition objects, so a flat maximumSize is a poor proxy.
+        // W-TinyLFU evicts only under weight pressure, so entries persist while there is room.
+        // No idle (expireAfterAccess) expiry — it evicted entries even when caches were nearly empty,
+        // killing hit rate. A long expireAfterWrite (cache.local.expire-after-write-minutes, 0 = off)
+        // is kept ONLY as a staleness backstop should a cross-instance invalidation be missed;
+        // correctness normally comes from explicit evictAll-on-write.
+        Caffeine<Object, Object> builder = Caffeine.newBuilder()
             .maximumWeight(this.localCacheMaxWeightBytes)
             .weigher(this::weighCacheEntry)
             .recordStats();
+        if (this.localCacheExpireAfterWriteMinutes > 0)
+            builder = builder.expireAfterWrite(Duration.ofMinutes(this.localCacheExpireAfterWriteMinutes));
+        return builder;
     }
 
     @Bean
