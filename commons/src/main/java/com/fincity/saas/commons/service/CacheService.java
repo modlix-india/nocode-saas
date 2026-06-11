@@ -6,6 +6,8 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import jakarta.annotation.PostConstruct;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.cache.CacheType;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -256,6 +259,34 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 				.stream()
 				.map(e -> e.substring(this.redisPrefix.length() + 1))
 				.toList());
+	}
+
+	public Mono<Map<String, Object>> getCacheStats() {
+
+		Map<String, Object> stats = new LinkedHashMap<>();
+
+		for (String fullName : this.cacheManager.getCacheNames()) {
+
+			Cache cache = this.cacheManager.getCache(fullName);
+			if (!(cache instanceof CaffeineCache caffeineCache))
+				continue;
+
+			com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache = caffeineCache.getNativeCache();
+			var cacheStats = nativeCache.stats();
+
+			Map<String, Object> one = new LinkedHashMap<>();
+			one.put("entries", nativeCache.estimatedSize());
+			nativeCache.policy().eviction()
+					.ifPresent(ev -> one.put("weightedBytes", ev.weightedSize().orElse(-1L)));
+			one.put("hitCount", cacheStats.hitCount());
+			one.put("missCount", cacheStats.missCount());
+			one.put("hitRate", cacheStats.hitRate());
+			one.put("evictionCount", cacheStats.evictionCount());
+
+			stats.put(fullName.substring(this.redisPrefix.length() + 1), one);
+		}
+
+		return Mono.just(stats);
 	}
 
 	@Override
