@@ -192,6 +192,7 @@ public final class MetaEntityUtil {
             JsonNode incomingLead,
             JsonNode formDetails,
             String adId,
+            String leadGenId,
             String token,
             EntityIntegration integration,
             EntityCollectorMessageResourceService messageService,
@@ -204,24 +205,32 @@ public final class MetaEntityUtil {
                         (campaignDetails, leadDetails) -> {
                             // Stamp the leadgen id onto adData so Meta Conversions API can pick it up
                             // as user_data.lead_id for system_generated events (Meta CAPI Part 6.3).
-                            String leadgenId = incomingLead.path(ID).asText(null);
-                            if (leadgenId != null && !leadgenId.isBlank()) {
+                            // Source of truth: the leadGenId extracted from the webhook envelope
+                            // (entry[].changes[].value.leadgen_id). We pass this through from
+                            // EntityCollectorService rather than reading incomingLead.path("id") —
+                            // incomingLead is the Graph API response, which occasionally returns
+                            // payloads missing `id` (rate-limited / partial). Falling back to the
+                            // Graph API id preserves backward compat if a caller passes null.
+                            String stampId = (leadGenId != null && !leadGenId.isBlank())
+                                    ? leadGenId
+                                    : incomingLead.path(ID).asText(null);
+                            if (stampId != null && !stampId.isBlank()) {
                                 Map<String, Object> adData = leadDetails.getAdData() != null
                                         ? new HashMap<>(leadDetails.getAdData())
                                         : new HashMap<>();
-                                adData.put("lead_id", leadgenId);
-                                adData.put(LEADGEN_ID, leadgenId);
+                                adData.put("lead_id", stampId);
+                                adData.put(LEADGEN_ID, stampId);
                                 leadDetails.setAdData(adData);
                             } else {
-                                // Diagnostic: residual ~3-8 leads/day arrive without `id` at the expected
-                                // JSON path on prod. Logging the payload key set lets us identify the
-                                // alternate shape so we can extend the path lookup. Once the variant is
-                                // identified and handled, this branch should be unreachable.
+                                // Both the webhook-extracted leadGenId AND the Graph API response's id
+                                // were missing — this should be unreachable in practice since the
+                                // webhook envelope is the source of truth. If this fires, something
+                                // upstream of the collector dropped the leadgen_id.
                                 List<String> topLevelKeys = new ArrayList<>();
                                 incomingLead.fieldNames().forEachRemaining(topLevelKeys::add);
                                 log.warn(
-                                        "MetaEntityUtil: lead webhook payload missing '{}' at top level"
-                                                + " - cannot stamp lead_id onto adData."
+                                        "MetaEntityUtil: no leadGenId available (param null AND '{}'"
+                                                + " missing on Graph API response) — cannot stamp lead_id."
                                                 + " ad_id={} logId={} topLevelKeys={} payloadPreview={}",
                                         ID,
                                         adId,
