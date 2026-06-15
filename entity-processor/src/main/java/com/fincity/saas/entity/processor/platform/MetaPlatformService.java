@@ -396,6 +396,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                                     tuple.getT1(),
                                     tuple.getT2(),
                                     extracted.adId(),
+                                    extracted.leadGenId(),
                                     accessToken,
                                     integration,
                                     null,
