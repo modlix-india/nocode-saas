@@ -1092,6 +1092,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (adData != null && (adData.containsKey("lead_id") || adData.containsKey("leadgen_id"))) {
             return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
         }
+        // Defense in depth: a ticket sourced from a Meta/Instagram lead-form ad
+        // (LeadSource.SOCIAL_MEDIA) is never a website event, regardless of whether
+        // adData propagated the lead_id. Without this fallback, any webhook payload
+        // that missed lead_id stamping would silently fall through to WEBSITE and
+        // get dispatched without fbc — un-attributable on Meta's side.
+        if (com.fincity.saas.entity.processor.enums.LeadSource.SOCIAL_MEDIA
+                .getName()
+                .equalsIgnoreCase(ticket.getSource())) {
+            return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
+        }
         return com.fincity.saas.entity.processor.enums.ConversionActionSource.WEBSITE;
     }
 

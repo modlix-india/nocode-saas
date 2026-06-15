@@ -20,7 +20,9 @@ public class CloneUtil {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public static <T> T cloneObject(T obj) {
 
-        if (obj == null || obj instanceof Constable)
+        // Number covers immutable numerics that aren't Constable (e.g. jOOQ ULong, BigInteger) —
+        // they never need cloning, and have no copy constructor to invoke below.
+        if (obj == null || obj instanceof Constable || obj instanceof Number)
             return obj;
 
         if (obj instanceof Map map)
