@@ -2,6 +2,7 @@ package com.fincity.saas.ui.model;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -36,6 +37,21 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 
 	private KIRunFxDefinition kiRunFxDefinition;
 	private RedirectionDefinition redirectionDefinition;
+
+	// Copy constructor so CloneUtil can defensively copy a PathDefinition (it looks up a
+	// <self>(<self>) constructor). Lists are copied into fresh instances; the enum and the
+	// nested defs are replaced (not mutated) by applyOverride, so reference copies are safe.
+	public PathDefinition(PathDefinition other) {
+		if (other == null)
+			return;
+		this.uriType = other.uriType;
+		this.headers = other.headers == null ? null : new ArrayList<>(other.headers);
+		this.whitelist = other.whitelist == null ? null : new ArrayList<>(other.whitelist);
+		this.blacklist = other.blacklist == null ? null : new ArrayList<>(other.blacklist);
+		this.referrer = other.referrer == null ? null : new ArrayList<>(other.referrer);
+		this.kiRunFxDefinition = other.kiRunFxDefinition;
+		this.redirectionDefinition = other.redirectionDefinition;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
