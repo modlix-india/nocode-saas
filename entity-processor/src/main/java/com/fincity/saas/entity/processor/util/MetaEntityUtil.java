@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -31,6 +33,8 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public final class MetaEntityUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(MetaEntityUtil.class);
 
     private static final String ID = "id";
     private static final String NAME = "name";
@@ -137,6 +141,16 @@ public final class MetaEntityUtil {
                         logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
     }
 
+    /**
+     * Compact, log-safe preview of a Meta webhook payload. Caps at ~300 chars
+     * so a noisy payload doesn't flood the log on the residual-leak branch.
+     */
+    private static String previewPayload(JsonNode payload) {
+        if (payload == null || payload.isMissingNode() || payload.isNull()) return "<empty>";
+        String s = payload.toString();
+        return s.length() > 300 ? s.substring(0, 300) + "..." : s;
+    }
+
     private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails, EntityIntegration integration) {
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
@@ -198,6 +212,22 @@ public final class MetaEntityUtil {
                                 adData.put("lead_id", leadgenId);
                                 adData.put(LEADGEN_ID, leadgenId);
                                 leadDetails.setAdData(adData);
+                            } else {
+                                // Diagnostic: residual ~3-8 leads/day arrive without `id` at the expected
+                                // JSON path on prod. Logging the payload key set lets us identify the
+                                // alternate shape so we can extend the path lookup. Once the variant is
+                                // identified and handled, this branch should be unreachable.
+                                List<String> topLevelKeys = new ArrayList<>();
+                                incomingLead.fieldNames().forEachRemaining(topLevelKeys::add);
+                                log.warn(
+                                        "MetaEntityUtil: lead webhook payload missing '{}' at top level"
+                                                + " - cannot stamp lead_id onto adData."
+                                                + " ad_id={} logId={} topLevelKeys={} payloadPreview={}",
+                                        ID,
+                                        adId,
+                                        logId,
+                                        topLevelKeys,
+                                        previewPayload(incomingLead));
                             }
                             return Mono.just(buildEntityResponse(leadDetails, campaignDetails, integration));
                         },
