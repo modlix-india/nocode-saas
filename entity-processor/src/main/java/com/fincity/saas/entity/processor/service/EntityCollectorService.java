@@ -99,6 +99,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         metaData.getT1(),
                                         metaData.getT2(),
                                         extractPayload.adId(),
+                                        extractPayload.leadGenId(),
                                         token,
                                         integration,
                                         msgService,
