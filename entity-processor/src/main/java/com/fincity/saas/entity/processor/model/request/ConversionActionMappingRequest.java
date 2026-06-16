@@ -20,6 +20,7 @@ public class ConversionActionMappingRequest implements Serializable {
     private Identity id;
     private Identity productTemplateId;
     private CampaignPlatform campaignPlatform;
+    private String platformAccountId;
     private Identity triggerStageId;
     private Identity triggerStatusId;
     private String eventName;

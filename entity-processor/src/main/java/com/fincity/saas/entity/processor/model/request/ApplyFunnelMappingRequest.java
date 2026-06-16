@@ -41,6 +41,13 @@ public class ApplyFunnelMappingRequest implements Serializable {
 
         /** Deal-stages assigned to this funnel stage (parent stage ids). */
         private List<Identity> stageIds;
+        /**
+         * Google customer id (sub-account under MCC) this mapping targets. NULL
+         * for Meta (pixel on the campaign already routes correctly) and for
+         * legacy callers; required for Google when more than one customer under
+         * an MCC has active campaigns.
+         */
+        private String platformAccountId;
         private String eventName;
         private String platformActionId;
         private BigDecimal defaultValue;

@@ -37,6 +37,12 @@ public class SeedConversionDefaultsRequest implements Serializable {
         @Serial
         private static final long serialVersionUID = -8437228294817223610L;
 
+        /**
+         * Google customer id (sub-account under MCC) this mapping targets. NULL
+         * for Meta and legacy callers.
+         */
+        private String platformAccountId;
+
         private String eventName;
         private String platformActionId;
         private BigDecimal defaultValue;
