@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
  * Google Ads UploadClickConversions dispatcher. Uses the Google Ads REST API
  * with enhanced-conversions user_identifiers (SHA-256 hashed email + phone).
  *
- * <p>API: POST {@code googleads.googleapis.com/v20/customers/{customerId}:uploadClickConversions}.
+ * <p>API: POST {@code googleads.googleapis.com/v23/customers/{customerId}:uploadClickConversions}.
  *
  * <p>Click attribution priority on a single conversion: gclid → wbraid → gbraid.
  * Without any click identifier we still attempt enhanced-conversions match via
@@ -41,7 +41,7 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String API_VERSION = "/v20/";
+    private static final String API_VERSION = "/v23/";
     private static final DateTimeFormatter TS_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxx");
 
