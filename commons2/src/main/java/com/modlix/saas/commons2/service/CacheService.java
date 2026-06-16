@@ -152,6 +152,11 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 		if (value == null && redisAsyncCommand != null) {
 			try {
 				value = (CacheObject) redisAsyncCommand.hget(cacheName, key).get();
+				// Read-through backfill: repopulate L1 from L2 so the read working set
+				// accumulates locally instead of every read re-hitting Redis. Safe now
+				// that L1 is weight-bounded; before the cap this worsened the leak.
+				if (value != null)
+					this.cacheManager.getCache(cacheName).put(key, value);
 			} catch (Exception e) {
 				// Log error but continue
 			}
