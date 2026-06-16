@@ -322,6 +322,28 @@ public class CampaignDiscoveryService {
     }
 
     /**
+     * Lists every Google Ads customer (sub-account) the client's OAuth token
+     * can reach, with friendly name + parent MCC for the login header. Drives
+     * the customer-picker dropdown in the conversion-action mapping UI so the
+     * operator can target a specific Cityville / Purva / Earthen sub-account
+     * when creating a conversion action -- those actions live inside a single
+     * customer and can't be shared across MCC siblings.
+     */
+    public Mono<java.util.List<com.fincity.saas.entity.processor.platform.GooglePlatformService.DiscoveredGoogleCustomer>>
+            listGoogleCustomers() {
+        com.fincity.saas.entity.processor.platform.GooglePlatformService google =
+                (com.fincity.saas.entity.processor.platform.GooglePlatformService)
+                        this.platformRegistry.getService(
+                                com.fincity.saas.entity.processor.enums.CampaignPlatform.GOOGLE);
+        return FlatMapUtil.flatMapMono(
+                        this.campaignService::hasAccess,
+                        access -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), google.getConnectionName()),
+                        (access, token) -> google.listAvailableCustomers(token).collectList())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignDiscoveryService.listGoogleCustomers"));
+    }
+
+    /**
      * Lists every Meta ad account the connected OAuth token can read. Backs the
      * operator-facing ad-account picker in {@code campaignConfig}. The UI uses
      * this to populate an account dropdown so a campaign whose own ad account has

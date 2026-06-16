@@ -347,6 +347,48 @@ public class EntityProcessorCampaignMetricsRecord extends UpdatableRecordImpl<En
         return (LocalDateTime) get(16);
     }
 
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_campaign_metrics.ADSET_ID_KEY</code>.
+     * Dedup helper: ADSET_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public EntityProcessorCampaignMetricsRecord setAdsetIdKey(ULong value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_campaign_metrics.ADSET_ID_KEY</code>.
+     * Dedup helper: ADSET_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public ULong getAdsetIdKey() {
+        return (ULong) get(17);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_campaign_metrics.AD_ID_KEY</code>.
+     * Dedup helper: AD_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public EntityProcessorCampaignMetricsRecord setAdIdKey(ULong value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_campaign_metrics.AD_ID_KEY</code>.
+     * Dedup helper: AD_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public ULong getAdIdKey() {
+        return (ULong) get(18);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -370,7 +412,7 @@ public class EntityProcessorCampaignMetricsRecord extends UpdatableRecordImpl<En
     /**
      * Create a detached, initialised EntityProcessorCampaignMetricsRecord
      */
-    public EntityProcessorCampaignMetricsRecord(ULong id, String code, String appCode, String clientCode, ULong campaignId, ULong adsetId, ULong adId, LocalDate metricDate, Long impressions, Long clicks, BigDecimal spend, Long platformWl, Long platformFl, String currency, Platform platform, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public EntityProcessorCampaignMetricsRecord(ULong id, String code, String appCode, String clientCode, ULong campaignId, ULong adsetId, ULong adId, LocalDate metricDate, Long impressions, Long clicks, BigDecimal spend, Long platformWl, Long platformFl, String currency, Platform platform, LocalDateTime createdAt, LocalDateTime updatedAt, ULong adsetIdKey, ULong adIdKey) {
         super(EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS);
 
         setId(id);
@@ -390,6 +432,8 @@ public class EntityProcessorCampaignMetricsRecord extends UpdatableRecordImpl<En
         setPlatform(platform);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
+        setAdsetIdKey(adsetIdKey);
+        setAdIdKey(adIdKey);
         resetChangedOnNotNull();
     }
 }

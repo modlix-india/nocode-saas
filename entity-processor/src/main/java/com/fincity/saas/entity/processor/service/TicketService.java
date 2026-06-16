@@ -1067,7 +1067,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .findById(ticket.getCampaignId())
                 .flatMap(campaign -> this.conversionActionMappingService
                         .findActiveByTrigger(
-                                access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
+                                access,
+                                ticket.getStage(),
+                                ticket.getStatus(),
+                                ticket.getProductTemplateId(),
+                                campaign.getPlatformAccountId())
                         // Gate 2: only fire mappings whose platform matches the ticket's source platform.
                         .filter(mapping -> java.util.Objects.equals(
                                 mapping.getCampaignPlatform(), campaign.getCampaignPlatform()))
