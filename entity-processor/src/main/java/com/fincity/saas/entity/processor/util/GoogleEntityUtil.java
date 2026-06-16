@@ -16,7 +16,7 @@ public final class GoogleEntityUtil {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String API_VERSION = "/v20/";
+    private static final String API_VERSION = "/v23/";
 
     /**
      * Fetches Campaign, AdGroup and Ad details for a Google Ads Ad ID using GAQL search.
