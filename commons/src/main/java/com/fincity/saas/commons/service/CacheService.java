@@ -161,9 +161,14 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 					if (redisAsyncCommand == null)
 						return value;
 
+					// Read-through backfill: when an L1 (Caffeine) miss is served by L2 (Redis),
+					// repopulate L1 so the read working set accumulates locally instead of every
+					// read re-hitting Redis. Safe now that L1 is weight-bounded; before the cap
+					// this would have worsened the unbounded growth.
 					return value.switchIfEmpty(
 							Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
-									.map(CacheObject.class::cast)));
+									.map(CacheObject.class::cast)
+									.doOnNext(co -> this.cacheManager.getCache(cacheName).put(key, co))));
 				})
 				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
 	}
