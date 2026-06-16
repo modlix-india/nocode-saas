@@ -113,6 +113,14 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACCOUNT_ID</code>.
+     * Google: customer id (sub-account under MCC) the conversion action belongs
+     * to. NULL for Meta and legacy rows.
+     */
+    public final TableField<EntityProcessorConversionActionMappingRecord, String> PLATFORM_ACCOUNT_ID = createField(DSL.name("PLATFORM_ACCOUNT_ID"), SQLDataType.VARCHAR(32), this, "Google: customer id (sub-account under MCC) the conversion action belongs to. NULL for Meta and legacy rows.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_conversion_action_mapping.TRIGGER_STAGE_ID</code>.
      * Stage whose entry triggers this conversion event.
      */
@@ -290,7 +298,7 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_IDX1_CAM_AC_CC, Indexes.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_IDX2_CAM_TRIGGER);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_IDX1_CAM_AC_CC, Indexes.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_IDX2_CAM_TRIGGER, Indexes.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_IDX3_CAM_TRIGGER_ACCT);
     }
 
     @Override
@@ -305,7 +313,7 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
 
     @Override
     public List<UniqueKey<EntityProcessorConversionActionMappingRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_UK1_CONVERSION_ACTION_MAPPING_CODE, Keys.KEY_ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_UK2_CAM_AC_CC_PT_PLATFORM_STAGE_STATUS);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_UK1_CONVERSION_ACTION_MAPPING_CODE, Keys.KEY_ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING_UK2_CAM_AC_CC_PT_PLATFORM_STAGE_STATUS_ACCT);
     }
 
     @Override
