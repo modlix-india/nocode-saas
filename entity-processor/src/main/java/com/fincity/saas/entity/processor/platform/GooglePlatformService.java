@@ -29,7 +29,7 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String API_VERSION = "/v20/";
+    private static final String API_VERSION = "/v23/";
     private static final String GOOGLE_CONNECTION = "GOOGLE_API";
 
     // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
