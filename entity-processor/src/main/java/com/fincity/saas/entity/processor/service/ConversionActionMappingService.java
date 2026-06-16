@@ -164,8 +164,12 @@ public class ConversionActionMappingService
     }
 
     public reactor.core.publisher.Flux<ConversionActionMapping> findActiveByTrigger(
-            ProcessorAccess access, ULong stageId, ULong statusId, ULong productTemplateId) {
-        return this.dao.findActiveByTrigger(access, stageId, statusId, productTemplateId)
+            ProcessorAccess access,
+            ULong stageId,
+            ULong statusId,
+            ULong productTemplateId,
+            String platformAccountId) {
+        return this.dao.findActiveByTrigger(access, stageId, statusId, productTemplateId, platformAccountId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConversionActionMappingService.findActiveByTrigger"));
     }
 
@@ -214,12 +218,18 @@ public class ConversionActionMappingService
         ULong triggerStatusId = Boolean.TRUE.equals(stage.getIsParent()) ? null : stage.getId();
 
         return this.dao.findExisting(
-                        access, productTemplateId, request.getCampaignPlatform(), triggerStageId, triggerStatusId)
+                        access,
+                        productTemplateId,
+                        request.getCampaignPlatform(),
+                        def.getPlatformAccountId(),
+                        triggerStageId,
+                        triggerStatusId)
                 .flatMap(existing -> Mono.<ConversionActionMapping>empty())
                 .switchIfEmpty(Mono.defer(() -> {
                     ConversionActionMapping mapping = new ConversionActionMapping()
                             .setProductTemplateId(productTemplateId)
                             .setCampaignPlatform(request.getCampaignPlatform())
+                            .setPlatformAccountId(def.getPlatformAccountId())
                             .setTriggerStageId(triggerStageId)
                             .setTriggerStatusId(triggerStatusId)
                             .setEventName(def.getEventName())
@@ -285,8 +295,9 @@ public class ConversionActionMappingService
         return this.stageDAO
                 .setFunnelStage(access, stageId, funnel)
                 .then(this.dao
-                        .findExisting(access, productTemplateId, platform, stageId, null)
+                        .findExisting(access, productTemplateId, platform, fm.getPlatformAccountId(), stageId, null)
                         .flatMap(existing -> super.update(access, existing
+                                .setPlatformAccountId(fm.getPlatformAccountId())
                                 .setEventName(fm.getEventName())
                                 .setPlatformActionId(fm.getPlatformActionId())
                                 .setDefaultValue(fm.getDefaultValue())
@@ -296,6 +307,7 @@ public class ConversionActionMappingService
                         .switchIfEmpty(Mono.defer(() -> super.createInternal(access, new ConversionActionMapping()
                                 .setProductTemplateId(productTemplateId)
                                 .setCampaignPlatform(platform)
+                                .setPlatformAccountId(fm.getPlatformAccountId())
                                 .setTriggerStageId(stageId)
                                 .setEventName(fm.getEventName())
                                 .setPlatformActionId(fm.getPlatformActionId())
