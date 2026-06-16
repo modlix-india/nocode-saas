@@ -185,6 +185,22 @@ public class EntityProcessorCampaignMetrics extends TableImpl<EntityProcessorCam
      */
     public final TableField<EntityProcessorCampaignMetricsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated.");
 
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_campaign_metrics.ADSET_ID_KEY</code>.
+     * Dedup helper: ADSET_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public final TableField<EntityProcessorCampaignMetricsRecord, ULong> ADSET_ID_KEY = createField(DSL.name("ADSET_ID_KEY"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Dedup helper: ADSET_ID coalesced to 0 for the UNIQUE key. Do not write -- generated.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_campaign_metrics.AD_ID_KEY</code>.
+     * Dedup helper: AD_ID coalesced to 0 for the UNIQUE key. Do not write --
+     * generated.
+     */
+    public final TableField<EntityProcessorCampaignMetricsRecord, ULong> AD_ID_KEY = createField(DSL.name("AD_ID_KEY"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Dedup helper: AD_ID coalesced to 0 for the UNIQUE key. Do not write -- generated.");
+
     private EntityProcessorCampaignMetrics(Name alias, Table<EntityProcessorCampaignMetricsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

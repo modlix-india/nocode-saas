@@ -59,6 +59,19 @@ public class CampaignDiscoveryController {
     }
 
     /**
+     * Lists every Google Ads customer (sub-account) the client's OAuth token can
+     * reach, with friendly name + parent MCC. Drives the customer-picker dropdown
+     * in the conversion-action mapping UI -- conversion actions live inside one
+     * customer, so the operator picks which customer a mapping targets.
+     */
+    @GetMapping("/google/customers")
+    public Mono<ResponseEntity<java.util.List<
+            com.fincity.saas.entity.processor.platform.GooglePlatformService.DiscoveredGoogleCustomer>>>
+            listGoogleCustomers() {
+        return this.discoveryService.listGoogleCustomers().map(ResponseEntity::ok);
+    }
+
+    /**
      * Lists pixels/datasets available on a Meta ad account. Operator UI uses this
      * to populate the pixel picker in campaignConfig. Mirrors the Google
      * conversion-action listing pattern.

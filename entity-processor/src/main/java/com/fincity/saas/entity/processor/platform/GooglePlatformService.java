@@ -559,4 +559,69 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     /** Discovered ownership of a Google Ads campaign — {@code customerId} hosts it, {@code mccId} is its login parent. */
     private record CampaignOwner(String customerId, String mccId) {}
+
+    /**
+     * Lists every Google Ads sub-account (customer) the OAuth token can reach,
+     * with its descriptive name and parent MCC. Drives the customer-picker
+     * dropdown in the conversion-action mapping UI: a single MCC token reaches
+     * many sub-accounts, each with its own conversion actions, so the operator
+     * has to tell us which customer a mapping targets.
+     *
+     * <p>Walks the MCC tree: list accessible customers, then for each MCC query
+     * {@code customer_client} to enumerate children. Returns ALL accessible
+     * customers (managers + clients) -- a non-MCC root customer also shows up
+     * here as its own root.
+     */
+    public Flux<DiscoveredGoogleCustomer> listAvailableCustomers(String accessToken) {
+        String devToken = this.googleDeveloperToken;
+        if (devToken == null || devToken.isBlank()) {
+            return Flux.error(new IllegalStateException(
+                    "ai.adzump.googleAds.developerToken is not configured"));
+        }
+        return listAccessibleCustomers(accessToken, devToken)
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(rootId -> listCustomerClients(rootId, accessToken, devToken), 3)
+                .distinct(c -> c.customerId() + "@" + (c.loginCustomerId() == null ? "" : c.loginCustomerId()));
+    }
+
+    private Flux<DiscoveredGoogleCustomer> listCustomerClients(
+            String mccId, String accessToken, String devToken) {
+        String gaql = "SELECT customer_client.id, customer_client.descriptive_name, "
+                + "customer_client.manager, customer_client.status, customer_client.currency_code "
+                + "FROM customer_client WHERE customer_client.status = 'ENABLED'";
+        return search(mccId, mccId, gaql, accessToken, devToken)
+                .flatMapMany(root -> {
+                    JsonNode results = root.path("results");
+                    if (!results.isArray()) return Flux.<DiscoveredGoogleCustomer>empty();
+                    return Flux.fromIterable(() -> results.elements())
+                            .map(r -> {
+                                JsonNode cc = r.path("customerClient");
+                                String childId = cc.path("id").asText(null);
+                                boolean isManager = cc.path("manager").asBoolean(false);
+                                String name = cc.path("descriptiveName").asText(null);
+                                String currency = cc.path("currencyCode").asText(null);
+                                // Sub-accounts route through the MCC as login; managers (intermediate
+                                // MCCs) carry NULL login since they aren't the dispatch target.
+                                String login = isManager ? null : mccId;
+                                return new DiscoveredGoogleCustomer(childId, name, currency, isManager, login);
+                            })
+                            .filter(c -> c.customerId() != null && !c.customerId().isBlank());
+                })
+                .onErrorResume(e -> Flux.empty());
+    }
+
+    /**
+     * Customer node returned by {@link #listAvailableCustomers}. Operator-facing
+     * dropdown shows {@code descriptiveName} (falls back to {@code customerId}
+     * when Google didn't return one), value is {@code customerId} threaded into
+     * conversion-action create/list calls. {@code loginCustomerId} is the MCC
+     * to put in the {@code login-customer-id} header for that customer's calls;
+     * NULL for manager rows (which aren't valid dispatch targets).
+     */
+    public record DiscoveredGoogleCustomer(
+            String customerId,
+            String descriptiveName,
+            String currencyCode,
+            boolean manager,
+            String loginCustomerId) {}
 }
