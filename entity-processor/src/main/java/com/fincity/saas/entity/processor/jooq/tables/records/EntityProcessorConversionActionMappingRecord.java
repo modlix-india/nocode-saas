@@ -141,11 +141,32 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACCOUNT_ID</code>.
+     * Google: customer id (sub-account under MCC) the conversion action belongs
+     * to. NULL for Meta and legacy rows.
+     */
+    public EntityProcessorConversionActionMappingRecord setPlatformAccountId(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_conversion_action_mapping.PLATFORM_ACCOUNT_ID</code>.
+     * Google: customer id (sub-account under MCC) the conversion action belongs
+     * to. NULL for Meta and legacy rows.
+     */
+    public String getPlatformAccountId() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_conversion_action_mapping.TRIGGER_STAGE_ID</code>.
      * Stage whose entry triggers this conversion event.
      */
     public EntityProcessorConversionActionMappingRecord setTriggerStageId(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -155,7 +176,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Stage whose entry triggers this conversion event.
      */
     public ULong getTriggerStageId() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -165,7 +186,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * any status under TRIGGER_STAGE_ID.
      */
     public EntityProcessorConversionActionMappingRecord setTriggerStatusId(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -176,7 +197,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * any status under TRIGGER_STAGE_ID.
      */
     public ULong getTriggerStatusId() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -186,7 +207,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * conversion action label).
      */
     public EntityProcessorConversionActionMappingRecord setEventName(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -197,7 +218,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * conversion action label).
      */
     public String getEventName() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -207,7 +228,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * conversion action resource name (required for Google dispatch).
      */
     public EntityProcessorConversionActionMappingRecord setPlatformActionId(String value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -218,7 +239,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * conversion action resource name (required for Google dispatch).
      */
     public String getPlatformActionId() {
-        return (String) get(9);
+        return (String) get(10);
     }
 
     /**
@@ -228,7 +249,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * VALUE_FIELD_PATH.
      */
     public EntityProcessorConversionActionMappingRecord setDefaultValue(BigDecimal value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -239,7 +260,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * VALUE_FIELD_PATH.
      */
     public BigDecimal getDefaultValue() {
-        return (BigDecimal) get(10);
+        return (BigDecimal) get(11);
     }
 
     /**
@@ -248,7 +269,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ISO currency code for the conversion value.
      */
     public EntityProcessorConversionActionMappingRecord setCurrency(String value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -258,7 +279,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ISO currency code for the conversion value.
      */
     public String getCurrency() {
-        return (String) get(11);
+        return (String) get(12);
     }
 
     /**
@@ -268,7 +289,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * $.metaData.propertyPrice). Falls back to DEFAULT_VALUE if missing.
      */
     public EntityProcessorConversionActionMappingRecord setValueFieldPath(String value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -279,7 +300,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * $.metaData.propertyPrice). Falls back to DEFAULT_VALUE if missing.
      */
     public String getValueFieldPath() {
-        return (String) get(12);
+        return (String) get(13);
     }
 
     /**
@@ -289,7 +310,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Events tool instead of production.
      */
     public EntityProcessorConversionActionMappingRecord setTestEventCode(String value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -300,7 +321,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Events tool instead of production.
      */
     public String getTestEventCode() {
-        return (String) get(13);
+        return (String) get(14);
     }
 
     /**
@@ -309,7 +330,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Temporary active flag.
      */
     public EntityProcessorConversionActionMappingRecord setTempActive(Boolean value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -319,7 +340,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Temporary active flag.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(14);
+        return (Boolean) get(15);
     }
 
     /**
@@ -328,7 +349,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Flag to check if this mapping is active.
      */
     public EntityProcessorConversionActionMappingRecord setIsActive(Boolean value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -338,7 +359,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Flag to check if this mapping is active.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(15);
+        return (Boolean) get(16);
     }
 
     /**
@@ -347,7 +368,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ID of the user who created this row.
      */
     public EntityProcessorConversionActionMappingRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -357,7 +378,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(17);
     }
 
     /**
@@ -366,7 +387,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Time when this row is created.
      */
     public EntityProcessorConversionActionMappingRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -376,7 +397,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -385,7 +406,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ID of the user who updated this row.
      */
     public EntityProcessorConversionActionMappingRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -395,7 +416,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(19);
     }
 
     /**
@@ -404,7 +425,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Time when this row is updated.
      */
     public EntityProcessorConversionActionMappingRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -414,7 +435,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -441,7 +462,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
      * Create a detached, initialised
      * EntityProcessorConversionActionMappingRecord
      */
-    public EntityProcessorConversionActionMappingRecord(ULong id, String code, String appCode, String clientCode, ULong productTemplateId, CampaignPlatform campaignPlatform, ULong triggerStageId, ULong triggerStatusId, String eventName, String platformActionId, BigDecimal defaultValue, String currency, String valueFieldPath, String testEventCode, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorConversionActionMappingRecord(ULong id, String code, String appCode, String clientCode, ULong productTemplateId, CampaignPlatform campaignPlatform, String platformAccountId, ULong triggerStageId, ULong triggerStatusId, String eventName, String platformActionId, BigDecimal defaultValue, String currency, String valueFieldPath, String testEventCode, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorConversionActionMapping.ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING);
 
         setId(id);
@@ -450,6 +471,7 @@ public class EntityProcessorConversionActionMappingRecord extends UpdatableRecor
         setClientCode(clientCode);
         setProductTemplateId(productTemplateId);
         setCampaignPlatform(campaignPlatform);
+        setPlatformAccountId(platformAccountId);
         setTriggerStageId(triggerStageId);
         setTriggerStatusId(triggerStatusId);
         setEventName(eventName);
