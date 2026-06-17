@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.ConversionActionSource;
 import com.fincity.saas.entity.processor.enums.ConversionEventStatus;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -146,7 +148,7 @@ public class EntityProcessorConversionEvents extends TableImpl<EntityProcessorCo
      * Frozen payload snapshot (hashed user_data + custom_data + event_id +
      * value/currency).
      */
-    public final TableField<EntityProcessorConversionEventsRecord, JSON> PAYLOAD_SNAPSHOT = createField(DSL.name("PAYLOAD_SNAPSHOT"), SQLDataType.JSON.nullable(false), this, "Frozen payload snapshot (hashed user_data + custom_data + event_id + value/currency).");
+    public final TableField<EntityProcessorConversionEventsRecord, Map> PAYLOAD_SNAPSHOT = createField(DSL.name("PAYLOAD_SNAPSHOT"), SQLDataType.JSON.nullable(false), this, "Frozen payload snapshot (hashed user_data + custom_data + event_id + value/currency).", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -160,7 +162,7 @@ public class EntityProcessorConversionEvents extends TableImpl<EntityProcessorCo
      * <code>entity_processor.entity_processor_conversion_events.PLATFORM_RESPONSE</code>.
      * Full HTTP response body from the platform on the most recent attempt.
      */
-    public final TableField<EntityProcessorConversionEventsRecord, JSON> PLATFORM_RESPONSE = createField(DSL.name("PLATFORM_RESPONSE"), SQLDataType.JSON, this, "Full HTTP response body from the platform on the most recent attempt.");
+    public final TableField<EntityProcessorConversionEventsRecord, Map> PLATFORM_RESPONSE = createField(DSL.name("PLATFORM_RESPONSE"), SQLDataType.JSON, this, "Full HTTP response body from the platform on the most recent attempt.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
