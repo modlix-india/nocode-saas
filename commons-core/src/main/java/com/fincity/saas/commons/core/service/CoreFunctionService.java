@@ -3,6 +3,7 @@ package com.fincity.saas.commons.core.service;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,7 @@ import com.fincity.saas.commons.core.feign.IFeignFilesService;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
+import com.fincity.saas.commons.core.metering.WalletGateService;
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
@@ -50,6 +52,7 @@ import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.model.wallet.WalletChargeRequest;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.AuthoritiesTokenExtractor;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -135,6 +138,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Autowired
     private RemoteRepositoryService remoteRepositoryService;
 
+    @Autowired
+    @Lazy
+    private WalletGateService walletGateService;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -172,7 +179,8 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
             String clientCode,
             Map<String, JsonElement> job,
             ServerHttpRequest request) {
-        return FlatMapUtil.flatMapMono(
+        return this.meterFunctionExecution(appCode)
+                .then(FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> this.getFunctionRepository(appCode, clientCode)
                         .map(appFunctionRepo -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
@@ -239,7 +247,31 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
                     return result;
                 })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute")));
+    }
+
+    /**
+     * Synchronous token gate for server function execution. Charges the consumer
+     * wallet at the exposing client's rates (resolved server-side). METERED
+     * actions with an empty wallet are blocked with HTTP 402; ENGAGEMENT actions,
+     * unconfigured apps, and wallet outages pass through.
+     */
+    private Mono<Boolean> meterFunctionExecution(String appCode) {
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    WalletChargeRequest req = new WalletChargeRequest()
+                            .setAppCode(appCode)
+                            .setClientCode(ca.getClientCode())
+                            .setUrlClientCode(ca.getUrlClientCode())
+                            .setActionKey("core.function.execute")
+                            .setQuantity(BigDecimal.ONE);
+                    return this.walletGateService.charge(req)
+                            .flatMap(allowed -> Boolean.TRUE.equals(allowed)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : Mono.error(new GenericException(HttpStatus.PAYMENT_REQUIRED,
+                                            "Insufficient tokens for this action")));
+                })
+                .switchIfEmpty(Mono.just(Boolean.TRUE));
     }
 
     private void logExecutionLogs(DefinitionFunction df, boolean errored) {

@@ -35,9 +35,10 @@ public class PaymentController
     @PostMapping("/initialize")
     public Mono<ResponseEntity<Payment>> initializePayment(
             @RequestParam ULong invoiceId,
+            @RequestParam(required = false) ULong gatewayClientId,
             @RequestParam SecurityPaymentGatewayPaymentGateway gateway,
             @RequestBody(required = false) Map<String, Object> metadata) {
-        return this.service.initializePayment(invoiceId, gateway, metadata)
+        return this.service.initializePayment(invoiceId, gatewayClientId, gateway, metadata)
                 .map(ResponseEntity::ok);
     }
 

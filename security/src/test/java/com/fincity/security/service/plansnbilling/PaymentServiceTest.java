@@ -62,6 +62,9 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private com.fincity.security.service.ClientActivityService clientActivityService;
 
+	@Mock
+	private com.fincity.security.service.wallet.WalletService walletService;
+
 	private PaymentService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -73,7 +76,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new PaymentService(dao, paymentGatewayDAO, invoiceDAO, clientService,
-				messageResourceService, List.of(paymentGatewayIntegration), clientActivityService);
+				messageResourceService, List.of(paymentGatewayIntegration), clientActivityService, walletService);
 
 		// PaymentService constructor already sets this.dao = dao, so no reflection
 		// needed for the DAO. But the superclass field is set directly, verify:
@@ -144,7 +147,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 					.thenReturn(Mono.just(initializedPayment));
 			when(dao.create(any(Payment.class))).thenReturn(Mono.just(createdPayment));
 
-			StepVerifier.create(service.initializePayment(INVOICE_ID,
+			StepVerifier.create(service.initializePayment(INVOICE_ID, null,
 					SecurityPaymentGatewayPaymentGateway.CASHFREE, Map.of()))
 					.assertNext(result -> {
 						assertEquals(PAYMENT_ID, result.getId());
@@ -162,7 +165,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 
 			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.empty());
 
-			StepVerifier.create(service.initializePayment(INVOICE_ID,
+			StepVerifier.create(service.initializePayment(INVOICE_ID, null,
 					SecurityPaymentGatewayPaymentGateway.CASHFREE, Map.of()))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
@@ -180,7 +183,7 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 			when(paymentGatewayDAO.findByClientIdAndGateway(SYSTEM_CLIENT_ID,
 					SecurityPaymentGatewayPaymentGateway.RAZORPAY)).thenReturn(Mono.empty());
 
-			StepVerifier.create(service.initializePayment(INVOICE_ID,
+			StepVerifier.create(service.initializePayment(INVOICE_ID, null,
 					SecurityPaymentGatewayPaymentGateway.RAZORPAY, Map.of()))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)

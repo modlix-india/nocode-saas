@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppActionCostActionClassOverride;
 import com.fincity.security.jooq.enums.SecurityAppActionCostStatus;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
+import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityAppActionCostRecord;
 
 import java.math.BigDecimal;
@@ -72,6 +73,13 @@ public class SecurityAppActionCost extends TableImpl<SecurityAppActionCostRecord
      * cost applies to
      */
     public final TableField<SecurityAppActionCostRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App the cost applies to");
+
+    /**
+     * The column <code>security.security_app_action_cost.CLIENT_ID</code>.
+     * Exposing client that owns this rate; cost resolves per (app, client,
+     * action)
+     */
+    public final TableField<SecurityAppActionCostRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Exposing client that owns this rate; cost resolves per (app, client, action)");
 
     /**
      * The column <code>security.security_app_action_cost.ACTION_KEY</code>.
@@ -208,12 +216,12 @@ public class SecurityAppActionCost extends TableImpl<SecurityAppActionCostRecord
 
     @Override
     public List<UniqueKey<SecurityAppActionCostRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_APP_ACTION_COST_UK1_APP_ACTION_COST_APP_ID_ACTION_KEY);
+        return Arrays.asList(Keys.KEY_SECURITY_APP_ACTION_COST_UK1_APP_ACTION_COST_APP_CLIENT_ACTION);
     }
 
     @Override
     public List<ForeignKey<SecurityAppActionCostRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_ACTION_COST_APP_ID);
+        return Arrays.asList(Keys.FK1_APP_ACTION_COST_APP_ID, Keys.FK2_APP_ACTION_COST_CLIENT_ID);
     }
 
     private transient SecurityAppPath _securityApp;
@@ -227,6 +235,19 @@ public class SecurityAppActionCost extends TableImpl<SecurityAppActionCostRecord
             _securityApp = new SecurityAppPath(this, Keys.FK1_APP_ACTION_COST_APP_ID, null);
 
         return _securityApp;
+    }
+
+    private transient SecurityClientPath _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClientPath securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClientPath(this, Keys.FK2_APP_ACTION_COST_CLIENT_ID, null);
+
+        return _securityClient;
     }
 
     @Override

@@ -59,12 +59,31 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
     }
 
     /**
+     * Setter for <code>security.security_app_billing_config.CLIENT_ID</code>.
+     * Client (URL/exposing client) this config applies to; billing resolves per
+     * (app, client)
+     */
+    public SecurityAppBillingConfigRecord setClientId(ULong value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_app_billing_config.CLIENT_ID</code>.
+     * Client (URL/exposing client) this config applies to; billing resolves per
+     * (app, client)
+     */
+    public ULong getClientId() {
+        return (ULong) get(2);
+    }
+
+    /**
      * Setter for
      * <code>security.security_app_billing_config.DEFAULT_PAYMENT_GATEWAY</code>.
      * Default gateway for top-ups
      */
     public SecurityAppBillingConfigRecord setDefaultPaymentGateway(SecurityAppBillingConfigDefaultPaymentGateway value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -74,7 +93,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Default gateway for top-ups
      */
     public SecurityAppBillingConfigDefaultPaymentGateway getDefaultPaymentGateway() {
-        return (SecurityAppBillingConfigDefaultPaymentGateway) get(2);
+        return (SecurityAppBillingConfigDefaultPaymentGateway) get(3);
     }
 
     /**
@@ -83,7 +102,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Whether per-seat token burn applies
      */
     public SecurityAppBillingConfigRecord setSeatBillingEnabled(Byte value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -93,7 +112,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Whether per-seat token burn applies
      */
     public Byte getSeatBillingEnabled() {
-        return (Byte) get(3);
+        return (Byte) get(4);
     }
 
     /**
@@ -102,7 +121,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Tokens charged per seat per month, dripped hourly
      */
     public SecurityAppBillingConfigRecord setSeatTokensPerMonth(BigDecimal value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -112,7 +131,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Tokens charged per seat per month, dripped hourly
      */
     public BigDecimal getSeatTokensPerMonth() {
-        return (BigDecimal) get(4);
+        return (BigDecimal) get(5);
     }
 
     /**
@@ -121,7 +140,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Free tokens granted per month
      */
     public SecurityAppBillingConfigRecord setMonthlyFreeTokens(BigDecimal value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -131,7 +150,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Free tokens granted per month
      */
     public BigDecimal getMonthlyFreeTokens() {
-        return (BigDecimal) get(5);
+        return (BigDecimal) get(6);
     }
 
     /**
@@ -139,7 +158,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Turn-on flag: when 0 metering runs in shadow (no blocking)
      */
     public SecurityAppBillingConfigRecord setEnforced(Byte value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -148,7 +167,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Turn-on flag: when 0 metering runs in shadow (no blocking)
      */
     public Byte getEnforced() {
-        return (Byte) get(6);
+        return (Byte) get(7);
     }
 
     /**
@@ -156,7 +175,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Status
      */
     public SecurityAppBillingConfigRecord setStatus(SecurityAppBillingConfigStatus value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -165,7 +184,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Status
      */
     public SecurityAppBillingConfigStatus getStatus() {
-        return (SecurityAppBillingConfigStatus) get(7);
+        return (SecurityAppBillingConfigStatus) get(8);
     }
 
     /**
@@ -173,7 +192,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * ID of the user who created this row
      */
     public SecurityAppBillingConfigRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -182,7 +201,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -190,7 +209,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Time when this row is created
      */
     public SecurityAppBillingConfigRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -199,7 +218,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -207,7 +226,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * ID of the user who updated this row
      */
     public SecurityAppBillingConfigRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -216,7 +235,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -224,7 +243,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Time when this row is updated
      */
     public SecurityAppBillingConfigRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -233,7 +252,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -259,11 +278,12 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
     /**
      * Create a detached, initialised SecurityAppBillingConfigRecord
      */
-    public SecurityAppBillingConfigRecord(ULong id, ULong appId, SecurityAppBillingConfigDefaultPaymentGateway defaultPaymentGateway, Byte seatBillingEnabled, BigDecimal seatTokensPerMonth, BigDecimal monthlyFreeTokens, Byte enforced, SecurityAppBillingConfigStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppBillingConfigRecord(ULong id, ULong appId, ULong clientId, SecurityAppBillingConfigDefaultPaymentGateway defaultPaymentGateway, Byte seatBillingEnabled, BigDecimal seatTokensPerMonth, BigDecimal monthlyFreeTokens, Byte enforced, SecurityAppBillingConfigStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppBillingConfig.SECURITY_APP_BILLING_CONFIG);
 
         setId(id);
         setAppId(appId);
+        setClientId(clientId);
         setDefaultPaymentGateway(defaultPaymentGateway);
         setSeatBillingEnabled(seatBillingEnabled);
         setSeatTokensPerMonth(seatTokensPerMonth);

@@ -18,15 +18,19 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.plansnbilling.InvoiceDAO;
 import com.fincity.security.dao.plansnbilling.PaymentDAO;
 import com.fincity.security.dao.plansnbilling.PaymentGatewayDAO;
+import com.fincity.security.dto.invoicesnpayments.Invoice;
 import com.fincity.security.dto.invoicesnpayments.Payment;
 import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceType;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentPaymentStatus;
+import com.fincity.security.jooq.enums.SecurityWalletTransactionReferenceType;
 import com.fincity.security.jooq.tables.records.SecurityPaymentRecord;
 import com.fincity.security.service.ClientActivityService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.plansnbilling.paymentgateway.IPaymentGatewayIntegration;
+import com.fincity.security.service.wallet.WalletService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -41,11 +45,13 @@ public class PaymentService
     private final SecurityMessageResourceService messageResourceService;
     private final List<IPaymentGatewayIntegration> paymentGatewayIntegrations;
     private final ClientActivityService clientActivityService;
+    private final WalletService walletService;
 
     public PaymentService(PaymentDAO dao, PaymentGatewayDAO paymentGatewayDAO, InvoiceDAO invoiceDAO,
             ClientService clientService, SecurityMessageResourceService messageResourceService,
             List<IPaymentGatewayIntegration> paymentGatewayIntegrations,
-            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService) {
+            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService,
+            WalletService walletService) {
         this.dao = dao;
         this.paymentGatewayDAO = paymentGatewayDAO;
         this.invoiceDAO = invoiceDAO;
@@ -53,14 +59,41 @@ public class PaymentService
         this.messageResourceService = messageResourceService;
         this.paymentGatewayIntegrations = paymentGatewayIntegrations;
         this.clientActivityService = clientActivityService;
+        this.walletService = walletService;
     }
 
     /**
-     * Initialize payment for an invoice. User must be an owner to make payments.
+     * When a TOPUP / AUTO_RECHARGE invoice is paid, credit the purchased tokens
+     * to the wallet. Idempotent on the payment reference so a re-delivered
+     * callback never double-credits.
+     */
+    private Mono<Boolean> creditWalletIfTopUp(Invoice invoice, Payment payment) {
+
+        if (invoice.getWalletId() == null || invoice.getCreditsPurchased() == null
+                || (invoice.getInvoiceType() != SecurityInvoiceInvoiceType.TOPUP
+                        && invoice.getInvoiceType() != SecurityInvoiceInvoiceType.AUTO_RECHARGE))
+            return Mono.just(false);
+
+        String idempotencyKey = payment.getPaymentReference() != null
+                ? payment.getPaymentReference()
+                : "pay-" + payment.getId();
+
+        return this.walletService.topUp(invoice.getWalletId(), invoice.getCreditsPurchased(), idempotencyKey,
+                SecurityWalletTransactionReferenceType.PAYMENT,
+                payment.getId() == null ? null : payment.getId().toString())
+                .thenReturn(true);
+    }
+
+    /**
+     * Initialize payment for an invoice. The wallet credited on success is the
+     * invoice's client (the consumer), but the gateway credentials are resolved
+     * from {@code gatewayClientId} - the exposing client (e.g. the agency whose
+     * URL the consumer used). When {@code gatewayClientId} is null it falls back
+     * to the invoice's own client (direct/system top-ups).
      */
     @PreAuthorize("hasAuthority('Authorities.Owner')")
-    public Mono<Payment> initializePayment(ULong invoiceId, SecurityPaymentGatewayPaymentGateway gatewayType,
-            Map<String, Object> metadata) {
+    public Mono<Payment> initializePayment(ULong invoiceId, ULong gatewayClientId,
+            SecurityPaymentGatewayPaymentGateway gatewayType, Map<String, Object> metadata) {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
 
@@ -70,7 +103,8 @@ public class PaymentService
                                 SecurityMessageResourceService.PARAMS_NOT_FOUND, "Invoice")),
 
                 (ca, invoice) -> this.paymentGatewayDAO
-                        .findByClientIdAndGateway(invoice.getClientId(), gatewayType)
+                        .findByClientIdAndGateway(
+                                gatewayClientId != null ? gatewayClientId : invoice.getClientId(), gatewayType)
                         .switchIfEmpty(this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                 SecurityMessageResourceService.PARAMS_NOT_FOUND,
@@ -141,11 +175,21 @@ public class PaymentService
                                 existing.setPaymentStatus(payment.getPaymentStatus());
                                 existing.setPaymentResponse(payment.getPaymentResponse());
                                 existing.setPaymentDate(LocalDateTime.now());
-                                return this.dao.update(existing).doOnNext(updated ->
-                                        clientActivityService.createLog(clientId,
-                                                "Payment Update",
-                                                "Payment updated [ref: " + updated.getPaymentReference()
-                                                        + ", status: " + updated.getPaymentStatus() + "]"));
+                                return this.dao.update(existing)
+                                        .flatMap(updated -> {
+                                            if (updated.getPaymentStatus() != SecurityPaymentPaymentStatus.PAID)
+                                                return Mono.just(updated);
+                                            return this.invoiceDAO.readById(updated.getInvoiceId())
+                                                    .flatMap(inv -> this.updateInvoiceStatus(updated.getInvoiceId(),
+                                                            SecurityInvoiceInvoiceStatus.PAID)
+                                                            .then(this.creditWalletIfTopUp(inv, updated))
+                                                            .thenReturn(updated));
+                                        })
+                                        .doOnNext(updated ->
+                                                clientActivityService.createLog(clientId,
+                                                        "Payment Update",
+                                                        "Payment updated [ref: " + updated.getPaymentReference()
+                                                                + ", status: " + updated.getPaymentStatus() + "]"));
                             })
                             .switchIfEmpty(this.messageResourceService.throwMessage(
                                     msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -207,9 +251,10 @@ public class PaymentService
                 },
 
                 (ca, payment, invoice, updated) -> {
-                    // If payment is successful, update invoice status
+                    // If payment is successful, mark the invoice paid and credit the wallet.
                     if (status == SecurityPaymentPaymentStatus.PAID) {
                         return this.updateInvoiceStatus(payment.getInvoiceId(), SecurityInvoiceInvoiceStatus.PAID)
+                                .then(this.creditWalletIfTopUp(invoice, updated))
                                 .thenReturn(updated);
                     }
                     return Mono.just(updated);

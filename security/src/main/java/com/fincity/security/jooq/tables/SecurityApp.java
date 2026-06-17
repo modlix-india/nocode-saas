@@ -629,6 +629,15 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     /**
      * Get the implicit many-to-many join path to the
      * <code>security.security_client</code> table, via the
+     * <code>FK2_APP_BILLING_CONFIG_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk2AppBillingConfigClientId() {
+        return securityAppBillingConfig().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
      * <code>FK1_CLIENT_OTP_POL_CLIENT_ID</code> key
      */
     public SecurityClientPath fk1ClientOtpPolClientId() {

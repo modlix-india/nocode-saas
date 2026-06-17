@@ -67,6 +67,7 @@ class PaymentControllerTest {
 
             when(paymentService.initializePayment(
                     eq(ULong.valueOf(100)),
+                    any(),
                     eq(SecurityPaymentGatewayPaymentGateway.RAZORPAY),
                     any()))
                     .thenReturn(Mono.just(samplePayment));
@@ -90,6 +91,7 @@ class PaymentControllerTest {
 
             verify(paymentService).initializePayment(
                     eq(ULong.valueOf(100)),
+                    any(),
                     eq(SecurityPaymentGatewayPaymentGateway.RAZORPAY),
                     any());
         }
@@ -100,6 +102,7 @@ class PaymentControllerTest {
 
             when(paymentService.initializePayment(
                     eq(ULong.valueOf(100)),
+                    any(),
                     eq(SecurityPaymentGatewayPaymentGateway.STRIPE),
                     any()))
                     .thenReturn(Mono.just(samplePayment));
@@ -117,6 +120,7 @@ class PaymentControllerTest {
 
             verify(paymentService).initializePayment(
                     eq(ULong.valueOf(100)),
+                    any(),
                     eq(SecurityPaymentGatewayPaymentGateway.STRIPE),
                     any());
         }

@@ -135,6 +135,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/plans/internal/limits",
 
+                "/api/security/wallets/internal/**",
+
                 "/api/security/departments/internal/**",
 
                 "/api/security/departments/internal",

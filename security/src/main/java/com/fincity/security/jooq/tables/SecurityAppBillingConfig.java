@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigDefaultPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigStatus;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
+import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityAppBillingConfigRecord;
 
 import java.math.BigDecimal;
@@ -74,6 +75,13 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
      * this billing config applies to
      */
     public final TableField<SecurityAppBillingConfigRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App this billing config applies to");
+
+    /**
+     * The column <code>security.security_app_billing_config.CLIENT_ID</code>.
+     * Client (URL/exposing client) this config applies to; billing resolves per
+     * (app, client)
+     */
+    public final TableField<SecurityAppBillingConfigRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client (URL/exposing client) this config applies to; billing resolves per (app, client)");
 
     /**
      * The column
@@ -221,12 +229,12 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
 
     @Override
     public List<UniqueKey<SecurityAppBillingConfigRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_APP_BILLING_CONFIG_UK1_APP_BILLING_CONFIG_APP_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_APP_BILLING_CONFIG_UK1_APP_BILLING_CONFIG_APP_ID_CLIENT_ID);
     }
 
     @Override
     public List<ForeignKey<SecurityAppBillingConfigRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_BILLING_CONFIG_APP_ID);
+        return Arrays.asList(Keys.FK1_APP_BILLING_CONFIG_APP_ID, Keys.FK2_APP_BILLING_CONFIG_CLIENT_ID);
     }
 
     private transient SecurityAppPath _securityApp;
@@ -240,6 +248,19 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
             _securityApp = new SecurityAppPath(this, Keys.FK1_APP_BILLING_CONFIG_APP_ID, null);
 
         return _securityApp;
+    }
+
+    private transient SecurityClientPath _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClientPath securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClientPath(this, Keys.FK2_APP_BILLING_CONFIG_CLIENT_ID, null);
+
+        return _securityClient;
     }
 
     @Override

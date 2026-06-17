@@ -26,6 +26,8 @@ import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.Profile;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
+import com.fincity.saas.commons.security.model.wallet.WalletChargeRequest;
+import com.fincity.saas.commons.security.model.wallet.WalletChargeResult;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -33,6 +35,9 @@ import reactor.util.function.Tuple2;
 
 @ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
+
+    @PostMapping("${security.feign.walletChargeByCode:/api/security/wallets/internal/charge-by-code}")
+    Mono<WalletChargeResult> walletChargeByCode(@RequestBody WalletChargeRequest request);
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
     Mono<ContextAuthentication> contextAuthentication(

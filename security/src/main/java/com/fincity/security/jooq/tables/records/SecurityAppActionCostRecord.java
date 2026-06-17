@@ -57,11 +57,30 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
     }
 
     /**
+     * Setter for <code>security.security_app_action_cost.CLIENT_ID</code>.
+     * Exposing client that owns this rate; cost resolves per (app, client,
+     * action)
+     */
+    public SecurityAppActionCostRecord setClientId(ULong value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_app_action_cost.CLIENT_ID</code>.
+     * Exposing client that owns this rate; cost resolves per (app, client,
+     * action)
+     */
+    public ULong getClientId() {
+        return (ULong) get(2);
+    }
+
+    /**
      * Setter for <code>security.security_app_action_cost.ACTION_KEY</code>.
      * Action key (soft ref to action catalog)
      */
     public SecurityAppActionCostRecord setActionKey(String value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -70,7 +89,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Action key (soft ref to action catalog)
      */
     public String getActionKey() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
@@ -78,7 +97,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Credits per unit for this app
      */
     public SecurityAppActionCostRecord setCreditCost(BigDecimal value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -87,7 +106,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Credits per unit for this app
      */
     public BigDecimal getCreditCost() {
-        return (BigDecimal) get(3);
+        return (BigDecimal) get(4);
     }
 
     /**
@@ -96,7 +115,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Overrides the catalog class for this app
      */
     public SecurityAppActionCostRecord setActionClassOverride(SecurityAppActionCostActionClassOverride value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -106,7 +125,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Overrides the catalog class for this app
      */
     public SecurityAppActionCostActionClassOverride getActionClassOverride() {
-        return (SecurityAppActionCostActionClassOverride) get(4);
+        return (SecurityAppActionCostActionClassOverride) get(5);
     }
 
     /**
@@ -114,7 +133,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Free units per period before charging
      */
     public SecurityAppActionCostRecord setFreeQuota(BigDecimal value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -123,14 +142,14 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Free units per period before charging
      */
     public BigDecimal getFreeQuota() {
-        return (BigDecimal) get(5);
+        return (BigDecimal) get(6);
     }
 
     /**
      * Setter for <code>security.security_app_action_cost.STATUS</code>. Status
      */
     public SecurityAppActionCostRecord setStatus(SecurityAppActionCostStatus value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -138,7 +157,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Getter for <code>security.security_app_action_cost.STATUS</code>. Status
      */
     public SecurityAppActionCostStatus getStatus() {
-        return (SecurityAppActionCostStatus) get(6);
+        return (SecurityAppActionCostStatus) get(7);
     }
 
     /**
@@ -146,7 +165,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * of the user who created this row
      */
     public SecurityAppActionCostRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -155,7 +174,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -163,7 +182,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Time when this row is created
      */
     public SecurityAppActionCostRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -172,7 +191,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -180,7 +199,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * of the user who updated this row
      */
     public SecurityAppActionCostRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -189,7 +208,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -197,7 +216,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Time when this row is updated
      */
     public SecurityAppActionCostRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -206,7 +225,7 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -232,11 +251,12 @@ public class SecurityAppActionCostRecord extends UpdatableRecordImpl<SecurityApp
     /**
      * Create a detached, initialised SecurityAppActionCostRecord
      */
-    public SecurityAppActionCostRecord(ULong id, ULong appId, String actionKey, BigDecimal creditCost, SecurityAppActionCostActionClassOverride actionClassOverride, BigDecimal freeQuota, SecurityAppActionCostStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppActionCostRecord(ULong id, ULong appId, ULong clientId, String actionKey, BigDecimal creditCost, SecurityAppActionCostActionClassOverride actionClassOverride, BigDecimal freeQuota, SecurityAppActionCostStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppActionCost.SECURITY_APP_ACTION_COST);
 
         setId(id);
         setAppId(appId);
+        setClientId(clientId);
         setActionKey(actionKey);
         setCreditCost(creditCost);
         setActionClassOverride(actionClassOverride);

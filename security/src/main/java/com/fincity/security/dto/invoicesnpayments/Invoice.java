@@ -8,6 +8,7 @@ import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,10 +18,6 @@ import lombok.experimental.Accessors;
 /**
  * Lean invoice for token purchases (top-up / auto-recharge / credit refund).
  * Subscription concepts (plan, cycle, proration, line items) are gone.
- *
- * <p>Token-specific columns (WALLET_ID, INVOICE_TYPE, CREDITS_PURCHASED,
- * CURRENCY, TAX_*) are added in Phase 2 once V78 is applied and JOOQ is
- * regenerated; the matching fields are introduced alongside the wallet domain.
  */
 @Data
 @Accessors(chain = true)
@@ -32,9 +29,14 @@ public class Invoice extends AbstractUpdatableDTO<ULong, ULong> {
     private static final long serialVersionUID = 1L;
 
     private ULong clientId;
+    private ULong walletId;
     private String invoiceNumber;
+    private SecurityInvoiceInvoiceType invoiceType;
     private LocalDateTime invoiceDate;
     private LocalDateTime invoiceDueDate;
     private BigDecimal invoiceAmount;
+    private String currency;
+    private BigDecimal creditsPurchased;
+    private BigDecimal taxAmount;
     private SecurityInvoiceInvoiceStatus invoiceStatus;
 }

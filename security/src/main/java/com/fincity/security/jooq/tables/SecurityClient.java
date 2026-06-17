@@ -10,6 +10,8 @@ import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
+import com.fincity.security.jooq.tables.SecurityAppActionCost.SecurityAppActionCostPath;
+import com.fincity.security.jooq.tables.SecurityAppBillingConfig.SecurityAppBillingConfigPath;
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppRegDepartment.SecurityAppRegDepartmentPath;
@@ -696,6 +698,32 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityWallet;
     }
 
+    private transient SecurityAppActionCostPath _securityAppActionCost;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_action_cost</code> table
+     */
+    public SecurityAppActionCostPath securityAppActionCost() {
+        if (_securityAppActionCost == null)
+            _securityAppActionCost = new SecurityAppActionCostPath(this, null, Keys.FK2_APP_ACTION_COST_CLIENT_ID.getInverseKey());
+
+        return _securityAppActionCost;
+    }
+
+    private transient SecurityAppBillingConfigPath _securityAppBillingConfig;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_billing_config</code> table
+     */
+    public SecurityAppBillingConfigPath securityAppBillingConfig() {
+        if (_securityAppBillingConfig == null)
+            _securityAppBillingConfig = new SecurityAppBillingConfigPath(this, null, Keys.FK2_APP_BILLING_CONFIG_CLIENT_ID.getInverseKey());
+
+        return _securityAppBillingConfig;
+    }
+
     private transient SecurityAppPropertyPath _securityAppProperty;
 
     /**
@@ -781,6 +809,15 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      */
     public SecurityAppPath fk1AppAccessAppId() {
         return securityAppAccess().securityApp();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_app</code> table, via the
+     * <code>FK1_APP_BILLING_CONFIG_APP_ID</code> key
+     */
+    public SecurityAppPath fk1AppBillingConfigAppId() {
+        return securityAppBillingConfig().securityApp();
     }
 
     /**
