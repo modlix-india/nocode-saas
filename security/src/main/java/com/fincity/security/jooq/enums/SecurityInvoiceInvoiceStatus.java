@@ -15,17 +15,15 @@ import org.jooq.Schema;
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum SecurityInvoiceInvoiceStatus implements EnumType {
 
-    DRAFT("DRAFT"),
-
-    SENT("SENT"),
-
     PENDING("PENDING"),
 
     PAID("PAID"),
 
     FAILED("FAILED"),
 
-    CANCELLED("CANCELLED");
+    CANCELLED("CANCELLED"),
+
+    REFUNDED("REFUNDED");
 
     private final String literal;
 

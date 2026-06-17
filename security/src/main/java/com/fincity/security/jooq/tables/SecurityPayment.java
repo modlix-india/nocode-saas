@@ -84,7 +84,7 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
      * The column <code>security.security_payment.PAYMENT_AMOUNT</code>. Payment
      * amount
      */
-    public final TableField<SecurityPaymentRecord, BigDecimal> PAYMENT_AMOUNT = createField(DSL.name("PAYMENT_AMOUNT"), SQLDataType.DECIMAL(10, 2).nullable(false), this, "Payment amount");
+    public final TableField<SecurityPaymentRecord, BigDecimal> PAYMENT_AMOUNT = createField(DSL.name("PAYMENT_AMOUNT"), SQLDataType.DECIMAL(19, 4).nullable(false), this, "Payment amount");
 
     /**
      * The column <code>security.security_payment.PAYMENT_STATUS</code>. Payment
@@ -100,9 +100,9 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
 
     /**
      * The column <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * Payment reference or transaction id
      */
-    public final TableField<SecurityPaymentRecord, String> PAYMENT_REFERENCE = createField(DSL.name("PAYMENT_REFERENCE"), SQLDataType.VARCHAR(256), this, "Payment reference or trasaction id");
+    public final TableField<SecurityPaymentRecord, String> PAYMENT_REFERENCE = createField(DSL.name("PAYMENT_REFERENCE"), SQLDataType.VARCHAR(256), this, "Payment reference or transaction id");
 
     /**
      * The column <code>security.security_payment.PAYMENT_RESPONSE</code>.

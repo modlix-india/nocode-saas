@@ -10,38 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * Operation on the object
+ * Cap reset period
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecuritySoxLogObjectName implements EnumType {
+public enum SecurityWalletBudgetPeriod implements EnumType {
 
-    USER("USER"),
+    DAY("DAY"),
 
-    ROLE("ROLE"),
-
-    PERMISSION("PERMISSION"),
-
-    PACKAGE("PACKAGE"),
-
-    CLIENT("CLIENT"),
-
-    CLIENT_TYPE("CLIENT_TYPE"),
-
-    APP("APP"),
-
-    PROFILE("PROFILE"),
-
-    INVOICE("INVOICE"),
-
-    WALLET("WALLET"),
-
-    APP_BILLING_CONFIG("APP_BILLING_CONFIG"),
-
-    ACTION_CATALOG("ACTION_CATALOG");
+    MONTH("MONTH");
 
     private final String literal;
 
-    private SecuritySoxLogObjectName(String literal) {
+    private SecurityWalletBudgetPeriod(String literal) {
         this.literal = literal;
     }
 
@@ -70,7 +50,7 @@ public enum SecuritySoxLogObjectName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecuritySoxLogObjectName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);
+    public static SecurityWalletBudgetPeriod lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletBudgetPeriod.class, literal);
     }
 }

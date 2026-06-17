@@ -10,20 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the plan
+ * Default class; drives zero-balance behavior
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanStatus implements EnumType {
+public enum SecurityActionCatalogDefaultActionClass implements EnumType {
 
-    ACTIVE("ACTIVE"),
+    ENGAGEMENT("ENGAGEMENT"),
 
-    INACTIVE("INACTIVE"),
-
-    DELETED("DELETED");
+    METERED("METERED");
 
     private final String literal;
 
-    private SecurityPlanStatus(String literal) {
+    private SecurityActionCatalogDefaultActionClass(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +50,7 @@ public enum SecurityPlanStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanStatus.class, literal);
+    public static SecurityActionCatalogDefaultActionClass lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityActionCatalogDefaultActionClass.class, literal);
     }
 }

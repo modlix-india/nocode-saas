@@ -10,20 +10,22 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the cycle in a plan
+ * Gateway used for auto-recharge
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanCycleStatus implements EnumType {
+public enum SecurityWalletAutoRechargeGateway implements EnumType {
 
-    ACTIVE("ACTIVE"),
+    CASHFREE("CASHFREE"),
 
-    INACTIVE("INACTIVE"),
+    RAZORPAY("RAZORPAY"),
 
-    DELETED("DELETED");
+    STRIPE("STRIPE"),
+
+    OTHER("OTHER");
 
     private final String literal;
 
-    private SecurityPlanCycleStatus(String literal) {
+    private SecurityWalletAutoRechargeGateway(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +54,7 @@ public enum SecurityPlanCycleStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanCycleStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanCycleStatus.class, literal);
+    public static SecurityWalletAutoRechargeGateway lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletAutoRechargeGateway.class, literal);
     }
 }

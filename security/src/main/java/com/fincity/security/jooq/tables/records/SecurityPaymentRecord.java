@@ -125,7 +125,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
 
     /**
      * Setter for <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * Payment reference or transaction id
      */
     public SecurityPaymentRecord setPaymentReference(String value) {
         set(6, value);
@@ -134,7 +134,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
 
     /**
      * Getter for <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * Payment reference or transaction id
      */
     public String getPaymentReference() {
         return (String) get(6);

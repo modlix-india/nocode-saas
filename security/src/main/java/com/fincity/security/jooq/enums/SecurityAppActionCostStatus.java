@@ -10,30 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Name of the limit
+ * Status
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanLimitName implements EnumType {
+public enum SecurityAppActionCostStatus implements EnumType {
 
-    USER("USER"),
+    ACTIVE("ACTIVE"),
 
-    CLIENT("CLIENT"),
+    INACTIVE("INACTIVE"),
 
-    APP("APP"),
-
-    FILE("FILE"),
-
-    CONNECTIONS("CONNECTIONS"),
-
-    PAGES("PAGES"),
-
-    STORAGE("STORAGE"),
-
-    CUSTOM("CUSTOM");
+    DELETED("DELETED");
 
     private final String literal;
 
-    private SecurityPlanLimitName(String literal) {
+    private SecurityAppActionCostStatus(String literal) {
         this.literal = literal;
     }
 
@@ -62,7 +52,7 @@ public enum SecurityPlanLimitName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanLimitName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanLimitName.class, literal);
+    public static SecurityAppActionCostStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityAppActionCostStatus.class, literal);
     }
 }

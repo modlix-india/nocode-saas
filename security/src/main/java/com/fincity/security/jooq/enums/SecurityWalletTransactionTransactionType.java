@@ -10,38 +10,32 @@ import org.jooq.Schema;
 
 
 /**
- * Operation on the object
+ * Ledger entry type
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecuritySoxLogObjectName implements EnumType {
+public enum SecurityWalletTransactionTransactionType implements EnumType {
 
-    USER("USER"),
+    DEBIT("DEBIT"),
 
-    ROLE("ROLE"),
+    CREDIT("CREDIT"),
 
-    PERMISSION("PERMISSION"),
+    RESERVE("RESERVE"),
 
-    PACKAGE("PACKAGE"),
+    RELEASE("RELEASE"),
 
-    CLIENT("CLIENT"),
+    GRANT("GRANT"),
 
-    CLIENT_TYPE("CLIENT_TYPE"),
+    TOPUP("TOPUP"),
 
-    APP("APP"),
+    REFUND("REFUND"),
 
-    PROFILE("PROFILE"),
+    ADJUSTMENT("ADJUSTMENT"),
 
-    INVOICE("INVOICE"),
-
-    WALLET("WALLET"),
-
-    APP_BILLING_CONFIG("APP_BILLING_CONFIG"),
-
-    ACTION_CATALOG("ACTION_CATALOG");
+    SEAT_BURN("SEAT_BURN");
 
     private final String literal;
 
-    private SecuritySoxLogObjectName(String literal) {
+    private SecurityWalletTransactionTransactionType(String literal) {
         this.literal = literal;
     }
 
@@ -70,7 +64,7 @@ public enum SecuritySoxLogObjectName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecuritySoxLogObjectName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);
+    public static SecurityWalletTransactionTransactionType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletTransactionTransactionType.class, literal);
     }
 }

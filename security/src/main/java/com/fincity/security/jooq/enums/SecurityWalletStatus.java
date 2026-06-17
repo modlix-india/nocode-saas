@@ -10,38 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Operation on the object
+ * Wallet status
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecuritySoxLogObjectName implements EnumType {
+public enum SecurityWalletStatus implements EnumType {
 
-    USER("USER"),
+    ACTIVE("ACTIVE"),
 
-    ROLE("ROLE"),
+    SUSPENDED("SUSPENDED"),
 
-    PERMISSION("PERMISSION"),
-
-    PACKAGE("PACKAGE"),
-
-    CLIENT("CLIENT"),
-
-    CLIENT_TYPE("CLIENT_TYPE"),
-
-    APP("APP"),
-
-    PROFILE("PROFILE"),
-
-    INVOICE("INVOICE"),
-
-    WALLET("WALLET"),
-
-    APP_BILLING_CONFIG("APP_BILLING_CONFIG"),
-
-    ACTION_CATALOG("ACTION_CATALOG");
+    CLOSED("CLOSED");
 
     private final String literal;
 
-    private SecuritySoxLogObjectName(String literal) {
+    private SecurityWalletStatus(String literal) {
         this.literal = literal;
     }
 
@@ -70,7 +52,7 @@ public enum SecuritySoxLogObjectName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecuritySoxLogObjectName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);
+    public static SecurityWalletStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletStatus.class, literal);
     }
 }

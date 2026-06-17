@@ -10,38 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Operation on the object
+ * Invoice type
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecuritySoxLogObjectName implements EnumType {
+public enum SecurityInvoiceInvoiceType implements EnumType {
 
-    USER("USER"),
+    TOPUP("TOPUP"),
 
-    ROLE("ROLE"),
+    AUTO_RECHARGE("AUTO_RECHARGE"),
 
-    PERMISSION("PERMISSION"),
-
-    PACKAGE("PACKAGE"),
-
-    CLIENT("CLIENT"),
-
-    CLIENT_TYPE("CLIENT_TYPE"),
-
-    APP("APP"),
-
-    PROFILE("PROFILE"),
-
-    INVOICE("INVOICE"),
-
-    WALLET("WALLET"),
-
-    APP_BILLING_CONFIG("APP_BILLING_CONFIG"),
-
-    ACTION_CATALOG("ACTION_CATALOG");
+    CREDIT_REFUND("CREDIT_REFUND");
 
     private final String literal;
 
-    private SecuritySoxLogObjectName(String literal) {
+    private SecurityInvoiceInvoiceType(String literal) {
         this.literal = literal;
     }
 
@@ -70,7 +52,7 @@ public enum SecuritySoxLogObjectName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecuritySoxLogObjectName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);
+    public static SecurityInvoiceInvoiceType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityInvoiceInvoiceType.class, literal);
     }
 }

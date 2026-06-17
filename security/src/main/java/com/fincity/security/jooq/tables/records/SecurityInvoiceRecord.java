@@ -5,11 +5,13 @@ package com.fincity.security.jooq.tables.records;
 
 
 import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceType;
 import com.fincity.security.jooq.tables.SecurityInvoice;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -54,33 +56,20 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     }
 
     /**
-     * Setter for <code>security.security_invoice.PLAN_ID</code>. Plan ID
+     * Setter for <code>security.security_invoice.WALLET_ID</code>. Wallet
+     * credited on payment
      */
-    public SecurityInvoiceRecord setPlanId(ULong value) {
+    public SecurityInvoiceRecord setWalletId(ULong value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_invoice.PLAN_ID</code>. Plan ID
+     * Getter for <code>security.security_invoice.WALLET_ID</code>. Wallet
+     * credited on payment
      */
-    public ULong getPlanId() {
+    public ULong getWalletId() {
         return (ULong) get(2);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.CYCLE_ID</code>. Cycle ID
-     */
-    public SecurityInvoiceRecord setCycleId(ULong value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.CYCLE_ID</code>. Cycle ID
-     */
-    public ULong getCycleId() {
-        return (ULong) get(3);
     }
 
     /**
@@ -88,7 +77,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * number
      */
     public SecurityInvoiceRecord setInvoiceNumber(String value) {
-        set(4, value);
+        set(3, value);
         return this;
     }
 
@@ -97,7 +86,24 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * number
      */
     public String getInvoiceNumber() {
-        return (String) get(4);
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.INVOICE_TYPE</code>. Invoice
+     * type
+     */
+    public SecurityInvoiceRecord setInvoiceType(SecurityInvoiceInvoiceType value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.INVOICE_TYPE</code>. Invoice
+     * type
+     */
+    public SecurityInvoiceInvoiceType getInvoiceType() {
+        return (SecurityInvoiceInvoiceType) get(4);
     }
 
     /**
@@ -136,7 +142,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
 
     /**
      * Setter for <code>security.security_invoice.INVOICE_AMOUNT</code>. Invoice
-     * amount
+     * amount in CURRENCY
      */
     public SecurityInvoiceRecord setInvoiceAmount(BigDecimal value) {
         set(7, value);
@@ -145,10 +151,76 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
 
     /**
      * Getter for <code>security.security_invoice.INVOICE_AMOUNT</code>. Invoice
-     * amount
+     * amount in CURRENCY
      */
     public BigDecimal getInvoiceAmount() {
         return (BigDecimal) get(7);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.CURRENCY</code>. Currency
+     */
+    public SecurityInvoiceRecord setCurrency(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.CURRENCY</code>. Currency
+     */
+    public String getCurrency() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.CREDITS_PURCHASED</code>.
+     * Tokens to grant on payment success
+     */
+    public SecurityInvoiceRecord setCreditsPurchased(BigDecimal value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.CREDITS_PURCHASED</code>.
+     * Tokens to grant on payment success
+     */
+    public BigDecimal getCreditsPurchased() {
+        return (BigDecimal) get(9);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.TAX_AMOUNT</code>. Total tax
+     * amount
+     */
+    public SecurityInvoiceRecord setTaxAmount(BigDecimal value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.TAX_AMOUNT</code>. Total tax
+     * amount
+     */
+    public BigDecimal getTaxAmount() {
+        return (BigDecimal) get(10);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.TAX_BREAKUP</code>. Tax line
+     * breakup
+     */
+    public SecurityInvoiceRecord setTaxBreakup(JSON value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.TAX_BREAKUP</code>. Tax line
+     * breakup
+     */
+    public JSON getTaxBreakup() {
+        return (JSON) get(11);
     }
 
     /**
@@ -156,7 +228,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * status
      */
     public SecurityInvoiceRecord setInvoiceStatus(SecurityInvoiceInvoiceStatus value) {
-        set(8, value);
+        set(12, value);
         return this;
     }
 
@@ -165,7 +237,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * status
      */
     public SecurityInvoiceInvoiceStatus getInvoiceStatus() {
-        return (SecurityInvoiceInvoiceStatus) get(8);
+        return (SecurityInvoiceInvoiceStatus) get(12);
     }
 
     /**
@@ -173,7 +245,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who created this row
      */
     public SecurityInvoiceRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(13, value);
         return this;
     }
 
@@ -182,7 +254,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(13);
     }
 
     /**
@@ -190,7 +262,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is created
      */
     public SecurityInvoiceRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(14, value);
         return this;
     }
 
@@ -199,7 +271,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -207,7 +279,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who updated this row
      */
     public SecurityInvoiceRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(15, value);
         return this;
     }
 
@@ -216,7 +288,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(15);
     }
 
     /**
@@ -224,7 +296,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is updated
      */
     public SecurityInvoiceRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(16, value);
         return this;
     }
 
@@ -233,58 +305,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
-     * reason
-     */
-    public SecurityInvoiceRecord setInvoiceReason(String value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
-     * reason
-     */
-    public String getInvoiceReason() {
-        return (String) get(13);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.PERIOD_START</code>. Service
-     * period start (UTC)
-     */
-    public SecurityInvoiceRecord setPeriodStart(LocalDateTime value) {
-        set(14, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.PERIOD_START</code>. Service
-     * period start (UTC)
-     */
-    public LocalDateTime getPeriodStart() {
-        return (LocalDateTime) get(14);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.PERIOD_END</code>. Service
-     * period end (UTC)
-     */
-    public SecurityInvoiceRecord setPeriodEnd(LocalDateTime value) {
-        set(15, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.PERIOD_END</code>. Service
-     * period end (UTC)
-     */
-    public LocalDateTime getPeriodEnd() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -310,25 +331,26 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     /**
      * Create a detached, initialised SecurityInvoiceRecord
      */
-    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String invoiceReason, LocalDateTime periodStart, LocalDateTime periodEnd) {
+    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong walletId, String invoiceNumber, SecurityInvoiceInvoiceType invoiceType, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, String currency, BigDecimal creditsPurchased, BigDecimal taxAmount, JSON taxBreakup, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityInvoice.SECURITY_INVOICE);
 
         setId(id);
         setClientId(clientId);
-        setPlanId(planId);
-        setCycleId(cycleId);
+        setWalletId(walletId);
         setInvoiceNumber(invoiceNumber);
+        setInvoiceType(invoiceType);
         setInvoiceDate(invoiceDate);
         setInvoiceDueDate(invoiceDueDate);
         setInvoiceAmount(invoiceAmount);
+        setCurrency(currency);
+        setCreditsPurchased(creditsPurchased);
+        setTaxAmount(taxAmount);
+        setTaxBreakup(taxBreakup);
         setInvoiceStatus(invoiceStatus);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        setInvoiceReason(invoiceReason);
-        setPeriodStart(periodStart);
-        setPeriodEnd(periodEnd);
         resetTouchedOnNotNull();
     }
 }

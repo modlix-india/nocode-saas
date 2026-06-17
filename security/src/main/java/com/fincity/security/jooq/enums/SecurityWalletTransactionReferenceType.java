@@ -10,38 +10,30 @@ import org.jooq.Schema;
 
 
 /**
- * Operation on the object
+ * Type of the related reference
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecuritySoxLogObjectName implements EnumType {
-
-    USER("USER"),
-
-    ROLE("ROLE"),
-
-    PERMISSION("PERMISSION"),
-
-    PACKAGE("PACKAGE"),
-
-    CLIENT("CLIENT"),
-
-    CLIENT_TYPE("CLIENT_TYPE"),
-
-    APP("APP"),
-
-    PROFILE("PROFILE"),
+public enum SecurityWalletTransactionReferenceType implements EnumType {
 
     INVOICE("INVOICE"),
 
-    WALLET("WALLET"),
+    PAYMENT("PAYMENT"),
 
-    APP_BILLING_CONFIG("APP_BILLING_CONFIG"),
+    GRANT("GRANT"),
 
-    ACTION_CATALOG("ACTION_CATALOG");
+    ACTION("ACTION"),
+
+    RESERVATION("RESERVATION"),
+
+    ADJUSTMENT("ADJUSTMENT"),
+
+    REFUND("REFUND"),
+
+    SEAT_BURN("SEAT_BURN");
 
     private final String literal;
 
-    private SecuritySoxLogObjectName(String literal) {
+    private SecurityWalletTransactionReferenceType(String literal) {
         this.literal = literal;
     }
 
@@ -70,7 +62,7 @@ public enum SecuritySoxLogObjectName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecuritySoxLogObjectName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecuritySoxLogObjectName.class, literal);
+    public static SecurityWalletTransactionReferenceType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletTransactionReferenceType.class, literal);
     }
 }

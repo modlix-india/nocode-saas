@@ -73,7 +73,7 @@ public class SecuritySoxLog extends TableImpl<SecuritySoxLogRecord> {
      * The column <code>security.security_sox_log.OBJECT_NAME</code>. Operation
      * on the object
      */
-    public final TableField<SecuritySoxLogRecord, SecuritySoxLogObjectName> OBJECT_NAME = createField(DSL.name("OBJECT_NAME"), SQLDataType.VARCHAR(11).nullable(false).asEnumDataType(SecuritySoxLogObjectName.class), this, "Operation on the object");
+    public final TableField<SecuritySoxLogRecord, SecuritySoxLogObjectName> OBJECT_NAME = createField(DSL.name("OBJECT_NAME"), SQLDataType.VARCHAR(18).nullable(false).asEnumDataType(SecuritySoxLogObjectName.class), this, "Operation on the object");
 
     /**
      * The column <code>security.security_sox_log.ACTION_NAME</code>. Log action
