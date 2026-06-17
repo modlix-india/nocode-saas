@@ -1071,7 +1071,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getStage(),
                                 ticket.getStatus(),
                                 ticket.getProductTemplateId(),
-                                campaign.getPlatformAccountId())
+                                // Meta uses a single Pixel/dataset and routes by user identifiers; Google
+                                // under MCC + cross-account does the same via Enhanced Conversions for
+                                // Leads. Either way, the campaign's sub-account is not the right filter
+                                // key -- platformAccountId on the mapping identifies the action's owner,
+                                // not which campaign it answers to. See [[ECL conversion model]].
+                                null)
                         // Gate 2: only fire mappings whose platform matches the ticket's source platform.
                         .filter(mapping -> java.util.Objects.equals(
                                 mapping.getCampaignPlatform(), campaign.getCampaignPlatform()))

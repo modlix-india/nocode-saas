@@ -30,11 +30,12 @@ public class ConversionActionMappingDAO
      * any status under the given stage).
      *
      * <p>When {@code platformAccountId} is non-null, returned mappings must either
-     * match it exactly OR have a NULL PLATFORM_ACCOUNT_ID (Meta, where the pixel
-     * routes via the campaign itself, and legacy rows that predate the column).
-     * Google conversion actions live inside one specific customer's account, so
-     * dispatching a Purva ticket through a Cityville customer's action gets
-     * rejected by Google with INVALID_CUSTOMER_FOR_CLICK.
+     * match it exactly OR have a NULL PLATFORM_ACCOUNT_ID. Callers under the
+     * "single Pixel" (Meta) or "MCC + cross-account on" (Google ECL) model pass
+     * null here -- attribution is handled platform-side via user identifiers, so
+     * the mapping's owning customer is not a filter key. Reserved for the future
+     * MCC + per-account model where multiple actions per (product, stage) exist
+     * across sub-accounts.
      */
     public Flux<ConversionActionMapping> findActiveByTrigger(
             ProcessorAccess access,
@@ -115,6 +116,19 @@ public class ConversionActionMappingDAO
                                 .and(accountMatch)
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.TRIGGER_STAGE_ID.eq(triggerStageId))
                                 .and(statusMatch)))
+                .map(e -> e.into(this.pojoClass));
+    }
+
+    /** Returns every active mapping for the caller's app/client on the given platform. */
+    public Flux<ConversionActionMapping> findActiveByPlatform(ProcessorAccess access, CampaignPlatform platform) {
+        return Flux.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
+                                .APP_CODE
+                                .eq(access.getAppCode())
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CLIENT_CODE.eq(access.getClientCode()))
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CAMPAIGN_PLATFORM.eq(platform))
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.IS_ACTIVE.isTrue())))
                 .map(e -> e.into(this.pojoClass));
     }
 }
