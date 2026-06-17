@@ -10,8 +10,8 @@ import com.fincity.saas.entity.processor.enums.ConversionEventStatus;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -225,7 +225,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * Frozen payload snapshot (hashed user_data + custom_data + event_id +
      * value/currency).
      */
-    public EntityProcessorConversionEventsRecord setPayloadSnapshot(JSON value) {
+    public EntityProcessorConversionEventsRecord setPayloadSnapshot(Map value) {
         set(10, value);
         return this;
     }
@@ -236,8 +236,8 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * Frozen payload snapshot (hashed user_data + custom_data + event_id +
      * value/currency).
      */
-    public JSON getPayloadSnapshot() {
-        return (JSON) get(10);
+    public Map getPayloadSnapshot() {
+        return (Map) get(10);
     }
 
     /**
@@ -264,7 +264,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_conversion_events.PLATFORM_RESPONSE</code>.
      * Full HTTP response body from the platform on the most recent attempt.
      */
-    public EntityProcessorConversionEventsRecord setPlatformResponse(JSON value) {
+    public EntityProcessorConversionEventsRecord setPlatformResponse(Map value) {
         set(12, value);
         return this;
     }
@@ -274,8 +274,8 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_conversion_events.PLATFORM_RESPONSE</code>.
      * Full HTTP response body from the platform on the most recent attempt.
      */
-    public JSON getPlatformResponse() {
-        return (JSON) get(12);
+    public Map getPlatformResponse() {
+        return (Map) get(12);
     }
 
     /**
@@ -491,7 +491,7 @@ public class EntityProcessorConversionEventsRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorConversionEventsRecord
      */
-    public EntityProcessorConversionEventsRecord(ULong id, String code, String appCode, String clientCode, ULong ticketId, ULong mappingId, String eventId, String eventName, CampaignPlatform campaignPlatform, ConversionActionSource actionSource, JSON payloadSnapshot, ConversionEventStatus status, JSON platformResponse, String statusMessage, Integer attemptCount, LocalDateTime nextAttemptAt, LocalDateTime sentAt, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorConversionEventsRecord(ULong id, String code, String appCode, String clientCode, ULong ticketId, ULong mappingId, String eventId, String eventName, CampaignPlatform campaignPlatform, ConversionActionSource actionSource, Map payloadSnapshot, ConversionEventStatus status, Map platformResponse, String statusMessage, Integer attemptCount, LocalDateTime nextAttemptAt, LocalDateTime sentAt, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorConversionEvents.ENTITY_PROCESSOR_CONVERSION_EVENTS);
 
         setId(id);
