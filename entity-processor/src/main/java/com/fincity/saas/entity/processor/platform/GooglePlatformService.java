@@ -453,6 +453,49 @@ public class GooglePlatformService extends AbstractAdPlatformService {
     }
 
     /**
+     * Reads the Enhanced-Conversions-for-Leads readiness flags off a customer's
+     * {@code conversion_tracking_setting}: whether the operator accepted the
+     * Customer Data Terms in Google Ads UI, and whether ECL is enabled for the
+     * customer. Both are read-only via API (Google requires the operator to
+     * accept the terms in their own UI), so this surface is a status probe only.
+     *
+     * <p>Used by the setup-health panel in the conversion-mapping page.
+     */
+    public Mono<GoogleCustomerSetupStatus> getCustomerSetupStatus(
+            String appCode, String clientCode, String customerId, String loginCustomerId, String accessToken) {
+
+        String gaql = "SELECT customer.conversion_tracking_setting.accepted_customer_data_terms, "
+                + "customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled "
+                + "FROM customer";
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMap(devToken -> search(loginCustomerId, customerId, gaql, accessToken, devToken))
+                .map(root -> {
+                    JsonNode results = root.path("results");
+                    if (!results.isArray() || results.isEmpty()) {
+                        return new GoogleCustomerSetupStatus(customerId, null, null);
+                    }
+                    JsonNode setting = results.get(0).path("customer").path("conversionTrackingSetting");
+                    Boolean accepted = setting.path("acceptedCustomerDataTerms").isBoolean()
+                            ? setting.path("acceptedCustomerDataTerms").asBoolean()
+                            : null;
+                    Boolean ecl = setting.path("enhancedConversionsForLeadsEnabled").isBoolean()
+                            ? setting.path("enhancedConversionsForLeadsEnabled").asBoolean()
+                            : null;
+                    return new GoogleCustomerSetupStatus(customerId, accepted, ecl);
+                });
+    }
+
+    /**
+     * Customer-level Enhanced-Conversions-for-Leads readiness. Both fields can
+     * be null if the customer's {@code conversion_tracking_setting} row is
+     * sparse (rare; usually appears for newly created accounts that have never
+     * tracked any conversion).
+     */
+    public record GoogleCustomerSetupStatus(
+            String customerId, Boolean acceptedCustomerDataTerms, Boolean enhancedConversionsForLeadsEnabled) {}
+
+    /**
      * For Google, the metrics API call <em>requires</em> {@code customer_id} in
      * the URL path ({@code customers/{customerId}/googleAds:search}), so a
      * NULL {@code platformAccountId} on a Campaign row makes the sync fail
