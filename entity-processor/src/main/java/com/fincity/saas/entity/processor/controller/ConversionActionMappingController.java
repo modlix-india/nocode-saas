@@ -56,6 +56,16 @@ public class ConversionActionMappingController
         return this.service.listGoogleConversionActions(customerId, loginCustomerId).map(ResponseEntity::ok);
     }
 
+    /**
+     * Returns the Enhanced-Conversions-for-Leads readiness of the client's Google connection:
+     * customer-level Customer Data Terms acceptance, ECL enabled flag, and the category of each
+     * conversion action referenced by active GOOGLE mappings. Powers the "Setup Health" popup.
+     */
+    @GetMapping("/google/setup-health")
+    public Mono<ResponseEntity<ConversionActionMappingService.GoogleSetupHealth>> getGoogleSetupHealth() {
+        return this.service.getGoogleSetupHealth().map(ResponseEntity::ok);
+    }
+
     /** Creates a Google Ads conversion action in the client's account (fresh-client provisioning). */
     @PostMapping("/google/conversion-actions")
     public Mono<ResponseEntity<DiscoveredConversionAction>> createGoogleConversionAction(
