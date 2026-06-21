@@ -57,11 +57,45 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
     }
 
     /**
+     * Setter for <code>security.security_wallet.APP_ID</code>. App sub-wallet
+     * scope; NULL = client-level parent wallet
+     */
+    public SecurityWalletRecord setAppId(ULong value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_wallet.APP_ID</code>. App sub-wallet
+     * scope; NULL = client-level parent wallet
+     */
+    public ULong getAppId() {
+        return (ULong) get(2);
+    }
+
+    /**
+     * Setter for <code>security.security_wallet.APP_ID_KEY</code>. Normalized
+     * APP_ID for uniqueness (0 = parent wallet)
+     */
+    public SecurityWalletRecord setAppIdKey(ULong value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_wallet.APP_ID_KEY</code>. Normalized
+     * APP_ID for uniqueness (0 = parent wallet)
+     */
+    public ULong getAppIdKey() {
+        return (ULong) get(3);
+    }
+
+    /**
      * Setter for <code>security.security_wallet.BALANCE</code>. Available token
      * balance
      */
     public SecurityWalletRecord setBalance(BigDecimal value) {
-        set(2, value);
+        set(4, value);
         return this;
     }
 
@@ -70,7 +104,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * balance
      */
     public BigDecimal getBalance() {
-        return (BigDecimal) get(2);
+        return (BigDecimal) get(4);
     }
 
     /**
@@ -78,7 +112,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * reserved for in-flight actions
      */
     public SecurityWalletRecord setReservedBalance(BigDecimal value) {
-        set(3, value);
+        set(5, value);
         return this;
     }
 
@@ -87,7 +121,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * reserved for in-flight actions
      */
     public BigDecimal getReservedBalance() {
-        return (BigDecimal) get(3);
+        return (BigDecimal) get(5);
     }
 
     /**
@@ -95,7 +129,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * currency for top-up valuation
      */
     public SecurityWalletRecord setCurrency(String value) {
-        set(4, value);
+        set(6, value);
         return this;
     }
 
@@ -104,14 +138,14 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * currency for top-up valuation
      */
     public String getCurrency() {
-        return (String) get(4);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>security.security_wallet.STATUS</code>. Wallet status
      */
     public SecurityWalletRecord setStatus(SecurityWalletStatus value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -119,7 +153,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Getter for <code>security.security_wallet.STATUS</code>. Wallet status
      */
     public SecurityWalletStatus getStatus() {
-        return (SecurityWalletStatus) get(5);
+        return (SecurityWalletStatus) get(7);
     }
 
     /**
@@ -127,7 +161,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Balance below which low-balance alerts fire
      */
     public SecurityWalletRecord setLowBalanceThreshold(BigDecimal value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -136,7 +170,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Balance below which low-balance alerts fire
      */
     public BigDecimal getLowBalanceThreshold() {
-        return (BigDecimal) get(6);
+        return (BigDecimal) get(8);
     }
 
     /**
@@ -144,7 +178,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Most-negative balance allowed for ENGAGEMENT-class actions
      */
     public SecurityWalletRecord setGraceFloor(BigDecimal value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -153,7 +187,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Most-negative balance allowed for ENGAGEMENT-class actions
      */
     public BigDecimal getGraceFloor() {
-        return (BigDecimal) get(7);
+        return (BigDecimal) get(9);
     }
 
     /**
@@ -161,7 +195,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Auto-recharge (deferred to post-v1)
      */
     public SecurityWalletRecord setAutoRechargeEnabled(Byte value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -170,7 +204,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Auto-recharge (deferred to post-v1)
      */
     public Byte getAutoRechargeEnabled() {
-        return (Byte) get(8);
+        return (Byte) get(10);
     }
 
     /**
@@ -178,7 +212,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Balance that triggers auto-recharge
      */
     public SecurityWalletRecord setAutoRechargeThreshold(BigDecimal value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -187,7 +221,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Balance that triggers auto-recharge
      */
     public BigDecimal getAutoRechargeThreshold() {
-        return (BigDecimal) get(9);
+        return (BigDecimal) get(11);
     }
 
     /**
@@ -195,7 +229,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Tokens to buy on auto-recharge
      */
     public SecurityWalletRecord setAutoRechargeAmount(BigDecimal value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -204,7 +238,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Tokens to buy on auto-recharge
      */
     public BigDecimal getAutoRechargeAmount() {
-        return (BigDecimal) get(10);
+        return (BigDecimal) get(12);
     }
 
     /**
@@ -212,7 +246,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Gateway used for auto-recharge
      */
     public SecurityWalletRecord setAutoRechargeGateway(SecurityWalletAutoRechargeGateway value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -221,7 +255,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * Gateway used for auto-recharge
      */
     public SecurityWalletAutoRechargeGateway getAutoRechargeGateway() {
-        return (SecurityWalletAutoRechargeGateway) get(11);
+        return (SecurityWalletAutoRechargeGateway) get(13);
     }
 
     /**
@@ -229,7 +263,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * counter
      */
     public SecurityWalletRecord setVersion(ULong value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -238,7 +272,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * counter
      */
     public ULong getVersion() {
-        return (ULong) get(12);
+        return (ULong) get(14);
     }
 
     /**
@@ -246,7 +280,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * user who created this row
      */
     public SecurityWalletRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -255,7 +289,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(15);
     }
 
     /**
@@ -263,7 +297,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * this row is created
      */
     public SecurityWalletRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -272,7 +306,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -280,7 +314,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * user who updated this row
      */
     public SecurityWalletRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -289,7 +323,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(17);
     }
 
     /**
@@ -297,7 +331,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * this row is updated
      */
     public SecurityWalletRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -306,7 +340,7 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(18);
     }
 
     // -------------------------------------------------------------------------
@@ -332,11 +366,13 @@ public class SecurityWalletRecord extends UpdatableRecordImpl<SecurityWalletReco
     /**
      * Create a detached, initialised SecurityWalletRecord
      */
-    public SecurityWalletRecord(ULong id, ULong clientId, BigDecimal balance, BigDecimal reservedBalance, String currency, SecurityWalletStatus status, BigDecimal lowBalanceThreshold, BigDecimal graceFloor, Byte autoRechargeEnabled, BigDecimal autoRechargeThreshold, BigDecimal autoRechargeAmount, SecurityWalletAutoRechargeGateway autoRechargeGateway, ULong version, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityWalletRecord(ULong id, ULong clientId, ULong appId, ULong appIdKey, BigDecimal balance, BigDecimal reservedBalance, String currency, SecurityWalletStatus status, BigDecimal lowBalanceThreshold, BigDecimal graceFloor, Byte autoRechargeEnabled, BigDecimal autoRechargeThreshold, BigDecimal autoRechargeAmount, SecurityWalletAutoRechargeGateway autoRechargeGateway, ULong version, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityWallet.SECURITY_WALLET);
 
         setId(id);
         setClientId(clientId);
+        setAppId(appId);
+        setAppIdKey(appIdKey);
         setBalance(balance);
         setReservedBalance(reservedBalance);
         setCurrency(currency);

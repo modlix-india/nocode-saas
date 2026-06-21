@@ -51,6 +51,7 @@ import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
+import com.fincity.security.jooq.tables.SecurityUsageEvent;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserInvite;
@@ -322,6 +323,11 @@ public class Security extends SchemaImpl {
     public final SecuritySslRequest SECURITY_SSL_REQUEST = SecuritySslRequest.SECURITY_SSL_REQUEST;
 
     /**
+     * The table <code>security.security_usage_event</code>.
+     */
+    public final SecurityUsageEvent SECURITY_USAGE_EVENT = SecurityUsageEvent.SECURITY_USAGE_EVENT;
+
+    /**
      * The table <code>security.security_user</code>.
      */
     public final SecurityUser SECURITY_USER = SecurityUser.SECURITY_USER;
@@ -444,6 +450,7 @@ public class Security extends SchemaImpl {
             SecuritySslCertificate.SECURITY_SSL_CERTIFICATE,
             SecuritySslChallenge.SECURITY_SSL_CHALLENGE,
             SecuritySslRequest.SECURITY_SSL_REQUEST,
+            SecurityUsageEvent.SECURITY_USAGE_EVENT,
             SecurityUser.SECURITY_USER,
             SecurityUserAddress.SECURITY_USER_ADDRESS,
             SecurityUserInvite.SECURITY_USER_INVITE,

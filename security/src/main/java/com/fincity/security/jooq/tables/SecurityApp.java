@@ -32,6 +32,7 @@ import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityUsageEvent.SecurityUsageEventPath;
 import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.SecurityWallet.SecurityWalletPath;
@@ -551,6 +552,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityProfile;
     }
 
+    private transient SecurityUsageEventPath _securityUsageEvent;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_usage_event</code> table
+     */
+    public SecurityUsageEventPath securityUsageEvent() {
+        if (_securityUsageEvent == null)
+            _securityUsageEvent = new SecurityUsageEventPath(this, null, Keys.FK2_USAGE_EVENT_APP_ID.getInverseKey());
+
+        return _securityUsageEvent;
+    }
+
     private transient SecurityV2RolePath _securityV2Role;
 
     /**
@@ -562,6 +576,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityV2Role = new SecurityV2RolePath(this, null, Keys.FK2_V2_ROLE_APP_ID.getInverseKey());
 
         return _securityV2Role;
+    }
+
+    private transient SecurityWalletPath _securityWallet;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_wallet</code> table
+     */
+    public SecurityWalletPath securityWallet() {
+        if (_securityWallet == null)
+            _securityWallet = new SecurityWalletPath(this, null, Keys.FK2_WALLET_APP_ID.getInverseKey());
+
+        return _securityWallet;
     }
 
     private transient SecurityWalletBudgetPath _securityWalletBudget;
@@ -660,14 +687,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      */
     public SecurityClientPath fk1ClientPinPolClientId() {
         return securityClientPinPolicy().securityClient();
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>security.security_wallet</code> table
-     */
-    public SecurityWalletPath securityWallet() {
-        return securityWalletBudget().securityWallet();
     }
 
     @Override

@@ -39,6 +39,7 @@ import com.fincity.security.jooq.tables.SecurityPaymentGateway.SecurityPaymentGa
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction.SecurityProfileClientRestrictionPath;
+import com.fincity.security.jooq.tables.SecurityUsageEvent.SecurityUsageEventPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityUserInvite.SecurityUserInvitePath;
 import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
@@ -657,6 +658,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityProfile = new SecurityProfilePath(this, null, Keys.FK1_PROFILE_CLIENT_ID.getInverseKey());
 
         return _securityProfile;
+    }
+
+    private transient SecurityUsageEventPath _securityUsageEvent;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_usage_event</code> table
+     */
+    public SecurityUsageEventPath securityUsageEvent() {
+        if (_securityUsageEvent == null)
+            _securityUsageEvent = new SecurityUsageEventPath(this, null, Keys.FK1_USAGE_EVENT_CLIENT_ID.getInverseKey());
+
+        return _securityUsageEvent;
     }
 
     private transient SecurityUserPath _securityUser;

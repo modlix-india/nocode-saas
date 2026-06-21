@@ -78,6 +78,18 @@ public class SecurityWallet extends TableImpl<SecurityWalletRecord> {
     public final TableField<SecurityWalletRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client (tenant) that owns this wallet");
 
     /**
+     * The column <code>security.security_wallet.APP_ID</code>. App sub-wallet
+     * scope; NULL = client-level parent wallet
+     */
+    public final TableField<SecurityWalletRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "App sub-wallet scope; NULL = client-level parent wallet");
+
+    /**
+     * The column <code>security.security_wallet.APP_ID_KEY</code>. Normalized
+     * APP_ID for uniqueness (0 = parent wallet)
+     */
+    public final TableField<SecurityWalletRecord, ULong> APP_ID_KEY = createField(DSL.name("APP_ID_KEY"), SQLDataType.BIGINTUNSIGNED, this, "Normalized APP_ID for uniqueness (0 = parent wallet)");
+
+    /**
      * The column <code>security.security_wallet.BALANCE</code>. Available token
      * balance
      */
@@ -245,12 +257,12 @@ public class SecurityWallet extends TableImpl<SecurityWalletRecord> {
 
     @Override
     public List<UniqueKey<SecurityWalletRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_WALLET_UK1_WALLET_CLIENT_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_WALLET_UK1_WALLET_CLIENT_APP);
     }
 
     @Override
     public List<ForeignKey<SecurityWalletRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_WALLET_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_WALLET_CLIENT_ID, Keys.FK2_WALLET_APP_ID);
     }
 
     private transient SecurityClientPath _securityClient;
@@ -264,6 +276,19 @@ public class SecurityWallet extends TableImpl<SecurityWalletRecord> {
             _securityClient = new SecurityClientPath(this, Keys.FK1_WALLET_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK2_WALLET_APP_ID, null);
+
+        return _securityApp;
     }
 
     private transient SecurityWalletBudgetPath _securityWalletBudget;
@@ -303,14 +328,6 @@ public class SecurityWallet extends TableImpl<SecurityWalletRecord> {
             _securityInvoice = new SecurityInvoicePath(this, null, Keys.FK2_INVOICE_WALLET_ID.getInverseKey());
 
         return _securityInvoice;
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>security.security_app</code> table
-     */
-    public SecurityAppPath securityApp() {
-        return securityWalletBudget().securityApp();
     }
 
     @Override
