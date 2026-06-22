@@ -91,6 +91,14 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
         return SECURITY_USER.CLIENT_ID;
     }
 
+    /** Active user (seat) count for a client, for seat rent. */
+    public Mono<Long> countActiveByClient(ULong clientId) {
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_USER)
+                .where(SECURITY_USER.CLIENT_ID.eq(clientId)
+                        .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE))))
+                .map(r -> r.value1().longValue());
+    }
+
     @Override
     public Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
 

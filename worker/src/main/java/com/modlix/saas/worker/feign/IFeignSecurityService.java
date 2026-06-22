@@ -20,4 +20,7 @@ public interface IFeignSecurityService {
 
     @PostMapping("/api/security/wallets/internal/consolidate-usage")
     Integer consolidateUsage();
+
+    @PostMapping("/api/security/wallets/internal/billing/internal-rent-drip")
+    Long internalRentDrip();
 }

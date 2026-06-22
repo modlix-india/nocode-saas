@@ -75,6 +75,13 @@ public class WalletService
         return this.getOrCreateWallet(clientId, null);
     }
 
+    /** Read-only resolved wallet status for (clientId, appId); ACTIVE if no wallet yet. */
+    public Mono<SecurityWalletStatus> resolveStatus(ULong clientId, ULong appId) {
+        return this.dao.resolveWallet(clientId, appId)
+                .map(Wallet::getStatus)
+                .defaultIfEmpty(SecurityWalletStatus.ACTIVE);
+    }
+
     /**
      * Resolve the wallet that governs (clientId, appId): the app sub-wallet if
      * funded, else the parent. Only the parent is auto-provisioned; sub-wallets

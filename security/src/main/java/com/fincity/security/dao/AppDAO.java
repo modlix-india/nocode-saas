@@ -69,6 +69,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
         super(App.class, SECURITY_APP, SECURITY_APP.ID);
     }
 
+    /** Number of apps owned by a client, for app/site rent. */
+    public Mono<Long> countByClientId(ULong clientId) {
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_APP)
+                .where(SECURITY_APP.CLIENT_ID.eq(clientId)))
+                .map(r -> r.value1().longValue());
+    }
+
     @Override
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
 

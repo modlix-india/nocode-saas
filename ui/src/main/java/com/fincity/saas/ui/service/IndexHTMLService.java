@@ -24,6 +24,7 @@ import jakarta.annotation.PostConstruct;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -170,15 +171,17 @@ public class IndexHTMLService {
     private final CacheService cacheService;
     private final ResourceLoader resourceLoader;
     private final WebClient.Builder webClientBuilder;
+    private final FeignAuthenticationService securityService;
     private final Gson gson = new Gson();
     private List<String> cachedEntrypointScripts = null;
 
     public IndexHTMLService(ApplicationService appService, CacheService cacheService, ResourceLoader resourceLoader,
-                           WebClient.Builder webClientBuilder) {
+                           WebClient.Builder webClientBuilder, FeignAuthenticationService securityService) {
         this.appService = appService;
         this.cacheService = cacheService;
         this.resourceLoader = resourceLoader;
         this.webClientBuilder = webClientBuilder;
+        this.securityService = securityService;
     }
 
     /**
@@ -273,6 +276,19 @@ public class IndexHTMLService {
     }
 
     public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
+
+        // Serving gate: if the serving client's wallet is suspended for this app,
+        // serve the configured suspend app in its place. Fail-open so a billing or
+        // security hiccup never breaks app serving. SYSTEM-owned apps are exempt
+        // (security returns not-suspended), so the suspend app never recurses.
+        return this.securityService.servingStatus(appCode, clientCode)
+                .flatMap(status -> status.isSuspended() && status.getSuspendAppCode() != null
+                        ? this.getIndexHTMLForApp(status.getSuspendAppCode(), status.getSuspendClientCode())
+                        : this.getIndexHTMLForApp(appCode, clientCode))
+                .onErrorResume(e -> this.getIndexHTMLForApp(appCode, clientCode));
+    }
+
+    private Mono<ObjectWithUniqueID<String>> getIndexHTMLForApp(String appCode, String clientCode) {
 
         String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 

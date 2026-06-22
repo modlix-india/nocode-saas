@@ -7,6 +7,7 @@ import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
 import com.modlix.saas.worker.service.execution.FileRentExecutionService;
+import com.modlix.saas.worker.service.execution.SeatAppSiteRentExecutionService;
 import com.modlix.saas.worker.service.execution.StorageRentExecutionService;
 import com.modlix.saas.worker.service.execution.UsageConsolidationExecutionService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
@@ -29,6 +30,7 @@ public class TaskExecutionService {
     private final UsageConsolidationExecutionService usageConsolidationExecutionService;
     private final StorageRentExecutionService storageRentExecutionService;
     private final FileRentExecutionService fileRentExecutionService;
+    private final SeatAppSiteRentExecutionService seatAppSiteRentExecutionService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -39,7 +41,8 @@ public class TaskExecutionService {
             ConversionsDispatchExecutionService conversionsDispatchExecutionService,
             UsageConsolidationExecutionService usageConsolidationExecutionService,
             StorageRentExecutionService storageRentExecutionService,
-            FileRentExecutionService fileRentExecutionService) {
+            FileRentExecutionService fileRentExecutionService,
+            SeatAppSiteRentExecutionService seatAppSiteRentExecutionService) {
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
@@ -49,6 +52,7 @@ public class TaskExecutionService {
         this.usageConsolidationExecutionService = usageConsolidationExecutionService;
         this.storageRentExecutionService = storageRentExecutionService;
         this.fileRentExecutionService = fileRentExecutionService;
+        this.seatAppSiteRentExecutionService = seatAppSiteRentExecutionService;
     }
 
     public boolean executeTask(String taskId, String taskData) {
@@ -95,6 +99,7 @@ public class TaskExecutionService {
             case USAGE_CONSOLIDATION -> usageConsolidationExecutionService.execute(task);
             case STORAGE_RENT -> storageRentExecutionService.execute(task);
             case FILE_RENT -> fileRentExecutionService.execute(task);
+            case SEAT_APP_SITE_RENT -> seatAppSiteRentExecutionService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);

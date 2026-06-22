@@ -138,6 +138,16 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 urlClientCode == null ? "" : urlClientCode);
     }
 
+    /**
+     * Runtime serving gate decision for (app, client). Not cached here so a flip
+     * is seen promptly; the caller (index-HTML serving) should apply its own
+     * short cache + fail-open.
+     */
+    public Mono<com.fincity.saas.commons.security.model.wallet.ServingStatus> servingStatus(String appCode,
+            String clientCode) {
+        return this.feignAuthService.servingStatus(appCode, clientCode);
+    }
+
     public Mono<Boolean> isValidClientCode(String clientCode) {
 
         return this.feignAuthService.validClientCode(clientCode);

@@ -28,6 +28,7 @@ import com.fincity.saas.commons.security.model.Profile;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.security.model.wallet.RentTarget;
+import com.fincity.saas.commons.security.model.wallet.ServingStatus;
 import com.fincity.saas.commons.security.model.wallet.WalletChargeRequest;
 import com.fincity.saas.commons.security.model.wallet.WalletChargeResult;
 
@@ -47,6 +48,9 @@ public interface IFeignSecurityService {
     @PostMapping("${security.feign.chargeRent:/api/security/wallets/internal/billing/charge-rent}")
     Mono<WalletChargeResult> chargeRent(@RequestParam String appCode, @RequestParam String clientCode,
             @RequestParam String actionKey, @RequestParam BigDecimal count);
+
+    @GetMapping("${security.feign.servingStatus:/api/security/wallets/internal/billing/serving-status}")
+    Mono<ServingStatus> servingStatus(@RequestParam String appCode, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
     Mono<ContextAuthentication> contextAuthentication(

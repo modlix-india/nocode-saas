@@ -33,7 +33,9 @@ import com.fincity.security.jooq.enums.SecurityWalletTransactionReferenceType;
 import com.fincity.security.jooq.tables.records.SecurityWalletRecord;
 import com.fincity.security.dto.App;
 import com.fincity.saas.commons.security.model.wallet.RentTarget;
+import com.fincity.saas.commons.security.model.wallet.ServingStatus;
 import com.fincity.security.dao.billing.AppActionCostDAO;
+import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
 import com.fincity.security.model.billing.ReservationResult;
@@ -182,6 +184,40 @@ public class WalletController
     @PostMapping("/internal/consolidate-usage")
     public Mono<ResponseEntity<Integer>> consolidateUsage() {
         return this.consolidationService.consolidate().map(ResponseEntity::ok);
+    }
+
+    /**
+     * Runtime serving gate: should this (app, client) be served as a suspend app?
+     * Platform/SYSTEM-owned apps are never suspended; otherwise true iff the
+     * serving client's resolved wallet is SUSPENDED, with the suspend app from the
+     * owner's config (falling back to the SYSTEM default).
+     */
+    @GetMapping("/internal/billing/serving-status")
+    public Mono<ResponseEntity<ServingStatus>> servingStatus(@RequestParam String appCode,
+            @RequestParam String clientCode) {
+        return Mono.zip(this.appService.getAppByCode(appCode), this.clientService.getSystemClientId())
+                .flatMap(t -> {
+                    App app = t.getT1();
+                    if (app.getClientId().equals(t.getT2()))
+                        return Mono.just(new ServingStatus());
+                    return this.clientService.getClientId(clientCode)
+                            .flatMap(urlClientId -> this.service.resolveStatus(urlClientId, app.getId()))
+                            .flatMap(status -> status != SecurityWalletStatus.SUSPENDED
+                                    ? Mono.just(new ServingStatus())
+                                    : suspendAppFor(app.getId(), app.getClientId()));
+                })
+                .map(ResponseEntity::ok);
+    }
+
+    /** The suspend app to serve for an owner, from its config, else the SYSTEM default. */
+    private Mono<ServingStatus> suspendAppFor(ULong appId, ULong ownerClientId) {
+        return this.appBillingConfigDAO.findByAppIdAndClientId(appId, ownerClientId)
+                .map(cfg -> new ServingStatus().setSuspended(true)
+                        .setSuspendAppCode(cfg.getSuspendAppCode() != null ? cfg.getSuspendAppCode() : "suspended")
+                        .setSuspendClientCode(cfg.getSuspendClientCode() != null ? cfg.getSuspendClientCode()
+                                : "SYSTEM"))
+                .defaultIfEmpty(new ServingStatus().setSuspended(true)
+                        .setSuspendAppCode("suspended").setSuspendClientCode("SYSTEM"));
     }
 
     /**
