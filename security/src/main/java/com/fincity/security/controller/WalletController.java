@@ -187,6 +187,28 @@ public class WalletController
     }
 
     /**
+     * Charge an AI turn's token usage at turn end. The agent gates at turn start
+     * (creation-allowed — ai.llm is a gated action) and bills the actual tokens
+     * here: allow-negative (one overshoot), idempotent per (session, turn), priced
+     * by the ai.llm cost on the (app, urlClient) config. A missing urlClientCode
+     * resolves to not-enforced (no charge).
+     */
+    @PostMapping("/internal/billing/charge-ai-turn")
+    public Mono<ResponseEntity<WalletChargeResult>> chargeAiTurn(@RequestParam String clientCode,
+            @RequestParam String appCode, @RequestParam(required = false) String urlClientCode,
+            @RequestParam BigDecimal tokens, @RequestParam String sessionId, @RequestParam int turnNumber) {
+
+        String idem = "ai:" + sessionId + ":" + turnNumber;
+        Mono<Optional<ULong>> urlM = (urlClientCode == null || urlClientCode.isBlank())
+                ? Mono.just(Optional.empty())
+                : this.clientService.getClientId(urlClientCode).map(Optional::of).defaultIfEmpty(Optional.empty());
+        return Mono.zip(this.appService.getAppByCode(appCode), this.clientService.getClientId(clientCode), urlM)
+                .flatMap(t -> this.service.consolidatedDebit(t.getT2(), t.getT3().orElse(null),
+                        t.getT1().getId(), "ai.llm", tokens, idem))
+                .map(this::toWireResponse);
+    }
+
+    /**
      * Runtime serving gate: should this (app, client) be served as a suspend app?
      * Platform/SYSTEM-owned apps are never suspended; otherwise true iff the
      * serving client's resolved wallet is SUSPENDED, with the suspend app from the
