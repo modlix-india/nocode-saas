@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.wallet.Wallet;
+import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.jooq.tables.records.SecurityWalletRecord;
 
 import reactor.core.publisher.Mono;
@@ -26,10 +27,51 @@ public class WalletDAO extends AbstractUpdatableDAO<SecurityWalletRecord, ULong,
         super(Wallet.class, SECURITY_WALLET, SECURITY_WALLET.ID);
     }
 
-    public Mono<Wallet> findByClientId(ULong clientId) {
+    /** The client's parent (client-level) wallet: CLIENT_ID set, APP_ID null. */
+    public Mono<Wallet> findParent(ULong clientId) {
         return Mono.from(this.dslContext.selectFrom(SECURITY_WALLET)
-                .where(SECURITY_WALLET.CLIENT_ID.eq(clientId)))
+                .where(SECURITY_WALLET.CLIENT_ID.eq(clientId)
+                        .and(SECURITY_WALLET.APP_ID.isNull())))
                 .map(r -> r.into(Wallet.class));
+    }
+
+    /** An explicit app sub-wallet for the client, if one has been funded. */
+    public Mono<Wallet> findSubWallet(ULong clientId, ULong appId) {
+        return Mono.from(this.dslContext.selectFrom(SECURITY_WALLET)
+                .where(SECURITY_WALLET.CLIENT_ID.eq(clientId)
+                        .and(SECURITY_WALLET.APP_ID.eq(appId))))
+                .map(r -> r.into(Wallet.class));
+    }
+
+    /**
+     * Resolve the wallet that governs a charge on (clientId, appId): the app
+     * sub-wallet if it exists (hard ring-fence), otherwise the client's parent
+     * wallet. Read-only; provisioning is the service's job.
+     */
+    public Mono<Wallet> resolveWallet(ULong clientId, ULong appId) {
+        if (appId == null)
+            return this.findParent(clientId);
+        return this.findSubWallet(clientId, appId)
+                .switchIfEmpty(Mono.defer(() -> this.findParent(clientId)));
+    }
+
+    /**
+     * Debit unconditionally, allowing the balance to go arbitrarily negative.
+     * The prepaid model permits one overshoot: a wallet with 1 token charged
+     * 1000 lands at -999. Suspension (the gate) is decided separately from the
+     * GRACE_FLOOR check, not by guarding this debit. Always affects 1 row.
+     */
+    public Mono<Integer> atomicDebitUnconditional(ULong walletId, BigDecimal credits) {
+        return Mono.from(this.dslContext.update(SECURITY_WALLET)
+                .set(SECURITY_WALLET.BALANCE, SECURITY_WALLET.BALANCE.minus(credits))
+                .where(SECURITY_WALLET.ID.eq(walletId)));
+    }
+
+    /** Flip wallet status (ACTIVE on top-up, SUSPENDED when balance crosses the floor). */
+    public Mono<Integer> setStatus(ULong walletId, SecurityWalletStatus status) {
+        return Mono.from(this.dslContext.update(SECURITY_WALLET)
+                .set(SECURITY_WALLET.STATUS, status)
+                .where(SECURITY_WALLET.ID.eq(walletId)));
     }
 
     /** Debit only if the available balance covers it. Returns rows affected (0 or 1). */

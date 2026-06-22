@@ -4,6 +4,7 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.*;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -112,7 +113,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 (ca, ent, cent) -> this.accessCheck(ca, CREATE, ent.getAppCode(), ent.getClientCode(), true),
 
-                (ca, ent, cent, hasSecurity) -> BooleanUtil.safeValueOf(hasSecurity) ? Mono.just(cent) : Mono.empty())
+                (ca, ent, cent, hasSecurity) -> !BooleanUtil.safeValueOf(hasSecurity) ? Mono.empty()
+                        : this.creationGate(ca, ent.getClientCode()).thenReturn(cent))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).create (accessCheck)"))
                 .switchIfEmpty(messageResourceService.throwMessage(
@@ -148,6 +150,24 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
                         this.getObjectName()));
+    }
+
+    /**
+     * Creation gate: block new creation when the app OWNER's wallet is suspended.
+     * Keys on the owner ({@code ownerClientCode}), not the acting/delegate user,
+     * and on the builder app in the request URL ({@code ca.getUrlAppCode()}).
+     * Fail-open: any error or timeout allows the create, so a billing or security
+     * hiccup never blocks authoring. Returns true when allowed; errors 402 when
+     * the owner is suspended for an enforced app.
+     */
+    private Mono<Boolean> creationGate(ContextAuthentication ca, String ownerClientCode) {
+        return this.securityService
+                .isCreationAllowed(ownerClientCode, ca.getUrlAppCode(), ca.getUrlClientCode())
+                .timeout(Duration.ofSeconds(3))
+                .onErrorReturn(Boolean.TRUE)
+                .flatMap(allowed -> Boolean.TRUE.equals(allowed) ? Mono.just(Boolean.TRUE)
+                        : Mono.error(new GenericException(HttpStatus.PAYMENT_REQUIRED,
+                                "Account suspended: top up tokens to create " + this.getObjectName())));
     }
 
     protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appCode, String clientCode, // NOSONAR

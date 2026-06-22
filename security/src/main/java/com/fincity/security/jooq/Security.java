@@ -4,7 +4,6 @@
 package com.fincity.security.jooq;
 
 
-import com.fincity.security.jooq.tables.SecurityActionCatalog;
 import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
@@ -86,11 +85,6 @@ public class Security extends SchemaImpl {
      * The reference instance of <code>security</code>
      */
     public static final Security SECURITY = new Security();
-
-    /**
-     * The table <code>security.security_action_catalog</code>.
-     */
-    public final SecurityActionCatalog SECURITY_ACTION_CATALOG = SecurityActionCatalog.SECURITY_ACTION_CATALOG;
 
     /**
      * The table <code>security.security_address</code>.
@@ -403,7 +397,6 @@ public class Security extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            SecurityActionCatalog.SECURITY_ACTION_CATALOG,
             SecurityAddress.SECURITY_ADDRESS,
             SecurityApp.SECURITY_APP,
             SecurityAppAccess.SECURITY_APP_ACCESS,

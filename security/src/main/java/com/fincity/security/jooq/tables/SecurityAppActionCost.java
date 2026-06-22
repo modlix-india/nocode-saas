@@ -6,10 +6,9 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityAppActionCostActionClassOverride;
+import com.fincity.security.jooq.enums.SecurityAppActionCostActionClass;
 import com.fincity.security.jooq.enums.SecurityAppActionCostStatus;
-import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
-import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
+import com.fincity.security.jooq.tables.SecurityAppBillingConfig.SecurityAppBillingConfigPath;
 import com.fincity.security.jooq.tables.records.SecurityAppActionCostRecord;
 
 import java.math.BigDecimal;
@@ -69,42 +68,35 @@ public class SecurityAppActionCost extends TableImpl<SecurityAppActionCostRecord
     public final TableField<SecurityAppActionCostRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
-     * The column <code>security.security_app_action_cost.APP_ID</code>. App the
-     * cost applies to
+     * The column
+     * <code>security.security_app_action_cost.BILLING_CONFIG_ID</code>. Billing
+     * config (app, client) that owns this rate
      */
-    public final TableField<SecurityAppActionCostRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App the cost applies to");
-
-    /**
-     * The column <code>security.security_app_action_cost.CLIENT_ID</code>.
-     * Exposing client that owns this rate; cost resolves per (app, client,
-     * action)
-     */
-    public final TableField<SecurityAppActionCostRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Exposing client that owns this rate; cost resolves per (app, client, action)");
+    public final TableField<SecurityAppActionCostRecord, ULong> BILLING_CONFIG_ID = createField(DSL.name("BILLING_CONFIG_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Billing config (app, client) that owns this rate");
 
     /**
      * The column <code>security.security_app_action_cost.ACTION_KEY</code>.
-     * Action key (soft ref to action catalog)
+     * Action key, e.g. core.email.send, security.app.rent
      */
-    public final TableField<SecurityAppActionCostRecord, String> ACTION_KEY = createField(DSL.name("ACTION_KEY"), SQLDataType.VARCHAR(128).nullable(false), this, "Action key (soft ref to action catalog)");
+    public final TableField<SecurityAppActionCostRecord, String> ACTION_KEY = createField(DSL.name("ACTION_KEY"), SQLDataType.VARCHAR(128).nullable(false), this, "Action key, e.g. core.email.send, security.app.rent");
 
     /**
      * The column <code>security.security_app_action_cost.CREDIT_COST</code>.
-     * Credits per unit for this app
+     * Credits charged per unit
      */
-    public final TableField<SecurityAppActionCostRecord, BigDecimal> CREDIT_COST = createField(DSL.name("CREDIT_COST"), SQLDataType.DECIMAL(19, 4).nullable(false).defaultValue(DSL.inline("0.0000", SQLDataType.DECIMAL)), this, "Credits per unit for this app");
+    public final TableField<SecurityAppActionCostRecord, BigDecimal> CREDIT_COST = createField(DSL.name("CREDIT_COST"), SQLDataType.DECIMAL(19, 4).nullable(false).defaultValue(DSL.inline("0.0000", SQLDataType.DECIMAL)), this, "Credits charged per unit");
 
     /**
-     * The column
-     * <code>security.security_app_action_cost.ACTION_CLASS_OVERRIDE</code>.
-     * Overrides the catalog class for this app
+     * The column <code>security.security_app_action_cost.ACTION_CLASS</code>.
+     * Zero-balance behaviour class
      */
-    public final TableField<SecurityAppActionCostRecord, SecurityAppActionCostActionClassOverride> ACTION_CLASS_OVERRIDE = createField(DSL.name("ACTION_CLASS_OVERRIDE"), SQLDataType.VARCHAR(10).asEnumDataType(SecurityAppActionCostActionClassOverride.class), this, "Overrides the catalog class for this app");
+    public final TableField<SecurityAppActionCostRecord, SecurityAppActionCostActionClass> ACTION_CLASS = createField(DSL.name("ACTION_CLASS"), SQLDataType.VARCHAR(10).nullable(false).defaultValue(DSL.inline("METERED", SQLDataType.VARCHAR)).asEnumDataType(SecurityAppActionCostActionClass.class), this, "Zero-balance behaviour class");
 
     /**
      * The column <code>security.security_app_action_cost.FREE_QUOTA</code>.
      * Free units per period before charging
      */
-    public final TableField<SecurityAppActionCostRecord, BigDecimal> FREE_QUOTA = createField(DSL.name("FREE_QUOTA"), SQLDataType.DECIMAL(19, 4), this, "Free units per period before charging");
+    public final TableField<SecurityAppActionCostRecord, BigDecimal> FREE_QUOTA = createField(DSL.name("FREE_QUOTA"), SQLDataType.DECIMAL(19, 4).nullable(false).defaultValue(DSL.inline("0.0000", SQLDataType.DECIMAL)), this, "Free units per period before charging");
 
     /**
      * The column <code>security.security_app_action_cost.STATUS</code>. Status
@@ -216,38 +208,25 @@ public class SecurityAppActionCost extends TableImpl<SecurityAppActionCostRecord
 
     @Override
     public List<UniqueKey<SecurityAppActionCostRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_APP_ACTION_COST_UK1_APP_ACTION_COST_APP_CLIENT_ACTION);
+        return Arrays.asList(Keys.KEY_SECURITY_APP_ACTION_COST_UK1_APP_ACTION_COST_CONFIG_ACTION);
     }
 
     @Override
     public List<ForeignKey<SecurityAppActionCostRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_APP_ACTION_COST_APP_ID, Keys.FK2_APP_ACTION_COST_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_APP_ACTION_COST_CONFIG_ID);
     }
 
-    private transient SecurityAppPath _securityApp;
+    private transient SecurityAppBillingConfigPath _securityAppBillingConfig;
 
     /**
-     * Get the implicit join path to the <code>security.security_app</code>
-     * table.
+     * Get the implicit join path to the
+     * <code>security.security_app_billing_config</code> table.
      */
-    public SecurityAppPath securityApp() {
-        if (_securityApp == null)
-            _securityApp = new SecurityAppPath(this, Keys.FK1_APP_ACTION_COST_APP_ID, null);
+    public SecurityAppBillingConfigPath securityAppBillingConfig() {
+        if (_securityAppBillingConfig == null)
+            _securityAppBillingConfig = new SecurityAppBillingConfigPath(this, Keys.FK1_APP_ACTION_COST_CONFIG_ID, null);
 
-        return _securityApp;
-    }
-
-    private transient SecurityClientPath _securityClient;
-
-    /**
-     * Get the implicit join path to the <code>security.security_client</code>
-     * table.
-     */
-    public SecurityClientPath securityClient() {
-        if (_securityClient == null)
-            _securityClient = new SecurityClientPath(this, Keys.FK2_APP_ACTION_COST_CLIENT_ID, null);
-
-        return _securityClient;
+        return _securityAppBillingConfig;
     }
 
     @Override

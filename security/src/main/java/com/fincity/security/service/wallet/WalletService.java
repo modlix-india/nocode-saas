@@ -70,9 +70,18 @@ public class WalletService
         return entity == null || entity.getClientId() == null ? null : "client " + entity.getClientId();
     }
 
-    /** Find the client's wallet, provisioning an empty one on first use. */
+    /** The client's parent wallet, provisioning an empty one on first use. */
     public Mono<Wallet> getOrCreateWallet(ULong clientId) {
-        return this.dao.findByClientId(clientId)
+        return this.getOrCreateWallet(clientId, null);
+    }
+
+    /**
+     * Resolve the wallet that governs (clientId, appId): the app sub-wallet if
+     * funded, else the parent. Only the parent is auto-provisioned; sub-wallets
+     * are created deliberately when an app's tokens are ring-fenced.
+     */
+    public Mono<Wallet> getOrCreateWallet(ULong clientId, ULong appId) {
+        return this.dao.resolveWallet(clientId, appId)
                 .switchIfEmpty(Mono.defer(() -> this.dao.create(new Wallet()
                         .setClientId(clientId)
                         .setBalance(BigDecimal.ZERO)
@@ -111,10 +120,10 @@ public class WalletService
 
     private Mono<ChargeResult> chargeWithConfig(ChargeRequest req, AppBillingConfig config) {
         boolean shadow = req.isShadow() || !config.isEnforced();
-        return this.getOrCreateWallet(req.getClientId())
+        return this.getOrCreateWallet(req.getClientId(), req.getAppId())
                 .flatMap(wallet -> replayOr(wallet.getId(), req.getIdempotencyKey(),
                         () -> pricingService
-                                .resolveCost(req.getUrlClientId(), req.getAppId(), req.getActionKey(), req.getQuantity())
+                                .resolveCost(config.getId(), req.getActionKey(), req.getQuantity())
                                 .flatMap(rc -> applyCharge(wallet, req, rc, shadow))));
     }
 
@@ -167,7 +176,7 @@ public class WalletService
         if (req.isShadow() || !config.isEnforced())
             return Mono.just(ReservationResult.reserved(null, BigDecimal.ZERO, null));
 
-        return this.getOrCreateWallet(req.getClientId())
+        return this.getOrCreateWallet(req.getClientId(), req.getAppId())
                 .flatMap(wallet -> pricingService
                         .resolveCost(req.getUrlClientId(), req.getAppId(), req.getActionKey(), req.getQuantity())
                         .flatMap(rc -> {
@@ -259,6 +268,78 @@ public class WalletService
                     });
                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.burnSeatFee"));
+    }
+
+    /**
+     * Read-only creation gate. May the app owner create right now? No config for
+     * (app, urlClient) or a config not yet enforced means yes; otherwise the
+     * owner's resolved wallet (sub -> parent) must not be SUSPENDED. A client
+     * with no wallet yet is allowed (nothing has been billed). Keys on the OWNER,
+     * never the acting/delegate user.
+     */
+    public Mono<Boolean> isCreationAllowed(ULong ownerClientId, ULong appId, ULong urlClientId) {
+        return this.appBillingConfigDAO.findByAppIdAndClientId(appId, urlClientId)
+                .flatMap(cfg -> !cfg.isEnforced()
+                        ? Mono.just(Boolean.TRUE)
+                        : this.dao.resolveWallet(ownerClientId, appId)
+                                .map(w -> w.getStatus() != SecurityWalletStatus.SUSPENDED)
+                                .defaultIfEmpty(Boolean.TRUE))
+                .switchIfEmpty(Mono.just(Boolean.TRUE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.isCreationAllowed"));
+    }
+
+    /**
+     * Apply one aggregated debit from the 15-minute consolidation pass for a
+     * group (clientId, appId, actionKey) over a closed window. Resolves the
+     * wallet (sub -> parent), prices the summed quantity, debits
+     * unconditionally (allow-negative; the prepaid model permits one
+     * overshoot), records the ledger row idempotently per window, and flips the
+     * wallet to SUSPENDED once the balance crosses the grace floor. No config
+     * for (app, urlClient) means no enforcement; config present but not enforced
+     * records a shadow row without moving the balance.
+     */
+    public Mono<ChargeResult> consolidatedDebit(ULong clientId, ULong urlClientId, ULong appId,
+            String actionKey, BigDecimal quantity, String idempotencyKey) {
+        return this.appBillingConfigDAO.findByAppIdAndClientId(appId, urlClientId)
+                .flatMap(config -> this.getOrCreateWallet(clientId, appId)
+                        .flatMap(wallet -> replayOr(wallet.getId(), idempotencyKey,
+                                () -> pricingService.resolveCost(config.getId(), actionKey, quantity)
+                                        .flatMap(rc -> applyConsolidatedDebit(wallet, appId, actionKey, quantity,
+                                                rc, idempotencyKey, !config.isEnforced())))))
+                .switchIfEmpty(Mono.just(ChargeResult.notEnforced()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.consolidatedDebit"));
+    }
+
+    private Mono<ChargeResult> applyConsolidatedDebit(Wallet wallet, ULong appId, String actionKey,
+            BigDecimal quantity, ResolvedCost rc, String idempotencyKey, boolean shadow) {
+
+        ULong walletId = wallet.getId();
+        BigDecimal credits = rc.credits();
+
+        if (shadow)
+            return ledger(walletId, SecurityWalletTransactionTransactionType.DEBIT, credits, wallet,
+                    actionKey, appId, quantity, SecurityWalletTransactionReferenceType.ACTION, null,
+                    idempotencyKey, true)
+                    .map(t -> ChargeResult.shadow(credits, wallet.getBalance(), t.getId()));
+
+        if (credits.signum() == 0)
+            return Mono.just(ChargeResult.charged(BigDecimal.ZERO, wallet.getBalance(), null));
+
+        return this.dao.atomicDebitUnconditional(walletId, credits)
+                .then(this.dao.readById(walletId))
+                .flatMap(after -> ledger(walletId, SecurityWalletTransactionTransactionType.DEBIT, credits, after,
+                        actionKey, appId, quantity, SecurityWalletTransactionReferenceType.ACTION, null,
+                        idempotencyKey, false)
+                        .flatMap(t -> maybeSuspend(after)
+                                .thenReturn(ChargeResult.charged(credits, after.getBalance(), t.getId()))));
+    }
+
+    /** Flip an ACTIVE wallet to SUSPENDED once its balance has crossed the grace floor. */
+    private Mono<Void> maybeSuspend(Wallet after) {
+        if (after.getStatus() == SecurityWalletStatus.ACTIVE
+                && after.getBalance().compareTo(after.getGraceFloor()) < 0)
+            return this.dao.setStatus(after.getId(), SecurityWalletStatus.SUSPENDED).then();
+        return Mono.empty();
     }
 
     /** Admin manual correction (increase or decrease). */

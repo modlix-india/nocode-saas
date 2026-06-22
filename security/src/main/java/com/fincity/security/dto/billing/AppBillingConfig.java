@@ -35,5 +35,7 @@ public class AppBillingConfig extends AbstractUpdatableDTO<ULong, ULong> {
     private BigDecimal seatTokensPerMonth;
     private BigDecimal monthlyFreeTokens;
     private boolean enforced;
+    private String suspendAppCode;
+    private String suspendClientCode;
     private SecurityAppBillingConfigStatus status;
 }

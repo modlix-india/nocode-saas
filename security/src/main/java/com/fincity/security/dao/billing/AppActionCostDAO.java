@@ -18,11 +18,10 @@ public class AppActionCostDAO extends AbstractUpdatableDAO<SecurityAppActionCost
         super(AppActionCost.class, SECURITY_APP_ACTION_COST, SECURITY_APP_ACTION_COST.ID);
     }
 
-    /** Per-(app, exposing-client) override of an action's credit cost. */
-    public Mono<AppActionCost> findByAppClientAndActionKey(ULong appId, ULong clientId, String actionKey) {
+    /** An action's credit cost under a billing config (one config per app+client). */
+    public Mono<AppActionCost> findByConfigAndActionKey(ULong billingConfigId, String actionKey) {
         return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACTION_COST)
-                .where(SECURITY_APP_ACTION_COST.APP_ID.eq(appId)
-                        .and(SECURITY_APP_ACTION_COST.CLIENT_ID.eq(clientId))
+                .where(SECURITY_APP_ACTION_COST.BILLING_CONFIG_ID.eq(billingConfigId)
                         .and(SECURITY_APP_ACTION_COST.ACTION_KEY.eq(actionKey))))
                 .map(r -> r.into(AppActionCost.class));
     }

@@ -10,10 +10,10 @@ import org.jooq.Schema;
 
 
 /**
- * Default class; drives zero-balance behavior
+ * Zero-balance behaviour class
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityActionCatalogDefaultActionClass implements EnumType {
+public enum SecurityAppActionCostActionClass implements EnumType {
 
     ENGAGEMENT("ENGAGEMENT"),
 
@@ -21,7 +21,7 @@ public enum SecurityActionCatalogDefaultActionClass implements EnumType {
 
     private final String literal;
 
-    private SecurityActionCatalogDefaultActionClass(String literal) {
+    private SecurityAppActionCostActionClass(String literal) {
         this.literal = literal;
     }
 
@@ -50,7 +50,7 @@ public enum SecurityActionCatalogDefaultActionClass implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityActionCatalogDefaultActionClass lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityActionCatalogDefaultActionClass.class, literal);
+    public static SecurityAppActionCostActionClass lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityAppActionCostActionClass.class, literal);
     }
 }

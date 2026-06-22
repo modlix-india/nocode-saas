@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.security.jooq.enums.SecurityAppActionCostActionClassOverride;
+import com.fincity.security.jooq.enums.SecurityAppActionCostActionClass;
 import com.fincity.security.jooq.enums.SecurityAppActionCostStatus;
 
 import lombok.Data;
@@ -15,8 +15,9 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 
 /**
- * Per-app override of an action's credit cost and class. Falls back to the
- * {@link ActionCatalog} default when absent.
+ * Per-action credit cost owned by a billing config (one config per app+client).
+ * There is no global catalog: valid action keys are code constants, and an
+ * action with no row under a config is free for that app+client.
  */
 @Data
 @Accessors(chain = true)
@@ -27,11 +28,10 @@ public class AppActionCost extends AbstractUpdatableDTO<ULong, ULong> {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private ULong appId;
-    private ULong clientId;
+    private ULong billingConfigId;
     private String actionKey;
     private BigDecimal creditCost;
-    private SecurityAppActionCostActionClassOverride actionClassOverride;
+    private SecurityAppActionCostActionClass actionClass;
     private BigDecimal freeQuota;
     private SecurityAppActionCostStatus status;
 }

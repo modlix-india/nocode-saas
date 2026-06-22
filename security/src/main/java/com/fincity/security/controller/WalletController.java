@@ -37,6 +37,7 @@ import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.billing.InvoiceService;
 import com.fincity.security.service.plansnbilling.PaymentService;
+import com.fincity.security.service.wallet.UsageConsolidationService;
 import com.fincity.security.service.wallet.WalletService;
 
 import reactor.core.publisher.Mono;
@@ -51,15 +52,18 @@ public class WalletController
     private final AppBillingConfigDAO appBillingConfigDAO;
     private final AppService appService;
     private final ClientService clientService;
+    private final UsageConsolidationService consolidationService;
 
     public WalletController(WalletService service, InvoiceService invoiceService, PaymentService paymentService,
-            AppBillingConfigDAO appBillingConfigDAO, AppService appService, ClientService clientService) {
+            AppBillingConfigDAO appBillingConfigDAO, AppService appService, ClientService clientService,
+            UsageConsolidationService consolidationService) {
         this.service = service;
         this.invoiceService = invoiceService;
         this.paymentService = paymentService;
         this.appBillingConfigDAO = appBillingConfigDAO;
         this.appService = appService;
         this.clientService = clientService;
+        this.consolidationService = consolidationService;
     }
 
     @GetMapping("/balance")
@@ -165,6 +169,30 @@ public class WalletController
     @GetMapping("/internal/balance")
     public Mono<ResponseEntity<Wallet>> internalBalance(@RequestParam ULong clientId) {
         return this.service.getBalance(clientId).map(ResponseEntity::ok);
+    }
+
+    /** Triggered by the worker on a 15-minute schedule; returns rows consolidated. */
+    @PostMapping("/internal/consolidate-usage")
+    public Mono<ResponseEntity<Integer>> consolidateUsage() {
+        return this.consolidationService.consolidate().map(ResponseEntity::ok);
+    }
+
+    /**
+     * Creation gate (read-only): may the app OWNER create right now? Resolves
+     * codes -> ids and checks the owner's wallet is not suspended for an enforced
+     * app. A missing urlClientCode leaves the config not-enforced (allowed).
+     */
+    @GetMapping("/internal/creation-allowed")
+    public Mono<ResponseEntity<Boolean>> creationAllowed(@RequestParam String ownerClientCode,
+            @RequestParam String appCode, @RequestParam(required = false) String urlClientCode) {
+        Mono<ULong> appIdM = this.appService.getAppByCode(appCode).map(App::getId);
+        Mono<ULong> ownerM = this.clientService.getClientId(ownerClientCode);
+        Mono<Optional<ULong>> urlM = (urlClientCode == null || urlClientCode.isBlank())
+                ? Mono.just(Optional.empty())
+                : this.clientService.getClientId(urlClientCode).map(Optional::of).defaultIfEmpty(Optional.empty());
+        return Mono.zip(appIdM, ownerM, urlM)
+                .flatMap(t -> this.service.isCreationAllowed(t.getT2(), t.getT1(), t.getT3().orElse(null)))
+                .map(ResponseEntity::ok);
     }
 
     private ResponseEntity<ChargeResult> toChargeResponse(ChargeResult r) {

@@ -11,7 +11,6 @@ import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
-import com.fincity.security.jooq.tables.SecurityAppActionCost.SecurityAppActionCostPath;
 import com.fincity.security.jooq.tables.SecurityAppBillingConfig.SecurityAppBillingConfigPath;
 import com.fincity.security.jooq.tables.SecurityAppDependency.SecurityAppDependencyPath;
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
@@ -274,19 +273,6 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityAppAccess = new SecurityAppAccessPath(this, null, Keys.FK1_APP_ACCESS_APP_ID.getInverseKey());
 
         return _securityAppAccess;
-    }
-
-    private transient SecurityAppActionCostPath _securityAppActionCost;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_action_cost</code> table
-     */
-    public SecurityAppActionCostPath securityAppActionCost() {
-        if (_securityAppActionCost == null)
-            _securityAppActionCost = new SecurityAppActionCostPath(this, null, Keys.FK1_APP_ACTION_COST_APP_ID.getInverseKey());
-
-        return _securityAppActionCost;
     }
 
     private transient SecurityAppBillingConfigPath _securityAppBillingConfig;

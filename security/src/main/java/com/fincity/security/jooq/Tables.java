@@ -4,7 +4,6 @@
 package com.fincity.security.jooq;
 
 
-import com.fincity.security.jooq.tables.SecurityActionCatalog;
 import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
@@ -71,11 +70,6 @@ import com.fincity.security.jooq.tables.SecurityWalletTransaction;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
-
-    /**
-     * The table <code>security.security_action_catalog</code>.
-     */
-    public static final SecurityActionCatalog SECURITY_ACTION_CATALOG = SecurityActionCatalog.SECURITY_ACTION_CATALOG;
 
     /**
      * The table <code>security.security_address</code>.

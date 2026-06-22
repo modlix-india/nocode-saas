@@ -128,6 +128,16 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 () -> this.feignAuthService.hasWriteAccess(appCode, clientCode), appCode, ":", clientCode);
     }
 
+    /**
+     * Creation gate: may the app owner create right now? Not cached -- suspension
+     * status flips on the 15-minute consolidation pass and must be seen promptly;
+     * creates are low-frequency so a direct call per create is fine.
+     */
+    public Mono<Boolean> isCreationAllowed(String ownerClientCode, String appCode, String urlClientCode) {
+        return this.feignAuthService.creationAllowed(ownerClientCode, appCode,
+                urlClientCode == null ? "" : urlClientCode);
+    }
+
     public Mono<Boolean> isValidClientCode(String clientCode) {
 
         return this.feignAuthService.validClientCode(clientCode);

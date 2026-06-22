@@ -15,8 +15,10 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 
 /**
- * Prepaid token wallet. One per client; a single shared balance with optional
- * per-app soft budget caps ({@link WalletBudget}).
+ * Prepaid token wallet, scoped per (clientId, appId): APP_ID null is the
+ * client's parent (client-level) wallet; APP_ID set is a ring-fenced app
+ * sub-wallet. A charge on (clientId, appId) resolves to the sub-wallet if it
+ * exists, else the parent.
  */
 @Data
 @Accessors(chain = true)
@@ -28,6 +30,7 @@ public class Wallet extends AbstractUpdatableDTO<ULong, ULong> {
     private static final long serialVersionUID = 1L;
 
     private ULong clientId;
+    private ULong appId;
     private BigDecimal balance;
     private BigDecimal reservedBalance;
     private String currency;

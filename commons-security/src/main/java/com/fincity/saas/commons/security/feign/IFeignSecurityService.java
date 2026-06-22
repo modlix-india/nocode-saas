@@ -81,6 +81,10 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
     Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
+    @GetMapping("${security.feign.creationAllowed:/api/security/wallets/internal/creation-allowed}")
+    Mono<Boolean> creationAllowed(@RequestParam String ownerClientCode, @RequestParam String appCode,
+            @RequestParam String urlClientCode);
+
     @GetMapping("${security.feign.validClientCode:/api/security/clients/internal/validateClientCode}")
     Mono<Boolean> validClientCode(@RequestParam String clientCode);
 

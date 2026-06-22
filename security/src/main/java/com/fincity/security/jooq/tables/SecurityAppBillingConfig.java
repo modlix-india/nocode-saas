@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigDefaultPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigStatus;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
+import com.fincity.security.jooq.tables.SecurityAppActionCost.SecurityAppActionCostPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityAppBillingConfigRecord;
 
@@ -261,6 +262,19 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
             _securityClient = new SecurityClientPath(this, Keys.FK2_APP_BILLING_CONFIG_CLIENT_ID, null);
 
         return _securityClient;
+    }
+
+    private transient SecurityAppActionCostPath _securityAppActionCost;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_action_cost</code> table
+     */
+    public SecurityAppActionCostPath securityAppActionCost() {
+        if (_securityAppActionCost == null)
+            _securityAppActionCost = new SecurityAppActionCostPath(this, null, Keys.FK1_APP_ACTION_COST_CONFIG_ID.getInverseKey());
+
+        return _securityAppActionCost;
     }
 
     @Override

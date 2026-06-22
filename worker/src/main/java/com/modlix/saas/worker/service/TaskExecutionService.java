@@ -6,6 +6,7 @@ import com.modlix.saas.worker.service.execution.ConversionsDispatchExecutionServ
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
+import com.modlix.saas.worker.service.execution.UsageConsolidationExecutionService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ public class TaskExecutionService {
     private final PartnerDenormExecutionService partnerDenormExecutionService;
     private final CampaignSyncExecutionService campaignSyncExecutionService;
     private final ConversionsDispatchExecutionService conversionsDispatchExecutionService;
+    private final UsageConsolidationExecutionService usageConsolidationExecutionService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -30,13 +32,15 @@ public class TaskExecutionService {
             TokenCleanupService tokenCleanupService,
             PartnerDenormExecutionService partnerDenormExecutionService,
             CampaignSyncExecutionService campaignSyncExecutionService,
-            ConversionsDispatchExecutionService conversionsDispatchExecutionService) {
+            ConversionsDispatchExecutionService conversionsDispatchExecutionService,
+            UsageConsolidationExecutionService usageConsolidationExecutionService) {
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
         this.partnerDenormExecutionService = partnerDenormExecutionService;
         this.campaignSyncExecutionService = campaignSyncExecutionService;
         this.conversionsDispatchExecutionService = conversionsDispatchExecutionService;
+        this.usageConsolidationExecutionService = usageConsolidationExecutionService;
     }
 
     public boolean executeTask(String taskId, String taskData) {
@@ -80,6 +84,7 @@ public class TaskExecutionService {
             case PARTNER_DENORM_DELTA, PARTNER_DENORM_FULL -> partnerDenormExecutionService.execute(task);
             case CAMPAIGN_METRICS_SYNC, CAMPAIGN_DISCOVERY_SYNC -> campaignSyncExecutionService.execute(task);
             case CONVERSIONS_API_DISPATCH -> conversionsDispatchExecutionService.execute(task);
+            case USAGE_CONSOLIDATION -> usageConsolidationExecutionService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);
