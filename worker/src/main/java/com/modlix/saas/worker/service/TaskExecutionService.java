@@ -6,6 +6,7 @@ import com.modlix.saas.worker.service.execution.ConversionsDispatchExecutionServ
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
+import com.modlix.saas.worker.service.execution.StorageRentExecutionService;
 import com.modlix.saas.worker.service.execution.UsageConsolidationExecutionService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ public class TaskExecutionService {
     private final CampaignSyncExecutionService campaignSyncExecutionService;
     private final ConversionsDispatchExecutionService conversionsDispatchExecutionService;
     private final UsageConsolidationExecutionService usageConsolidationExecutionService;
+    private final StorageRentExecutionService storageRentExecutionService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -33,7 +35,8 @@ public class TaskExecutionService {
             PartnerDenormExecutionService partnerDenormExecutionService,
             CampaignSyncExecutionService campaignSyncExecutionService,
             ConversionsDispatchExecutionService conversionsDispatchExecutionService,
-            UsageConsolidationExecutionService usageConsolidationExecutionService) {
+            UsageConsolidationExecutionService usageConsolidationExecutionService,
+            StorageRentExecutionService storageRentExecutionService) {
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
@@ -41,6 +44,7 @@ public class TaskExecutionService {
         this.campaignSyncExecutionService = campaignSyncExecutionService;
         this.conversionsDispatchExecutionService = conversionsDispatchExecutionService;
         this.usageConsolidationExecutionService = usageConsolidationExecutionService;
+        this.storageRentExecutionService = storageRentExecutionService;
     }
 
     public boolean executeTask(String taskId, String taskData) {
@@ -85,6 +89,7 @@ public class TaskExecutionService {
             case CAMPAIGN_METRICS_SYNC, CAMPAIGN_DISCOVERY_SYNC -> campaignSyncExecutionService.execute(task);
             case CONVERSIONS_API_DISPATCH -> conversionsDispatchExecutionService.execute(task);
             case USAGE_CONSOLIDATION -> usageConsolidationExecutionService.execute(task);
+            case STORAGE_RENT -> storageRentExecutionService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);

@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.security.feign;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.Profile;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
+import com.fincity.saas.commons.security.model.wallet.RentTarget;
 import com.fincity.saas.commons.security.model.wallet.WalletChargeRequest;
 import com.fincity.saas.commons.security.model.wallet.WalletChargeResult;
 
@@ -38,6 +40,13 @@ public interface IFeignSecurityService {
 
     @PostMapping("${security.feign.walletChargeByCode:/api/security/wallets/internal/charge-by-code}")
     Mono<WalletChargeResult> walletChargeByCode(@RequestBody WalletChargeRequest request);
+
+    @GetMapping("${security.feign.rentTargets:/api/security/wallets/internal/billing/rent-targets}")
+    Mono<List<RentTarget>> rentTargets(@RequestParam String actionKey);
+
+    @PostMapping("${security.feign.chargeRent:/api/security/wallets/internal/billing/charge-rent}")
+    Mono<WalletChargeResult> chargeRent(@RequestParam String appCode, @RequestParam String clientCode,
+            @RequestParam String actionKey, @RequestParam BigDecimal count);
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
     Mono<ContextAuthentication> contextAuthentication(

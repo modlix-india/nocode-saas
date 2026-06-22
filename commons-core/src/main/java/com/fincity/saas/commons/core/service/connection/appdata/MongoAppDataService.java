@@ -54,6 +54,7 @@ import com.mongodb.reactivestreams.client.FindPublisher;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
+import com.mongodb.reactivestreams.client.MongoDatabase;
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
@@ -710,6 +711,25 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         }
 
         return obj;
+    }
+
+    /**
+     * Total stored rows across all of an app's collections for a client, for
+     * storage rent. Sums {@code estimatedDocumentCount} (O(1) collection
+     * metadata) over every collection in the {@code <client>_<app>} database
+     * except version-history ({@code *_version}) collections. Uses the default
+     * platform Mongo; apps on a custom data connection are not counted here.
+     */
+    public Mono<Long> countAllRows(String clientCode, String appCode) {
+        MongoClient client = this.getMongoClient(null);
+        if (client == null)
+            return Mono.just(0L);
+        MongoDatabase database = client.getDatabase(clientCode + "_" + appCode);
+        return Flux.from(database.listCollectionNames())
+                .filter(name -> !name.endsWith("_version"))
+                .flatMap(name -> Mono.from(database.getCollection(name).estimatedDocumentCount()))
+                .reduce(0L, Long::sum)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.countAllRows"));
     }
 
     private Mono<MongoCollection<Document>> getCollection(String clientCode, Connection conn, Storage storage) {

@@ -178,7 +178,7 @@ public class WalletService
 
         return this.getOrCreateWallet(req.getClientId(), req.getAppId())
                 .flatMap(wallet -> pricingService
-                        .resolveCost(req.getUrlClientId(), req.getAppId(), req.getActionKey(), req.getQuantity())
+                        .resolveCost(config.getId(), req.getActionKey(), req.getQuantity())
                         .flatMap(rc -> {
                             BigDecimal credits = rc.credits();
                             if (credits.signum() == 0)

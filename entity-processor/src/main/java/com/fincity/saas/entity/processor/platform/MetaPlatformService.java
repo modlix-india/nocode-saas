@@ -47,10 +47,14 @@ public class MetaPlatformService extends AbstractAdPlatformService {
 
     /**
      * For Meta, resolve {@code platformAccountId} (ad account id) and
-     * {@code platformDatasetId} (Pixel ID) when the row is missing them.
+     * {@code platformDatasetId} (Pixel ID) for a campaign row.
      *
      * <ul>
-     *   <li>{@code platformAccountId} comes from {@code GET /{campaignId}?fields=account_id}.</li>
+     *   <li>{@code platformAccountId} is reconciled from {@code GET /{campaignId}?fields=account_id}:
+     *       the campaign's own owning account is authoritative, so we correct a stale/mismatched
+     *       value, not just fill a blank. A campaign can be enabled from the operator's account
+     *       picker while it actually lives in a sibling ad account under the same Business (pixels
+     *       are Business-shared assets), which stamps the wrong account on the row.</li>
      *   <li>{@code platformDatasetId} comes from {@code GET /act_{accountId}/adspixels}.
      *       If exactly one available pixel is returned, use it. If multiple, pick the first
      *       available one and log a warning so the operator can override via the
@@ -68,24 +72,29 @@ public class MetaPlatformService extends AbstractAdPlatformService {
     }
 
     private Mono<Campaign> ensureAccountId(Campaign campaign, String accessToken) {
-        if (campaign.getPlatformAccountId() != null && !campaign.getPlatformAccountId().isBlank()) {
-            return Mono.just(campaign);
-        }
         if (campaign.getCampaignId() == null || campaign.getCampaignId().isBlank()) {
             return Mono.just(campaign);
         }
+        // Always reconcile against the campaign's own account_id rather than only
+        // filling a blank: a wrong (sibling-account) value stamped at enable time
+        // would otherwise never self-correct, because the old guard skipped the
+        // lookup whenever the field was already set. Metrics/CAPI self-heal paths
+        // persist the corrected value via persistResolvedIfChanged.
         return MetaEntityUtil.fetchMetaGraphData(
                         META_VERSION + campaign.getCampaignId(),
                         Map.of(P_ACCESS_TOKEN, accessToken, P_FIELDS, "account_id"))
                 .map(body -> {
                     String accountId = body.path("account_id").asText(null);
-                    if (accountId != null && !accountId.isBlank()) {
-                        log.info("Meta ensurePlatformContext: campaign {} → account_id {}",
-                                campaign.getCampaignId(), accountId);
-                        campaign.setPlatformAccountId(accountId);
-                    } else {
+                    if (accountId == null || accountId.isBlank()) {
                         log.warn("Meta ensurePlatformContext: campaign {} returned no account_id (body={})",
                                 campaign.getCampaignId(), body);
+                        return campaign;
+                    }
+                    String current = campaign.getPlatformAccountId();
+                    if (!accountId.equals(current)) {
+                        log.info("Meta ensurePlatformContext: campaign {} account_id {} -> {}",
+                                campaign.getCampaignId(), current, accountId);
+                        campaign.setPlatformAccountId(accountId);
                     }
                     return campaign;
                 })

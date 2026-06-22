@@ -1,6 +1,9 @@
 package com.fincity.security.controller;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +32,8 @@ import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityWalletTransactionReferenceType;
 import com.fincity.security.jooq.tables.records.SecurityWalletRecord;
 import com.fincity.security.dto.App;
+import com.fincity.saas.commons.security.model.wallet.RentTarget;
+import com.fincity.security.dao.billing.AppActionCostDAO;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
 import com.fincity.security.model.billing.ReservationResult;
@@ -50,17 +55,19 @@ public class WalletController
     private final InvoiceService invoiceService;
     private final PaymentService paymentService;
     private final AppBillingConfigDAO appBillingConfigDAO;
+    private final AppActionCostDAO appActionCostDAO;
     private final AppService appService;
     private final ClientService clientService;
     private final UsageConsolidationService consolidationService;
 
     public WalletController(WalletService service, InvoiceService invoiceService, PaymentService paymentService,
-            AppBillingConfigDAO appBillingConfigDAO, AppService appService, ClientService clientService,
-            UsageConsolidationService consolidationService) {
+            AppBillingConfigDAO appBillingConfigDAO, AppActionCostDAO appActionCostDAO, AppService appService,
+            ClientService clientService, UsageConsolidationService consolidationService) {
         this.service = service;
         this.invoiceService = invoiceService;
         this.paymentService = paymentService;
         this.appBillingConfigDAO = appBillingConfigDAO;
+        this.appActionCostDAO = appActionCostDAO;
         this.appService = appService;
         this.clientService = clientService;
         this.consolidationService = consolidationService;
@@ -175,6 +182,37 @@ public class WalletController
     @PostMapping("/internal/consolidate-usage")
     public Mono<ResponseEntity<Integer>> consolidateUsage() {
         return this.consolidationService.consolidate().map(ResponseEntity::ok);
+    }
+
+    /**
+     * Enforced billing configs that carry a cost for {@code actionKey} (e.g.
+     * core.storage.row), with app code + owner. Core enumerates each owner's
+     * direct managed clients and counts their usage before calling charge-rent.
+     */
+    @GetMapping("/internal/billing/rent-targets")
+    public Mono<ResponseEntity<List<RentTarget>>> rentTargets(@RequestParam String actionKey) {
+        return this.appActionCostDAO.findConfigsWithActionCost(actionKey).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Drip one hour of rent for {@code count} units of {@code actionKey} onto the
+     * consumer's wallet at the owner's configured monthly rate
+     * ({@code monthlyRate / hoursInMonth * count}). Reuses the consolidation
+     * debit (unconditional, suspend-at-floor, idempotent per (wallet, hour)).
+     */
+    @PostMapping("/internal/billing/charge-rent")
+    public Mono<ResponseEntity<WalletChargeResult>> chargeRent(@RequestParam String appCode,
+            @RequestParam String clientCode, @RequestParam String actionKey, @RequestParam BigDecimal count) {
+
+        long hourBucket = Instant.now().getEpochSecond() / 3600;
+        long hoursInMonth = (long) YearMonth.now().lengthOfMonth() * 24;
+        BigDecimal quantity = count.divide(BigDecimal.valueOf(hoursInMonth), 10, RoundingMode.HALF_UP);
+        String idem = "rent:" + actionKey + ":" + appCode + ":" + clientCode + ":" + hourBucket;
+
+        return Mono.zip(this.appService.getAppByCode(appCode), this.clientService.getClientId(clientCode))
+                .flatMap(t -> this.service.consolidatedDebit(t.getT2(), t.getT1().getClientId(),
+                        t.getT1().getId(), actionKey, quantity, idem))
+                .map(this::toWireResponse);
     }
 
     /**
