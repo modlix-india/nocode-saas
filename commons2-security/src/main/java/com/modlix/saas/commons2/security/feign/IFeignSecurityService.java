@@ -1,5 +1,6 @@
 package com.modlix.saas.commons2.security.feign;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import com.modlix.saas.commons2.security.model.EntityProcessorUser;
 import com.modlix.saas.commons2.security.model.NotificationUser;
 import com.modlix.saas.commons2.security.model.User;
 import com.modlix.saas.commons2.security.model.UsersListRequest;
+import com.modlix.saas.commons2.security.model.wallet.RentTarget;
 import com.modlix.saas.commons2.util.Tuples.Tuple2;
 
 @FeignClient(name = "security")
@@ -41,6 +43,16 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.getClientByCode:/api/security/clients/internal/getClientByCode}")
     Client getClientByCode(@RequestParam String clientCode);
+
+    @GetMapping("${security.feign.clientIdsOfManager:/api/security/clients/internal/clientIdsOfManager}")
+    List<BigInteger> getClientIdsOfManager(@RequestParam BigInteger managerId);
+
+    @GetMapping("${security.feign.rentTargets:/api/security/wallets/internal/billing/rent-targets}")
+    List<RentTarget> rentTargets(@RequestParam String actionKey);
+
+    @PostMapping("${security.feign.chargeRent:/api/security/wallets/internal/billing/charge-rent}")
+    void chargeRent(@RequestParam String appCode, @RequestParam String clientCode,
+            @RequestParam String actionKey, @RequestParam BigDecimal count);
 
     @GetMapping("${security.feign.getManagedClientOfClientById:/api/security/clients/internal/managedClient}")
     Client getManagedClientOfClientById(@RequestParam BigInteger clientId);

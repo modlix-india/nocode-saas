@@ -506,4 +506,15 @@ public class FileSystemDao {
     public int[] batchInsert(List<FilesFileSystemRecord> records) {
         return this.context.batchInsert(records).execute();
     }
+
+    /** Total stored file bytes for a client across both STATIC and SECURED file systems, for file rent. */
+    public long sumSizeByClientCode(String clientCode) {
+        java.math.BigDecimal sum = this.context.select(DSL.sum(FILES_FILE_SYSTEM.SIZE))
+                .from(FILES_FILE_SYSTEM)
+                .where(DSL.and(
+                        FILES_FILE_SYSTEM.CODE.eq(clientCode),
+                        FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE)))
+                .fetchOneInto(java.math.BigDecimal.class);
+        return sum == null ? 0L : sum.longValue();
+    }
 }
