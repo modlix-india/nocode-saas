@@ -49,7 +49,7 @@ public class AppBillingConfigService extends
     }
 
     @Override
-    @PreAuthorize("hasAuthority('Authorities.Billing_Config_CREATE')")
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<AppBillingConfig> create(AppBillingConfig entity) {
         return this.assertCanManage(entity.getAppId(), entity.getClientId())
                 .then(Mono.defer(() -> super.create(entity)))
@@ -57,18 +57,24 @@ public class AppBillingConfigService extends
     }
 
     @Override
-    @PreAuthorize("hasAuthority('Authorities.Billing_Config_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<AppBillingConfig> read(ULong id) {
         return super.read(id);
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Billing_Config_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<AppBillingConfig> findByAppIdAndClientId(ULong appId, ULong clientId) {
         return this.dao.findByAppIdAndClientId(appId, clientId);
     }
 
+    /** All billing configs for an app (one per client), for the app's Billing tab. */
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    public Mono<java.util.List<AppBillingConfig>> findByApp(ULong appId) {
+        return this.dao.findByApp(appId);
+    }
+
     @Override
-    @PreAuthorize("hasAuthority('Authorities.Billing_Config_UPDATE')")
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<AppBillingConfig> update(AppBillingConfig entity) {
         return this.read(entity.getId())
                 .flatMap(existing -> this.assertCanManage(existing.getAppId(), existing.getClientId()))
@@ -77,7 +83,7 @@ public class AppBillingConfigService extends
     }
 
     @Override
-    @PreAuthorize("hasAuthority('Authorities.Billing_Config_DELETE')")
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<Integer> delete(ULong id) {
         return this.read(id)
                 .flatMap(existing -> this.assertCanManage(existing.getAppId(), existing.getClientId()))

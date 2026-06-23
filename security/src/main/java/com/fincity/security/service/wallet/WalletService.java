@@ -100,13 +100,13 @@ public class WalletService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getOrCreateWallet"));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Wallet_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Payment_READ')")
     public Mono<Wallet> getBalance(ULong clientId) {
         return this.getOrCreateWallet(clientId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getBalance"));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Wallet_READ')")
+    @PreAuthorize("hasAuthority('Authorities.Payment_READ')")
     public Mono<List<WalletTransaction>> getRecentTransactions(ULong clientId, int limit) {
         return this.getOrCreateWallet(clientId)
                 .flatMap(wallet -> this.walletTransactionDAO.findRecentByWallet(wallet.getId(), limit))
@@ -350,7 +350,7 @@ public class WalletService
     }
 
     /** Admin manual correction (increase or decrease). */
-    @PreAuthorize("hasAuthority('Authorities.Wallet_UPDATE')")
+    @PreAuthorize("hasAuthority('Authorities.Payment_UPDATE')")
     public Mono<Wallet> adjust(ULong walletId, BigDecimal credits, boolean increase, String reason) {
         Mono<Integer> op = increase
                 ? this.dao.atomicCredit(walletId, credits)

@@ -26,6 +26,15 @@ public class AppActionCostDAO extends AbstractUpdatableDAO<SecurityAppActionCost
         super(AppActionCost.class, SECURITY_APP_ACTION_COST, SECURITY_APP_ACTION_COST.ID);
     }
 
+    /** All action cost rows for a billing config, ordered by action key. */
+    public Mono<List<AppActionCost>> findByConfigId(ULong billingConfigId) {
+        return Flux.from(this.dslContext.selectFrom(SECURITY_APP_ACTION_COST)
+                .where(SECURITY_APP_ACTION_COST.BILLING_CONFIG_ID.eq(billingConfigId))
+                .orderBy(SECURITY_APP_ACTION_COST.ACTION_KEY))
+                .map(r -> r.into(AppActionCost.class))
+                .collectList();
+    }
+
     /** An action's credit cost under a billing config (one config per app+client). */
     public Mono<AppActionCost> findByConfigAndActionKey(ULong billingConfigId, String actionKey) {
         return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACTION_COST)

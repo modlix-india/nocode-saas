@@ -31,4 +31,9 @@ public class AppBillingConfigController extends AbstractJOOQUpdatableDataControl
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
     }
+
+    @GetMapping("/app/{appId}")
+    public Mono<ResponseEntity<java.util.List<AppBillingConfig>>> getByApp(@PathVariable ULong appId) {
+        return this.service.findByApp(appId).map(ResponseEntity::ok);
+    }
 }
