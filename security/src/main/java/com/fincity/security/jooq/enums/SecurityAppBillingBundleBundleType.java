@@ -10,30 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * Name of the limit
+ * FIXED tokens+price tier, or CUSTOM per-token price
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanLimitName implements EnumType {
+public enum SecurityAppBillingBundleBundleType implements EnumType {
 
-    USER("USER"),
-
-    CLIENT("CLIENT"),
-
-    APP("APP"),
-
-    FILE("FILE"),
-
-    CONNECTIONS("CONNECTIONS"),
-
-    PAGES("PAGES"),
-
-    STORAGE("STORAGE"),
+    FIXED("FIXED"),
 
     CUSTOM("CUSTOM");
 
     private final String literal;
 
-    private SecurityPlanLimitName(String literal) {
+    private SecurityAppBillingBundleBundleType(String literal) {
         this.literal = literal;
     }
 
@@ -62,7 +50,7 @@ public enum SecurityPlanLimitName implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanLimitName lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanLimitName.class, literal);
+    public static SecurityAppBillingBundleBundleType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityAppBillingBundleBundleType.class, literal);
     }
 }

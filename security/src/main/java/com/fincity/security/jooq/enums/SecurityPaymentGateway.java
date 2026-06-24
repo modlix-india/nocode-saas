@@ -10,20 +10,18 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the limit in a plan
+ * Payment gateway
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanLimitStatus implements EnumType {
+public enum SecurityPaymentGateway implements EnumType {
 
-    ACTIVE("ACTIVE"),
+    RAZORPAY("RAZORPAY"),
 
-    INACTIVE("INACTIVE"),
-
-    DELETED("DELETED");
+    OTHER("OTHER");
 
     private final String literal;
 
-    private SecurityPlanLimitStatus(String literal) {
+    private SecurityPaymentGateway(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +50,7 @@ public enum SecurityPlanLimitStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanLimitStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanLimitStatus.class, literal);
+    public static SecurityPaymentGateway lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityPaymentGateway.class, literal);
     }
 }

@@ -10,22 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Payment status
+ * Invoice status
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPaymentPaymentStatus implements EnumType {
+public enum SecurityInvoiceStatus implements EnumType {
 
     PENDING("PENDING"),
 
     PAID("PAID"),
 
-    FAILED("FAILED"),
-
-    CANCELLED("CANCELLED");
+    FAILED("FAILED");
 
     private final String literal;
 
-    private SecurityPaymentPaymentStatus(String literal) {
+    private SecurityInvoiceStatus(String literal) {
         this.literal = literal;
     }
 
@@ -54,7 +52,7 @@ public enum SecurityPaymentPaymentStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPaymentPaymentStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPaymentPaymentStatus.class, literal);
+    public static SecurityInvoiceStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityInvoiceStatus.class, literal);
     }
 }

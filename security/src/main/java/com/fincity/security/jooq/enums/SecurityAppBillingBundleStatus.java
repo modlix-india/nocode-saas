@@ -10,10 +10,10 @@ import org.jooq.Schema;
 
 
 /**
- * Status of the cycle in a plan
+ * Status
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPlanCycleStatus implements EnumType {
+public enum SecurityAppBillingBundleStatus implements EnumType {
 
     ACTIVE("ACTIVE"),
 
@@ -23,7 +23,7 @@ public enum SecurityPlanCycleStatus implements EnumType {
 
     private final String literal;
 
-    private SecurityPlanCycleStatus(String literal) {
+    private SecurityAppBillingBundleStatus(String literal) {
         this.literal = literal;
     }
 
@@ -52,7 +52,7 @@ public enum SecurityPlanCycleStatus implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPlanCycleStatus lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPlanCycleStatus.class, literal);
+    public static SecurityAppBillingBundleStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityAppBillingBundleStatus.class, literal);
     }
 }

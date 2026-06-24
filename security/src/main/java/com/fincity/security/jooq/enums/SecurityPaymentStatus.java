@@ -10,22 +10,20 @@ import org.jooq.Schema;
 
 
 /**
- * Payment gateway
+ * Payment status
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPaymentGatewayPaymentGateway implements EnumType {
+public enum SecurityPaymentStatus implements EnumType {
 
-    CASHFREE("CASHFREE"),
+    PENDING("PENDING"),
 
-    RAZORPAY("RAZORPAY"),
+    PAID("PAID"),
 
-    STRIPE("STRIPE"),
-
-    OTHER("OTHER");
+    FAILED("FAILED");
 
     private final String literal;
 
-    private SecurityPaymentGatewayPaymentGateway(String literal) {
+    private SecurityPaymentStatus(String literal) {
         this.literal = literal;
     }
 
@@ -54,7 +52,7 @@ public enum SecurityPaymentGatewayPaymentGateway implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPaymentGatewayPaymentGateway lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPaymentGatewayPaymentGateway.class, literal);
+    public static SecurityPaymentStatus lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityPaymentStatus.class, literal);
     }
 }

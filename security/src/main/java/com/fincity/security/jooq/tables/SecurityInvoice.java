@@ -6,12 +6,11 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityInvoiceGateway;
+import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
+import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
-import com.fincity.security.jooq.tables.SecurityInvoiceItem.SecurityInvoiceItemPath;
 import com.fincity.security.jooq.tables.SecurityPayment.SecurityPaymentPath;
-import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
-import com.fincity.security.jooq.tables.SecurityPlanCycle.SecurityPlanCyclePath;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceRecord;
 
 import java.math.BigDecimal;
@@ -20,7 +19,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -40,7 +38,6 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -73,49 +70,146 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
     public final TableField<SecurityInvoiceRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
-     * The column <code>security.security_invoice.CLIENT_ID</code>. Client ID
+     * The column <code>security.security_invoice.INVOICE_NUMBER</code>. Gapless
+     * sequential per seller + financial year
      */
-    public final TableField<SecurityInvoiceRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID");
-
-    /**
-     * The column <code>security.security_invoice.PLAN_ID</code>. Plan ID
-     */
-    public final TableField<SecurityInvoiceRecord, ULong> PLAN_ID = createField(DSL.name("PLAN_ID"), SQLDataType.BIGINTUNSIGNED, this, "Plan ID");
-
-    /**
-     * The column <code>security.security_invoice.CYCLE_ID</code>. Cycle ID
-     */
-    public final TableField<SecurityInvoiceRecord, ULong> CYCLE_ID = createField(DSL.name("CYCLE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Cycle ID");
-
-    /**
-     * The column <code>security.security_invoice.INVOICE_NUMBER</code>. Invoice
-     * number
-     */
-    public final TableField<SecurityInvoiceRecord, String> INVOICE_NUMBER = createField(DSL.name("INVOICE_NUMBER"), SQLDataType.VARCHAR(256).nullable(false), this, "Invoice number");
+    public final TableField<SecurityInvoiceRecord, String> INVOICE_NUMBER = createField(DSL.name("INVOICE_NUMBER"), SQLDataType.VARCHAR(64).nullable(false), this, "Gapless sequential per seller + financial year");
 
     /**
      * The column <code>security.security_invoice.INVOICE_DATE</code>. Invoice
      * date
      */
-    public final TableField<SecurityInvoiceRecord, LocalDateTime> INVOICE_DATE = createField(DSL.name("INVOICE_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Invoice date");
+    public final TableField<SecurityInvoiceRecord, LocalDateTime> INVOICE_DATE = createField(DSL.name("INVOICE_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Invoice date");
 
     /**
-     * The column <code>security.security_invoice.INVOICE_DUE_DATE</code>.
-     * Invoice due date
+     * The column <code>security.security_invoice.STATUS</code>. Invoice status
      */
-    public final TableField<SecurityInvoiceRecord, LocalDateTime> INVOICE_DUE_DATE = createField(DSL.name("INVOICE_DUE_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Invoice due date");
+    public final TableField<SecurityInvoiceRecord, SecurityInvoiceStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityInvoiceStatus.class), this, "Invoice status");
 
     /**
-     * The column <code>security.security_invoice.INVOICE_AMOUNT</code>. Invoice
-     * amount
+     * The column <code>security.security_invoice.SELLER_CLIENT_ID</code>.
+     * Seller of record (configurator C)
      */
-    public final TableField<SecurityInvoiceRecord, BigDecimal> INVOICE_AMOUNT = createField(DSL.name("INVOICE_AMOUNT"), SQLDataType.DECIMAL(10, 2).nullable(false), this, "Invoice amount");
+    public final TableField<SecurityInvoiceRecord, ULong> SELLER_CLIENT_ID = createField(DSL.name("SELLER_CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Seller of record (configurator C)");
 
     /**
-     * The column <code>security.security_invoice.INVOICE_STATUS</code>. Invoice
-     * status
+     * The column <code>security.security_invoice.SELLER_LEGAL_NAME</code>.
+     * Seller legal name snapshot
      */
-    public final TableField<SecurityInvoiceRecord, SecurityInvoiceInvoiceStatus> INVOICE_STATUS = createField(DSL.name("INVOICE_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityInvoiceInvoiceStatus.class), this, "Invoice status");
+    public final TableField<SecurityInvoiceRecord, String> SELLER_LEGAL_NAME = createField(DSL.name("SELLER_LEGAL_NAME"), SQLDataType.VARCHAR(256), this, "Seller legal name snapshot");
+
+    /**
+     * The column <code>security.security_invoice.SELLER_GSTIN</code>. Seller
+     * GSTIN snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> SELLER_GSTIN = createField(DSL.name("SELLER_GSTIN"), SQLDataType.VARCHAR(32), this, "Seller GSTIN snapshot");
+
+    /**
+     * The column <code>security.security_invoice.SELLER_ADDRESS</code>. Seller
+     * address snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> SELLER_ADDRESS = createField(DSL.name("SELLER_ADDRESS"), SQLDataType.CLOB, this, "Seller address snapshot");
+
+    /**
+     * The column <code>security.security_invoice.CLIENT_ID</code>. Buyer client
+     * M
+     */
+    public final TableField<SecurityInvoiceRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Buyer client M");
+
+    /**
+     * The column <code>security.security_invoice.BUYER_LEGAL_NAME</code>. Buyer
+     * legal name snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> BUYER_LEGAL_NAME = createField(DSL.name("BUYER_LEGAL_NAME"), SQLDataType.VARCHAR(256), this, "Buyer legal name snapshot");
+
+    /**
+     * The column <code>security.security_invoice.BUYER_GSTIN</code>. Buyer
+     * GSTIN snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> BUYER_GSTIN = createField(DSL.name("BUYER_GSTIN"), SQLDataType.VARCHAR(32), this, "Buyer GSTIN snapshot");
+
+    /**
+     * The column <code>security.security_invoice.BUYER_ADDRESS</code>. Buyer
+     * address snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> BUYER_ADDRESS = createField(DSL.name("BUYER_ADDRESS"), SQLDataType.CLOB, this, "Buyer address snapshot");
+
+    /**
+     * The column <code>security.security_invoice.APP_ID</code>. App whose
+     * wallet is funded
+     */
+    public final TableField<SecurityInvoiceRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App whose wallet is funded");
+
+    /**
+     * The column <code>security.security_invoice.BUNDLE_ID</code>. Bundle
+     * purchased (soft reference)
+     */
+    public final TableField<SecurityInvoiceRecord, ULong> BUNDLE_ID = createField(DSL.name("BUNDLE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Bundle purchased (soft reference)");
+
+    /**
+     * The column <code>security.security_invoice.BUNDLE_LABEL</code>. Bundle
+     * label snapshot
+     */
+    public final TableField<SecurityInvoiceRecord, String> BUNDLE_LABEL = createField(DSL.name("BUNDLE_LABEL"), SQLDataType.VARCHAR(256), this, "Bundle label snapshot");
+
+    /**
+     * The column <code>security.security_invoice.TOKENS_PURCHASED</code>.
+     * Tokens credited on payment
+     */
+    public final TableField<SecurityInvoiceRecord, BigDecimal> TOKENS_PURCHASED = createField(DSL.name("TOKENS_PURCHASED"), SQLDataType.DECIMAL(19, 4).nullable(false), this, "Tokens credited on payment");
+
+    /**
+     * The column <code>security.security_invoice.BASE_AMOUNT</code>. Taxable
+     * value
+     */
+    public final TableField<SecurityInvoiceRecord, BigDecimal> BASE_AMOUNT = createField(DSL.name("BASE_AMOUNT"), SQLDataType.DECIMAL(19, 4).nullable(false), this, "Taxable value");
+
+    /**
+     * The column <code>security.security_invoice.GST_PERCENTAGE</code>. GST
+     * percentage applied
+     */
+    public final TableField<SecurityInvoiceRecord, BigDecimal> GST_PERCENTAGE = createField(DSL.name("GST_PERCENTAGE"), SQLDataType.DECIMAL(5, 2).nullable(false).defaultValue(DSL.inline("0.00", SQLDataType.DECIMAL)), this, "GST percentage applied");
+
+    /**
+     * The column <code>security.security_invoice.GST_AMOUNT</code>. GST amount
+     * (base x pct)
+     */
+    public final TableField<SecurityInvoiceRecord, BigDecimal> GST_AMOUNT = createField(DSL.name("GST_AMOUNT"), SQLDataType.DECIMAL(19, 4).nullable(false).defaultValue(DSL.inline("0.0000", SQLDataType.DECIMAL)), this, "GST amount (base x pct)");
+
+    /**
+     * The column <code>security.security_invoice.TOTAL_AMOUNT</code>. Base +
+     * GST
+     */
+    public final TableField<SecurityInvoiceRecord, BigDecimal> TOTAL_AMOUNT = createField(DSL.name("TOTAL_AMOUNT"), SQLDataType.DECIMAL(19, 4).nullable(false), this, "Base + GST");
+
+    /**
+     * The column <code>security.security_invoice.CURRENCY</code>. Currency
+     */
+    public final TableField<SecurityInvoiceRecord, String> CURRENCY = createField(DSL.name("CURRENCY"), SQLDataType.CHAR(4).nullable(false).defaultValue(DSL.inline("INR", SQLDataType.CHAR)), this, "Currency");
+
+    /**
+     * The column <code>security.security_invoice.PAYMENT_REFERENCE</code>.
+     * Gateway payment reference
+     */
+    public final TableField<SecurityInvoiceRecord, String> PAYMENT_REFERENCE = createField(DSL.name("PAYMENT_REFERENCE"), SQLDataType.VARCHAR(256), this, "Gateway payment reference");
+
+    /**
+     * The column <code>security.security_invoice.GATEWAY</code>. Payment
+     * gateway
+     */
+    public final TableField<SecurityInvoiceRecord, SecurityInvoiceGateway> GATEWAY = createField(DSL.name("GATEWAY"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("RAZORPAY", SQLDataType.VARCHAR)).asEnumDataType(SecurityInvoiceGateway.class), this, "Payment gateway");
+
+    /**
+     * The column <code>security.security_invoice.PAID_AT</code>. Time payment
+     * was confirmed
+     */
+    public final TableField<SecurityInvoiceRecord, LocalDateTime> PAID_AT = createField(DSL.name("PAID_AT"), SQLDataType.LOCALDATETIME(0), this, "Time payment was confirmed");
+
+    /**
+     * The column <code>security.security_invoice.PDF_FILE_KEY</code>. Stored
+     * PDF file key
+     */
+    public final TableField<SecurityInvoiceRecord, String> PDF_FILE_KEY = createField(DSL.name("PDF_FILE_KEY"), SQLDataType.VARCHAR(512), this, "Stored PDF file key");
 
     /**
      * The column <code>security.security_invoice.CREATED_BY</code>. ID of the
@@ -140,24 +234,6 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
      * this row is updated
      */
     public final TableField<SecurityInvoiceRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
-
-    /**
-     * The column <code>security.security_invoice.INVOICE_REASON</code>. Invoice
-     * reason
-     */
-    public final TableField<SecurityInvoiceRecord, String> INVOICE_REASON = createField(DSL.name("INVOICE_REASON"), SQLDataType.VARCHAR(256), this, "Invoice reason");
-
-    /**
-     * The column <code>security.security_invoice.PERIOD_START</code>. Service
-     * period start (UTC)
-     */
-    public final TableField<SecurityInvoiceRecord, LocalDateTime> PERIOD_START = createField(DSL.name("PERIOD_START"), SQLDataType.LOCALDATETIME(0), this, "Service period start (UTC)");
-
-    /**
-     * The column <code>security.security_invoice.PERIOD_END</code>. Service
-     * period end (UTC)
-     */
-    public final TableField<SecurityInvoiceRecord, LocalDateTime> PERIOD_END = createField(DSL.name("PERIOD_END"), SQLDataType.LOCALDATETIME(0), this, "Service period end (UTC)");
 
     private SecurityInvoice(Name alias, Table<SecurityInvoiceRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -238,64 +314,51 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
 
     @Override
     public List<UniqueKey<SecurityInvoiceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_INVOICE_UK1_INVOICE_CLIENT_ID_INVOICE_NUMBER, Keys.KEY_SECURITY_INVOICE_UK_INVOICE_PERIOD);
+        return Arrays.asList(Keys.KEY_SECURITY_INVOICE_UK1_INVOICE_SELLER_CLIENT_ID_INVOICE_NUMBER);
     }
 
     @Override
     public List<ForeignKey<SecurityInvoiceRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_INVOICE_CLIENT_ID, Keys.FK2_INVOICE_PLAN_ID, Keys.FK3_INVOICE_CYCLE_ID);
+        return Arrays.asList(Keys.FK1_INVOICE_SELLER_CLIENT_ID, Keys.FK2_INVOICE_CLIENT_ID, Keys.FK3_INVOICE_APP_ID);
     }
 
-    private transient SecurityClientPath _securityClient;
+    private transient SecurityClientPath _fk1InvoiceSellerClientId;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
+     * table, via the <code>FK1_INVOICE_SELLER_CLIENT_ID</code> key.
+     */
+    public SecurityClientPath fk1InvoiceSellerClientId() {
+        if (_fk1InvoiceSellerClientId == null)
+            _fk1InvoiceSellerClientId = new SecurityClientPath(this, Keys.FK1_INVOICE_SELLER_CLIENT_ID, null);
+
+        return _fk1InvoiceSellerClientId;
+    }
+
+    private transient SecurityClientPath _fk2InvoiceClientId;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table, via the <code>FK2_INVOICE_CLIENT_ID</code> key.
+     */
+    public SecurityClientPath fk2InvoiceClientId() {
+        if (_fk2InvoiceClientId == null)
+            _fk2InvoiceClientId = new SecurityClientPath(this, Keys.FK2_INVOICE_CLIENT_ID, null);
+
+        return _fk2InvoiceClientId;
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
      * table.
      */
-    public SecurityClientPath securityClient() {
-        if (_securityClient == null)
-            _securityClient = new SecurityClientPath(this, Keys.FK1_INVOICE_CLIENT_ID, null);
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK3_INVOICE_APP_ID, null);
 
-        return _securityClient;
-    }
-
-    private transient SecurityPlanPath _securityPlan;
-
-    /**
-     * Get the implicit join path to the <code>security.security_plan</code>
-     * table.
-     */
-    public SecurityPlanPath securityPlan() {
-        if (_securityPlan == null)
-            _securityPlan = new SecurityPlanPath(this, Keys.FK2_INVOICE_PLAN_ID, null);
-
-        return _securityPlan;
-    }
-
-    private transient SecurityPlanCyclePath _securityPlanCycle;
-
-    /**
-     * Get the implicit join path to the
-     * <code>security.security_plan_cycle</code> table.
-     */
-    public SecurityPlanCyclePath securityPlanCycle() {
-        if (_securityPlanCycle == null)
-            _securityPlanCycle = new SecurityPlanCyclePath(this, Keys.FK3_INVOICE_CYCLE_ID, null);
-
-        return _securityPlanCycle;
-    }
-
-    private transient SecurityInvoiceItemPath _securityInvoiceItem;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_invoice_item</code> table
-     */
-    public SecurityInvoiceItemPath securityInvoiceItem() {
-        if (_securityInvoiceItem == null)
-            _securityInvoiceItem = new SecurityInvoiceItemPath(this, null, Keys.FK1_INVOICE_ITEM_INVOICE_ID.getInverseKey());
-
-        return _securityInvoiceItem;
+        return _securityApp;
     }
 
     private transient SecurityPaymentPath _securityPayment;
@@ -309,13 +372,6 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
             _securityPayment = new SecurityPaymentPath(this, null, Keys.FK1_PAYMENT_INVOICE_ID.getInverseKey());
 
         return _securityPayment;
-    }
-
-    @Override
-    public List<Check<SecurityInvoiceRecord>> getChecks() {
-        return Arrays.asList(
-            Internal.createCheck(this, DSL.name("CHK_INVOICE_PERIOD_VALID"), "((`PERIOD_START` is null) or (`PERIOD_END` is null) or (`PERIOD_START` < `PERIOD_END`))", true)
-        );
     }
 
     @Override

@@ -10,22 +10,26 @@ import org.jooq.Schema;
 
 
 /**
- * Payment method
+ * Transaction type
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum SecurityPaymentPaymentMethod implements EnumType {
+public enum SecurityWalletTransactionType implements EnumType {
 
-    CASHFREE("CASHFREE"),
+    CREDIT("CREDIT"),
 
-    RAZORPAY("RAZORPAY"),
+    DEBIT("DEBIT"),
 
-    STRIPE("STRIPE"),
+    ADJUST("ADJUST"),
 
-    OTHER("OTHER");
+    SUSPEND("SUSPEND"),
+
+    REACTIVATE("REACTIVATE"),
+
+    REFUND("REFUND");
 
     private final String literal;
 
-    private SecurityPaymentPaymentMethod(String literal) {
+    private SecurityWalletTransactionType(String literal) {
         this.literal = literal;
     }
 
@@ -54,7 +58,7 @@ public enum SecurityPaymentPaymentMethod implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static SecurityPaymentPaymentMethod lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(SecurityPaymentPaymentMethod.class, literal);
+    public static SecurityWalletTransactionType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(SecurityWalletTransactionType.class, literal);
     }
 }
