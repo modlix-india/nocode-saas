@@ -17,6 +17,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.billing.AppBillingConfigDAO;
 import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.jooq.tables.records.SecurityAppBillingConfigRecord;
+import com.fincity.security.model.billing.MeteringInstruction;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -120,6 +121,11 @@ public class AppBillingConfigService extends
     /** Read a config by id without the caller-visibility filter (internal use). */
     public Mono<AppBillingConfig> readInternal(ULong configId) {
         return this.dao.readById(configId);
+    }
+
+    /** Billable (C, app, M) rows for a metered action (internal, metering services). */
+    public Flux<MeteringInstruction> chargeInstructions(String actionKey) {
+        return this.dao.chargeInstructions(actionKey);
     }
 
     private Mono<AppBillingConfig> evictByConfig(AppBillingConfig config) {

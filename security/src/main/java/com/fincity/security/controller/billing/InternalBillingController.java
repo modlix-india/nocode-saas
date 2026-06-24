@@ -1,5 +1,6 @@
 package com.fincity.security.controller.billing;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -14,9 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.security.model.billing.AiChargeRequest;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
+import com.fincity.security.model.billing.MeteringInstruction;
 import com.fincity.security.model.billing.WalletStatusView;
+import com.fincity.security.service.billing.AppBillingConfigService;
+import com.fincity.security.service.billing.SecurityMeteringService;
 import com.fincity.security.service.billing.WalletService;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -28,9 +33,33 @@ import reactor.core.publisher.Mono;
 public class InternalBillingController {
 
     private final WalletService walletService;
+    private final AppBillingConfigService configService;
+    private final SecurityMeteringService securityMeteringService;
 
-    public InternalBillingController(WalletService walletService) {
+    public InternalBillingController(WalletService walletService, AppBillingConfigService configService,
+            SecurityMeteringService securityMeteringService) {
         this.walletService = walletService;
+        this.configService = configService;
+        this.securityMeteringService = securityMeteringService;
+    }
+
+    /** Billable (C, app, M) rows for a metered action; the owning service reports counts. */
+    @GetMapping("/instructions")
+    public Flux<MeteringInstruction> instructions(@RequestParam String action) {
+        return this.configService.chargeInstructions(action);
+    }
+
+    /** Worker trigger: run the security-owned actions for the current 15-minute window. */
+    @PostMapping("/meter/security")
+    public Mono<ResponseEntity<Boolean>> meterSecurity() {
+        return this.securityMeteringService.runCurrentWindow().thenReturn(ResponseEntity.ok(Boolean.TRUE));
+    }
+
+    /** Worker trigger: reconcile the security-owned actions for a day (default yesterday). */
+    @PostMapping("/reconcile")
+    public Mono<ResponseEntity<Boolean>> reconcile(@RequestParam(required = false) String date) {
+        LocalDate day = date == null ? LocalDate.now().minusDays(1) : LocalDate.parse(date);
+        return this.securityMeteringService.reconcileDay(day).thenReturn(ResponseEntity.ok(Boolean.TRUE));
     }
 
     /** Bulk 15-minute metered charges. The service prices each from its config. */

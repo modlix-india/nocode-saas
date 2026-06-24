@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigPaymentGateway;
@@ -18,13 +19,13 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -198,7 +199,7 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
      * Encrypted gateway credentials (key id/secret, webhook secret); masked on
      * read
      */
-    public final TableField<SecurityAppBillingConfigRecord, JSON> PAYMENT_GATEWAY_CONFIG = createField(DSL.name("PAYMENT_GATEWAY_CONFIG"), SQLDataType.JSON, this, "Encrypted gateway credentials (key id/secret, webhook secret); masked on read");
+    public final TableField<SecurityAppBillingConfigRecord, Map> PAYMENT_GATEWAY_CONFIG = createField(DSL.name("PAYMENT_GATEWAY_CONFIG"), SQLDataType.JSON, this, "Encrypted gateway credentials (key id/secret, webhook secret); masked on read", new JSONMysqlMapConvertor());
 
     /**
      * The column

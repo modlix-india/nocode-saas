@@ -10,8 +10,8 @@ import com.fincity.security.jooq.tables.SecurityPayment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -157,7 +157,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * Setter for <code>security.security_payment.RESPONSE</code>. Gateway
      * response / error
      */
-    public SecurityPaymentRecord setResponse(JSON value) {
+    public SecurityPaymentRecord setResponse(Map value) {
         set(8, value);
         return this;
     }
@@ -166,8 +166,8 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * Getter for <code>security.security_payment.RESPONSE</code>. Gateway
      * response / error
      */
-    public JSON getResponse() {
-        return (JSON) get(8);
+    public Map getResponse() {
+        return (Map) get(8);
     }
 
     /**
@@ -278,7 +278,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
     /**
      * Create a detached, initialised SecurityPaymentRecord
      */
-    public SecurityPaymentRecord(ULong id, ULong invoiceId, ULong clientId, SecurityPaymentGateway gateway, String gatewayOrderId, String gatewayPaymentId, BigDecimal amount, SecurityPaymentStatus status, JSON response, LocalDateTime paidAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityPaymentRecord(ULong id, ULong invoiceId, ULong clientId, SecurityPaymentGateway gateway, String gatewayOrderId, String gatewayPaymentId, BigDecimal amount, SecurityPaymentStatus status, Map response, LocalDateTime paidAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityPayment.SECURITY_PAYMENT);
 
         setId(id);

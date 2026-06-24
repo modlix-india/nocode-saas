@@ -95,6 +95,12 @@ public class WalletService
                 .defaultIfEmpty(BigDecimal.ZERO);
     }
 
+    /** Window indices already charged for (client, app, action) on a day (reconciliation). */
+    public Mono<java.util.List<Short>> chargedWindows(ULong clientId, ULong appId, String actionKey, LocalDate date) {
+        return this.getOrCreateWallet(clientId, appId)
+                .flatMap(w -> this.txnDAO.chargedWindows(w.getId(), actionKey, date));
+    }
+
     /** Cached wallet status by (client, app) for the action gates. */
     public Mono<SecurityWalletStatus> getWalletStatus(ULong clientId, ULong appId) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_WALLET_STATUS,

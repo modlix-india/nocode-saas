@@ -3,6 +3,7 @@ package com.fincity.security.dao.billing;
 import static com.fincity.security.jooq.Tables.SECURITY_APP;
 import static com.fincity.security.jooq.Tables.SECURITY_APP_BILLING_CONFIG;
 import static com.fincity.security.jooq.Tables.SECURITY_CLIENT;
+import static com.fincity.security.jooq.Tables.SECURITY_CLIENT_HIERARCHY;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,8 +15,10 @@ import org.springframework.stereotype.Component;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.jooq.enums.SecurityAppBillingConfigStatus;
+import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.records.SecurityAppBillingConfigRecord;
 import com.fincity.security.model.billing.BillingActionKeys;
+import com.fincity.security.model.billing.MeteringInstruction;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -66,6 +69,35 @@ public class AppBillingConfigDAO
                 .where(SECURITY_APP_BILLING_CONFIG.STATUS.eq(SecurityAppBillingConfigStatus.ACTIVE))
                 .and(rate.gt(BigDecimal.ZERO)))
                 .map(r -> r.into(AppBillingConfig.class));
+    }
+
+    /**
+     * One billable {@code (C, app, M)} row per directly-managed client M
+     * (hierarchy level 0 = C) of every active config that carries the action's
+     * rate. No rate/free is sent; security prices it.
+     */
+    public Flux<MeteringInstruction> chargeInstructions(String actionKey) {
+        Field<BigDecimal> rate = rateField(actionKey);
+        if (rate == null)
+            return Flux.empty();
+
+        SecurityClient configClient = SECURITY_CLIENT.as("cc");
+        SecurityClient billedClient = SECURITY_CLIENT.as("mc");
+
+        return Flux.from(this.dslContext.select(
+                configClient.CODE, SECURITY_APP_BILLING_CONFIG.CLIENT_ID,
+                SECURITY_APP.APP_CODE, SECURITY_APP_BILLING_CONFIG.APP_ID,
+                billedClient.CODE, SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                .from(SECURITY_APP_BILLING_CONFIG)
+                .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_APP_BILLING_CONFIG.APP_ID))
+                .join(configClient).on(configClient.ID.eq(SECURITY_APP_BILLING_CONFIG.CLIENT_ID))
+                .join(SECURITY_CLIENT_HIERARCHY)
+                .on(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(SECURITY_APP_BILLING_CONFIG.CLIENT_ID))
+                .join(billedClient).on(billedClient.ID.eq(SECURITY_CLIENT_HIERARCHY.CLIENT_ID))
+                .where(SECURITY_APP_BILLING_CONFIG.STATUS.eq(SecurityAppBillingConfigStatus.ACTIVE))
+                .and(rate.gt(BigDecimal.ZERO)))
+                .map(r -> new MeteringInstruction(
+                        r.value1(), r.value2(), r.value3(), r.value4(), r.value5(), r.value6()));
     }
 
     public static Field<BigDecimal> rateField(String actionKey) {

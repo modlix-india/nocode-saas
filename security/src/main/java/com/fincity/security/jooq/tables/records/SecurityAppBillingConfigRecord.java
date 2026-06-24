@@ -10,8 +10,8 @@ import com.fincity.security.jooq.tables.SecurityAppBillingConfig;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -378,7 +378,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Encrypted gateway credentials (key id/secret, webhook secret); masked on
      * read
      */
-    public SecurityAppBillingConfigRecord setPaymentGatewayConfig(JSON value) {
+    public SecurityAppBillingConfigRecord setPaymentGatewayConfig(Map value) {
         set(19, value);
         return this;
     }
@@ -389,8 +389,8 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
      * Encrypted gateway credentials (key id/secret, webhook secret); masked on
      * read
      */
-    public JSON getPaymentGatewayConfig() {
-        return (JSON) get(19);
+    public Map getPaymentGatewayConfig() {
+        return (Map) get(19);
     }
 
     /**
@@ -615,7 +615,7 @@ public class SecurityAppBillingConfigRecord extends UpdatableRecordImpl<Security
     /**
      * Create a detached, initialised SecurityAppBillingConfigRecord
      */
-    public SecurityAppBillingConfigRecord(ULong id, ULong clientId, ULong appId, BigDecimal appRentPerMonth, BigDecimal siteRentPerMonth, BigDecimal filesTokensPerMonth, BigDecimal storageRowTokensPerMonth, BigDecimal dealTokensPerMonth, BigDecimal userTokensPerMonth, BigDecimal aiTokensPerMillion, BigDecimal freeApps, BigDecimal freeSites, BigDecimal freeFilesGb, BigDecimal freeStorageRows, BigDecimal freeDeals, BigDecimal freeUsers, BigDecimal freeAiTokensPerMonth, BigDecimal gstPercentage, SecurityAppBillingConfigPaymentGateway paymentGateway, JSON paymentGatewayConfig, String sellerLegalName, String sellerGstin, String sellerAddress, BigDecimal lowBalanceThreshold, String suspendAppCode, String suspendClientCode, SecurityAppBillingConfigStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppBillingConfigRecord(ULong id, ULong clientId, ULong appId, BigDecimal appRentPerMonth, BigDecimal siteRentPerMonth, BigDecimal filesTokensPerMonth, BigDecimal storageRowTokensPerMonth, BigDecimal dealTokensPerMonth, BigDecimal userTokensPerMonth, BigDecimal aiTokensPerMillion, BigDecimal freeApps, BigDecimal freeSites, BigDecimal freeFilesGb, BigDecimal freeStorageRows, BigDecimal freeDeals, BigDecimal freeUsers, BigDecimal freeAiTokensPerMonth, BigDecimal gstPercentage, SecurityAppBillingConfigPaymentGateway paymentGateway, Map paymentGatewayConfig, String sellerLegalName, String sellerGstin, String sellerAddress, BigDecimal lowBalanceThreshold, String suspendAppCode, String suspendClientCode, SecurityAppBillingConfigStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppBillingConfig.SECURITY_APP_BILLING_CONFIG);
 
         setId(id);
