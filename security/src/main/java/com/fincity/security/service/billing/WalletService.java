@@ -414,7 +414,7 @@ public class WalletService
 
     private Mono<Void> raiseWalletEvent(String eventName, Wallet wallet, BigDecimal balanceAfter) {
         return FlatMapUtil.flatMapMono(
-                () -> this.appService.getAppById(wallet.getAppId()),
+                () -> this.appService.getAppByIdInternal(wallet.getAppId()),
                 app -> this.clientService.getClientInfoById(wallet.getClientId()),
                 (app, client) -> {
                     Map<String, Object> data = new HashMap<>();
@@ -428,7 +428,13 @@ public class WalletService
                             .setEventName(eventName)
                             .setData(data);
                     return this.ecService.createEvent(evt);
-                }).then();
+                }).then()
+                // Best-effort: a notification side-effect must never roll back the
+                // debit/credit or block the suspend/reactivate status change.
+                .onErrorResume(e -> {
+                    logger.error("Failed to raise {} for wallet {}: {}", eventName, wallet.getId(), e.getMessage());
+                    return Mono.empty();
+                });
     }
 
     private Mono<ChargeResult> noCharge() {

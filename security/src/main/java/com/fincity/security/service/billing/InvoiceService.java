@@ -63,7 +63,7 @@ public class InvoiceService {
 
     private Mono<Void> raiseInvoiceEvent(Invoice invoice) {
         return FlatMapUtil.flatMapMono(
-                () -> this.appService.getAppById(invoice.getAppId()),
+                () -> this.appService.getAppByIdInternal(invoice.getAppId()),
                 app -> this.clientService.getClientInfoById(invoice.getClientId()),
                 (app, client) -> {
                     Map<String, Object> data = new HashMap<>();
