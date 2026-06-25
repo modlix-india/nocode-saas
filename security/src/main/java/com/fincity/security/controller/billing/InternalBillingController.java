@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.security.model.billing.AiChargeRequest;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
+import com.fincity.security.model.billing.HostingDecision;
 import com.fincity.security.model.billing.MeteringInstruction;
 import com.fincity.security.model.billing.WalletStatusView;
 import com.fincity.security.service.billing.AppBillingConfigService;
@@ -74,10 +75,26 @@ public class InternalBillingController {
         return this.walletService.chargeAi(request).map(ResponseEntity::ok);
     }
 
+    /** AI start-of-turn gate: false only when M's builder wallet is suspended. */
+    @GetMapping("/ai-allowed")
+    public Mono<ResponseEntity<Boolean>> aiAllowed(@RequestParam String appCode, @RequestParam String clientCode) {
+        return this.walletService.isAiAllowed(appCode, clientCode).map(ResponseEntity::ok);
+    }
+
     /** Serving status used by the action gates to decide ACTIVE/SUSPENDED. */
     @GetMapping("/serving-status")
     public Mono<ResponseEntity<WalletStatusView>> servingStatus(@RequestParam String urlAppCode,
             @RequestParam String urlClientCode, @RequestParam ULong clientId) {
         return this.walletService.getServingStatus(urlAppCode, urlClientCode, clientId).map(ResponseEntity::ok);
+    }
+
+    /**
+     * App/site hosting gate for the UI serving path: returns the app/client to serve,
+     * swapped to the configured suspend app/client when M's builder wallet is suspended.
+     */
+    @GetMapping("/hosting")
+    public Mono<ResponseEntity<HostingDecision>> hosting(@RequestParam String urlAppCode,
+            @RequestParam String urlClientCode) {
+        return this.walletService.resolveHosting(urlAppCode, urlClientCode).map(ResponseEntity::ok);
     }
 }

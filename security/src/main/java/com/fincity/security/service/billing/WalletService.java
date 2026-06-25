@@ -22,12 +22,14 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.billing.WalletDAO;
 import com.fincity.security.dao.billing.WalletTransactionDAO;
 import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Wallet;
 import com.fincity.security.dto.billing.WalletTransaction;
+import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.jooq.enums.SecurityWalletTransactionType;
 import com.fincity.security.jooq.tables.records.SecurityWalletRecord;
@@ -35,6 +37,7 @@ import com.fincity.security.model.billing.AiChargeRequest;
 import com.fincity.security.model.billing.BillingActionKeys;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
+import com.fincity.security.model.billing.HostingDecision;
 import com.fincity.security.model.billing.WalletStatusView;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -44,6 +47,8 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 /**
  * The token wallet domain. One service owns ledgering, the status cache and the
@@ -127,6 +132,67 @@ public class WalletService
     }
 
     // ---------------------------------------------------------------------
+    // App/site hosting gate (builder wallet -> suspend app/client)
+    // ---------------------------------------------------------------------
+
+    private static final String APPBUILDER = "appbuilder";
+    private static final String SITEZUMP = "sitezump";
+    private static final String SYSTEM = "SYSTEM";
+
+    /**
+     * Decide whether to serve M's requested app/site or a configured suspend
+     * app/client. The deciding wallet is the BUILDER wallet (appbuilder for apps;
+     * sitezump, else appbuilder, for sites), not the running app's. SYSTEM client, a
+     * missing app/client, no builder wallet, or no suspend config all pass through
+     * unchanged.
+     */
+    public Mono<HostingDecision> resolveHosting(String urlAppCode, String urlClientCode) {
+        HostingDecision passthrough = HostingDecision.serve(urlAppCode, urlClientCode);
+        if (StringUtil.safeIsBlank(urlClientCode) || SYSTEM.equalsIgnoreCase(urlClientCode)
+                || StringUtil.safeIsBlank(urlAppCode))
+            return Mono.just(passthrough);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.clientService.getClientBy(urlClientCode),
+                client -> this.appService.getAppByCode(urlAppCode),
+                (client, app) -> this.hostingWallet(client.getId(), app.getAppType() == SecurityAppAppType.SITE),
+                (client, app, builderAndWallet) -> {
+                    if (builderAndWallet.getT2().getStatus() != SecurityWalletStatus.SUSPENDED)
+                        return Mono.just(passthrough);
+                    return this.suspendTarget(builderAndWallet.getT1(), client.getId(), passthrough);
+                })
+                .defaultIfEmpty(passthrough)
+                .switchIfEmpty(Mono.just(passthrough))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.resolveHosting"));
+    }
+
+    /** The builder (appCode, wallet) that gates serving: appbuilder for apps; sitezump else appbuilder for sites. */
+    private Mono<Tuple2<String, Wallet>> hostingWallet(ULong mClientId, boolean isSite) {
+        if (!isSite)
+            return this.builderWallet(mClientId, APPBUILDER);
+        return this.builderWallet(mClientId, SITEZUMP)
+                .switchIfEmpty(this.builderWallet(mClientId, APPBUILDER));
+    }
+
+    private Mono<Tuple2<String, Wallet>> builderWallet(ULong mClientId, String builderAppCode) {
+        return this.appService.getAppByCode(builderAppCode)
+                .flatMap(app -> this.dao.findByClientAndApp(mClientId, app.getId())
+                        .map(w -> Tuples.of(builderAppCode, w)));
+    }
+
+    /** Resolve config(C, builderApp) for M's managing client and read its suspend app/client. */
+    private Mono<HostingDecision> suspendTarget(String builderAppCode, ULong mClientId, HostingDecision passthrough) {
+        return this.appService.getAppByCode(builderAppCode)
+                .flatMap(builderApp -> this.resolveConfigForBilledClient(builderApp.getId(), mClientId))
+                .flatMap(config -> StringUtil.safeIsBlank(config.getSuspendAppCode())
+                        || StringUtil.safeIsBlank(config.getSuspendClientCode())
+                                ? Mono.just(passthrough)
+                                : Mono.just(new HostingDecision(true, config.getSuspendAppCode(),
+                                        config.getSuspendClientCode())))
+                .defaultIfEmpty(passthrough);
+    }
+
+    // ---------------------------------------------------------------------
     // Metered charges (15-minute rent). All pricing lives here.
     // ---------------------------------------------------------------------
 
@@ -161,6 +227,21 @@ public class WalletService
         return Flux.fromIterable(requests)
                 .concatMap(req -> this.charge(req).onErrorResume(e -> noCharge()))
                 .then();
+    }
+
+    /**
+     * AI start-of-turn gate: false only when M's builder wallet is SUSPENDED. No
+     * wallet or any lookup miss is allowed (fail-open is the caller's job too).
+     */
+    public Mono<Boolean> isAiAllowed(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                app -> this.clientService.getClientBy(clientCode),
+                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId())
+                        .map(w -> w.getStatus() != SecurityWalletStatus.SUSPENDED)
+                        .defaultIfEmpty(Boolean.TRUE))
+                .defaultIfEmpty(Boolean.TRUE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.isAiAllowed"));
     }
 
     /** Immediate AI charge: resolve config via M's managing client, price flat per 1M tokens. */

@@ -10,6 +10,7 @@ import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -41,6 +42,13 @@ public class InvoiceDAO extends AbstractUpdatableDAO<SecurityInvoiceRecord, ULon
     public Mono<Invoice> findByPaymentReference(String paymentReference) {
         return Mono.from(this.dslContext.selectFrom(SECURITY_INVOICE)
                 .where(SECURITY_INVOICE.PAYMENT_REFERENCE.eq(paymentReference)))
+                .map(r -> r.into(Invoice.class));
+    }
+
+    public Flux<Invoice> findByClient(ULong clientId) {
+        return Flux.from(this.dslContext.selectFrom(SECURITY_INVOICE)
+                .where(SECURITY_INVOICE.CLIENT_ID.eq(clientId))
+                .orderBy(SECURITY_INVOICE.ID.desc()))
                 .map(r -> r.into(Invoice.class));
     }
 }

@@ -60,6 +60,11 @@ public class AppBillingBundleService extends
         return this.dao.findByConfigId(billingConfigId);
     }
 
+    /** Ungated read for the purchase flow (the buyer is picking a bundle to pay for). */
+    public Mono<AppBillingBundle> readForPurchase(ULong id) {
+        return this.dao.readById(id);
+    }
+
     @Override
     protected Mono<AppBillingBundle> updatableEntity(AppBillingBundle entity) {
         return this.dao.readById(entity.getId()).map(existing -> existing
