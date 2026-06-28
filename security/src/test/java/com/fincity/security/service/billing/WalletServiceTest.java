@@ -2,6 +2,7 @@ package com.fincity.security.service.billing;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,6 +41,7 @@ import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.model.billing.AiChargeRequest;
 import com.fincity.security.model.billing.BillingActionKeys;
 import com.fincity.security.model.billing.ChargeRequest;
+import com.fincity.security.model.billing.WalletDisplayStatus;
 import com.fincity.security.service.AbstractServiceUnitTest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -537,6 +539,161 @@ class WalletServiceTest extends AbstractServiceUnitTest {
 
             verify(walletDAO).findByClientAndApp(M_CLIENT, SITEZUMP_APP_ID);
             verify(walletDAO).findByClientAndApp(M_CLIENT, BUILDER_APP_ID);
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Owner wallet view + derived display status (by appCode/clientCode)
+    // ---------------------------------------------------------------------
+
+    @Nested
+    class DisplayStatus {
+
+        private static final String APP_CODE = "leadzump";
+        private static final String CLIENT_CODE = "MMMM";
+
+        /** Resolve appCode -> app(APP_ID) and clientCode -> client(M_CLIENT); both always consumed. */
+        private void stubCodes() {
+            when(appService.getAppByCode(APP_CODE))
+                    .thenReturn(Mono.just(TestDataFactory.createOwnApp(APP_ID, C_CLIENT, APP_CODE)));
+            when(clientService.getClientBy(CLIENT_CODE))
+                    .thenReturn(Mono.just(TestDataFactory.createClient(M_CLIENT, CLIENT_CODE, "BUS",
+                            SecurityClientStatusCode.ACTIVE)));
+        }
+
+        @Test
+        void getWalletByCodesReturnsWholeWallet() {
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(250), SecurityWalletStatus.ACTIVE, (byte) 0)));
+
+            StepVerifier.create(service.getWalletByCodes(APP_CODE, CLIENT_CODE))
+                    .assertNext(w -> {
+                        assertEquals(WALLET_ID, w.getId());
+                        assertEquals(0, w.getBalance().compareTo(BigDecimal.valueOf(250)));
+                        assertEquals(SecurityWalletStatus.ACTIVE, w.getStatus());
+                    })
+                    .verifyComplete();
+        }
+
+        @Test
+        void getWalletByCodesEmptyWhenNoWallet() {
+            // Empty Mono -> the controller renders 204 No Content.
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.empty());
+
+            StepVerifier.create(service.getWalletByCodes(APP_CODE, CLIENT_CODE))
+                    .verifyComplete();
+        }
+
+        @Test
+        void suspendedWhenStatusSuspendedEvenWithPositiveBalance() {
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(50), SecurityWalletStatus.SUSPENDED, (byte) 0)));
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> {
+                        assertEquals(WalletDisplayStatus.SUSPENDED, r.status());
+                        assertEquals(0, r.balance().compareTo(BigDecimal.valueOf(50)));
+                    })
+                    .verifyComplete();
+
+            // A SUSPENDED status short-circuits before any threshold/config lookup.
+            verify(clientHierarchyService, never()).getManagingClientIds(any());
+        }
+
+        @Test
+        void suspendedWhenBalanceNegative() {
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(-1), SecurityWalletStatus.ACTIVE, (byte) 0)));
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> assertEquals(WalletDisplayStatus.SUSPENDED, r.status()))
+                    .verifyComplete();
+        }
+
+        @Test
+        void lowViaWalletThresholdOverrideWinsOverConfig() {
+            // Override 500, balance 100 -> LOW; the config threshold must not be consulted.
+            stubCodes();
+            Wallet w = wallet(BigDecimal.valueOf(100), SecurityWalletStatus.ACTIVE, (byte) 0)
+                    .setAlertThreshold(BigDecimal.valueOf(500));
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.just(w));
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> {
+                        assertEquals(WalletDisplayStatus.LOW, r.status());
+                        assertEquals(0, r.threshold().compareTo(BigDecimal.valueOf(500)));
+                    })
+                    .verifyComplete();
+
+            verify(clientHierarchyService, never()).getManagingClientIds(any());
+        }
+
+        @Test
+        void lowViaConfigThresholdWhenNoWalletOverride() {
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(100), SecurityWalletStatus.ACTIVE, (byte) 0)));
+            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
+                    .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> {
+                        assertEquals(WalletDisplayStatus.LOW, r.status());
+                        assertEquals(0, r.threshold().compareTo(BigDecimal.valueOf(400)));
+                    })
+                    .verifyComplete();
+        }
+
+        @Test
+        void activeWhenBalanceAboveThreshold() {
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(1000), SecurityWalletStatus.ACTIVE, (byte) 0)));
+            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
+                    .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> assertEquals(WalletDisplayStatus.ACTIVE, r.status()))
+                    .verifyComplete();
+        }
+
+        @Test
+        void activeWhenNoConfigThreshold() {
+            // No override and no config -> no threshold to compare; a positive balance is ACTIVE.
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
+                    .thenReturn(Mono.just(wallet(BigDecimal.valueOf(5), SecurityWalletStatus.ACTIVE, (byte) 0)));
+            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.empty());
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> {
+                        assertEquals(WalletDisplayStatus.ACTIVE, r.status());
+                        assertEquals(0, r.balance().compareTo(BigDecimal.valueOf(5)));
+                        assertNull(r.threshold());
+                    })
+                    .verifyComplete();
+        }
+
+        @Test
+        void activeWhenNoWallet() {
+            // No wallet -> ACTIVE with null balance/threshold.
+            stubCodes();
+            when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.empty());
+
+            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+                    .assertNext(r -> {
+                        assertEquals(WalletDisplayStatus.ACTIVE, r.status());
+                        assertNull(r.balance());
+                        assertNull(r.threshold());
+                    })
+                    .verifyComplete();
         }
     }
 

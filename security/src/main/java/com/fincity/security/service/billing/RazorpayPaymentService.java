@@ -95,6 +95,8 @@ public class RazorpayPaymentService {
                 .bodyToMono(Map.class)
                 .flatMap(resp -> {
                     Map<String, Object> r = (Map<String, Object>) resp;
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("init", r);
                     Payment payment = new Payment()
                             .setInvoiceId(invoice.getId())
                             .setClientId(invoice.getClientId())
@@ -102,7 +104,7 @@ public class RazorpayPaymentService {
                             .setGatewayOrderId((String) r.get("id"))
                             .setAmount(invoice.getTotalAmount())
                             .setStatus(SecurityPaymentStatus.PENDING)
-                            .setResponse(r);
+                            .setResponse(response);
                     return this.paymentDAO.create(payment).thenReturn((String) r.get("short_url"));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RazorpayPaymentService.initialize"));
@@ -154,15 +156,46 @@ public class RazorpayPaymentService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RazorpayPaymentService.handleWebhook"));
     }
 
-    private Mono<Void> applyPaid(Payment payment, Invoice invoice, String rzpPaymentId, Map<String, Object> payload) {
+    private Mono<Void> applyPaid(Payment payment, Invoice invoice, String linkPaymentId, Map<String, Object> payload) {
         LocalDateTime now = LocalDateTime.now();
+
+        // The real payment entity (amount captured, method, fee, tax) is richer and
+        // more authoritative than the link's payment_id; fall back to the link id.
+        Map<String, Object> entity = paymentEntity(payload);
+        String paymentId = entity != null && !StringUtil.safeIsBlank(str(entity, "id"))
+                ? str(entity, "id")
+                : linkPaymentId;
+        BigDecimal capturedAmount = entity == null ? null : rupees(entity.get("amount"));
+
+        if (capturedAmount != null && invoice.getTotalAmount() != null
+                && capturedAmount.compareTo(invoice.getTotalAmount()) != 0)
+            logger.warn("Razorpay captured amount {} != invoice {} total {} (payment {})",
+                    capturedAmount, invoice.getInvoiceNumber(), invoice.getTotalAmount(), paymentId);
+
+        // Preserve the init response stored at initialize; add the webhook payload and
+        // a structured capture block. No new columns: all of it lives in RESPONSE.
+        Map<String, Object> response = payment.getResponse() == null
+                ? new HashMap<>()
+                : new HashMap<>(payment.getResponse());
+        response.put("webhook", payload);
+        if (entity != null) {
+            Map<String, Object> captured = new HashMap<>();
+            captured.put("amount", capturedAmount);
+            captured.put("method", entity.get("method"));
+            captured.put("fee", rupees(entity.get("fee")));
+            captured.put("tax", rupees(entity.get("tax")));
+            captured.put("currency", entity.get("currency"));
+            captured.put("status", entity.get("status"));
+            response.put("captured", captured);
+        }
+
         payment.setStatus(SecurityPaymentStatus.PAID)
-                .setGatewayPaymentId(rzpPaymentId)
+                .setGatewayPaymentId(paymentId)
                 .setPaidAt(now)
-                .setResponse(payload);
+                .setResponse(response);
         invoice.setStatus(SecurityInvoiceStatus.PAID)
                 .setGateway(SecurityInvoiceGateway.RAZORPAY)
-                .setPaymentReference(rzpPaymentId == null ? payment.getGatewayOrderId() : rzpPaymentId)
+                .setPaymentReference(paymentId == null ? payment.getGatewayOrderId() : paymentId)
                 .setPaidAt(now);
 
         return this.paymentDAO.update(payment)
@@ -183,19 +216,38 @@ public class RazorpayPaymentService {
     // Helpers
     // ---------------------------------------------------------------------
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> paymentLinkEntity(Map<String, Object> payload) {
+        return nestedEntity(payload, "payment_link");
+    }
+
+    /** The real payment entity (payload.payment.entity): captured amount, method, fee, tax. */
+    private static Map<String, Object> paymentEntity(Map<String, Object> payload) {
+        return nestedEntity(payload, "payment");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> nestedEntity(Map<String, Object> payload, String key) {
         Object payloadObj = payload.get("payload");
         if (!(payloadObj instanceof Map))
             return null;
-        Map<String, Object> p = (Map<String, Object>) payloadObj;
-        Object linkObj = p.get("payment_link");
-        if (linkObj instanceof Map) {
-            Object e = ((Map<String, Object>) linkObj).get("entity");
+        Object obj = ((Map<String, Object>) payloadObj).get(key);
+        if (obj instanceof Map) {
+            Object e = ((Map<String, Object>) obj).get("entity");
             if (e instanceof Map)
                 return (Map<String, Object>) e;
         }
         return null;
+    }
+
+    /** Convert a Razorpay paise value (Number/String) to a rupee BigDecimal; null-safe. */
+    private static BigDecimal rupees(Object paiseValue) {
+        if (paiseValue == null)
+            return null;
+        try {
+            return new BigDecimal(paiseValue.toString()).divide(PAISE);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static boolean isPaidEvent(String event) {

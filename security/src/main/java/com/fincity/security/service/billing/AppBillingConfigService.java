@@ -3,6 +3,8 @@ package com.fincity.security.service.billing;
 import java.util.List;
 
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -121,6 +124,22 @@ public class AppBillingConfigService extends
     /** Read a config by id without the caller-visibility filter (internal use). */
     public Mono<AppBillingConfig> readInternal(ULong configId) {
         return this.dao.readById(configId);
+    }
+
+    /**
+     * Blocked: an unscoped list would leak every client's billing terms, and the
+     * per-row visibility filter is not implemented for these generic queries. Use
+     * {@link #findByApp(ULong)} (own + managed) instead.
+     */
+    @Override
+    public Mono<Page<AppBillingConfig>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return this.forbidden("list billing configs");
+    }
+
+    /** Blocked for the same reason as {@link #readPageFilter}. */
+    @Override
+    public Flux<AppBillingConfig> readAllFilter(AbstractCondition condition) {
+        return this.<AppBillingConfig>forbidden("list billing configs").flux();
     }
 
     /** Billable (C, app, M) rows for a metered action (internal, metering services). */

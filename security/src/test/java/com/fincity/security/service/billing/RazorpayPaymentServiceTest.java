@@ -1,5 +1,7 @@
 package com.fincity.security.service.billing;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -7,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.crypto.Mac;
@@ -16,6 +19,7 @@ import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -69,7 +73,8 @@ class RazorpayPaymentServiceTest {
                 configService, new Gson());
 
         Payment payment = new Payment().setInvoiceId(INVOICE_ID).setGatewayOrderId(LINK_ID)
-                .setGateway(SecurityPaymentGateway.RAZORPAY).setStatus(SecurityPaymentStatus.PENDING);
+                .setGateway(SecurityPaymentGateway.RAZORPAY).setStatus(SecurityPaymentStatus.PENDING)
+                .setResponse(new HashMap<>(Map.of("init", Map.of("short_url", "https://rzp.io/x"))));
         Invoice invoice = new Invoice().setAppId(APP_ID).setSellerClientId(C_CLIENT).setClientId(M_CLIENT)
                 .setTokensPurchased(BigDecimal.valueOf(1000)).setInvoiceNumber("INV/1");
         invoice.setId(INVOICE_ID);
@@ -94,6 +99,37 @@ class RazorpayPaymentServiceTest {
         verify(walletService).creditFromPayment(any());
         verify(invoiceService).markPaidAndEmit(any());
         verify(paymentDAO).update(any(Payment.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void capturesPaymentEntityAndPreservesInit() throws Exception {
+        // payment_link.paid carries the real payment entity (captured amount in paise,
+        // method, fee, tax) alongside the link; the link's payment_id is only a fallback.
+        String body = "{\"event\":\"payment_link.paid\",\"payload\":{"
+                + "\"payment_link\":{\"entity\":{\"id\":\"" + LINK_ID + "\",\"payment_id\":\"pay_link_fallback\"}},"
+                + "\"payment\":{\"entity\":{\"id\":\"pay_real\",\"amount\":106200,\"method\":\"upi\","
+                + "\"fee\":2124,\"tax\":324,\"currency\":\"INR\",\"status\":\"captured\"}}}}";
+
+        StepVerifier.create(service.handleWebhook(body, sign(body, SECRET))).verifyComplete();
+
+        ArgumentCaptor<Payment> cap = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentDAO).update(cap.capture());
+        Payment saved = cap.getValue();
+
+        assertEquals("pay_real", saved.getGatewayPaymentId(), "real payment-entity id wins over the link fallback");
+        assertEquals(SecurityPaymentStatus.PAID, saved.getStatus());
+
+        Map<String, Object> resp = saved.getResponse();
+        assertTrue(resp.containsKey("init"), "init response preserved");
+        assertTrue(resp.containsKey("webhook"), "raw webhook stored");
+        Map<String, Object> captured = (Map<String, Object>) resp.get("captured");
+        assertEquals(0, ((BigDecimal) captured.get("amount")).compareTo(BigDecimal.valueOf(1062)),
+                "paise converted to rupees");
+        assertEquals("upi", captured.get("method"));
+
+        verify(walletService).creditFromPayment(any());
+        verify(invoiceService).markPaidAndEmit(any());
     }
 
     @Test

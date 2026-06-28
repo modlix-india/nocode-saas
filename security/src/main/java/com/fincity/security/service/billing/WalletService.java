@@ -38,6 +38,8 @@ import com.fincity.security.model.billing.BillingActionKeys;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
 import com.fincity.security.model.billing.HostingDecision;
+import com.fincity.security.model.billing.WalletDisplayStatus;
+import com.fincity.security.model.billing.WalletStatusResponse;
 import com.fincity.security.model.billing.WalletStatusView;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -94,12 +96,6 @@ public class WalletService
                 .switchIfEmpty(Mono.defer(() -> this.dao.createSeeded(clientId, appId, BigDecimal.ONE)));
     }
 
-    public Mono<BigDecimal> getBalance(ULong clientId, ULong appId) {
-        return this.dao.findByClientAndApp(clientId, appId)
-                .map(Wallet::getBalance)
-                .defaultIfEmpty(BigDecimal.ZERO);
-    }
-
     /** Window indices already charged for (client, app, action) on a day (reconciliation). */
     public Mono<java.util.List<Short>> chargedWindows(ULong clientId, ULong appId, String actionKey, LocalDate date) {
         return this.getOrCreateWallet(clientId, appId)
@@ -129,6 +125,60 @@ public class WalletService
                         .map(w -> new WalletStatusView(w.getStatus().name(), w.getBalance(),
                                 w.getStatus() == SecurityWalletStatus.SUSPENDED)))
                 .switchIfEmpty(Mono.just(new WalletStatusView(SecurityWalletStatus.ACTIVE.name(), null, false)));
+    }
+
+    /**
+     * The whole wallet for the (appCode, clientCode) in context, for the owner's
+     * billing view. Empty when that (client, app) has no wallet yet. Gated to the
+     * app owner / payment manager; the codes come from the request context, so a
+     * caller only ever sees their own client's wallet.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
+    public Mono<Wallet> getWalletByCodes(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                app -> this.clientService.getClientBy(clientCode),
+                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getWalletByCodes"));
+    }
+
+    /**
+     * Derived display status for the (appCode, clientCode) in context: SUSPENDED
+     * (status SUSPENDED or balance &lt; 0), LOW (positive balance below the
+     * effective threshold), else ACTIVE. The effective threshold is the wallet's
+     * own override when set, otherwise the config low-balance threshold. No wallet
+     * -> ACTIVE.
+     */
+    public Mono<WalletStatusResponse> getDisplayStatus(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                app -> this.clientService.getClientBy(clientCode),
+                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId())
+                        .flatMap(wallet -> this.deriveDisplayStatus(wallet, app.getId(), client.getId()))
+                        .switchIfEmpty(Mono.just(
+                                new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null))))
+                .switchIfEmpty(Mono.just(new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getDisplayStatus"));
+    }
+
+    private Mono<WalletStatusResponse> deriveDisplayStatus(Wallet wallet, ULong appId, ULong clientId) {
+        BigDecimal balance = wallet.getBalance();
+        if (wallet.getStatus() == SecurityWalletStatus.SUSPENDED || balance.signum() < 0)
+            return Mono.just(new WalletStatusResponse(WalletDisplayStatus.SUSPENDED, balance, null));
+
+        // Wallet override threshold wins; otherwise fall back to the config threshold.
+        if (wallet.getAlertThreshold() != null)
+            return Mono.just(classifyAgainstThreshold(balance, wallet.getAlertThreshold()));
+
+        return this.resolveConfigForBilledClient(appId, clientId)
+                .map(config -> classifyAgainstThreshold(balance, config.getLowBalanceThreshold()))
+                .defaultIfEmpty(new WalletStatusResponse(WalletDisplayStatus.ACTIVE, balance, null));
+    }
+
+    private static WalletStatusResponse classifyAgainstThreshold(BigDecimal balance, BigDecimal threshold) {
+        if (threshold != null && balance.compareTo(threshold) < 0)
+            return new WalletStatusResponse(WalletDisplayStatus.LOW, balance, threshold);
+        return new WalletStatusResponse(WalletDisplayStatus.ACTIVE, balance, threshold);
     }
 
     // ---------------------------------------------------------------------
