@@ -164,8 +164,12 @@ public class ConversionActionMappingService
     }
 
     public reactor.core.publisher.Flux<ConversionActionMapping> findActiveByTrigger(
-            ProcessorAccess access, ULong stageId, ULong statusId, ULong productTemplateId) {
-        return this.dao.findActiveByTrigger(access, stageId, statusId, productTemplateId)
+            ProcessorAccess access,
+            ULong stageId,
+            ULong statusId,
+            ULong productTemplateId,
+            String platformAccountId) {
+        return this.dao.findActiveByTrigger(access, stageId, statusId, productTemplateId, platformAccountId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConversionActionMappingService.findActiveByTrigger"));
     }
 
@@ -214,12 +218,18 @@ public class ConversionActionMappingService
         ULong triggerStatusId = Boolean.TRUE.equals(stage.getIsParent()) ? null : stage.getId();
 
         return this.dao.findExisting(
-                        access, productTemplateId, request.getCampaignPlatform(), triggerStageId, triggerStatusId)
+                        access,
+                        productTemplateId,
+                        request.getCampaignPlatform(),
+                        def.getPlatformAccountId(),
+                        triggerStageId,
+                        triggerStatusId)
                 .flatMap(existing -> Mono.<ConversionActionMapping>empty())
                 .switchIfEmpty(Mono.defer(() -> {
                     ConversionActionMapping mapping = new ConversionActionMapping()
                             .setProductTemplateId(productTemplateId)
                             .setCampaignPlatform(request.getCampaignPlatform())
+                            .setPlatformAccountId(def.getPlatformAccountId())
                             .setTriggerStageId(triggerStageId)
                             .setTriggerStatusId(triggerStatusId)
                             .setEventName(def.getEventName())
@@ -285,8 +295,9 @@ public class ConversionActionMappingService
         return this.stageDAO
                 .setFunnelStage(access, stageId, funnel)
                 .then(this.dao
-                        .findExisting(access, productTemplateId, platform, stageId, null)
+                        .findExisting(access, productTemplateId, platform, fm.getPlatformAccountId(), stageId, null)
                         .flatMap(existing -> super.update(access, existing
+                                .setPlatformAccountId(fm.getPlatformAccountId())
                                 .setEventName(fm.getEventName())
                                 .setPlatformActionId(fm.getPlatformActionId())
                                 .setDefaultValue(fm.getDefaultValue())
@@ -296,6 +307,7 @@ public class ConversionActionMappingService
                         .switchIfEmpty(Mono.defer(() -> super.createInternal(access, new ConversionActionMapping()
                                 .setProductTemplateId(productTemplateId)
                                 .setCampaignPlatform(platform)
+                                .setPlatformAccountId(fm.getPlatformAccountId())
                                 .setTriggerStageId(stageId)
                                 .setEventName(fm.getEventName())
                                 .setPlatformActionId(fm.getPlatformActionId())
@@ -344,6 +356,12 @@ public class ConversionActionMappingService
                     ProcessorMessageResourceService.MISSING_PARAMETERS,
                     "name");
 
+        String ct = request.getCountingType();
+        if (ct != null && !ct.isBlank() && !"ONE_PER_CLICK".equals(ct) && !"MANY_PER_CLICK".equals(ct))
+            return Mono.error(new GenericException(
+                    HttpStatus.BAD_REQUEST,
+                    "countingType must be ONE_PER_CLICK or MANY_PER_CLICK; got '" + ct + "'"));
+
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> resolveGoogleAccount(request.getCustomerId(), request.getLoginCustomerId())
@@ -360,10 +378,172 @@ public class ConversionActionMappingService
                                 acct.loginCustomerId(),
                                 request.getName(),
                                 request.getCategory(),
+                                request.getCountingType(),
+                                request.getClickThroughLookbackWindowDays(),
+                                request.getPrimaryForGoal(),
                                 token))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "ConversionActionMappingService.createGoogleConversionAction"));
     }
+
+    /**
+     * Soft-deletes a Google Ads conversion action by resource name (sets its
+     * status to REMOVED). Mirrors {@link #createGoogleConversionAction} — same
+     * tenant/access/account resolution path, then delegates to the platform
+     * service's remove call. The account is parsed from the resource name when
+     * not provided so the operator's "delete this picker entry" flow doesn't
+     * need to re-pick the account.
+     *
+     * @param resourceName     full Google resource name (required, e.g.
+     *                         {@code customers/4220436668/conversionActions/7640505544})
+     * @param customerId       optional override; defaults to the id parsed from
+     *                         resourceName
+     * @param loginCustomerId  optional MCC override; defaults to client's
+     *                         resolved Google account
+     */
+    public Mono<Void> removeGoogleConversionAction(
+            String resourceName, String customerId, String loginCustomerId) {
+
+        if (resourceName == null || resourceName.isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "resourceName");
+
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> resolveGoogleAccount(customerId, loginCustomerId)
+                                .switchIfEmpty(Mono.error(new GenericException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "No connected Google Ads account found for this client."))),
+                        (access, acct) -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), this.googlePlatformService.getConnectionName()),
+                        (access, acct, token) -> this.googlePlatformService
+                                .removeConversionAction(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        acct.customerId(),
+                                        acct.loginCustomerId(),
+                                        resourceName,
+                                        token)
+                                .thenReturn(true))
+                .then()
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ConversionActionMappingService.removeGoogleConversionAction"));
+    }
+
+    /**
+     * Reads ECL readiness for the client's Google connection: customer-level
+     * acceptance of Customer Data Terms, whether ECL is enabled, and the
+     * category of each conversion action referenced by active GOOGLE mappings.
+     *
+     * <p>The UI "Setup Health" panel renders this verbatim. Operator-actionable
+     * items (terms acceptance + lead-category mismatch) drive their own
+     * green/red badges in the popup.
+     */
+    public Mono<GoogleSetupHealth> getGoogleSetupHealth() {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> this.dao
+                                .findActiveByPlatform(access, CampaignPlatform.GOOGLE)
+                                .collectList(),
+                        (access, mappings) -> resolveCustomerFromMappings(mappings),
+                        (access, mappings, acct) -> this.connectionService.getMarketingPlatformOAuth2Token(
+                                access.getClientCode(), this.googlePlatformService.getConnectionName()),
+                        this::fetchHealth)
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "ConversionActionMappingService.getGoogleSetupHealth"));
+    }
+
+    /**
+     * Picks the customer ID from any existing GOOGLE mapping's action resource
+     * (under SINGLE / MCC_CROSS_ACCOUNT all rows agree). Falls back to the
+     * client's resolved Google account when no mappings exist yet, so the
+     * freshly-connected case still surfaces a meaningful health probe.
+     */
+    private Mono<GoogleAccount> resolveCustomerFromMappings(List<ConversionActionMapping> mappings) {
+        String customerFromMapping = mappings.stream()
+                .map(ConversionActionMapping::getPlatformActionId)
+                .filter(s -> s != null && !s.isBlank())
+                .map(this::extractCustomerId)
+                .filter(s -> s != null)
+                .findFirst()
+                .orElse(null);
+        if (customerFromMapping != null) return Mono.just(new GoogleAccount(customerFromMapping, null));
+        return resolveGoogleAccount(null, null);
+    }
+
+    private Mono<GoogleSetupHealth> fetchHealth(
+            ProcessorAccess access, List<ConversionActionMapping> mappings, GoogleAccount acct, String token) {
+        return Mono.zip(
+                        this.googlePlatformService.getCustomerSetupStatus(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                acct.customerId(),
+                                acct.loginCustomerId(),
+                                token),
+                        this.googlePlatformService
+                                .fetchConversionActions(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        acct.customerId(),
+                                        acct.loginCustomerId(),
+                                        token)
+                                .collectList())
+                .map(tuple -> buildHealth(mappings, tuple.getT1(), tuple.getT2()));
+    }
+
+    private GoogleSetupHealth buildHealth(
+            List<ConversionActionMapping> mappings,
+            GooglePlatformService.GoogleCustomerSetupStatus status,
+            List<DiscoveredConversionAction> allActions) {
+        java.util.Set<String> referenced = mappings.stream()
+                .map(ConversionActionMapping::getPlatformActionId)
+                .filter(s -> s != null && !s.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        List<ConversionActionHealth> referencedHealth = allActions.stream()
+                .filter(a -> referenced.contains(a.getResourceName()))
+                .map(a -> new ConversionActionHealth(
+                        a.getResourceName(), a.getName(), a.getCategory(), isLeadAligned(a.getCategory())))
+                .toList();
+        return new GoogleSetupHealth(
+                status.customerId(),
+                status.acceptedCustomerDataTerms(),
+                status.enhancedConversionsForLeadsEnabled(),
+                referencedHealth);
+    }
+
+    private static final java.util.Set<String> LEAD_ALIGNED_CATEGORIES = java.util.Set.of(
+            "LEAD",
+            "SUBMIT_LEAD_FORM",
+            "QUALIFIED_LEAD",
+            "CONVERTED_LEAD",
+            "BOOK_APPOINTMENT",
+            "SIGNUP",
+            "REQUEST_QUOTE",
+            "CONTACT");
+
+    private static boolean isLeadAligned(String category) {
+        return category != null && LEAD_ALIGNED_CATEGORIES.contains(category);
+    }
+
+    private String extractCustomerId(String actionResource) {
+        if (actionResource == null) return null;
+        String[] parts = actionResource.split("/");
+        if (parts.length < 2 || !"customers".equals(parts[0])) return null;
+        return parts[1].isBlank() ? null : parts[1];
+    }
+
+    /** Customer-level + per-action ECL readiness for the operator's setup-health panel. */
+    public record GoogleSetupHealth(
+            String customerId,
+            Boolean acceptedCustomerDataTerms,
+            Boolean enhancedConversionsForLeadsEnabled,
+            List<ConversionActionHealth> conversionActions) {}
+
+    /** Each conversion action referenced by an active GOOGLE mapping + whether its category triggers ECL matching. */
+    public record ConversionActionHealth(
+            String resourceName, String name, String category, boolean isLeadAligned) {}
 
     /** Explicit ids when supplied; else the client's first Google campaign with a resolved account. */
     private Mono<GoogleAccount> resolveGoogleAccount(String customerId, String loginCustomerId) {

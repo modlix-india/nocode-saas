@@ -29,7 +29,7 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String API_VERSION = "/v20/";
+    private static final String API_VERSION = "/v23/";
     private static final String GOOGLE_CONNECTION = "GOOGLE_API";
 
     // Default body buffer in Spring WebClient is 256 KB which Google Ads insights
@@ -295,7 +295,9 @@ public class GooglePlatformService extends AbstractAdPlatformService {
             String appCode, String clientCode, String customerId, String loginCustomerId, String accessToken) {
 
         String gaql = "SELECT conversion_action.id, conversion_action.name, conversion_action.resource_name, "
-                + "conversion_action.status, conversion_action.type, conversion_action.category "
+                + "conversion_action.status, conversion_action.type, conversion_action.category, "
+                + "conversion_action.counting_type, conversion_action.click_through_lookback_window_days, "
+                + "conversion_action.primary_for_goal "
                 + "FROM conversion_action WHERE conversion_action.status != 'REMOVED'";
 
         return resolveDeveloperToken(appCode, clientCode)
@@ -305,13 +307,19 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                             if (!results.isArray() || results.isEmpty()) return Flux.empty();
                             return Flux.fromIterable(results::elements).map(row -> {
                                 JsonNode ca = row.path(CONVERSION_ACTION);
+                                JsonNode windowNode = ca.path("clickThroughLookbackWindowDays");
+                                JsonNode primaryNode = ca.path("primaryForGoal");
                                 return new DiscoveredConversionAction()
                                         .setResourceName(ca.path("resourceName").asText(null))
                                         .setId(ca.path("id").asText(null))
                                         .setName(ca.path("name").asText(null))
                                         .setStatus(ca.path("status").asText(null))
                                         .setType(ca.path("type").asText(null))
-                                        .setCategory(ca.path("category").asText(null));
+                                        .setCategory(ca.path("category").asText(null))
+                                        .setCountingType(ca.path("countingType").asText(null))
+                                        .setClickThroughLookbackWindowDays(
+                                                windowNode.isNumber() ? windowNode.asInt() : null)
+                                        .setPrimaryForGoal(primaryNode.isBoolean() ? primaryNode.asBoolean() : null);
                             });
                         }));
     }
@@ -319,8 +327,11 @@ public class GooglePlatformService extends AbstractAdPlatformService {
     /**
      * Creates an {@code UPLOAD_CLICKS} conversion action in the account so a fresh
      * client can provision one in-app. Returns the created action with its
-     * {@code resourceName} parsed from the mutate response. {@code category}
-     * defaults to {@code DEFAULT}.
+     * {@code resourceName} parsed from the mutate response. Defaults applied when
+     * params are null: {@code category=DEFAULT}, {@code countingType=ONE_PER_CLICK},
+     * {@code clickThroughLookbackWindowDays=30} (clamped to 1..90),
+     * {@code primaryForGoal=true}. Callers should validate {@code countingType} at
+     * the service layer; this method clamps silently.
      */
     public Mono<DiscoveredConversionAction> createConversionAction(
             String appCode,
@@ -329,15 +340,24 @@ public class GooglePlatformService extends AbstractAdPlatformService {
             String loginCustomerId,
             String name,
             String category,
+            String countingType,
+            Integer clickThroughLookbackWindowDays,
+            Boolean primaryForGoal,
             String accessToken) {
 
         String cat = (category == null || category.isBlank()) ? "DEFAULT" : category;
+        String ct = (countingType == null || countingType.isBlank()) ? "ONE_PER_CLICK" : countingType;
+        int window = (clickThroughLookbackWindowDays == null) ? 30 : Math.clamp(clickThroughLookbackWindowDays, 1, 90);
+        boolean primary = primaryForGoal == null || primaryForGoal;
+
         Map<String, Object> create = new java.util.HashMap<>();
         create.put("name", name);
         create.put("type", "UPLOAD_CLICKS");
         create.put("category", cat);
         create.put("status", "ENABLED");
-        create.put("countingType", "ONE_PER_CLICK");
+        create.put("countingType", ct);
+        create.put("clickThroughLookbackWindowDays", window);
+        create.put("primaryForGoal", primary);
         Map<String, Object> body = Map.of("operations", java.util.List.of(Map.of("create", create)));
 
         return resolveDeveloperToken(appCode, clientCode)
@@ -358,6 +378,13 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                         .bodyValue(body)
                         .retrieve()
                         .bodyToMono(JsonNode.class)
+                        .doOnError(
+                                org.springframework.web.reactive.function.client.WebClientResponseException.class,
+                                ex -> log.error(
+                                        "Google conversionActions:mutate rejected payload {} with status {}: {}",
+                                        body,
+                                        ex.getStatusCode(),
+                                        ex.getResponseBodyAsString()))
                         .map(root -> {
                             JsonNode results = root.path("results");
                             String resourceName = results.isArray() && !results.isEmpty()
@@ -375,9 +402,98 @@ public class GooglePlatformService extends AbstractAdPlatformService {
                                     .setName(name)
                                     .setStatus("ENABLED")
                                     .setType("UPLOAD_CLICKS")
-                                    .setCategory(cat);
+                                    .setCategory(cat)
+                                    .setCountingType(ct)
+                                    .setClickThroughLookbackWindowDays(window)
+                                    .setPrimaryForGoal(primary);
                         }));
     }
+
+    /**
+     * Removes (soft-deletes) a conversion action by resource name. Google's
+     * {@code conversionActions:mutate} {@code remove} operation flips
+     * {@code status} to {@code REMOVED} server-side; the row stays in the
+     * account but stops counting and stops appearing in
+     * {@link #fetchConversionActions} (which filters on {@code status != REMOVED}).
+     *
+     * @param resourceName e.g. {@code customers/4220436668/conversionActions/7640505544}
+     */
+    public Mono<Void> removeConversionAction(
+            String appCode, String clientCode, String customerId, String loginCustomerId,
+            String resourceName, String accessToken) {
+
+        Map<String, Object> body = Map.of("operations", java.util.List.of(Map.of("remove", resourceName)));
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMap(devToken -> webClient
+                        .post()
+                        .uri(uriBuilder -> uriBuilder
+                                .scheme(SCHEME)
+                                .host(HOST)
+                                .path(API_VERSION + "customers/" + customerId + "/conversionActions:mutate")
+                                .build())
+                        .headers(h -> {
+                            h.setBearerAuth(accessToken);
+                            h.add("developer-token", devToken);
+                            if (loginCustomerId != null && !loginCustomerId.isBlank()) {
+                                h.add("login-customer-id", loginCustomerId);
+                            }
+                        })
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .doOnError(
+                                org.springframework.web.reactive.function.client.WebClientResponseException.class,
+                                ex -> log.error(
+                                        "Google conversionActions:mutate (remove) rejected payload {} with status {}: {}",
+                                        body,
+                                        ex.getStatusCode(),
+                                        ex.getResponseBodyAsString()))
+                        .then());
+    }
+
+    /**
+     * Reads the Enhanced-Conversions-for-Leads readiness flags off a customer's
+     * {@code conversion_tracking_setting}: whether the operator accepted the
+     * Customer Data Terms in Google Ads UI, and whether ECL is enabled for the
+     * customer. Both are read-only via API (Google requires the operator to
+     * accept the terms in their own UI), so this surface is a status probe only.
+     *
+     * <p>Used by the setup-health panel in the conversion-mapping page.
+     */
+    public Mono<GoogleCustomerSetupStatus> getCustomerSetupStatus(
+            String appCode, String clientCode, String customerId, String loginCustomerId, String accessToken) {
+
+        String gaql = "SELECT customer.conversion_tracking_setting.accepted_customer_data_terms, "
+                + "customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled "
+                + "FROM customer";
+
+        return resolveDeveloperToken(appCode, clientCode)
+                .flatMap(devToken -> search(loginCustomerId, customerId, gaql, accessToken, devToken))
+                .map(root -> {
+                    JsonNode results = root.path("results");
+                    if (!results.isArray() || results.isEmpty()) {
+                        return new GoogleCustomerSetupStatus(customerId, null, null);
+                    }
+                    JsonNode setting = results.get(0).path("customer").path("conversionTrackingSetting");
+                    Boolean accepted = setting.path("acceptedCustomerDataTerms").isBoolean()
+                            ? setting.path("acceptedCustomerDataTerms").asBoolean()
+                            : null;
+                    Boolean ecl = setting.path("enhancedConversionsForLeadsEnabled").isBoolean()
+                            ? setting.path("enhancedConversionsForLeadsEnabled").asBoolean()
+                            : null;
+                    return new GoogleCustomerSetupStatus(customerId, accepted, ecl);
+                });
+    }
+
+    /**
+     * Customer-level Enhanced-Conversions-for-Leads readiness. Both fields can
+     * be null if the customer's {@code conversion_tracking_setting} row is
+     * sparse (rare; usually appears for newly created accounts that have never
+     * tracked any conversion).
+     */
+    public record GoogleCustomerSetupStatus(
+            String customerId, Boolean acceptedCustomerDataTerms, Boolean enhancedConversionsForLeadsEnabled) {}
 
     /**
      * For Google, the metrics API call <em>requires</em> {@code customer_id} in
@@ -486,4 +602,69 @@ public class GooglePlatformService extends AbstractAdPlatformService {
 
     /** Discovered ownership of a Google Ads campaign — {@code customerId} hosts it, {@code mccId} is its login parent. */
     private record CampaignOwner(String customerId, String mccId) {}
+
+    /**
+     * Lists every Google Ads sub-account (customer) the OAuth token can reach,
+     * with its descriptive name and parent MCC. Drives the customer-picker
+     * dropdown in the conversion-action mapping UI: a single MCC token reaches
+     * many sub-accounts, each with its own conversion actions, so the operator
+     * has to tell us which customer a mapping targets.
+     *
+     * <p>Walks the MCC tree: list accessible customers, then for each MCC query
+     * {@code customer_client} to enumerate children. Returns ALL accessible
+     * customers (managers + clients) -- a non-MCC root customer also shows up
+     * here as its own root.
+     */
+    public Flux<DiscoveredGoogleCustomer> listAvailableCustomers(String accessToken) {
+        String devToken = this.googleDeveloperToken;
+        if (devToken == null || devToken.isBlank()) {
+            return Flux.error(new IllegalStateException(
+                    "ai.adzump.googleAds.developerToken is not configured"));
+        }
+        return listAccessibleCustomers(accessToken, devToken)
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(rootId -> listCustomerClients(rootId, accessToken, devToken), 3)
+                .distinct(c -> c.customerId() + "@" + (c.loginCustomerId() == null ? "" : c.loginCustomerId()));
+    }
+
+    private Flux<DiscoveredGoogleCustomer> listCustomerClients(
+            String mccId, String accessToken, String devToken) {
+        String gaql = "SELECT customer_client.id, customer_client.descriptive_name, "
+                + "customer_client.manager, customer_client.status, customer_client.currency_code "
+                + "FROM customer_client WHERE customer_client.status = 'ENABLED'";
+        return search(mccId, mccId, gaql, accessToken, devToken)
+                .flatMapMany(root -> {
+                    JsonNode results = root.path("results");
+                    if (!results.isArray()) return Flux.<DiscoveredGoogleCustomer>empty();
+                    return Flux.fromIterable(() -> results.elements())
+                            .map(r -> {
+                                JsonNode cc = r.path("customerClient");
+                                String childId = cc.path("id").asText(null);
+                                boolean isManager = cc.path("manager").asBoolean(false);
+                                String name = cc.path("descriptiveName").asText(null);
+                                String currency = cc.path("currencyCode").asText(null);
+                                // Sub-accounts route through the MCC as login; managers (intermediate
+                                // MCCs) carry NULL login since they aren't the dispatch target.
+                                String login = isManager ? null : mccId;
+                                return new DiscoveredGoogleCustomer(childId, name, currency, isManager, login);
+                            })
+                            .filter(c -> c.customerId() != null && !c.customerId().isBlank());
+                })
+                .onErrorResume(e -> Flux.empty());
+    }
+
+    /**
+     * Customer node returned by {@link #listAvailableCustomers}. Operator-facing
+     * dropdown shows {@code descriptiveName} (falls back to {@code customerId}
+     * when Google didn't return one), value is {@code customerId} threaded into
+     * conversion-action create/list calls. {@code loginCustomerId} is the MCC
+     * to put in the {@code login-customer-id} header for that customer's calls;
+     * NULL for manager rows (which aren't valid dispatch targets).
+     */
+    public record DiscoveredGoogleCustomer(
+            String customerId,
+            String descriptiveName,
+            String currencyCode,
+            boolean manager,
+            String loginCustomerId) {}
 }

@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
  * Google Ads UploadClickConversions dispatcher. Uses the Google Ads REST API
  * with enhanced-conversions user_identifiers (SHA-256 hashed email + phone).
  *
- * <p>API: POST {@code googleads.googleapis.com/v20/customers/{customerId}:uploadClickConversions}.
+ * <p>API: POST {@code googleads.googleapis.com/v23/customers/{customerId}:uploadClickConversions}.
  *
  * <p>Click attribution priority on a single conversion: gclid → wbraid → gbraid.
  * Without any click identifier we still attempt enhanced-conversions match via
@@ -41,7 +41,7 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
 
     private static final String SCHEME = "https";
     private static final String HOST = "googleads.googleapis.com";
-    private static final String API_VERSION = "/v20/";
+    private static final String API_VERSION = "/v23/";
     private static final DateTimeFormatter TS_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxx");
 
@@ -73,11 +73,16 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
             Campaign campaign,
             String accessToken) {
 
-        String customerId = campaign.getPlatformAccountId();
-        String loginCustomerId = campaign.getPlatformLoginId();
-        if (customerId == null || customerId.isBlank()) {
+        // Customer-id comes from the action resource path, not the campaign. The conversion
+        // action's owning customer is the upload target: for SINGLE topology that's the
+        // direct account; for MCC + cross-account it's the MCC. Campaign's sub-account is
+        // never the right target -- using it produced INVALID_CUSTOMER_FOR_CLICK in prod.
+        String customerId = extractCustomerId(mapping.getPlatformActionId());
+        if (customerId == null) {
             return Mono.just(DispatchResult.fail(
-                    "Google requires customerId (campaign.platformAccountId); was null", null));
+                    "Google mapping.platformActionId missing or malformed; expected customers/{id}/conversionActions/{id} but got: "
+                            + mapping.getPlatformActionId(),
+                    null));
         }
         if (this.googleDeveloperToken == null || this.googleDeveloperToken.isBlank()) {
             return Mono.just(DispatchResult.fail(
@@ -85,8 +90,20 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
         }
 
         return postClickConversion(
-                        event, mapping, ticket, accessToken, customerId, loginCustomerId, this.googleDeveloperToken)
+                        event, mapping, ticket, accessToken, customerId, customerId, this.googleDeveloperToken)
                 .onErrorResume(t -> Mono.just(DispatchResult.fail("Google dispatch failed: " + t.getMessage(), null)));
+    }
+
+    /**
+     * Parses {@code customers/{customerId}/conversionActions/{actionId}} and returns
+     * the customer-id segment. Returns null if the resource isn't in that shape.
+     */
+    private static String extractCustomerId(String actionResource) {
+        if (actionResource == null) return null;
+        String[] parts = actionResource.split("/");
+        if (parts.length < 2 || !"customers".equals(parts[0])) return null;
+        String cid = parts[1];
+        return cid.isBlank() ? null : cid;
     }
 
     private Mono<DispatchResult> postClickConversion(

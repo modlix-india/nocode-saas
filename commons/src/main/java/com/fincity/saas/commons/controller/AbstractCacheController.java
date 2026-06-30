@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.controller;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,5 +31,10 @@ public class AbstractCacheController {
 	@GetMapping("internal/cache")
 	public Mono<ResponseEntity<Collection<String>>> getCacheNames() {
 		return this.service.getCacheNames().map(ResponseEntity::ok);
+	}
+
+	@GetMapping("internal/cache/stats")
+	public Mono<ResponseEntity<Map<String, Object>>> getCacheStats() {
+		return this.service.getCacheStats().map(ResponseEntity::ok);
 	}
 }

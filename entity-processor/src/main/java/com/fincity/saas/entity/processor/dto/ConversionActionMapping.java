@@ -27,6 +27,7 @@ public class ConversionActionMapping extends BaseUpdatableDto<ConversionActionMa
 
     private ULong productTemplateId;
     private CampaignPlatform campaignPlatform;
+    private String platformAccountId;
     private ULong triggerStageId;
     private ULong triggerStatusId;
     private String eventName;
@@ -47,6 +48,7 @@ public class ConversionActionMapping extends BaseUpdatableDto<ConversionActionMa
         super(source);
         this.productTemplateId = source.productTemplateId;
         this.campaignPlatform = source.campaignPlatform;
+        this.platformAccountId = source.platformAccountId;
         this.triggerStageId = source.triggerStageId;
         this.triggerStatusId = source.triggerStatusId;
         this.eventName = source.eventName;
@@ -60,6 +62,7 @@ public class ConversionActionMapping extends BaseUpdatableDto<ConversionActionMa
     public static ConversionActionMapping of(ConversionActionMappingRequest request) {
         return new ConversionActionMapping()
                 .setCampaignPlatform(request.getCampaignPlatform())
+                .setPlatformAccountId(request.getPlatformAccountId())
                 .setEventName(request.getEventName())
                 .setPlatformActionId(request.getPlatformActionId())
                 .setDefaultValue(request.getDefaultValue())

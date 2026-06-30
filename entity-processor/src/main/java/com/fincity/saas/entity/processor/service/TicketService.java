@@ -1067,7 +1067,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .findById(ticket.getCampaignId())
                 .flatMap(campaign -> this.conversionActionMappingService
                         .findActiveByTrigger(
-                                access, ticket.getStage(), ticket.getStatus(), ticket.getProductTemplateId())
+                                access,
+                                ticket.getStage(),
+                                ticket.getStatus(),
+                                ticket.getProductTemplateId(),
+                                // Meta uses a single Pixel/dataset and routes by user identifiers; Google
+                                // under MCC + cross-account does the same via Enhanced Conversions for
+                                // Leads. Either way, the campaign's sub-account is not the right filter
+                                // key -- platformAccountId on the mapping identifies the action's owner,
+                                // not which campaign it answers to. See [[ECL conversion model]].
+                                null)
                         // Gate 2: only fire mappings whose platform matches the ticket's source platform.
                         .filter(mapping -> java.util.Objects.equals(
                                 mapping.getCampaignPlatform(), campaign.getCampaignPlatform()))
@@ -1090,6 +1099,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static com.fincity.saas.entity.processor.enums.ConversionActionSource deriveActionSource(Ticket ticket) {
         java.util.Map<String, Object> adData = ticket.getAdData();
         if (adData != null && (adData.containsKey("lead_id") || adData.containsKey("leadgen_id"))) {
+            return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
+        }
+        // Defense in depth: a ticket sourced from a Meta/Instagram lead-form ad
+        // (LeadSource.SOCIAL_MEDIA) is never a website event, regardless of whether
+        // adData propagated the lead_id. Without this fallback, any webhook payload
+        // that missed lead_id stamping would silently fall through to WEBSITE and
+        // get dispatched without fbc — un-attributable on Meta's side.
+        if (com.fincity.saas.entity.processor.enums.LeadSource.SOCIAL_MEDIA
+                .getName()
+                .equalsIgnoreCase(ticket.getSource())) {
             return com.fincity.saas.entity.processor.enums.ConversionActionSource.SYSTEM_GENERATED;
         }
         return com.fincity.saas.entity.processor.enums.ConversionActionSource.WEBSITE;

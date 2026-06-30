@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.configuration;
 
+import java.io.OutputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -62,6 +63,12 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Value("${redis.codec:object}")
     private String codecType;
+
+    @Value("${cache.local.max-weight-bytes:67108864}")
+    private long localCacheMaxWeightBytes;
+
+    @Value("${cache.local.expire-after-write-minutes:60}")
+    private long localCacheExpireAfterWriteMinutes;
 
     private RedisCodec<String, Object> objectCodec;
 
@@ -188,8 +195,20 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
-        return Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofMinutes(5));
+        // Bound the local (L1) cache by approximate memory (cache.local.max-weight-bytes): entries
+        // are large, highly variable definition objects, so a flat maximumSize is a poor proxy.
+        // W-TinyLFU evicts only under weight pressure, so entries persist while there is room.
+        // No idle (expireAfterAccess) expiry — it evicted entries even when caches were nearly empty,
+        // killing hit rate. A long expireAfterWrite (cache.local.expire-after-write-minutes, 0 = off)
+        // is kept ONLY as a staleness backstop should a cross-instance invalidation be missed;
+        // correctness normally comes from explicit evictAll-on-write.
+        Caffeine<Object, Object> builder = Caffeine.newBuilder()
+            .maximumWeight(this.localCacheMaxWeightBytes)
+            .weigher(this::weighCacheEntry)
+            .recordStats();
+        if (this.localCacheExpireAfterWriteMinutes > 0)
+            builder = builder.expireAfterWrite(Duration.ofMinutes(this.localCacheExpireAfterWriteMinutes));
+        return builder;
     }
 
     @Bean
@@ -197,5 +216,32 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
         CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
         caffeineCacheManager.setCaffeine(caffeine);
         return caffeineCacheManager;
+    }
+
+    private int weighCacheEntry(Object key, Object value) {
+        long weight = key instanceof String s ? (long) s.length() * 2 : 16L;
+        // Stream the serialised payload through a counter (no buffer allocation); compact
+        // (non-indented) so the weight tracks payload size rather than pretty-print whitespace.
+        try (ByteCountingOutputStream counter = new ByteCountingOutputStream()) {
+            this.objectMapper.writer().without(SerializationFeature.INDENT_OUTPUT).writeValue(counter, value);
+            weight += counter.count;
+        } catch (Exception e) {
+            weight += 4096L; // nominal weight when a value cannot be serialised
+        }
+        return (int) Math.min(weight, Integer.MAX_VALUE);
+    }
+
+    private static final class ByteCountingOutputStream extends OutputStream {
+        private long count;
+
+        @Override
+        public void write(int b) {
+            this.count++;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            this.count += len;
+        }
     }
 }

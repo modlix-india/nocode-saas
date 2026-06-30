@@ -28,9 +28,21 @@ public class ConversionActionMappingDAO
      * caller's app/client. {@code statusId} is matched exactly when non-null;
      * mappings with a NULL TRIGGER_STATUS_ID are always considered (they apply to
      * any status under the given stage).
+     *
+     * <p>When {@code platformAccountId} is non-null, returned mappings must either
+     * match it exactly OR have a NULL PLATFORM_ACCOUNT_ID. Callers under the
+     * "single Pixel" (Meta) or "MCC + cross-account on" (Google ECL) model pass
+     * null here -- attribution is handled platform-side via user identifiers, so
+     * the mapping's owning customer is not a filter key. Reserved for the future
+     * MCC + per-account model where multiple actions per (product, stage) exist
+     * across sub-accounts.
      */
     public Flux<ConversionActionMapping> findActiveByTrigger(
-            ProcessorAccess access, ULong stageId, ULong statusId, ULong productTemplateId) {
+            ProcessorAccess access,
+            ULong stageId,
+            ULong statusId,
+            ULong productTemplateId,
+            String platformAccountId) {
 
         Condition statusMatch = ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
                 .TRIGGER_STATUS_ID
@@ -46,6 +58,13 @@ public class ConversionActionMappingDAO
                         ? org.jooq.impl.DSL.noCondition()
                         : ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.PRODUCT_TEMPLATE_ID.eq(productTemplateId));
 
+        Condition accountMatch = (platformAccountId == null || platformAccountId.isBlank())
+                ? org.jooq.impl.DSL.noCondition()
+                : ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
+                        .PLATFORM_ACCOUNT_ID
+                        .isNull()
+                        .or(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.PLATFORM_ACCOUNT_ID.eq(platformAccountId));
+
         return Flux.from(this.dslContext
                         .selectFrom(this.table)
                         .where(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
@@ -55,15 +74,22 @@ public class ConversionActionMappingDAO
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.TRIGGER_STAGE_ID.eq(stageId))
                                 .and(statusMatch)
                                 .and(productTemplateMatch)
+                                .and(accountMatch)
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.IS_ACTIVE.isTrue())))
                 .map(e -> e.into(this.pojoClass));
     }
 
-    /** Finds an existing mapping for the unique tuple. Used by seedDefaults to skip duplicates. */
+    /**
+     * Finds an existing mapping for the unique tuple. Used by seedDefaults and
+     * applyFunnel to skip duplicates. {@code platformAccountId} narrows to a
+     * specific customer when non-null (matching the widened unique key); when
+     * null, matches the legacy row with NULL PLATFORM_ACCOUNT_ID.
+     */
     public reactor.core.publisher.Mono<ConversionActionMapping> findExisting(
             ProcessorAccess access,
             ULong productTemplateId,
             CampaignPlatform platform,
+            String platformAccountId,
             ULong triggerStageId,
             ULong triggerStatusId) {
 
@@ -75,6 +101,10 @@ public class ConversionActionMappingDAO
                 ? ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.TRIGGER_STATUS_ID.isNull()
                 : ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.TRIGGER_STATUS_ID.eq(triggerStatusId);
 
+        Condition accountMatch = (platformAccountId == null || platformAccountId.isBlank())
+                ? ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.PLATFORM_ACCOUNT_ID.isNull()
+                : ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.PLATFORM_ACCOUNT_ID.eq(platformAccountId);
+
         return reactor.core.publisher.Mono.from(this.dslContext
                         .selectFrom(this.table)
                         .where(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
@@ -83,8 +113,22 @@ public class ConversionActionMappingDAO
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CLIENT_CODE.eq(access.getClientCode()))
                                 .and(productTemplateMatch)
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CAMPAIGN_PLATFORM.eq(platform))
+                                .and(accountMatch)
                                 .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.TRIGGER_STAGE_ID.eq(triggerStageId))
                                 .and(statusMatch)))
+                .map(e -> e.into(this.pojoClass));
+    }
+
+    /** Returns every active mapping for the caller's app/client on the given platform. */
+    public Flux<ConversionActionMapping> findActiveByPlatform(ProcessorAccess access, CampaignPlatform platform) {
+        return Flux.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING
+                                .APP_CODE
+                                .eq(access.getAppCode())
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CLIENT_CODE.eq(access.getClientCode()))
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.CAMPAIGN_PLATFORM.eq(platform))
+                                .and(ENTITY_PROCESSOR_CONVERSION_ACTION_MAPPING.IS_ACTIVE.isTrue())))
                 .map(e -> e.into(this.pojoClass));
     }
 }

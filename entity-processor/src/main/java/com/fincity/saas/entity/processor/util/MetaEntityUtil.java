@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -31,6 +33,8 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public final class MetaEntityUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(MetaEntityUtil.class);
 
     private static final String ID = "id";
     private static final String NAME = "name";
@@ -137,6 +141,16 @@ public final class MetaEntityUtil {
                         logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
     }
 
+    /**
+     * Compact, log-safe preview of a Meta webhook payload. Caps at ~300 chars
+     * so a noisy payload doesn't flood the log on the residual-leak branch.
+     */
+    private static String previewPayload(JsonNode payload) {
+        if (payload == null || payload.isMissingNode() || payload.isNull()) return "<empty>";
+        String s = payload.toString();
+        return s.length() > 300 ? s.substring(0, 300) + "..." : s;
+    }
+
     private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails, EntityIntegration integration) {
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
@@ -178,6 +192,7 @@ public final class MetaEntityUtil {
             JsonNode incomingLead,
             JsonNode formDetails,
             String adId,
+            String leadGenId,
             String token,
             EntityIntegration integration,
             EntityCollectorMessageResourceService messageService,
@@ -190,14 +205,38 @@ public final class MetaEntityUtil {
                         (campaignDetails, leadDetails) -> {
                             // Stamp the leadgen id onto adData so Meta Conversions API can pick it up
                             // as user_data.lead_id for system_generated events (Meta CAPI Part 6.3).
-                            String leadgenId = incomingLead.path(ID).asText(null);
-                            if (leadgenId != null && !leadgenId.isBlank()) {
+                            // Source of truth: the leadGenId extracted from the webhook envelope
+                            // (entry[].changes[].value.leadgen_id). We pass this through from
+                            // EntityCollectorService rather than reading incomingLead.path("id") —
+                            // incomingLead is the Graph API response, which occasionally returns
+                            // payloads missing `id` (rate-limited / partial). Falling back to the
+                            // Graph API id preserves backward compat if a caller passes null.
+                            String stampId = (leadGenId != null && !leadGenId.isBlank())
+                                    ? leadGenId
+                                    : incomingLead.path(ID).asText(null);
+                            if (stampId != null && !stampId.isBlank()) {
                                 Map<String, Object> adData = leadDetails.getAdData() != null
                                         ? new HashMap<>(leadDetails.getAdData())
                                         : new HashMap<>();
-                                adData.put("lead_id", leadgenId);
-                                adData.put(LEADGEN_ID, leadgenId);
+                                adData.put("lead_id", stampId);
+                                adData.put(LEADGEN_ID, stampId);
                                 leadDetails.setAdData(adData);
+                            } else {
+                                // Both the webhook-extracted leadGenId AND the Graph API response's id
+                                // were missing — this should be unreachable in practice since the
+                                // webhook envelope is the source of truth. If this fires, something
+                                // upstream of the collector dropped the leadgen_id.
+                                List<String> topLevelKeys = new ArrayList<>();
+                                incomingLead.fieldNames().forEachRemaining(topLevelKeys::add);
+                                log.warn(
+                                        "MetaEntityUtil: no leadGenId available (param null AND '{}'"
+                                                + " missing on Graph API response) — cannot stamp lead_id."
+                                                + " ad_id={} logId={} topLevelKeys={} payloadPreview={}",
+                                        ID,
+                                        adId,
+                                        logId,
+                                        topLevelKeys,
+                                        previewPayload(incomingLead));
                             }
                             return Mono.just(buildEntityResponse(leadDetails, campaignDetails, integration));
                         },
