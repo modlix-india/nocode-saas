@@ -46,6 +46,8 @@ public class TagDAO {
                         .set(ENTITY_PROCESSOR_TAGS.CLIENT_CODE, tag.getClientCode())
                         .set(ENTITY_PROCESSOR_TAGS.NAME, tag.getName())
                         .set(ENTITY_PROCESSOR_TAGS.IS_ACTIVE, tag.isActive())
+                        .set(ENTITY_PROCESSOR_TAGS.COLOR, tag.getColor())
+                        .set(ENTITY_PROCESSOR_TAGS.ICON, tag.getIcon())
                         .set(ENTITY_PROCESSOR_TAGS.CREATED_BY, tag.getCreatedBy())
                         .returningResult(ENTITY_PROCESSOR_TAGS.ID))
                 .map(rec -> {
@@ -59,8 +61,12 @@ public class TagDAO {
                         .update(ENTITY_PROCESSOR_TAGS)
                         .set(ENTITY_PROCESSOR_TAGS.NAME, tag.getName())
                         .set(ENTITY_PROCESSOR_TAGS.IS_ACTIVE, tag.isActive())
+                        .set(ENTITY_PROCESSOR_TAGS.COLOR, tag.getColor())
+                        .set(ENTITY_PROCESSOR_TAGS.ICON, tag.getIcon())
                         .set(ENTITY_PROCESSOR_TAGS.UPDATED_BY, tag.getUpdatedBy())
-                        .where(ENTITY_PROCESSOR_TAGS.ID.eq(tag.getId())))
+                        .where(ENTITY_PROCESSOR_TAGS.ID.eq(tag.getId()))
+                        .and(ENTITY_PROCESSOR_TAGS.APP_CODE.eq(tag.getAppCode()))
+                        .and(ENTITY_PROCESSOR_TAGS.CLIENT_CODE.eq(tag.getClientCode())))
                 .thenReturn(tag);
     }
 
@@ -90,6 +96,8 @@ public class TagDAO {
         tag.setClientCode(rec.getClientCode());
         tag.setName(rec.getName());
         tag.setActive(Boolean.TRUE.equals(rec.getIsActive()));
+        tag.setColor(rec.getColor());
+        tag.setIcon(rec.getIcon());
         tag.setCreatedBy(rec.getCreatedBy());
         tag.setUpdatedBy(rec.getUpdatedBy());
         return tag;

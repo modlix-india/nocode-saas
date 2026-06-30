@@ -89,6 +89,18 @@ public class EntityProcessorTags extends TableImpl<EntityProcessorTagsRecord> {
     public final TableField<EntityProcessorTagsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this tag is active or not.");
 
     /**
+     * The column <code>entity_processor.entity_processor_tags.COLOR</code>.
+     * Color of the tag (e.g. HEX code or CSS class).
+     */
+    public final TableField<EntityProcessorTagsRecord, String> COLOR = createField(DSL.name("COLOR"), SQLDataType.VARCHAR(64), this, "Color of the tag (e.g. HEX code or CSS class).");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tags.ICON</code>. Icon
+     * path or class identifier.
+     */
+    public final TableField<EntityProcessorTagsRecord, String> ICON = createField(DSL.name("ICON"), SQLDataType.VARCHAR(256), this, "Icon path or class identifier.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_tags.CREATED_BY</code>. ID of the
      * user who created this row.

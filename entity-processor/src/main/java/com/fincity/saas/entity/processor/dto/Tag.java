@@ -21,4 +21,6 @@ public class Tag extends AbstractUpdatableDTO<ULong, ULong> {
     private String clientCode;
     private String name;
     private boolean active = true;
+    private String color;
+    private String icon;
 }

@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.controller;
 import com.fincity.saas.entity.processor.dto.Tag;
 import com.fincity.saas.entity.processor.service.TagService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,12 @@ public class TagController {
     public Mono<ResponseEntity<List<Tag>>> getAvailableTags(
             @RequestParam(defaultValue = "true") boolean onlyActive) {
         return this.service.getAvailableTags(onlyActive).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/mapped")
+    public Mono<ResponseEntity<Map<String, Tag>>> getAvailableTagsMap(
+            @RequestParam(defaultValue = "true") boolean onlyActive) {
+        return this.service.getAvailableTagsMap(onlyActive).map(ResponseEntity::ok);
     }
 
     @PostMapping

@@ -109,12 +109,46 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
     }
 
     /**
+     * Setter for <code>entity_processor.entity_processor_tags.COLOR</code>.
+     * Color of the tag (e.g. HEX code or CSS class).
+     */
+    public EntityProcessorTagsRecord setColor(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tags.COLOR</code>.
+     * Color of the tag (e.g. HEX code or CSS class).
+     */
+    public String getColor() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tags.ICON</code>. Icon
+     * path or class identifier.
+     */
+    public EntityProcessorTagsRecord setIcon(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tags.ICON</code>. Icon
+     * path or class identifier.
+     */
+    public String getIcon() {
+        return (String) get(6);
+    }
+
+    /**
      * Setter for
      * <code>entity_processor.entity_processor_tags.CREATED_BY</code>. ID of the
      * user who created this row.
      */
     public EntityProcessorTagsRecord setCreatedBy(ULong value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -124,7 +158,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(5);
+        return (ULong) get(7);
     }
 
     /**
@@ -133,7 +167,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * this row is created.
      */
     public EntityProcessorTagsRecord setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -143,7 +177,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -152,7 +186,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * user who updated this row.
      */
     public EntityProcessorTagsRecord setUpdatedBy(ULong value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -162,7 +196,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(9);
     }
 
     /**
@@ -171,7 +205,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * this row is updated.
      */
     public EntityProcessorTagsRecord setUpdatedAt(LocalDateTime value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -181,7 +215,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
      * this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -207,7 +241,7 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
     /**
      * Create a detached, initialised EntityProcessorTagsRecord
      */
-    public EntityProcessorTagsRecord(ULong id, String appCode, String clientCode, String name, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTagsRecord(ULong id, String appCode, String clientCode, String name, Boolean isActive, String color, String icon, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTags.ENTITY_PROCESSOR_TAGS);
 
         setId(id);
@@ -215,6 +249,8 @@ public class EntityProcessorTagsRecord extends UpdatableRecordImpl<EntityProcess
         setClientCode(clientCode);
         setName(name);
         setIsActive(isActive);
+        setColor(color);
+        setIcon(icon);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

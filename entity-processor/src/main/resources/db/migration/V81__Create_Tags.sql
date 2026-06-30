@@ -5,6 +5,8 @@ CREATE TABLE `entity_processor`.`entity_processor_tags`
     `CLIENT_CODE`   CHAR(8)         NOT NULL COMMENT 'Client Code.',
     `NAME`          VARCHAR(512)    NOT NULL COMMENT 'Display name of the tag.',
     `IS_ACTIVE`     TINYINT         NOT NULL DEFAULT 1 COMMENT 'Flag to check if this tag is active or not.',
+    `COLOR`         VARCHAR(64)              DEFAULT NULL COMMENT 'Color of the tag (e.g. HEX code or CSS class).',
+    `ICON`          VARCHAR(256)             DEFAULT NULL COMMENT 'Icon path or class identifier.',
     `CREATED_BY`    BIGINT UNSIGNED          DEFAULT NULL COMMENT 'ID of the user who created this row.',
     `CREATED_AT`    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
     `UPDATED_BY`    BIGINT UNSIGNED          DEFAULT NULL COMMENT 'ID of the user who updated this row.',

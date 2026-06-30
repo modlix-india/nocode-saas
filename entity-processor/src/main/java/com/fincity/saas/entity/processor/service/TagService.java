@@ -11,9 +11,12 @@ import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,17 +57,26 @@ public class TagService implements IProcessorAccessService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TagService.getAvailableTags"));
     }
 
+    public Mono<Map<String, Tag>> getAvailableTagsMap(boolean onlyActive) {
+        return this.getAvailableTags(onlyActive)
+                .map(tags -> tags.stream().collect(Collectors.toMap(
+                        tag -> tag.getName(),
+                        tag -> tag,
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new)));
+    }
+
     @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     public Mono<List<Tag>> saveAllTags(List<Tag> tags) {
         return FlatMapUtil.flatMapMono(this::hasAccess, access -> {
-                    if (!Objects.equals(access.getEffectiveClientCode(), access.getClientCode()))
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
-                                access.getEffectiveClientCode());
+            if (!Objects.equals(access.getEffectiveClientCode(), access.getClientCode()))
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        ProcessorMessageResourceService.FORBIDDEN_APP_ACCESS,
+                        access.getEffectiveClientCode());
 
-                    return this.upsertTags(access, tags);
-                })
+            return this.upsertTags(access, tags);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TagService.saveAllTags"));
     }
 
@@ -107,14 +119,12 @@ public class TagService implements IProcessorAccessService {
 
     @PostConstruct
     private void init() {
-        List<String> defaultNames = List.of("HOT", "WARM", "COLD");
-        List<Tag> seeded = new ArrayList<>();
-        for (String name : defaultNames) {
-            Tag tag = new Tag();
-            tag.setName(name);
-            tag.setActive(true);
-            seeded.add(tag);
-        }
-        this.defaultTags = List.copyOf(seeded);
+        this.defaultTags = List.of(
+                new Tag().setName("HOT").setActive(true).setColor("#FF23351A")
+                        .setIcon("api/files/static/file/SYSTEM/TagIcons/hotTagIcon.svg"),
+                new Tag().setName("WARM").setActive(true).setColor("#FFB6211A")
+                        .setIcon("api/files/static/file/SYSTEM/TagIcons/warmTagIcon.svg"),
+                new Tag().setName("COLD").setActive(true).setColor("#2D9EF01A")
+                        .setIcon("api/files/static/file/SYSTEM/TagIcons/coldTagIcon.svg"));
     }
 }
