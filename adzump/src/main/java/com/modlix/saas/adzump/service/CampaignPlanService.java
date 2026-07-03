@@ -1,9 +1,7 @@
 package com.modlix.saas.adzump.service;
 
 import java.math.BigInteger;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -15,7 +13,8 @@ import com.modlix.saas.adzump.dao.CampaignPlanDao;
 import com.modlix.saas.adzump.dto.PlanCompleteness;
 import com.modlix.saas.adzump.jooq.enums.AdzumpCampaignPlanStatus;
 import com.modlix.saas.adzump.model.CampaignPlan;
-import com.modlix.saas.adzump.model.CampaignPlanBody;
+import com.modlix.saas.adzump.validate.PlanValidator;
+import com.modlix.saas.adzump.validate.ValidationContext;
 import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.model.condition.FilterCondition;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
@@ -48,13 +47,15 @@ public class CampaignPlanService {
     private final CampaignPlanDao dao;
     private final FeignAuthenticationService securityService;
     private final AdzumpMessageResourceService msgService;
+    private final PlanValidator planValidator;
 
     public CampaignPlanService(CampaignPlanDao dao, FeignAuthenticationService securityService,
-            AdzumpMessageResourceService msgService) {
+            AdzumpMessageResourceService msgService, PlanValidator planValidator) {
 
         this.dao = dao;
         this.securityService = securityService;
         this.msgService = msgService;
+        this.planValidator = planValidator;
     }
 
     @PreAuthorize("hasAnyAuthority('Authorities.Campaign_MANAGE','Authorities.ROLE_Owner')")
@@ -121,36 +122,39 @@ public class CampaignPlanService {
         return this.dao.applyMergePatch(id, mergePatch);
     }
 
-    // TODO(J5/J6): vertical-aware completeness. The required-slot set must come from the
-    // vertical pack / product template once J5 lands; P0 derives a fixed structural set.
-    // No @PreAuthorize: derived read, tenant-scoped via read() below.
+    /**
+     * Persists the outcome of a J8 lifecycle step: transitions the plan {@code status} and, when
+     * {@code bodyPatch} is non-null, merges it into the plan body — atomically, with the DAO's
+     * optimistic-revision guard (see {@link CampaignPlanDao#patchBodyAndStatus}). Used by the launch
+     * fan-out to write the returned platform {@code links} together with the resulting status
+     * ({@code LIVE_PAUSED} / {@code PARTIALLY_LAUNCHED} / {@code FAILED}) in one write, and by
+     * {@code setStatus} for a pure status transition ({@code bodyPatch == null}).
+     *
+     * <p>Carries the EDIT authority (it mutates) and re-runs the by-id tenant gate via {@link #read},
+     * so it is safe even though the orchestrating {@code CampaignService} already loaded the plan.
+     * Unlike {@link #patch} it does NOT run the fetched-ids gate: the ids written here are
+     * server-generated platform ids from a launch, not agent-supplied references.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.Campaign_MANAGE','Authorities.ROLE_Owner')")
+    public CampaignPlan writeStatusAndBody(ULong id, AdzumpCampaignPlanStatus status, JsonNode bodyPatch) {
+
+        if (status == null)
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    AdzumpMessageResourceService.FIELDS_MISSING, "status");
+
+        this.read(id); // PLAN_NOT_FOUND + managed-client tenant gate
+
+        return this.dao.patchBodyAndStatus(id, bodyPatch, status);
+    }
+
+    // Vertical- + type-aware completeness is now owned by J6: delegate to PlanValidator over a ctx built
+    // from the plan (empty fetched-id set is fine, completeness is structural). This supersedes the old
+    // hardcoded structural slot list. No @PreAuthorize: derived read, tenant-scoped via read() below.
     public PlanCompleteness completeness(ULong id) {
 
         CampaignPlan plan = this.read(id); // not-found + tenant check
 
-        CampaignPlanBody body = plan.getBody();
-
-        Map<String, Boolean> slots = new LinkedHashMap<>();
-        slots.put("name", plan.getName() != null && !plan.getName().isBlank());
-        slots.put("productId", plan.getProductId() != null && !plan.getProductId().isBlank());
-        slots.put("objective", body != null && body.getObjective() != null);
-        slots.put("budget", body != null && body.getBudget() != null);
-        slots.put("schedule", body != null && body.getSchedule() != null);
-        slots.put("adGroupsOrAssetGroups", body != null
-                && ((body.getAdGroups() != null && !body.getAdGroups().isEmpty())
-                        || (body.getAssetGroups() != null && !body.getAssetGroups().isEmpty())));
-        slots.put("creatives", body != null && body.getCreatives() != null && !body.getCreatives().isEmpty());
-
-        List<String> missingRequired = slots.entrySet()
-                .stream()
-                .filter(e -> !e.getValue())
-                .map(Map.Entry::getKey)
-                .toList();
-
-        return new PlanCompleteness()
-                .setComplete(missingRequired.isEmpty())
-                .setMissingRequired(missingRequired)
-                .setSlots(slots);
+        return this.planValidator.completeness(plan, ValidationContext.of(plan));
     }
 
     // TODO(A1 fetched-ids gate): every platform-entity id referenced by the plan (audiences,

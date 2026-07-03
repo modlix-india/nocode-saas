@@ -70,7 +70,8 @@ public class PlanController {
     }
 
     @PostMapping("/{id}/validate")
-    public ResponseEntity<ValidationResult> validate(@PathVariable ULong id) {
-        return ResponseEntity.ok(this.validationService.validate(id));
+    public ResponseEntity<ValidationResult> validate(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.validationService.validate(id, clientCode));
     }
 }

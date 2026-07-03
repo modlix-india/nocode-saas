@@ -19,6 +19,11 @@ public class AdzumpMessageResourceService extends AbstractMessageService {
     public static final String OBJECT_NOT_FOUND = "object_not_found";
     public static final String CONNECTION_NOT_FOUND = "connection_not_found";
     public static final String PRODUCT_NOT_FOUND = "product_not_found";
+    public static final String PLATFORM_NOT_AVAILABLE = "platform_not_available";
+    public static final String META_API_ERROR = "meta_api_error";
+    public static final String GOOGLE_API_ERROR = "google_api_error";
+    public static final String SPECIAL_CATEGORY_REQUIRED = "special_category_required";
+    public static final String UNSUPPORTED_LAUNCH_TYPE = "unsupported_launch_type";
 
     public AdzumpMessageResourceService() {
 

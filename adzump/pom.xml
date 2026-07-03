@@ -20,6 +20,17 @@
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <jooq.version>3.20.3</jooq.version>
+        <!--
+          Google Ads API client (official google-ads-java, J4). 43.2.0 is the latest stable release
+          (Maven Central, 2026-07) and ships stubs for Google Ads API v21..v24; adzump.google.api-version
+          is pinned to v24 (see application.yml) which matches the imported package
+          com.google.ads.googleads.v24.*. Bump the library version, the api-version property, and the v24
+          import package together. Spring Boot 3.4.9 does NOT manage protobuf/grpc/guava/netty, so
+          google-ads' own versions (protobuf 4.33.2, grpc 1.81.0, guava 33.5.0, grpc-netty-shaded) flow
+          through unchallenged and need no exclusions; netty is shaded inside grpc-netty-shaded so it
+          cannot clash with the web tier's tomcat.
+        -->
+        <google-ads.version>43.2.0</google-ads.version>
     </properties>
     <dependencies>
         <dependency>
@@ -103,6 +114,12 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>9.4.0</version>
+        </dependency>
+        <!-- J4: official Google Ads API client library (blocking gRPC client behind GoogleAdsClientFacade). -->
+        <dependency>
+            <groupId>com.google.api-ads</groupId>
+            <artifactId>google-ads</artifactId>
+            <version>${google-ads.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

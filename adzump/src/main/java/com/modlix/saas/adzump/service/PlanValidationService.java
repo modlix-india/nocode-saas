@@ -1,46 +1,49 @@
 package com.modlix.saas.adzump.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
-import com.modlix.saas.adzump.dto.PlanCompleteness;
-import com.modlix.saas.adzump.dto.Severity;
-import com.modlix.saas.adzump.dto.ValidationIssue;
 import com.modlix.saas.adzump.dto.ValidationResult;
+import com.modlix.saas.adzump.model.CampaignPlan;
+import com.modlix.saas.adzump.validate.PlanValidator;
+import com.modlix.saas.adzump.validate.ValidationContext;
 
+/**
+ * Service seam for J6. Reads the plan (tenant-gated by {@link CampaignPlanService#read}) and runs the
+ * pure {@link PlanValidator} over it. Validation is a non-mutating, read-ish check, so it carries
+ * <b>no {@code @PreAuthorize}</b>; tenant scope is enforced by the by-id read, which requires the caller
+ * to manage the plan's client (mirrors {@code AutonomyConfigService.putCampaignOverride}, which locates a
+ * campaign by id and trusts {@code read()}'s managed-client gate).
+ */
 @Service
 public class PlanValidationService {
 
-    private static final String STRUCT_MISSING = "STRUCT_MISSING";
-
     private final CampaignPlanService campaignPlanService;
+    private final PlanValidator planValidator;
 
-    public PlanValidationService(CampaignPlanService campaignPlanService) {
+    public PlanValidationService(CampaignPlanService campaignPlanService, PlanValidator planValidator) {
         this.campaignPlanService = campaignPlanService;
+        this.planValidator = planValidator;
     }
 
-    // TODO(J6 five-layer validator): structural, platform-policy, budget/bid sanity,
-    // compliance (special ad categories), and cross-entity reference layers. P0 is
-    // structural-lite only: it mirrors the completeness slot checks.
-    public ValidationResult validate(ULong planId) {
+    /**
+     * Validates the plan and returns a structured, path-addressed result. {@code valid} is true iff there
+     * are no {@code ERROR} issues (WARNINGs never block).
+     *
+     * @param planId           the plan to validate
+     * @param targetClientCode reserved for signature symmetry with the mutating family; a plan is located
+     *                         by its global id and tenant-gated by {@link CampaignPlanService#read}, so no
+     *                         separate effective-client resolution is needed on this read-ish path.
+     */
+    public ValidationResult validate(ULong planId, String targetClientCode) {
 
-        // completeness() carries the not-found + tenant checks.
-        PlanCompleteness completeness = this.campaignPlanService.completeness(planId);
+        // read() enforces PLAN_NOT_FOUND + the managed-client tenant gate on the plan row.
+        CampaignPlan plan = this.campaignPlanService.read(planId);
 
-        List<ValidationIssue> issues = new ArrayList<>();
+        // ctx: vertical from the plan; empty fetched-id set makes the referential membership check
+        // permissive until A1 wires the session fetched-id registry (TODO A1 gate, see ValidationContext).
+        ValidationContext ctx = ValidationContext.of(plan);
 
-        for (String slot : completeness.getMissingRequired())
-            issues.add(new ValidationIssue()
-                    .setCode(STRUCT_MISSING)
-                    .setSeverity(Severity.ERROR)
-                    .setField(slot)
-                    .setMessage("Required plan slot '" + slot + "' is missing or empty"));
-
-        return new ValidationResult()
-                .setValid(issues.isEmpty())
-                .setIssues(issues);
+        return this.planValidator.validate(plan, ctx);
     }
 }

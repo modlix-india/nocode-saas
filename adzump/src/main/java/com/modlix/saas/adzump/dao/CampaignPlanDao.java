@@ -17,6 +17,7 @@ import com.modlix.saas.adzump.enums.CampaignType;
 import com.modlix.saas.adzump.enums.Platform;
 import com.modlix.saas.adzump.jooq.enums.AdzumpCampaignPlanGoogleCampaignType;
 import com.modlix.saas.adzump.jooq.enums.AdzumpCampaignPlanMetaCampaignType;
+import com.modlix.saas.adzump.jooq.enums.AdzumpCampaignPlanStatus;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpCampaignPlanRecord;
 import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.CampaignPlanBody;
@@ -108,6 +109,65 @@ public class CampaignPlanDao extends AbstractAdzumpJsonDAO<AdzumpCampaignPlanRec
         int rows = this.dslContext.update(ADZUMP_CAMPAIGN_PLAN)
                 .set(ADZUMP_CAMPAIGN_PLAN.BODY, toJson(merged))
                 .set(ADZUMP_CAMPAIGN_PLAN.REVISION, ADZUMP_CAMPAIGN_PLAN.REVISION.plus(1))
+                .where(ADZUMP_CAMPAIGN_PLAN.ID.eq(id)
+                        .and(ADZUMP_CAMPAIGN_PLAN.REVISION.eq(revision)))
+                .execute();
+
+        if (rows == 0)
+            throw new GenericException(HttpStatus.CONFLICT,
+                    "Campaign plan " + id + " was modified concurrently (stale revision : " + revision
+                            + "), please re-read and retry");
+
+        return this.readById(id);
+    }
+
+    /**
+     * Transitions the {@code status} column and (optionally) merges a body patch in a single
+     * optimistic UPDATE — the write the J8 launch path uses to persist the fanned-out platform
+     * {@code links} together with the resulting plan status atomically. Mirrors
+     * {@link #applyMergePatch}'s revision guard: the UPDATE only applies while the row still carries
+     * the revision that was read, so a concurrent writer yields a {@code 409 CONFLICT} rather than a
+     * lost update.
+     *
+     * <p>{@code status} is required (the {@code status} column is NOT NULL and every J8 caller sets
+     * one). {@code bodyPatch} is an RFC 7386 merge patch over the JSON {@code body} (e.g.
+     * {@code {"links": {...}}}); pass {@code null} to transition status only. Unlike
+     * {@link com.modlix.saas.adzump.service.CampaignPlanService#patch} this does <b>not</b> run the
+     * fetched-ids gate: the ids being written here are server-generated platform ids from a launch,
+     * not agent-supplied references.
+     */
+    public CampaignPlan patchBodyAndStatus(ULong id, JsonNode bodyPatch, AdzumpCampaignPlanStatus status) {
+
+        Record rec = this.getRecordById(id);
+
+        Integer revision = rec.get(ADZUMP_CAMPAIGN_PLAN.REVISION);
+
+        JSON newBody = null;
+        if (bodyPatch != null && !bodyPatch.isNull()) {
+
+            JSON bodyJson = rec.get(ADZUMP_CAMPAIGN_PLAN.BODY);
+
+            JsonNode body;
+            try {
+                body = bodyJson == null || bodyJson.data() == null
+                        ? MAPPER.createObjectNode()
+                        : MAPPER.readTree(bodyJson.data());
+            } catch (JsonProcessingException e) {
+                throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Unable to parse the body of the campaign plan : " + id, e);
+            }
+
+            newBody = toJson(JsonMergePatchUtil.merge(body, bodyPatch));
+        }
+
+        var update = this.dslContext.update(ADZUMP_CAMPAIGN_PLAN)
+                .set(ADZUMP_CAMPAIGN_PLAN.REVISION, ADZUMP_CAMPAIGN_PLAN.REVISION.plus(1))
+                .set(ADZUMP_CAMPAIGN_PLAN.STATUS, status);
+
+        if (newBody != null)
+            update = update.set(ADZUMP_CAMPAIGN_PLAN.BODY, newBody);
+
+        int rows = update
                 .where(ADZUMP_CAMPAIGN_PLAN.ID.eq(id)
                         .and(ADZUMP_CAMPAIGN_PLAN.REVISION.eq(revision)))
                 .execute();
