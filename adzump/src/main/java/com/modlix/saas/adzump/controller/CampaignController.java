@@ -1,0 +1,92 @@
+package com.modlix.saas.adzump.controller;
+
+import java.beans.PropertyEditorSupport;
+
+import org.jooq.types.ULong;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.DataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.modlix.saas.adzump.model.CampaignPlan;
+import com.modlix.saas.adzump.model.campaign.AttributeRequest;
+import com.modlix.saas.adzump.model.campaign.CampaignProductLink;
+import com.modlix.saas.adzump.platform.RunState;
+import com.modlix.saas.adzump.service.campaign.CampaignService;
+
+/**
+ * J8 lifecycle endpoints (J18). Thin pass-throughs — NO {@code @PreAuthorize} here; all authority
+ * and tenant checks live on {@link CampaignService}. The launch verb sits under the plan resource
+ * ({@code /plans/{id}/launch}); post-launch verbs act on the campaign resource
+ * ({@code /campaigns/...}), so the paths are declared per-method rather than via a single class-level
+ * base (and never collide with {@code PlanController}'s {@code /plans/{id}} routes).
+ */
+@RestController
+public class CampaignController {
+
+    private final CampaignService campaignService;
+
+    public CampaignController(CampaignService campaignService) {
+        this.campaignService = campaignService;
+    }
+
+    @InitBinder
+    public void initBinder(DataBinder binder) {
+        binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                if (text == null)
+                    setValue(null);
+                else
+                    setValue(ULong.valueOf(text));
+            }
+        });
+    }
+
+    /** The single launch path: validate -> compile -> launch PAUSED -> write links + status. */
+    @PostMapping("/api/adzump/plans/{id}/launch")
+    public ResponseEntity<CampaignPlan> launch(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.campaignService.launch(id, clientCode));
+    }
+
+    @PostMapping("/api/adzump/campaigns/{id}/activate")
+    public ResponseEntity<Void> activate(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        this.campaignService.setStatus(id, RunState.ACTIVE, clientCode);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/adzump/campaigns/{id}/pause")
+    public ResponseEntity<Void> pause(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        this.campaignService.setStatus(id, RunState.PAUSE, clientCode);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/adzump/campaigns/{id}/archive")
+    public ResponseEntity<Void> archive(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        this.campaignService.setStatus(id, RunState.ARCHIVED, clientCode);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/api/adzump/campaigns/{id}")
+    public ResponseEntity<CampaignPlan> editLive(@PathVariable ULong id, @RequestBody JsonNode patch,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.campaignService.editLive(id, patch, clientCode));
+    }
+
+    @PostMapping("/api/adzump/campaigns/attribute")
+    public ResponseEntity<CampaignProductLink> attribute(@RequestBody AttributeRequest request,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.campaignService.attributeExisting(
+                request.getPlatform(), request.getExternalCampaignId(), request.getProductId(), clientCode));
+    }
+}
