@@ -64,7 +64,9 @@ public class SourceDAO {
                         .set(ENTITY_PROCESSOR_SOURCES.DISPLAY_ORDER, source.getDisplayOrder())
                         .set(ENTITY_PROCESSOR_SOURCES.IS_ACTIVE, source.isActive())
                         .set(ENTITY_PROCESSOR_SOURCES.UPDATED_BY, source.getUpdatedBy())
-                        .where(ENTITY_PROCESSOR_SOURCES.ID.eq(source.getId())))
+                        .where(ENTITY_PROCESSOR_SOURCES.ID.eq(source.getId()))
+                        .and(ENTITY_PROCESSOR_SOURCES.APP_CODE.eq(source.getAppCode()))
+                        .and(ENTITY_PROCESSOR_SOURCES.CLIENT_CODE.eq(source.getClientCode())))
                 .thenReturn(source);
     }
 
