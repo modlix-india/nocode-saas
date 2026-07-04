@@ -27,6 +27,7 @@ import org.mockito.Mockito;
 
 import com.modlix.saas.adzump.dao.CreativeAttributeDao;
 import com.modlix.saas.adzump.dto.CreativeAttributeRow;
+import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.Creative;
 import com.modlix.saas.adzump.model.Money;
 import com.modlix.saas.adzump.model.leadzump.AdGrainId;
@@ -37,6 +38,7 @@ import com.modlix.saas.adzump.model.snapshot.PlatformMetrics;
 import com.modlix.saas.adzump.model.snapshot.SignalMaturity;
 import com.modlix.saas.adzump.model.snapshot.SnapshotRow;
 import com.modlix.saas.adzump.service.AdzumpMessageResourceService;
+import com.modlix.saas.adzump.service.CampaignPlanService;
 import com.modlix.saas.adzump.service.feedback.FeedbackService;
 import com.modlix.saas.adzump.service.feedback.PolicyScorer;
 import com.modlix.saas.commons2.exception.GenericException;
@@ -63,6 +65,7 @@ class CreativeScoringServiceTest {
     private CreativePredictor predictor;
     private CreativeAttributeDao attrDao;
     private FeedbackService feedbackService;
+    private CampaignPlanService campaignPlanService;
     private FeignAuthenticationService security;
     private ContextAuthentication ca;
     private MockedStatic<SecurityContextUtil> securityCtx;
@@ -74,6 +77,7 @@ class CreativeScoringServiceTest {
         this.predictor = mock(CreativePredictor.class);
         this.attrDao = mock(CreativeAttributeDao.class);
         this.feedbackService = mock(FeedbackService.class);
+        this.campaignPlanService = mock(CampaignPlanService.class);
         this.security = mock(FeignAuthenticationService.class);
 
         this.ca = mock(ContextAuthentication.class);
@@ -83,7 +87,7 @@ class CreativeScoringServiceTest {
         this.securityCtx.when(SecurityContextUtil::getUsersContextAuthentication).thenReturn(this.ca);
 
         this.service = new CreativeScoringService(new CreativeScorer(new PolicyScorer()), this.attributor,
-                this.predictor, this.attrDao, this.feedbackService, this.security, MSG);
+                this.predictor, this.attrDao, this.feedbackService, this.campaignPlanService, this.security, MSG);
     }
 
     @AfterEach
@@ -128,6 +132,26 @@ class CreativeScoringServiceTest {
         assertThrows(GenericException.class, () -> this.service.getAttributeMap(RE, null, "OTHER"));
 
         verify(this.attributor, never()).attribute(any(), any(), any());
+    }
+
+    @Test
+    void getAttributeMapForPlan_resolvesPlanVertical_returnsTenantPrivateMap() {
+
+        // The plan read yields the vertical; the map is scoped to the caller's OWN client.
+        CampaignPlan plan = new CampaignPlan().setClientCode(OWN).setVertical(RE);
+        plan.setId(PLAN_ID);
+        when(this.campaignPlanService.read(PLAN_ID)).thenReturn(plan);
+
+        AttributeAttribution own = map(OWN);
+        when(this.attributor.attribute(eq(OWN), eq(RE), any())).thenReturn(own);
+
+        AttributeAttribution result = this.service.getAttributeMapForPlan(PLAN_ID, null);
+
+        // Vertical is resolved server-side from the plan, and the attributor is invoked with it + OWN.
+        verify(this.campaignPlanService).read(PLAN_ID);
+        verify(this.attributor).attribute(eq(OWN), eq(RE), any());
+        assertSame(own, result);
+        assertEquals(RE, result.vertical());
     }
 
     @Test

@@ -94,8 +94,34 @@ public class FeedbackService {
      */
     public PerformanceSnapshot readLatest(ULong campaignPlanId, String targetClientCode) {
 
+        return this.readLatest(campaignPlanId, (SnapshotWindow) null, targetClientCode);
+    }
+
+    /**
+     * The most recent <b>stored</b> snapshot for a plan (the J10 {@code get_performance} read, A5 §6),
+     * scoped to {@code window} when one is given: the latest stored snapshot whose window matches, else
+     * the overall latest (and {@code null} when nothing has been built). No authority gate; tenant-scoped
+     * by the plan's managed-client gate.
+     *
+     * <p><b>Read, not build.</b> This returns a snapshot the J10 build path already produced — it never
+     * (re)builds. Building/appending a fresh snapshot is the EDIT-gated {@link #getSnapshot} (or the J14
+     * scheduler); a no-authority read must not trigger a mutation, so a window with no stored match falls
+     * back to the overall latest rather than materializing a new one.
+     */
+    public PerformanceSnapshot readLatest(ULong campaignPlanId, SnapshotWindow window, String targetClientCode) {
+
         String clientCode = this.tenantScope(campaignPlanId, targetClientCode);
-        return toDomain(this.dao.findLatest(clientCode, campaignPlanId));
+
+        if (window == null || (window.getFrom() == null && window.getTo() == null))
+            return toDomain(this.dao.findLatest(clientCode, campaignPlanId));
+
+        // findSeries is oldest-first: the last match seen is the latest snapshot for the window.
+        PerformanceSnapshotEntity match = null;
+        for (PerformanceSnapshotEntity e : this.dao.findSeries(clientCode, campaignPlanId))
+            if (windowMatches(e, window))
+                match = e;
+
+        return toDomain(match != null ? match : this.dao.findLatest(clientCode, campaignPlanId));
     }
 
     /**
@@ -132,6 +158,19 @@ public class FeedbackService {
         this.assertPlanClient(plan.getClientCode(), effectiveClient, targetClientCode);
 
         return plan.getClientCode();
+    }
+
+    /**
+     * A stored snapshot matches a requested window when every window field the caller specified equals
+     * the snapshot's (unspecified fields are wildcards). Exact-date matching in P3 — the read selects an
+     * already-built snapshot, it does not compute a new range.
+     */
+    private static boolean windowMatches(PerformanceSnapshotEntity e, SnapshotWindow w) {
+        if (w.getFrom() != null && !w.getFrom().equals(e.getWindowFrom()))
+            return false;
+        if (w.getTo() != null && !w.getTo().equals(e.getWindowTo()))
+            return false;
+        return w.getTimezone() == null || StringUtil.safeEquals(w.getTimezone(), e.getTimezone());
     }
 
     /**

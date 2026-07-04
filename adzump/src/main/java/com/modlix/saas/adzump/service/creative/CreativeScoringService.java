@@ -12,10 +12,12 @@ import org.springframework.stereotype.Service;
 
 import com.modlix.saas.adzump.dao.CreativeAttributeDao;
 import com.modlix.saas.adzump.dto.CreativeAttributeRow;
+import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.Creative;
 import com.modlix.saas.adzump.model.snapshot.PerformanceSnapshot;
 import com.modlix.saas.adzump.model.snapshot.SnapshotWindow;
 import com.modlix.saas.adzump.service.AdzumpMessageResourceService;
+import com.modlix.saas.adzump.service.CampaignPlanService;
 import com.modlix.saas.adzump.service.feedback.FeedbackService;
 import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
@@ -48,18 +50,21 @@ public class CreativeScoringService {
     private final CreativePredictor predictor;
     private final CreativeAttributeDao creativeAttributeDao;
     private final FeedbackService feedbackService;
+    private final CampaignPlanService campaignPlanService;
     private final FeignAuthenticationService securityService;
     private final AdzumpMessageResourceService msgService;
 
     public CreativeScoringService(CreativeScorer creativeScorer, AttributeAttributor attributor,
             CreativePredictor predictor, CreativeAttributeDao creativeAttributeDao, FeedbackService feedbackService,
-            FeignAuthenticationService securityService, AdzumpMessageResourceService msgService) {
+            CampaignPlanService campaignPlanService, FeignAuthenticationService securityService,
+            AdzumpMessageResourceService msgService) {
 
         this.creativeScorer = creativeScorer;
         this.attributor = attributor;
         this.predictor = predictor;
         this.creativeAttributeDao = creativeAttributeDao;
         this.feedbackService = feedbackService;
+        this.campaignPlanService = campaignPlanService;
         this.securityService = securityService;
         this.msgService = msgService;
     }
@@ -86,6 +91,19 @@ public class CreativeScoringService {
 
         String clientCode = this.resolveEffectiveClientCode(targetClientCode, ca());
         return this.attributor.attribute(clientCode, vertical, window);
+    }
+
+    /**
+     * The {@code get_attribute_map} read (A5 §6): resolves the plan's vertical server-side, then returns
+     * the caller-client's tenant-private attribute map for that vertical. No {@code @PreAuthorize}: the
+     * plan read enforces the by-id managed-client gate (so the caller may see the plan), and the map is
+     * scoped to the caller's own effective client — one account's attribute wins never leak to another.
+     */
+    public AttributeAttribution getAttributeMapForPlan(ULong campaignPlanId, String targetClientCode) {
+
+        // read() enforces PLAN_NOT_FOUND + the managed-client tenant gate; the vertical drives the map.
+        CampaignPlan plan = this.campaignPlanService.read(campaignPlanId);
+        return this.getAttributeMap(plan.getVertical(), null, targetClientCode);
     }
 
     /**

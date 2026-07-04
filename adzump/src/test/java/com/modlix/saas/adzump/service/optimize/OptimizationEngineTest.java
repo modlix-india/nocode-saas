@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ import com.modlix.saas.adzump.dto.PerformancePolicy;
 import com.modlix.saas.adzump.jooq.enums.AdzumpActionAuditActionType;
 import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.snapshot.PerformanceSnapshot;
+import com.modlix.saas.adzump.model.snapshot.SnapshotWindow;
 import com.modlix.saas.adzump.service.AdzumpMessageResourceService;
 import com.modlix.saas.adzump.service.AutonomyConfigService;
 import com.modlix.saas.adzump.service.CampaignPlanService;
@@ -160,6 +162,25 @@ class OptimizationEngineTest {
         // Top two by delta survive; the third (negative keyword, delta 3) is deferred, not dropped.
         assertEquals(2, set.actions().size());
         assertTrue(set.suppressed().stream().anyMatch(s -> s.verdict().outcome() == GateOutcome.MAX_CHANGES_EXCEEDED));
+    }
+
+    @Test
+    void getRecommendations_withWindow_readsWindowScopedSnapshot_andBuildsTheActionSet() {
+
+        SnapshotWindow window = new SnapshotWindow()
+                .setFrom(LocalDate.of(2026, 6, 1)).setTo(LocalDate.of(2026, 6, 30));
+
+        // The window overload reads the window-scoped snapshot; plan/policy/autonomy resolve as usual.
+        stubReads(OptimizeFixtures.underperformer(), OptimizeFixtures.googlePlan(), OptimizeFixtures.policy(), null);
+        when(this.feedback.readLatest(eq(OptimizeFixtures.PLAN_ID), eq(window), eq((String) null)))
+                .thenReturn(OptimizeFixtures.underperformer());
+
+        ActionSet set = this.engine.getRecommendations(OptimizeFixtures.PLAN_ID, window, null);
+
+        // Same three ranked, recommend-only actions as the no-window read (window only scopes the snapshot).
+        assertEquals(3, set.actions().size());
+        assertTrue(set.actions().stream().allMatch(Action::requiresApproval));
+        verify(this.feedback).readLatest(eq(OptimizeFixtures.PLAN_ID), eq(window), eq((String) null));
     }
 
     @Test

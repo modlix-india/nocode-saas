@@ -148,6 +148,58 @@ class FeedbackServiceTest {
         assertNull(this.service.readLatest(PLAN_ID, null));
     }
 
+    private static PerformanceSnapshotEntity entity(long id, LocalDate from, LocalDate to) {
+        PerformanceSnapshotEntity e = new PerformanceSnapshotEntity()
+                .setClientCode("CLI0")
+                .setCampaignPlanId(PLAN_ID)
+                .setWindowFrom(from)
+                .setWindowTo(to)
+                .setTakenAt(LocalDateTime.now());
+        e.setId(ULong.valueOf(id));
+        return e;
+    }
+
+    @Test
+    void readLatest_withWindow_returnsTheLatestStoredSnapshotMatchingThatWindow() {
+
+        when(this.campaignPlanService.read(PLAN_ID)).thenReturn(plan());
+
+        // A series (oldest-first) with two June-window snapshots (ids 1, 3) and a May one (id 2) between.
+        when(this.dao.findSeries("CLI0", PLAN_ID)).thenReturn(List.of(
+                entity(1, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30)),
+                entity(2, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31)),
+                entity(3, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30))));
+
+        SnapshotWindow window = new SnapshotWindow()
+                .setFrom(LocalDate.of(2026, 6, 1)).setTo(LocalDate.of(2026, 6, 30));
+
+        PerformanceSnapshot result = this.service.readLatest(PLAN_ID, window, null);
+
+        // The latest snapshot for the June window (id 3), not the May one or the older June one.
+        assertEquals(ULong.valueOf(3), result.getId());
+        // A window read never builds — it only reads stored snapshots.
+        verify(this.snapshotBuilder, never()).build(any(), any(), any());
+    }
+
+    @Test
+    void readLatest_withWindow_noStoredMatch_fallsBackToOverallLatest() {
+
+        when(this.campaignPlanService.read(PLAN_ID)).thenReturn(plan());
+        when(this.dao.findSeries("CLI0", PLAN_ID)).thenReturn(List.of(
+                entity(2, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31))));
+        when(this.dao.findLatest("CLI0", PLAN_ID)).thenReturn(
+                entity(2, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31)));
+
+        SnapshotWindow window = new SnapshotWindow()
+                .setFrom(LocalDate.of(2026, 6, 1)).setTo(LocalDate.of(2026, 6, 30));
+
+        PerformanceSnapshot result = this.service.readLatest(PLAN_ID, window, null);
+
+        // No stored snapshot matches the June window -> fall back to the overall latest (id 2), never build.
+        assertEquals(ULong.valueOf(2), result.getId());
+        verify(this.snapshotBuilder, never()).build(any(), any(), any());
+    }
+
     @Test
     void getSnapshot_tenantDeny_foreignClientTheCallerCannotManage_forbidden_beforeAnyBuild() {
 
