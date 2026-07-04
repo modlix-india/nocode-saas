@@ -45,7 +45,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.Tag;
+
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -1405,7 +1405,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         access -> super.readByIdentity(access, ticketId),
                         (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
                         (access, ticket, resolvedTag) -> {
-                            Tag oldTagEnum = ticket.getTag();
+                            String oldTagEnum = ticket.getTag();
                             ticket.setTag(resolvedTag);
 
                             return FlatMapUtil.flatMapMono(

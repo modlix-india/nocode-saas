@@ -29,6 +29,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkI
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTags;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
@@ -195,6 +196,11 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 
     /**
+     * The table <code>entity_processor.entity_processor_tags</code>.
+     */
+    public final EntityProcessorTags ENTITY_PROCESSOR_TAGS = EntityProcessorTags.ENTITY_PROCESSOR_TAGS;
+
+    /**
      * The table <code>entity_processor.entity_processor_task_types</code>.
      */
     public final EntityProcessorTaskTypes ENTITY_PROCESSOR_TASK_TYPES = EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES;
@@ -274,6 +280,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
             EntityProcessorSources.ENTITY_PROCESSOR_SOURCES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
+            EntityProcessorTags.ENTITY_PROCESSOR_TAGS,
             EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES,
             EntityProcessorTasks.ENTITY_PROCESSOR_TASKS,
             EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS,
