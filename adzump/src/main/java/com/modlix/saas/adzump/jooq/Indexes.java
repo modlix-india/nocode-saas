@@ -5,8 +5,10 @@ package com.modlix.saas.adzump.jooq;
 
 
 import com.modlix.saas.adzump.jooq.tables.AdzumpActionAudit;
+import com.modlix.saas.adzump.jooq.tables.AdzumpAsset;
 import com.modlix.saas.adzump.jooq.tables.AdzumpAutonomyConfig;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCampaignPlan;
+import com.modlix.saas.adzump.jooq.tables.AdzumpCompetitionResearch;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCreativeAttribute;
 import com.modlix.saas.adzump.jooq.tables.AdzumpMilestoneMapping;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformancePolicy;
@@ -30,7 +32,9 @@ public class Indexes {
 
     public static final Index ADZUMP_ACTION_AUDIT_IDX_AA_PLAN = Internal.createIndex(DSL.name("idx_aa_plan"), AdzumpActionAudit.ADZUMP_ACTION_AUDIT, new OrderField[] { AdzumpActionAudit.ADZUMP_ACTION_AUDIT.CLIENT_CODE, AdzumpActionAudit.ADZUMP_ACTION_AUDIT.CAMPAIGN_PLAN_ID, AdzumpActionAudit.ADZUMP_ACTION_AUDIT.CREATED_AT }, false);
     public static final Index ADZUMP_AUTONOMY_CONFIG_IDX_AC_SCOPE = Internal.createIndex(DSL.name("idx_ac_scope"), AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG, new OrderField[] { AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG.CLIENT_CODE, AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG.SCOPE, AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG.CAMPAIGN_ID }, false);
+    public static final Index ADZUMP_ASSET_IDX_ASSET_CLIENT = Internal.createIndex(DSL.name("idx_asset_client"), AdzumpAsset.ADZUMP_ASSET, new OrderField[] { AdzumpAsset.ADZUMP_ASSET.CLIENT_CODE }, false);
     public static final Index ADZUMP_CREATIVE_ATTRIBUTE_IDX_CA_CREATIVE = Internal.createIndex(DSL.name("idx_ca_creative"), AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE, new OrderField[] { AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE.CREATIVE_ID }, false);
+    public static final Index ADZUMP_COMPETITION_RESEARCH_IDX_COMP_PRODUCT = Internal.createIndex(DSL.name("idx_comp_product"), AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH, new OrderField[] { AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH.CLIENT_CODE, AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH.PRODUCT_ID }, false);
     public static final Index ADZUMP_MILESTONE_MAPPING_IDX_MM_TEMPLATE = Internal.createIndex(DSL.name("idx_mm_template"), AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING, new OrderField[] { AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING.CLIENT_CODE, AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING.PRODUCT_TEMPLATE_ID, AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING.SCOPE }, false);
     public static final Index ADZUMP_CAMPAIGN_PLAN_IDX_PLAN_CLIENT_PRODUCT = Internal.createIndex(DSL.name("idx_plan_client_product"), AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN, new OrderField[] { AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN.CLIENT_CODE, AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN.PRODUCT_ID }, false);
     public static final Index ADZUMP_CAMPAIGN_PLAN_IDX_PLAN_STATUS = Internal.createIndex(DSL.name("idx_plan_status"), AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN, new OrderField[] { AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN.CLIENT_CODE, AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN.STATUS }, false);

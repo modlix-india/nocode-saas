@@ -5,8 +5,10 @@ package com.modlix.saas.adzump.jooq;
 
 
 import com.modlix.saas.adzump.jooq.tables.AdzumpActionAudit;
+import com.modlix.saas.adzump.jooq.tables.AdzumpAsset;
 import com.modlix.saas.adzump.jooq.tables.AdzumpAutonomyConfig;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCampaignPlan;
+import com.modlix.saas.adzump.jooq.tables.AdzumpCompetitionResearch;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCreativeAttribute;
 import com.modlix.saas.adzump.jooq.tables.AdzumpMilestoneMapping;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformancePolicy;
@@ -40,6 +42,11 @@ public class Adzump extends SchemaImpl {
     public final AdzumpActionAudit ADZUMP_ACTION_AUDIT = AdzumpActionAudit.ADZUMP_ACTION_AUDIT;
 
     /**
+     * The table <code>adzump.adzump_asset</code>.
+     */
+    public final AdzumpAsset ADZUMP_ASSET = AdzumpAsset.ADZUMP_ASSET;
+
+    /**
      * The table <code>adzump.adzump_autonomy_config</code>.
      */
     public final AdzumpAutonomyConfig ADZUMP_AUTONOMY_CONFIG = AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG;
@@ -48,6 +55,11 @@ public class Adzump extends SchemaImpl {
      * The table <code>adzump.adzump_campaign_plan</code>.
      */
     public final AdzumpCampaignPlan ADZUMP_CAMPAIGN_PLAN = AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN;
+
+    /**
+     * The table <code>adzump.adzump_competition_research</code>.
+     */
+    public final AdzumpCompetitionResearch ADZUMP_COMPETITION_RESEARCH = AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH;
 
     /**
      * The table <code>adzump.adzump_creative_attribute</code>.
@@ -86,8 +98,10 @@ public class Adzump extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             AdzumpActionAudit.ADZUMP_ACTION_AUDIT,
+            AdzumpAsset.ADZUMP_ASSET,
             AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG,
             AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN,
+            AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH,
             AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE,
             AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING,
             AdzumpPerformancePolicy.ADZUMP_PERFORMANCE_POLICY,

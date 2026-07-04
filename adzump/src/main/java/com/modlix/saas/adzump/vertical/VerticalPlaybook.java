@@ -1,6 +1,7 @@
 package com.modlix.saas.adzump.vertical;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import com.modlix.saas.adzump.enums.CampaignType;
@@ -57,4 +58,15 @@ public interface VerticalPlaybook {
 
     /** Interest/keyword seed sets A3/J3/J4 expand from. */
     TargetingSeeds seeds();
+
+    /**
+     * The J19 competition-research "best-working proxy" weights for this vertical, when it tunes them.
+     * Empty means "use {@link ProxyWeights#defaults()}" — a vertical is never required to supply these
+     * (the proxy is directional discovery, not a per-vertical algorithm), so this is a {@code default}
+     * returning {@link Optional#empty()} and existing playbooks inherit the neutral defaults. A vertical
+     * overrides it only to re-weight how much it trusts each belief-revealed signal (J19 §5.2).
+     */
+    default Optional<ProxyWeights> competitionProxyWeights() {
+        return Optional.empty();
+    }
 }

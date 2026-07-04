@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import com.modlix.saas.adzump.vertical.AttributeTaxonomy;
 import com.modlix.saas.adzump.vertical.ComplianceRule;
 import com.modlix.saas.adzump.vertical.CriticRubric;
 import com.modlix.saas.adzump.vertical.PolicyDefaults;
+import com.modlix.saas.adzump.vertical.ProxyWeights;
 import com.modlix.saas.adzump.vertical.Slot;
 import com.modlix.saas.adzump.vertical.TargetingSeeds;
 import com.modlix.saas.adzump.vertical.VerticalPlaybook;
@@ -180,6 +182,18 @@ public class RealEstatePlaybook implements VerticalPlaybook {
     @Override
     public TargetingSeeds seeds() {
         return SEEDS;
+    }
+
+    // ── J19 best-working-proxy weights. Real estate is high-ticket and considered: a competitor ad that
+    // keeps running for months is a stronger "this works" tell than in an impulse-buy vertical, and a
+    // theme several local builders all run corroborates the micro-market. So RE leans harder on
+    // longevity + breadth and slightly less on raw iteration than the neutral defaults. These are still
+    // belief-revealed proxies, not performance (J19 §5.2/§5.4).
+    private static final ProxyWeights PROXY_WEIGHTS = new ProxyWeights(0.46, 0.18, 0.14, 0.08, 0.14);
+
+    @Override
+    public Optional<ProxyWeights> competitionProxyWeights() {
+        return Optional.of(PROXY_WEIGHTS);
     }
 
     private static boolean usesAssetGroups(CampaignType type) {

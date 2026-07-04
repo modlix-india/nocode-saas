@@ -5,15 +5,19 @@ package com.modlix.saas.adzump.jooq;
 
 
 import com.modlix.saas.adzump.jooq.tables.AdzumpActionAudit;
+import com.modlix.saas.adzump.jooq.tables.AdzumpAsset;
 import com.modlix.saas.adzump.jooq.tables.AdzumpAutonomyConfig;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCampaignPlan;
+import com.modlix.saas.adzump.jooq.tables.AdzumpCompetitionResearch;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCreativeAttribute;
 import com.modlix.saas.adzump.jooq.tables.AdzumpMilestoneMapping;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformancePolicy;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformanceSnapshot;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpActionAuditRecord;
+import com.modlix.saas.adzump.jooq.tables.records.AdzumpAssetRecord;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpAutonomyConfigRecord;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpCampaignPlanRecord;
+import com.modlix.saas.adzump.jooq.tables.records.AdzumpCompetitionResearchRecord;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpCreativeAttributeRecord;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpMilestoneMappingRecord;
 import com.modlix.saas.adzump.jooq.tables.records.AdzumpPerformancePolicyRecord;
@@ -37,8 +41,10 @@ public class Keys {
     // -------------------------------------------------------------------------
 
     public static final UniqueKey<AdzumpActionAuditRecord> KEY_ADZUMP_ACTION_AUDIT_PRIMARY = Internal.createUniqueKey(AdzumpActionAudit.ADZUMP_ACTION_AUDIT, DSL.name("KEY_adzump_action_audit_PRIMARY"), new TableField[] { AdzumpActionAudit.ADZUMP_ACTION_AUDIT.ID }, true);
+    public static final UniqueKey<AdzumpAssetRecord> KEY_ADZUMP_ASSET_PRIMARY = Internal.createUniqueKey(AdzumpAsset.ADZUMP_ASSET, DSL.name("KEY_adzump_asset_PRIMARY"), new TableField[] { AdzumpAsset.ADZUMP_ASSET.ID }, true);
     public static final UniqueKey<AdzumpAutonomyConfigRecord> KEY_ADZUMP_AUTONOMY_CONFIG_PRIMARY = Internal.createUniqueKey(AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG, DSL.name("KEY_adzump_autonomy_config_PRIMARY"), new TableField[] { AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG.ID }, true);
     public static final UniqueKey<AdzumpCampaignPlanRecord> KEY_ADZUMP_CAMPAIGN_PLAN_PRIMARY = Internal.createUniqueKey(AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN, DSL.name("KEY_adzump_campaign_plan_PRIMARY"), new TableField[] { AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN.ID }, true);
+    public static final UniqueKey<AdzumpCompetitionResearchRecord> KEY_ADZUMP_COMPETITION_RESEARCH_PRIMARY = Internal.createUniqueKey(AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH, DSL.name("KEY_adzump_competition_research_PRIMARY"), new TableField[] { AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH.ID }, true);
     public static final UniqueKey<AdzumpCreativeAttributeRecord> KEY_ADZUMP_CREATIVE_ATTRIBUTE_PRIMARY = Internal.createUniqueKey(AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE, DSL.name("KEY_adzump_creative_attribute_PRIMARY"), new TableField[] { AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE.ID }, true);
     public static final UniqueKey<AdzumpMilestoneMappingRecord> KEY_ADZUMP_MILESTONE_MAPPING_PRIMARY = Internal.createUniqueKey(AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING, DSL.name("KEY_adzump_milestone_mapping_PRIMARY"), new TableField[] { AdzumpMilestoneMapping.ADZUMP_MILESTONE_MAPPING.ID }, true);
     public static final UniqueKey<AdzumpPerformancePolicyRecord> KEY_ADZUMP_PERFORMANCE_POLICY_PRIMARY = Internal.createUniqueKey(AdzumpPerformancePolicy.ADZUMP_PERFORMANCE_POLICY, DSL.name("KEY_adzump_performance_policy_PRIMARY"), new TableField[] { AdzumpPerformancePolicy.ADZUMP_PERFORMANCE_POLICY.ID }, true);
