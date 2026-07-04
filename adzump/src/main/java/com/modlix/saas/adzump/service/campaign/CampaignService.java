@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -87,6 +88,13 @@ public class CampaignService {
     private final AdzumpMessageResourceService msgService;
     private final FeignAuthenticationService securityService;
 
+    // MONEY-SAFETY KILL-SWITCH (field-injected, NOT constructor-wired so the controller wiring is
+    // untouched). Belt-and-suspenders on top of launch-PAUSED: live launch is refused unless this is
+    // explicitly enabled, so a real ad account can never be touched by accident. See application.yml
+    // (adzump.launch.live-enabled) — default false.
+    @Value("${adzump.launch.live-enabled:false}")
+    private boolean liveEnabled;
+
     public CampaignService(CampaignPlanService campaignPlanService, PlanValidationService validationService,
             AdPlatformRegistry registry, ConnectionService connections, AdzumpMessageResourceService msgService,
             FeignAuthenticationService securityService) {
@@ -114,6 +122,13 @@ public class CampaignService {
      */
     @PreAuthorize(EDIT)
     public CampaignPlan launch(ULong planId, String targetClientCode) {
+
+        // MONEY-SAFETY KILL-SWITCH. Refuse before any read / J6 validate / J7 compile / platform call
+        // so a real ad account can never be touched by accident. Everything already launches PAUSED;
+        // this flag is belt-and-suspenders. Flip adzump.launch.live-enabled=true to enable.
+        if (!this.liveEnabled)
+            this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    AdzumpMessageResourceService.LIVE_LAUNCH_DISABLED);
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
         String effectiveClient = this.resolveEffectiveClientCode(targetClientCode, ca);

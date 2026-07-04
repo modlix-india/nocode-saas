@@ -47,6 +47,7 @@ import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 import com.modlix.saas.commons2.security.jwt.ContextUser;
 import com.modlix.saas.commons2.security.service.FeignAuthenticationService;
 import com.modlix.saas.commons2.security.util.SecurityContextUtil;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * J8 campaign-lifecycle unit tests, run entirely offline via the J2b {@link NoopPlatform} double
@@ -252,14 +253,36 @@ class CampaignServiceTest {
         verify(this.planService, never()).writeStatusAndBody(any(), any(), any());
     }
 
+    @Test
+    void liveLaunchDisabled_refusesBeforeAnyReadOrPlatformCall() {
+
+        NoopPlatform meta = new NoopPlatform(Platform.META, false);
+        NoopPlatform google = new NoopPlatform(Platform.GOOGLE, false);
+        CampaignService service = service(meta, google);
+        ReflectionTestUtils.setField(service, "liveEnabled", false); // money-safety kill-switch engaged
+
+        // The switch fires at the very top of launch(): before read / J6 validate / J7 compile / SPI.
+        GenericException ex = assertThrows(GenericException.class, () -> service.launch(PLAN_ID, null));
+        assertTrue(ex.getMessage().contains("Live launch is disabled"));
+
+        verify(this.planService, never()).read(any());
+        verify(this.planService, never()).writeStatusAndBody(any(), any(), any());
+        assertTrue(meta.getLaunchedCampaigns().isEmpty());
+        assertTrue(google.getLaunchedCampaigns().isEmpty());
+    }
+
     // =====================================================================================
     // Helpers
     // =====================================================================================
 
     private CampaignService service(NoopPlatform meta, NoopPlatform google) {
         AdPlatformRegistry registry = new AdPlatformRegistry(List.of(meta, google), MSG);
-        return new CampaignService(this.planService, this.validationService, registry, this.connections, MSG,
-                this.security);
+        CampaignService service = new CampaignService(this.planService, this.validationService, registry,
+                this.connections, MSG, this.security);
+        // Money-safety kill-switch defaults false (no @Value resolution outside Spring); the launch/
+        // fan-out tests exercise a real launch, so enable it. The disabled-path test flips it back.
+        ReflectionTestUtils.setField(service, "liveEnabled", true);
+        return service;
     }
 
     private static CampaignPlan plan(AdzumpCampaignPlanStatus status, String vertical, Links links) {

@@ -155,6 +155,74 @@ public class MilestoneMappingService {
         return this.dao.update(existing);
     }
 
+    /**
+     * All account-default mappings for the effective client, one per configured product template.
+     * Backs the J22 integration wizard's preview/drift diff. No {@code @PreAuthorize}: a tenant-scoped
+     * read (the effective client is resolved below and pinned onto every finder condition).
+     */
+    public List<MilestoneMapping> listAccountDefaults(String targetClientCode) {
+
+        ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
+        String clientCode = this.resolveEffectiveClientCode(targetClientCode, ca);
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+        conditions.add(FilterCondition.make(CLIENT_CODE, clientCode));
+        conditions.add(FilterCondition.make(SCOPE, AdzumpMilestoneMappingScope.ACCOUNT_DEFAULT.getLiteral()));
+
+        return this.dao.readAll(
+                new ComplexCondition().setConditions(conditions).setOperator(ComplexConditionOperator.AND));
+    }
+
+    /**
+     * J22 integration-wizard upsert of a single template's account-default mapping. Idempotent: the
+     * supplied {@code bodyPatch} is merged (RFC 7386) into the existing row, so keys the draft does not
+     * touch survive and re-applying the same draft is a no-op on content. EDIT rather than the
+     * Owner-only {@link #putAccountDefault} because the wizard (Campaign Manager or Owner) runs setup;
+     * scope + client are forced server-side and never trusted from the caller.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.Campaign_MANAGE','Authorities.ROLE_Owner')")
+    public MilestoneMapping applyTemplateMapping(String productTemplateId, JsonNode bodyPatch,
+            String targetClientCode) {
+
+        ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
+
+        if (StringUtil.safeIsBlank(productTemplateId))
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    AdzumpMessageResourceService.FIELDS_MISSING, "productTemplateId");
+
+        if (bodyPatch == null || !bodyPatch.isObject())
+            msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    AdzumpMessageResourceService.FIELDS_MISSING, "body");
+
+        String clientCode = this.resolveEffectiveClientCode(targetClientCode, ca);
+
+        MilestoneMapping existing = this.dao.findByTemplate(clientCode, productTemplateId,
+                AdzumpMilestoneMappingScope.ACCOUNT_DEFAULT, null);
+
+        if (existing == null) {
+
+            MilestoneMapping mapping = new MilestoneMapping()
+                    .setClientCode(clientCode)
+                    .setScope(AdzumpMilestoneMappingScope.ACCOUNT_DEFAULT)
+                    .setCampaignId(null)
+                    .setProductTemplateId(productTemplateId)
+                    .setBody(JsonMergePatchUtil.merge(null, bodyPatch));
+
+            if (ca.getUser() != null)
+                mapping.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+
+            return this.dao.create(mapping);
+        }
+
+        existing.setProductTemplateId(productTemplateId);
+        existing.setBody(JsonMergePatchUtil.merge(existing.getBody(), bodyPatch));
+
+        if (ca.getUser() != null)
+            existing.setUpdatedBy(ULong.valueOf(ca.getUser().getId()));
+
+        return this.dao.update(existing);
+    }
+
     // Every finder condition carries the resolved effective clientCode, so cross-tenant rows can
     // never be resolved.
     private MilestoneMapping findOne(String clientCode, AdzumpMilestoneMappingScope scope, ULong campaignId) {

@@ -24,6 +24,9 @@ public class AdzumpMessageResourceService extends AbstractMessageService {
     public static final String GOOGLE_API_ERROR = "google_api_error";
     public static final String SPECIAL_CATEGORY_REQUIRED = "special_category_required";
     public static final String UNSUPPORTED_LAUNCH_TYPE = "unsupported_launch_type";
+    public static final String LIVE_LAUNCH_DISABLED = "live_launch_disabled";
+    public static final String MILESTONE_UNKNOWN = "milestone_unknown";
+    public static final String STAGE_UNMAPPED = "stage_unmapped";
 
     public AdzumpMessageResourceService() {
 

@@ -29,3 +29,9 @@ adzump:
     # the config server / env (never committed here). Empty by default so the app boots without it;
     # a Google call then fails fast with a clear "developer-token missing" error until configured.
     developer-token: ${ADZUMP_GOOGLE_DEVELOPER_TOKEN:}
+  launch:
+    # MONEY-SAFETY KILL-SWITCH. CampaignService.launch REFUSES to run unless this is true, even
+    # though every campaign is created PAUSED — belt-and-suspenders so a real ad account can never be
+    # touched by accident. Leave false in every committed environment; flip to true (env / config
+    # server) only on an account you actually intend to launch against.
+    live-enabled: false
