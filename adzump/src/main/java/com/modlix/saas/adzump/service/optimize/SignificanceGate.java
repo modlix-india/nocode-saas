@@ -87,6 +87,23 @@ public class SignificanceGate {
     }
 
     /**
+     * J13 apply-time re-assertion of the do-no-harm + maturity (+ min-volume) gates for a pause/kill,
+     * exposed for the {@code service.apply} {@code GuardrailEngine} which lives outside this package and
+     * therefore cannot build the package-private {@link Candidate}. Runs the exact same {@link #evaluate}
+     * checks (2 volume / do-no-harm / maturity) against live state at apply time, so a pause that was
+     * proposed on facts that have since changed is re-judged, not trusted (J13 §5.2). No baseline
+     * comparison (the proportion test is skipped) — a pause is justified by volume + maturity + do-no-harm.
+     */
+    public SignificanceVerdict evaluatePauseGuardrail(boolean kill, boolean onlyConverter, SignalMaturity maturity,
+            long volume, GateConfig cfg) {
+
+        Candidate candidate = new Candidate(
+                com.modlix.saas.adzump.jooq.enums.AdzumpActionAuditActionType.PAUSE_ENTITY, null, null, null,
+                0.0d, 0.0d, Risk.MED, kill, onlyConverter, maturity, volume, 0L, 0L, 0L, 0L);
+        return this.evaluate(candidate, cfg);
+    }
+
+    /**
      * Judges one candidate. Returns a {@link SignificanceVerdict#passed()} verdict when it clears every
      * gate, else a typed suppression reason.
      */

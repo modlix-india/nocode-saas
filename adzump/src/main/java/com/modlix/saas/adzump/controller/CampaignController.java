@@ -14,10 +14,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.modlix.saas.adzump.jooq.enums.AdzumpActionAuditTriggeredBy;
 import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.campaign.AttributeRequest;
 import com.modlix.saas.adzump.model.campaign.CampaignProductLink;
 import com.modlix.saas.adzump.platform.RunState;
+import com.modlix.saas.adzump.service.apply.ActionApplier;
+import com.modlix.saas.adzump.service.apply.ApplyDecision;
+import com.modlix.saas.adzump.service.apply.ApplyResult;
 import com.modlix.saas.adzump.service.campaign.CampaignService;
 
 /**
@@ -31,9 +35,11 @@ import com.modlix.saas.adzump.service.campaign.CampaignService;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final ActionApplier actionApplier;
 
-    public CampaignController(CampaignService campaignService) {
+    public CampaignController(CampaignService campaignService, ActionApplier actionApplier) {
         this.campaignService = campaignService;
+        this.actionApplier = actionApplier;
     }
 
     @InitBinder
@@ -88,5 +94,31 @@ public class CampaignController {
             @RequestParam(required = false) String clientCode) {
         return ResponseEntity.ok(this.campaignService.attributeExisting(
                 request.getPlatform(), request.getExternalCampaignId(), request.getProductId(), clientCode));
+    }
+
+    // ---- J13 apply / approval-queue verbs (authz + tenancy on ActionApplier) -----------------
+
+    /**
+     * Applies the campaign's latest ActionSet headlessly: route by autonomy, guardrail-check, apply the
+     * eligible actions through the one spine, audit every decision (§6). AGENT-triggered.
+     */
+    @PostMapping("/api/adzump/campaigns/{id}/apply")
+    public ResponseEntity<ApplyResult> apply(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.applyLatest(id, AdzumpActionAuditTriggeredBy.AGENT, clientCode));
+    }
+
+    /** Approves a queued recommendation ({@code id} = audit row id): routes it to apply (§6). USER-triggered. */
+    @PostMapping("/api/adzump/recommendations/{id}/approve")
+    public ResponseEntity<ApplyDecision> approve(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.approve(id, clientCode));
+    }
+
+    /** Rejects a queued recommendation ({@code id} = audit row id): records it, applies nothing (§6). */
+    @PostMapping("/api/adzump/recommendations/{id}/reject")
+    public ResponseEntity<ApplyDecision> reject(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.reject(id, clientCode));
     }
 }
