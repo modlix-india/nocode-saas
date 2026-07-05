@@ -33,6 +33,8 @@ public class AdzumpMessageResourceService extends AbstractMessageService {
     public static final String UNSUPPORTED_ASSET_KIND = "unsupported_asset_kind";
     public static final String FILES_API_ERROR = "files_api_error";
     public static final String ASSET_GENERATION_UNAVAILABLE = "asset_generation_unavailable";
+    public static final String ATTRIBUTE_NOT_ISOLATED = "attribute_not_isolated";
+    public static final String INVALID_EXPERIMENT_STATE = "invalid_experiment_state";
 
     public AdzumpMessageResourceService() {
 

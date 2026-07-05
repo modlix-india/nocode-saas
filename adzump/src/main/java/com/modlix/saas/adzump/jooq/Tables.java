@@ -10,6 +10,7 @@ import com.modlix.saas.adzump.jooq.tables.AdzumpAutonomyConfig;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCampaignPlan;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCompetitionResearch;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCreativeAttribute;
+import com.modlix.saas.adzump.jooq.tables.AdzumpExperiment;
 import com.modlix.saas.adzump.jooq.tables.AdzumpMilestoneMapping;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformancePolicy;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformanceSnapshot;
@@ -50,6 +51,11 @@ public class Tables {
      * The table <code>adzump.adzump_creative_attribute</code>.
      */
     public static final AdzumpCreativeAttribute ADZUMP_CREATIVE_ATTRIBUTE = AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE;
+
+    /**
+     * The table <code>adzump.adzump_experiment</code>.
+     */
+    public static final AdzumpExperiment ADZUMP_EXPERIMENT = AdzumpExperiment.ADZUMP_EXPERIMENT;
 
     /**
      * The table <code>adzump.adzump_milestone_mapping</code>.
