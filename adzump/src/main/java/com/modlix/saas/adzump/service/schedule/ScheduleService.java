@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.modlix.saas.adzump.dao.CampaignPlanDao;
@@ -51,8 +52,12 @@ import com.modlix.saas.commons2.util.StringUtil;
  *
  * <p><b>Principal C (§5.2).</b> A scheduled run has no user JWT — the <b>campaign row is the
  * principal</b>. {@link #loadCampaign} is a system read by primary key (no user gate); its
- * {@code clientCode} is minted into a {@link ScopedContext} ({@link ServiceTokenMinter}) and carried as
- * the effective client through every downstream read/write. A context can only ever drive the one
+ * {@code clientCode} is minted into a {@link ScopedContext} ({@link ServiceTokenMinter#mint}) and
+ * carried as the effective client through every downstream read/write. Additionally, before the loop
+ * runs, {@link #runScheduled} <b>installs</b> a campaign-scoped, NON-SYS, authenticated
+ * {@link ContextAuthentication} ({@link ServiceTokenMinter#authenticate}) on the thread so the EDIT-gated
+ * downstream services authorize and the {@code ca}-reads resolve under the campaign's own client with no
+ * user present, then clears it in a {@code finally}. A context can only ever drive the one
  * campaign it was minted for, in that campaign's client — enforced in {@link #run}.
  *
  * <p><b>Idempotency + overlap (§5.5).</b> A run keys on {@code (campaignId, window)}; overlapping runs
@@ -115,7 +120,7 @@ public class ScheduleService {
      */
     public OptimizeRun optimize(ULong campaignId, SnapshotWindow window) {
         CampaignPlan campaign = this.loadCampaign(campaignId);
-        return this.run(this.serviceTokenMinter.mint(campaign), campaign, window);
+        return this.runScheduled(this.serviceTokenMinter.mint(campaign), campaign, window);
     }
 
     /**
@@ -130,7 +135,7 @@ public class ScheduleService {
             this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                     AdzumpMessageResourceService.FORBIDDEN_PERMISSION, CAMPAIGN);
         CampaignPlan campaign = this.loadCampaign(campaignId);
-        return this.run(ctx, campaign, window);
+        return this.runScheduled(ctx, campaign, window);
     }
 
     // =====================================================================================
@@ -170,6 +175,49 @@ public class ScheduleService {
         CampaignPlan campaign = this.loadCampaign(campaignId);
         AutonomyConfig autonomy = this.autonomyConfigService.getEffective(campaignId, campaign.getClientCode());
         return SchedulePolicy.from(autonomy).optimizationCadence();
+    }
+
+    // =====================================================================================
+    // Principal-C context lifecycle (§5.2) — install the campaign-scoped auth for the no-user run
+    // =====================================================================================
+
+    /**
+     * Principal-C install/clear lifecycle: a scheduled/internal run has <b>no user JWT</b>, so before the
+     * loop runs this builds + <b>installs</b> a campaign-scoped {@link ContextAuthentication}
+     * ({@link ServiceTokenMinter#authenticate}) on the running thread — exactly as {@code JWTTokenFilter}
+     * does ({@code SecurityContextHolder.getContext().setAuthentication(ca)}) — so the EDIT-gated
+     * downstream services ({@link FeedbackService} / {@code OptimizationEngine} inside
+     * {@link ActionApplier#applyLatest}) authorize and the {@code ca}-reads
+     * ({@code getLoggedInFromClientCode} / {@code getUrlAppCode}, e.g.
+     * {@code ConnectionService.resolve}) resolve under the campaign's own client. It is <b>always</b>
+     * cleared in a {@code finally} (even on exception), and installed on the <b>same thread</b> that runs
+     * the loop (the default {@code MODE_THREADLOCAL} strategy is not inherited by child threads — do not
+     * fan the run out without re-installing).
+     *
+     * <p><b>Do not clobber a user context.</b> If a {@link ContextAuthentication} is already installed on
+     * the thread this is a delegated call (defensive — the human {@link #optimizeOnDemand} funnels
+     * straight into {@link #run} under its own real user {@code ca}); it is left untouched and the run
+     * proceeds under it, so only the pure no-user scheduled path installs-and-clears.
+     *
+     * <p><b>P4.5 TODO (J11 §9).</b> Same-JVM authorization needs no JWT and this installed context is
+     * sufficient for it; a LIVE headless run that reads the leadzump CRM through the entity-processor
+     * still needs a forwardable bearer for that EP call (a platform-minted service JWT vs an EP
+     * header-only internal endpoint) — deferred because the EP leadzump CRM read endpoint is not built yet.
+     */
+    private OptimizeRun runScheduled(ScopedContext ctx, CampaignPlan campaign, SnapshotWindow window) {
+
+        // A user context is already installed (delegated call) — run under it, never clobber it.
+        if (SecurityContextUtil.getUsersContextAuthentication() != null)
+            return this.run(ctx, campaign, window);
+
+        // Pure scheduled path (no user): install the campaign-scoped principal-C context, then ALWAYS
+        // clear it in the finally — even if the scope guard or the loop throws (no context bleed).
+        SecurityContextHolder.getContext().setAuthentication(this.serviceTokenMinter.authenticate(campaign));
+        try {
+            return this.run(ctx, campaign, window);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     // =====================================================================================

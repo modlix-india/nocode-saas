@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jooq.types.ULong;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,6 +53,8 @@ import com.modlix.saas.adzump.service.apply.ApplyDecision;
 import com.modlix.saas.adzump.service.apply.ApplyResult;
 import com.modlix.saas.adzump.service.feedback.FeedbackService;
 import com.modlix.saas.commons2.exception.GenericException;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 import com.modlix.saas.commons2.security.service.FeignAuthenticationService;
 import com.modlix.saas.commons2.security.util.SecurityContextUtil;
@@ -96,6 +99,13 @@ class ScheduleServiceTest {
         this.service = new ScheduleService(this.campaignPlanDao, this.campaignPlanService,
                 new ServiceTokenMinter(), this.feedbackService, this.actionApplier, this.autonomyConfigService,
                 this.security, MSG);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Defensive: the principal-C install/clear lifecycle already clears in a finally, but guarantee no
+        // ContextAuthentication bleeds onto the (reused) JUnit thread and pollutes a later test.
+        SecurityContextHolder.clearContext();
     }
 
     // =====================================================================================
@@ -173,6 +183,75 @@ class ScheduleServiceTest {
 
         verify(this.feedbackService, never()).getSnapshot(any(), any(), any());
         verify(this.actionApplier, never()).applyLatest(any(), any(), any());
+    }
+
+    // ---- principal-C context install/clear lifecycle (§5.2) ----
+
+    @Test
+    void scheduledRun_installsCampaignScopedContext_visibleMidRun_clearedAfter() {
+        stubCampaign(campaign(CID, CLIENT, TZ));
+
+        // Snapshot into the loop's mid-run moment: what the thread sees as the installed principal.
+        AtomicReference<ContextAuthentication> midRun = new AtomicReference<>();
+        when(this.feedbackService.getSnapshot(eq(CID), any(), eq(CLIENT))).thenAnswer(inv -> {
+            midRun.set(SecurityContextUtil.getUsersContextAuthentication());
+            return snapshot(ULong.valueOf(7));
+        });
+        when(this.actionApplier.applyLatest(eq(CID), eq(AdzumpActionAuditTriggeredBy.SCHEDULER), eq(CLIENT)))
+                .thenReturn(applyResult(1, 0, 0));
+
+        // Pre-condition: the pure scheduled path has no user context installed.
+        assertNull(SecurityContextUtil.getUsersContextAuthentication());
+
+        this.service.optimize(CID, null);
+
+        // Mid-run the loop authorizes under an installed, authenticated, NON-SYS, campaign-scoped context
+        // carrying the EDIT authority + the campaign's own client + the adzump app code (principal C).
+        ContextAuthentication ca = midRun.get();
+        assertNotNull(ca, "no principal-C context was installed for the scheduled run");
+        assertTrue(ca.isAuthenticated());
+        assertFalse(ca.isSystemClient());
+        assertEquals(CLIENT, ca.getLoggedInFromClientCode());
+        assertEquals("adzump", ca.getUrlAppCode());
+        assertNotNull(ca.getUser());
+        assertTrue(ca.getUser().getStringAuthorities().contains("Authorities.Campaign_MANAGE"));
+
+        // Cleared in the finally after the run — nothing bleeds onto the thread.
+        assertNull(SecurityContextUtil.getUsersContextAuthentication());
+    }
+
+    @Test
+    void scheduledRun_clearsInstalledContext_evenOnException() {
+        stubCampaign(campaign(CID, CLIENT, TZ));
+
+        AtomicReference<ContextAuthentication> midRun = new AtomicReference<>();
+        when(this.feedbackService.getSnapshot(eq(CID), any(), eq(CLIENT))).thenAnswer(inv -> {
+            midRun.set(SecurityContextUtil.getUsersContextAuthentication());
+            return snapshot(ULong.valueOf(7));
+        });
+        when(this.actionApplier.applyLatest(eq(CID), eq(AdzumpActionAuditTriggeredBy.SCHEDULER), eq(CLIENT)))
+                .thenThrow(new RuntimeException("apply blew up mid-loop"));
+
+        assertNull(SecurityContextUtil.getUsersContextAuthentication());
+        assertThrows(RuntimeException.class, () -> this.service.optimize(CID, null));
+
+        // It WAS installed (the loop reached the snapshot), and the finally still cleared it despite the throw.
+        assertNotNull(midRun.get(), "the context should have been installed before the failing apply");
+        assertNull(SecurityContextUtil.getUsersContextAuthentication(),
+                "the installed context must be cleared in a finally even when the run throws");
+    }
+
+    @Test
+    void scopedContext_crossCampaignDenied_installsNoLingeringContext() {
+        // Denied by the ScopedContext.authorizes identity guard BEFORE any load/install.
+        ScopedContext ctxA = new ScopedContext(CLIENT, CID, ScopedContext.CAMPAIGN_OPTIMIZE);
+
+        assertNull(SecurityContextUtil.getUsersContextAuthentication());
+        assertThrows(GenericException.class, () -> this.service.optimize(ctxA, OTHER, null));
+
+        // A denied cross-campaign run must not leave (or ever install) a context on the thread.
+        assertNull(SecurityContextUtil.getUsersContextAuthentication());
+        verify(this.campaignPlanDao, never()).readAll(any());
     }
 
     @Test
