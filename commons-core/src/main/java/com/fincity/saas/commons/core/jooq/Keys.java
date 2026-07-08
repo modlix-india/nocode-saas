@@ -26,6 +26,7 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<CoreRemoteRepositoriesRecord> KEY_CORE_REMOTE_REPOSITORIES_K1_APP_UNIQUE = Internal.createUniqueKey(CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES, DSL.name("KEY_core_remote_repositories_K1_APP_UNIQUE"), new TableField[] { CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.APP_CODE, CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.REPO_NAME }, true);
     public static final UniqueKey<CoreRemoteRepositoriesRecord> KEY_CORE_REMOTE_REPOSITORIES_PRIMARY = Internal.createUniqueKey(CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES, DSL.name("KEY_core_remote_repositories_PRIMARY"), new TableField[] { CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.ID }, true);
     public static final UniqueKey<CoreTokensRecord> KEY_CORE_TOKENS_PRIMARY = Internal.createUniqueKey(CoreTokens.CORE_TOKENS, DSL.name("KEY_core_tokens_PRIMARY"), new TableField[] { CoreTokens.CORE_TOKENS.ID }, true);
 }

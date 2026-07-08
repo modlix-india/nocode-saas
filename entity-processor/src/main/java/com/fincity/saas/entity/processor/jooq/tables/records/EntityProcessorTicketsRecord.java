@@ -4,7 +4,6 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 import java.time.LocalDateTime;
@@ -412,19 +411,19 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT / WARM / COLD
+     * Deal Tag
      */
-    public EntityProcessorTicketsRecord setTag(Tag value) {
+    public EntityProcessorTicketsRecord setTag(String value) {
         set(21, value);
         return this;
     }
 
     /**
      * Getter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT / WARM / COLD
+     * Deal Tag
      */
-    public Tag getTag() {
-        return (Tag) get(21);
+    public String getTag() {
+        return (String) get(21);
     }
 
     /**
@@ -640,7 +639,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, Tag tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
