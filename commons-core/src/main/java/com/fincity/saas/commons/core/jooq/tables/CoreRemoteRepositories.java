@@ -10,7 +10,9 @@ import com.fincity.saas.commons.core.jooq.enums.CoreRemoteRepositoriesRepoName;
 import com.fincity.saas.commons.core.jooq.tables.records.CoreRemoteRepositoriesRecord;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -73,7 +75,7 @@ public class CoreRemoteRepositories extends TableImpl<CoreRemoteRepositoriesReco
     /**
      * The column <code>core.core_remote_repositories.APP_CODE</code>. App Code
      */
-    public final TableField<CoreRemoteRepositoriesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(8).nullable(false), this, "App Code");
+    public final TableField<CoreRemoteRepositoriesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code");
 
     /**
      * The column <code>core.core_remote_repositories.REPO_NAME</code>.
@@ -125,6 +127,11 @@ public class CoreRemoteRepositories extends TableImpl<CoreRemoteRepositoriesReco
     @Override
     public UniqueKey<CoreRemoteRepositoriesRecord> getPrimaryKey() {
         return Keys.KEY_CORE_REMOTE_REPOSITORIES_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<CoreRemoteRepositoriesRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_CORE_REMOTE_REPOSITORIES_K1_APP_UNIQUE);
     }
 
     @Override
