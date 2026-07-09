@@ -28,6 +28,7 @@ import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Payment;
+import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.jooq.enums.SecurityPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentStatus;
 import com.fincity.security.model.billing.ChargeResult;
@@ -146,6 +147,39 @@ class RazorpayPaymentServiceTest {
 
         verify(paymentDAO, never()).findByGatewayOrderId(any());
         verify(walletService, never()).creditFromPayment(any());
+    }
+
+    @Test
+    void holdsForReviewOnAmountMismatch() throws Exception {
+        // Verified webhook, but the captured amount does not match the invoice total:
+        // the wallet must NOT be credited and the invoice goes UNDER_REVIEW.
+        Invoice invoice = new Invoice().setAppId(APP_ID).setSellerClientId(C_CLIENT).setClientId(M_CLIENT)
+                .setTokensPurchased(BigDecimal.valueOf(1000)).setInvoiceNumber("INV/1")
+                .setTotalAmount(BigDecimal.valueOf(1062));
+        invoice.setId(INVOICE_ID);
+        lenient().when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+        lenient().when(invoiceDAO.update(any(Invoice.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
+
+        // captured 1000.00 (100000 paise) != invoice total 1062
+        String body = "{\"event\":\"payment_link.paid\",\"payload\":{"
+                + "\"payment_link\":{\"entity\":{\"id\":\"" + LINK_ID + "\",\"payment_id\":\"pay_link_fallback\"}},"
+                + "\"payment\":{\"entity\":{\"id\":\"pay_real\",\"amount\":100000,\"method\":\"upi\","
+                + "\"currency\":\"INR\",\"status\":\"captured\"}}}}";
+
+        StepVerifier.create(service.handleWebhook(body, sign(body, SECRET))).verifyComplete();
+
+        verify(walletService, never()).creditFromPayment(any());
+        verify(invoiceService, never()).markPaidAndEmit(any());
+
+        ArgumentCaptor<Invoice> invCap = ArgumentCaptor.forClass(Invoice.class);
+        verify(invoiceDAO).update(invCap.capture());
+        assertEquals(SecurityInvoiceStatus.UNDER_REVIEW, invCap.getValue().getStatus(),
+                "amount mismatch is held for manual reconciliation");
+
+        ArgumentCaptor<Payment> payCap = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentDAO).update(payCap.capture());
+        assertEquals(SecurityPaymentStatus.PAID, payCap.getValue().getStatus(),
+                "money was captured, so the payment still records as PAID");
     }
 
     private static String sign(String body, String secret) throws Exception {

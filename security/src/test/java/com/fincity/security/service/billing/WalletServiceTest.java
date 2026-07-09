@@ -98,6 +98,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                 clientHierarchyService, cacheService, ecService, messageResourceService);
         injectDao(service, walletDAO);
         setupCacheService(cacheService);
+        setupMessageResourceService(messageResourceService);
         lenient().when(ecService.createEvent(any(EventQueObject.class))).thenReturn(Mono.just(true));
     }
 
@@ -554,6 +555,10 @@ class WalletServiceTest extends AbstractServiceUnitTest {
 
         /** Resolve appCode -> app(APP_ID) and clientCode -> client(M_CLIENT); both always consumed. */
         private void stubCodes() {
+            // Caller is M itself, so the own-client visibility check on the header-driven
+            // read paths passes without needing a managed-client lookup.
+            setupSecurityContext(TestDataFactory.createBusinessAuth(M_CLIENT, CLIENT_CODE,
+                    List.of("Authorities.ROLE_Owner")));
             when(appService.getAppByCode(APP_CODE))
                     .thenReturn(Mono.just(TestDataFactory.createOwnApp(APP_ID, C_CLIENT, APP_CODE)));
             when(clientService.getClientBy(CLIENT_CODE))
