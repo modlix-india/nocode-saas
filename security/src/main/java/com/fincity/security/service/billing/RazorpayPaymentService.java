@@ -167,10 +167,8 @@ public class RazorpayPaymentService {
                 : linkPaymentId;
         BigDecimal capturedAmount = entity == null ? null : rupees(entity.get("amount"));
 
-        if (capturedAmount != null && invoice.getTotalAmount() != null
-                && capturedAmount.compareTo(invoice.getTotalAmount()) != 0)
-            logger.warn("Razorpay captured amount {} != invoice {} total {} (payment {})",
-                    capturedAmount, invoice.getInvoiceNumber(), invoice.getTotalAmount(), paymentId);
+        boolean amountMismatch = capturedAmount != null && invoice.getTotalAmount() != null
+                && capturedAmount.compareTo(invoice.getTotalAmount()) != 0;
 
         // Preserve the init response stored at initialize; add the webhook payload and
         // a structured capture block. No new columns: all of it lives in RESPONSE.
@@ -189,15 +187,30 @@ public class RazorpayPaymentService {
             response.put("captured", captured);
         }
 
+        // Money was captured either way, so the payment is PAID and carries the gateway id.
         payment.setStatus(SecurityPaymentStatus.PAID)
                 .setGatewayPaymentId(paymentId)
                 .setPaidAt(now)
                 .setResponse(response);
-        invoice.setStatus(SecurityInvoiceStatus.PAID)
-                .setGateway(SecurityInvoiceGateway.RAZORPAY)
+        invoice.setGateway(SecurityInvoiceGateway.RAZORPAY)
                 .setPaymentReference(paymentId == null ? payment.getGatewayOrderId() : paymentId)
                 .setPaidAt(now);
 
+        // Strict amount guard: a captured amount that does not match the invoice total is
+        // held for manual reconciliation - the wallet is NOT credited and no INVOICE_GENERATED
+        // is emitted. The credit is idempotent per payment reference, so a corrected replay
+        // stays safe.
+        if (amountMismatch) {
+            logger.error(
+                    "Razorpay amount mismatch: captured={} != invoice {} total={} (payment {}) -> UNDER_REVIEW, not crediting",
+                    capturedAmount, invoice.getInvoiceNumber(), invoice.getTotalAmount(), paymentId);
+            invoice.setStatus(SecurityInvoiceStatus.UNDER_REVIEW);
+            return this.paymentDAO.update(payment)
+                    .then(this.invoiceDAO.update(invoice))
+                    .then();
+        }
+
+        invoice.setStatus(SecurityInvoiceStatus.PAID);
         return this.paymentDAO.update(payment)
                 .then(this.walletService.creditFromPayment(invoice))
                 .then(this.invoiceService.markPaidAndEmit(invoice))

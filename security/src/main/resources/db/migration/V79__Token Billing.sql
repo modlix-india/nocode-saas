@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS `security`.`security_invoice` (
   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
   `INVOICE_NUMBER` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Gapless sequential per seller + financial year',
   `INVOICE_DATE` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Invoice date',
-  `STATUS` enum('PENDING','PAID','FAILED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'Invoice status',
+  `STATUS` enum('PENDING','PAID','FAILED','UNDER_REVIEW') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'Invoice status',
   `SELLER_CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Seller of record (configurator C)',
   `SELLER_LEGAL_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Seller legal name snapshot',
   `SELLER_GSTIN` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Seller GSTIN snapshot',

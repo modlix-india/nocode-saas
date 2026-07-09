@@ -130,15 +130,18 @@ public class WalletService
     /**
      * The whole wallet for the (appCode, clientCode) in context, for the owner's
      * billing view. Empty when that (client, app) has no wallet yet. Gated to the
-     * app owner / payment manager; the codes come from the request context, so a
-     * caller only ever sees their own client's wallet.
+     * app owner / payment manager AND to a client the caller may see: the
+     * clientCode header is caller-influenceable (the gateway forwards a supplied
+     * value unchanged), so the authority alone is not enough - we assert own /
+     * managed / SYSTEM here too.
      */
     @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
     public Mono<Wallet> getWalletByCodes(String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByCode(appCode),
                 app -> this.clientService.getClientBy(clientCode),
-                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId()))
+                (app, client) -> this.assertCanSeeClient(client.getId()),
+                (app, client, seen) -> this.dao.findByClientAndApp(client.getId(), app.getId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getWalletByCodes"));
     }
 
@@ -153,12 +156,29 @@ public class WalletService
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByCode(appCode),
                 app -> this.clientService.getClientBy(clientCode),
-                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId())
+                (app, client) -> this.assertCanSeeClient(client.getId()),
+                (app, client, seen) -> this.dao.findByClientAndApp(client.getId(), app.getId())
                         .flatMap(wallet -> this.deriveDisplayStatus(wallet, app.getId(), client.getId()))
                         .switchIfEmpty(Mono.just(
                                 new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null))))
                 .switchIfEmpty(Mono.just(new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getDisplayStatus"));
+    }
+
+    /**
+     * A caller may see a client's wallet only when it is their own, a client they
+     * manage, or they are SYSTEM. Guards the header-driven read paths, where the
+     * clientCode is not intrinsically the caller's own (see getWalletByCodes).
+     */
+    private Mono<Boolean> assertCanSeeClient(ULong clientId) {
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    if (ca.isSystemClient() || clientId.equals(ULong.valueOf(ca.getUser().getClientId())))
+                        return Mono.just(Boolean.TRUE);
+                    return this.clientService.isUserClientManageClient(ca, clientId)
+                            .filter(BooleanUtil::safeValueOf);
+                })
+                .switchIfEmpty(this.forbidden("this client's wallet"));
     }
 
     private Mono<WalletStatusResponse> deriveDisplayStatus(Wallet wallet, ULong appId, ULong clientId) {

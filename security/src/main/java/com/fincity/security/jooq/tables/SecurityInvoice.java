@@ -84,7 +84,7 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
     /**
      * The column <code>security.security_invoice.STATUS</code>. Invoice status
      */
-    public final TableField<SecurityInvoiceRecord, SecurityInvoiceStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityInvoiceStatus.class), this, "Invoice status");
+    public final TableField<SecurityInvoiceRecord, SecurityInvoiceStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(12).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityInvoiceStatus.class), this, "Invoice status");
 
     /**
      * The column <code>security.security_invoice.SELLER_CLIENT_ID</code>.

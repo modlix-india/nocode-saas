@@ -19,7 +19,9 @@ public enum SecurityInvoiceStatus implements EnumType {
 
     PAID("PAID"),
 
-    FAILED("FAILED");
+    FAILED("FAILED"),
+
+    UNDER_REVIEW("UNDER_REVIEW");
 
     private final String literal;
 
