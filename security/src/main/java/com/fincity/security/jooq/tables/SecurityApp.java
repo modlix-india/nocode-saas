@@ -11,6 +11,7 @@ import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
+import com.fincity.security.jooq.tables.SecurityAppBillingConfig.SecurityAppBillingConfigPath;
 import com.fincity.security.jooq.tables.SecurityAppDependency.SecurityAppDependencyPath;
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess.SecurityAppRegAccessPath;
@@ -27,12 +28,14 @@ import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOt
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPinPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
+import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
-import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
+import com.fincity.security.jooq.tables.SecurityWallet.SecurityWalletPath;
+import com.fincity.security.jooq.tables.SecurityWalletTransaction.SecurityWalletTransactionPath;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 
 import java.time.LocalDateTime;
@@ -337,17 +340,17 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityOtp;
     }
 
-    private transient SecurityPlanPath _securityPlan;
+    private transient SecurityAppBillingConfigPath _securityAppBillingConfig;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_plan</code> table
+     * <code>security.security_app_billing_config</code> table
      */
-    public SecurityPlanPath securityPlan() {
-        if (_securityPlan == null)
-            _securityPlan = new SecurityPlanPath(this, null, Keys.FK1_PLAN_APP_ID.getInverseKey());
+    public SecurityAppBillingConfigPath securityAppBillingConfig() {
+        if (_securityAppBillingConfig == null)
+            _securityAppBillingConfig = new SecurityAppBillingConfigPath(this, null, Keys.FK2_ABC_APP_ID.getInverseKey());
 
-        return _securityPlan;
+        return _securityAppBillingConfig;
     }
 
     private transient SecurityAppDependencyPath _fk2AppDepDepAppId;
@@ -547,6 +550,32 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityV2Role;
     }
 
+    private transient SecurityWalletPath _securityWallet;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_wallet</code> table
+     */
+    public SecurityWalletPath securityWallet() {
+        if (_securityWallet == null)
+            _securityWallet = new SecurityWalletPath(this, null, Keys.FK2_WALLET_APP_ID.getInverseKey());
+
+        return _securityWallet;
+    }
+
+    private transient SecurityWalletTransactionPath _securityWalletTransaction;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_wallet_transaction</code> table
+     */
+    public SecurityWalletTransactionPath securityWalletTransaction() {
+        if (_securityWalletTransaction == null)
+            _securityWalletTransaction = new SecurityWalletTransactionPath(this, null, Keys.FK2_WTXN_APP_ID.getInverseKey());
+
+        return _securityWalletTransaction;
+    }
+
     private transient SecurityAppRegAccessPath _fk3AppRegAccAllowAppId;
 
     /**
@@ -559,6 +588,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _fk3AppRegAccAllowAppId = new SecurityAppRegAccessPath(this, null, Keys.FK3_APP_REG_ACC_ALLOW_APP_ID.getInverseKey());
 
         return _fk3AppRegAccAllowAppId;
+    }
+
+    private transient SecurityInvoicePath _securityInvoice;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_invoice</code> table
+     */
+    public SecurityInvoicePath securityInvoice() {
+        if (_securityInvoice == null)
+            _securityInvoice = new SecurityInvoicePath(this, null, Keys.FK3_INVOICE_APP_ID.getInverseKey());
+
+        return _securityInvoice;
     }
 
     private transient SecurityUserRequestPath _securityUserRequest;
@@ -586,6 +628,15 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
     /**
      * Get the implicit many-to-many join path to the
      * <code>security.security_client</code> table, via the
+     * <code>FK1_ABC_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1AbcClientId() {
+        return securityAppBillingConfig().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
      * <code>FK1_CLIENT_OTP_POL_CLIENT_ID</code> key
      */
     public SecurityClientPath fk1ClientOtpPolClientId() {
@@ -608,6 +659,15 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      */
     public SecurityClientPath fk1ClientPinPolClientId() {
         return securityClientPinPolicy().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_WALLET_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1WalletClientId() {
+        return securityWallet().securityClient();
     }
 
     @Override
