@@ -42,7 +42,7 @@ class AppBillingBundleDAOIntegrationTest extends AbstractIntegrationTest {
         databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
                 .then(databaseClient.sql("DELETE FROM security_app_billing_bundle WHERE ID > 0").then())
                 .then(databaseClient.sql("DELETE FROM security_app_billing_config WHERE ID > 0").then())
-                .then(databaseClient.sql("DELETE FROM security_app WHERE ID > 0").then())
+                .then(databaseClient.sql("DELETE FROM security_app WHERE APP_CODE IN ('bdlapp','bdlapp2')").then())
                 .then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
                 .then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
                 .block();
