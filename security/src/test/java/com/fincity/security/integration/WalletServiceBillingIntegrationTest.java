@@ -61,7 +61,7 @@ class WalletServiceBillingIntegrationTest extends AbstractIntegrationTest {
                 .then(databaseClient.sql("DELETE FROM security_wallet WHERE ID > 0").then())
                 .then(databaseClient.sql("DELETE FROM security_app_billing_config WHERE ID > 0").then())
                 .then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
-                .then(databaseClient.sql("DELETE FROM security_app WHERE ID > 0").then())
+                .then(databaseClient.sql("DELETE FROM security_app WHERE APP_CODE IN ('wsapp')").then())
                 .then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
                 .then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
                 .block();
