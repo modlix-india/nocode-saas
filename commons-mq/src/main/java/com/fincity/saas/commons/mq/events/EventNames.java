@@ -15,6 +15,9 @@ public class EventNames {
     public static final String USER_OTP_GENERATE = "USER_OTP_GENERATE";
 
     public static final String INVOICE_CREATED = "INVOICE_CREATED";
+    public static final String INVOICE_GENERATED = "INVOICE_GENERATED";
+    public static final String WALLET_LOW_BALANCE = "WALLET_LOW_BALANCE";
+    public static final String WALLET_SUSPENDED = "WALLET_SUSPENDED";
 
     public static String getEventName(String eventName, Object... args) {
         return StringFormatter.format(eventName, args);

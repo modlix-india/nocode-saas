@@ -52,7 +52,6 @@ import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
-import com.fincity.security.service.plansnbilling.PlanService;
 import com.fincity.security.testutil.TestDataFactory;
 
 import reactor.core.publisher.Mono;
@@ -107,9 +106,6 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private SecurityMessageResourceService securityMessageResourceService;
 
-	@Mock
-	private PlanService planService;
-
 	private ClientRegistrationService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -127,8 +123,7 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 				dao, appService, userService, otpService, authenticationService,
 				clientService, clientHierarchyService, clientManagerService, ecService, clientUrlService,
 				appRegistrationDAO, filesService, appRegistrationIntegrationService,
-				appRegistrationIntegrationTokenService, securityMessageResourceService,
-				planService);
+				appRegistrationIntegrationTokenService, securityMessageResourceService);
 
 		// Set subDomainEndings via reflection since it's @Value injected
 		try {

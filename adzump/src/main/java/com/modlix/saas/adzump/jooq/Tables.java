@@ -5,9 +5,12 @@ package com.modlix.saas.adzump.jooq;
 
 
 import com.modlix.saas.adzump.jooq.tables.AdzumpActionAudit;
+import com.modlix.saas.adzump.jooq.tables.AdzumpAsset;
 import com.modlix.saas.adzump.jooq.tables.AdzumpAutonomyConfig;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCampaignPlan;
+import com.modlix.saas.adzump.jooq.tables.AdzumpCompetitionResearch;
 import com.modlix.saas.adzump.jooq.tables.AdzumpCreativeAttribute;
+import com.modlix.saas.adzump.jooq.tables.AdzumpExperiment;
 import com.modlix.saas.adzump.jooq.tables.AdzumpMilestoneMapping;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformancePolicy;
 import com.modlix.saas.adzump.jooq.tables.AdzumpPerformanceSnapshot;
@@ -25,6 +28,11 @@ public class Tables {
     public static final AdzumpActionAudit ADZUMP_ACTION_AUDIT = AdzumpActionAudit.ADZUMP_ACTION_AUDIT;
 
     /**
+     * The table <code>adzump.adzump_asset</code>.
+     */
+    public static final AdzumpAsset ADZUMP_ASSET = AdzumpAsset.ADZUMP_ASSET;
+
+    /**
      * The table <code>adzump.adzump_autonomy_config</code>.
      */
     public static final AdzumpAutonomyConfig ADZUMP_AUTONOMY_CONFIG = AdzumpAutonomyConfig.ADZUMP_AUTONOMY_CONFIG;
@@ -35,9 +43,19 @@ public class Tables {
     public static final AdzumpCampaignPlan ADZUMP_CAMPAIGN_PLAN = AdzumpCampaignPlan.ADZUMP_CAMPAIGN_PLAN;
 
     /**
+     * The table <code>adzump.adzump_competition_research</code>.
+     */
+    public static final AdzumpCompetitionResearch ADZUMP_COMPETITION_RESEARCH = AdzumpCompetitionResearch.ADZUMP_COMPETITION_RESEARCH;
+
+    /**
      * The table <code>adzump.adzump_creative_attribute</code>.
      */
     public static final AdzumpCreativeAttribute ADZUMP_CREATIVE_ATTRIBUTE = AdzumpCreativeAttribute.ADZUMP_CREATIVE_ATTRIBUTE;
+
+    /**
+     * The table <code>adzump.adzump_experiment</code>.
+     */
+    public static final AdzumpExperiment ADZUMP_EXPERIMENT = AdzumpExperiment.ADZUMP_EXPERIMENT;
 
     /**
      * The table <code>adzump.adzump_milestone_mapping</code>.

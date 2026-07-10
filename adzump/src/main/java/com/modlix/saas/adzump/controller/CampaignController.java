@@ -1,6 +1,8 @@
 package com.modlix.saas.adzump.controller;
 
 import java.beans.PropertyEditorSupport;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +16,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.modlix.saas.adzump.jooq.enums.AdzumpActionAuditTriggeredBy;
 import com.modlix.saas.adzump.model.CampaignPlan;
 import com.modlix.saas.adzump.model.campaign.AttributeRequest;
 import com.modlix.saas.adzump.model.campaign.CampaignProductLink;
+import com.modlix.saas.adzump.model.snapshot.SnapshotWindow;
 import com.modlix.saas.adzump.platform.RunState;
+import com.modlix.saas.adzump.service.apply.ActionApplier;
+import com.modlix.saas.adzump.service.apply.ApplyDecision;
+import com.modlix.saas.adzump.service.apply.ApplyResult;
 import com.modlix.saas.adzump.service.campaign.CampaignService;
+import com.modlix.saas.adzump.service.schedule.OptimizeRun;
+import com.modlix.saas.adzump.service.schedule.ScheduleService;
 
 /**
  * J8 lifecycle endpoints (J18). Thin pass-throughs — NO {@code @PreAuthorize} here; all authority
@@ -31,9 +40,14 @@ import com.modlix.saas.adzump.service.campaign.CampaignService;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final ActionApplier actionApplier;
+    private final ScheduleService scheduleService;
 
-    public CampaignController(CampaignService campaignService) {
+    public CampaignController(CampaignService campaignService, ActionApplier actionApplier,
+            ScheduleService scheduleService) {
         this.campaignService = campaignService;
+        this.actionApplier = actionApplier;
+        this.scheduleService = scheduleService;
     }
 
     @InitBinder
@@ -45,6 +59,13 @@ public class CampaignController {
                     setValue(null);
                 else
                     setValue(ULong.valueOf(text));
+            }
+        });
+        // window query param: "from,to[,timezone]" (ISO dates); blank/unparseable -> null (account-tz yesterday).
+        binder.registerCustomEditor(SnapshotWindow.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                setValue(parseWindow(text));
             }
         });
     }
@@ -88,5 +109,65 @@ public class CampaignController {
             @RequestParam(required = false) String clientCode) {
         return ResponseEntity.ok(this.campaignService.attributeExisting(
                 request.getPlatform(), request.getExternalCampaignId(), request.getProductId(), clientCode));
+    }
+
+    // ---- J13 apply / approval-queue verbs (authz + tenancy on ActionApplier) -----------------
+
+    /**
+     * Applies the campaign's latest ActionSet headlessly: route by autonomy, guardrail-check, apply the
+     * eligible actions through the one spine, audit every decision (§6). AGENT-triggered.
+     */
+    @PostMapping("/api/adzump/campaigns/{id}/apply")
+    public ResponseEntity<ApplyResult> apply(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.applyLatest(id, AdzumpActionAuditTriggeredBy.AGENT, clientCode));
+    }
+
+    /**
+     * "Run now" (J14 §5.4): runs one closed-loop execution on-demand — the <b>same</b> loop-execution
+     * path as the scheduler, via {@link ScheduleService#optimizeOnDemand} (EDIT + tenant gate on the
+     * service). Human-triggered manual optimize.
+     */
+    @PostMapping("/api/adzump/campaigns/{id}/optimize")
+    public ResponseEntity<OptimizeRun> optimize(@PathVariable ULong id,
+            @RequestParam(required = false) SnapshotWindow window,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.scheduleService.optimizeOnDemand(id, window, clientCode));
+    }
+
+    /** Approves a queued recommendation ({@code id} = audit row id): routes it to apply (§6). USER-triggered. */
+    @PostMapping("/api/adzump/recommendations/{id}/approve")
+    public ResponseEntity<ApplyDecision> approve(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.approve(id, clientCode));
+    }
+
+    /** Rejects a queued recommendation ({@code id} = audit row id): records it, applies nothing (§6). */
+    @PostMapping("/api/adzump/recommendations/{id}/reject")
+    public ResponseEntity<ApplyDecision> reject(@PathVariable ULong id,
+            @RequestParam(required = false) String clientCode) {
+        return ResponseEntity.ok(this.actionApplier.reject(id, clientCode));
+    }
+
+    /**
+     * Parses the {@code window} query param ("from,to[,timezone]", ISO dates) into a {@link SnapshotWindow},
+     * or {@code null} when blank/unparseable so the run falls back to the account-tz "yesterday" window.
+     */
+    private static SnapshotWindow parseWindow(String text) {
+        if (text == null || text.isBlank())
+            return null;
+        String[] parts = text.split(",", 3);
+        if (parts.length < 2)
+            return null;
+        try {
+            SnapshotWindow window = new SnapshotWindow()
+                    .setFrom(LocalDate.parse(parts[0].trim()))
+                    .setTo(LocalDate.parse(parts[1].trim()));
+            if (parts.length == 3 && !parts[2].isBlank())
+                window.setTimezone(parts[2].trim());
+            return window;
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 }

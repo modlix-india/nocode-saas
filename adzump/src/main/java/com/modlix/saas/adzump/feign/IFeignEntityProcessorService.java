@@ -5,8 +5,12 @@ import java.util.Map;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Blocking Feign client to entity-processor (J11 - leadzump-client). The Feign
@@ -60,8 +64,20 @@ public interface IFeignEntityProcessorService {
     // CrmOutcomes getOutcomes(<user-context header set>,
     //         @RequestBody OutcomeQuery query);
 
-    // TODO(P2, J9 write-back): patchProductProfile(<user-context header set>,
-    //         @PathVariable String productId, @RequestBody JsonNode profilePatch);
+    // J9 write-back: merge-patch the product's ad-relevant profile (RFC-7386). Forwards
+    // the user-context header set so entity-processor rebuilds the caller's
+    // ContextAuthentication and enforces its OWN product-write authority - adzump cannot
+    // write a product the user cannot. This is a product-DEFINITION write; CRM runtime
+    // tickets are never written here.
+    @PatchMapping("/api/entity/processor/products/{id}/profile")
+    void patchProductProfile(
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @PathVariable("id") String id,
+            @RequestBody JsonNode profilePatch);
 
     // TODO(P2, J8/J22): get/putCampaignProductLink - the CampaignProductLink
     // entity lives in entity-processor (not adzump J1); read/write through here

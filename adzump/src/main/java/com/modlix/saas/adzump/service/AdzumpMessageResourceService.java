@@ -24,6 +24,17 @@ public class AdzumpMessageResourceService extends AbstractMessageService {
     public static final String GOOGLE_API_ERROR = "google_api_error";
     public static final String SPECIAL_CATEGORY_REQUIRED = "special_category_required";
     public static final String UNSUPPORTED_LAUNCH_TYPE = "unsupported_launch_type";
+    public static final String LIVE_LAUNCH_DISABLED = "live_launch_disabled";
+    public static final String APPLY_LIVE_DISABLED = "apply_live_disabled";
+    public static final String MILESTONE_UNKNOWN = "milestone_unknown";
+    public static final String STAGE_UNMAPPED = "stage_unmapped";
+    public static final String ASSET_NOT_FOUND = "asset_not_found";
+    public static final String ASSET_FILE_MISSING = "asset_file_missing";
+    public static final String UNSUPPORTED_ASSET_KIND = "unsupported_asset_kind";
+    public static final String FILES_API_ERROR = "files_api_error";
+    public static final String ASSET_GENERATION_UNAVAILABLE = "asset_generation_unavailable";
+    public static final String ATTRIBUTE_NOT_ISOLATED = "attribute_not_isolated";
+    public static final String INVALID_EXPERIMENT_STATE = "invalid_experiment_state";
 
     public AdzumpMessageResourceService() {
 

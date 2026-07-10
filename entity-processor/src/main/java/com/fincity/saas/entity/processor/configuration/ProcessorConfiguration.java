@@ -109,6 +109,7 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/entry/**",
                 "/api/entity/processor/partners/internal/**",
                 "/api/entity/processor/campaigns/internal/**",
-                "/api/entity/processor/conversions/internal/**");
+                "/api/entity/processor/conversions/internal/**",
+                "/api/entity/processor/internal/billing/**");
     }
 }
