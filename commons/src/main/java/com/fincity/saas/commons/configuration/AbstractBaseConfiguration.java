@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.web.ReactivePageableHandlerMethodArgumentResolver;
 import org.springframework.http.codec.ServerCodecConfigurer;
@@ -69,6 +68,12 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Value("${cache.local.expire-after-write-minutes:60}")
     private long localCacheExpireAfterWriteMinutes;
+
+    @Value("${cache.local.max-instances:2000}")
+    private long localCacheMaxInstances;
+
+    @Value("${cache.local.instance-idle-minutes:240}")
+    private long localCacheInstanceIdleMinutes;
 
     private RedisCodec<String, Object> objectCodec;
 
@@ -213,9 +218,8 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     @Bean
     public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
-        CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-        caffeineCacheManager.setCaffeine(caffeine);
-        return caffeineCacheManager;
+        return new BoundedCaffeineCacheManager(caffeine, this.localCacheMaxInstances,
+                Duration.ofMinutes(this.localCacheInstanceIdleMinutes));
     }
 
     private int weighCacheEntry(Object key, Object value) {
