@@ -42,9 +42,9 @@ class MeteringCountDAOIntegrationTest extends AbstractIntegrationTest {
     void tearDown() {
         databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
                 .then(databaseClient.sql("DELETE FROM security_profile_user WHERE USER_ID > 1").then())
-                .then(databaseClient.sql("DELETE FROM security_profile WHERE ID > 0").then())
+                .then(databaseClient.sql("DELETE FROM security_profile WHERE CLIENT_ID > 1").then())
                 .then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
-                .then(databaseClient.sql("DELETE FROM security_app WHERE ID > 0").then())
+                .then(databaseClient.sql("DELETE FROM security_app WHERE APP_CODE IN ('mcapp1','mcapp2','mcsite1')").then())
                 .then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
                 .then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
                 .block();
