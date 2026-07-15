@@ -69,7 +69,7 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
     @Value("${cache.local.expire-after-write-minutes:60}")
     private long localCacheExpireAfterWriteMinutes;
 
-    @Value("${cache.local.max-instances:2000}")
+    @Value("${cache.local.max-instances:400}")
     private long localCacheMaxInstances;
 
     @Value("${cache.local.instance-idle-minutes:240}")
