@@ -181,7 +181,9 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
 
         if (this.sid == null) SetterUtil.setIfPresent(callback.getCallSid(), this::setSid);
 
-        SetterUtil.setIfPresent(callback.getCallStatus(), this::setExotelCallStatus);
+        if (callback.getCallStatus() != null) {
+            this.setExotelCallStatus(getStatusByDisplayName(callback.getCallStatus()));
+        }
         SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
         SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
 
@@ -199,6 +201,25 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
 
         SetterUtil.setIfPresent(callback.getOutgoingPhoneNumber(), this::setCallerId);
 
+        if (this.exotelConnectAppletRequest == null) {
+            this.exotelConnectAppletRequest = new ExotelConnectAppletRequest();
+        }
+        if (callback.getEventType() != null) {
+            this.exotelConnectAppletRequest.setDialCallStatus(callback.getEventType());
+        } else if (callback.getDialCallStatus() != null) {
+            this.exotelConnectAppletRequest.setDialCallStatus(callback.getDialCallStatus());
+        }
+
         return this;
+    }
+
+    private static ExotelCallStatus getStatusByDisplayName(String displayName) {
+        if (displayName == null) return null;
+        for (ExotelCallStatus s : ExotelCallStatus.values()) {
+            if (s.getDisplayName().equalsIgnoreCase(displayName) || s.name().equalsIgnoreCase(displayName)) {
+                return s;
+            }
+        }
+        return null;
     }
 }
