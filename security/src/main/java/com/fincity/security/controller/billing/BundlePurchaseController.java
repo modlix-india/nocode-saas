@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fincity.security.model.billing.CheckoutOrderResult;
 import com.fincity.security.model.billing.PurchaseRequest;
 import com.fincity.security.model.billing.PurchaseResult;
 import com.fincity.security.service.billing.BundlePurchaseService;
@@ -33,6 +34,12 @@ public class BundlePurchaseController {
     @PostMapping("/purchase")
     public Mono<ResponseEntity<PurchaseResult>> purchase(@RequestBody PurchaseRequest request) {
         return this.purchaseService.purchase(request.bundleId(), request.tokens(), request.clientId())
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/purchase/order")
+    public Mono<ResponseEntity<CheckoutOrderResult>> purchaseOrder(@RequestBody PurchaseRequest request) {
+        return this.purchaseService.purchaseWithOrder(request.bundleId(), request.tokens(), request.clientId())
                 .map(ResponseEntity::ok);
     }
 

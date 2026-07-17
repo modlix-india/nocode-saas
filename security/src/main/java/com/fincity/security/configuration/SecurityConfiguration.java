@@ -141,7 +141,9 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/internal/billing/**",
 
-                "/api/security/billing/razorpay/webhook");
+                "/api/security/billing/razorpay/webhook",
+
+                "/api/security/billing-bundles/serving");
     }
 
 }
