@@ -154,8 +154,8 @@ class WalletServiceBillingIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("crossing zero suspends the wallet; further charges are blocked")
-    void zeroCrossingSuspendsAndBlocks() {
+    @DisplayName("crossing zero suspends the wallet; rent still accrues on later windows")
+    void zeroCrossingSuspendsThenAccrues() {
         insertConfig(BigDecimal.valueOf(2880), null);
         seedWallet(BigDecimal.valueOf(10));
 
@@ -169,9 +169,17 @@ class WalletServiceBillingIntegrationTest extends AbstractIntegrationTest {
         assertEquals(SecurityWalletStatus.SUSPENDED, status());
         assertEquals(0, balance().compareTo(BigDecimal.valueOf(-20)));
 
-        // A later window is blocked (SUSPENDED), balance unchanged.
-        walletService.charge(userCharge(30, 8)).block();
-        assertEquals(0, balance().compareTo(BigDecimal.valueOf(-20)));
+        // Rent keeps accruing while SUSPENDED: a later window still debits and stays
+        // suspended (no new crossing), so the debt deepens until a top-up reactivates.
+        StepVerifier.create(walletService.charge(userCharge(30, 8)))
+                .assertNext(r -> {
+                    assertEquals(true, r.charged());
+                    assertEquals(true, r.suspended());
+                })
+                .verifyComplete();
+        assertEquals(SecurityWalletStatus.SUSPENDED, status());
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(-50)));
+        assertEquals(0, ledgerDebitSum().compareTo(BigDecimal.valueOf(60)));
     }
 
     @Test
