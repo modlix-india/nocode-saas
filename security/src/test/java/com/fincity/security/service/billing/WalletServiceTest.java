@@ -159,7 +159,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
             stubActiveWallet(wallet(BigDecimal.valueOf(100), SecurityWalletStatus.ACTIVE, (byte) 0));
             when(txnDAO.recordTxn(any())).thenReturn(Mono.just(true));
-            when(walletDAO.debitActive(eq(WALLET_ID), eq(BigDecimal.valueOf(2)))).thenReturn(Mono.just(1));
+            when(walletDAO.debit(eq(WALLET_ID), eq(BigDecimal.valueOf(2)))).thenReturn(Mono.just(1));
 
             StepVerifier.create(service.charge(req(BigDecimal.valueOf(5), BillingActionKeys.USER)))
                     .assertNext(r -> {
@@ -169,7 +169,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     })
                     .verifyComplete();
 
-            verify(walletDAO).debitActive(WALLET_ID, BigDecimal.valueOf(2));
+            verify(walletDAO).debit(WALLET_ID, BigDecimal.valueOf(2));
         }
 
         @Test
@@ -182,7 +182,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     .assertNext(r -> assertFalse(r.charged()))
                     .verifyComplete();
 
-            verify(walletDAO, never()).debitActive(any(), any());
+            verify(walletDAO, never()).debit(any(), any());
         }
 
         @Test
@@ -193,7 +193,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     .assertNext(r -> assertFalse(r.charged()))
                     .verifyComplete();
 
-            verify(walletDAO, never()).debitActive(any(), any());
+            verify(walletDAO, never()).debit(any(), any());
         }
 
         @Test
@@ -225,7 +225,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     .assertNext(r -> assertFalse(r.charged()))
                     .verifyComplete();
 
-            verify(walletDAO, never()).debitActive(any(), any());
+            verify(walletDAO, never()).debit(any(), any());
         }
     }
 
@@ -240,7 +240,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
             stubActiveWallet(w);
             when(txnDAO.recordTxn(any())).thenReturn(Mono.just(true));
-            when(walletDAO.debitActive(eq(WALLET_ID), eq(tokens))).thenReturn(Mono.just(1));
+            when(walletDAO.debit(eq(WALLET_ID), eq(tokens))).thenReturn(Mono.just(1));
             lenient().when(walletDAO.setLowBalanceNotified(any(), org.mockito.ArgumentMatchers.anyBoolean()))
                     .thenReturn(Mono.just(1));
             lenient().when(walletDAO.setStatus(any(), any())).thenReturn(Mono.just(1));
@@ -322,20 +322,26 @@ class WalletServiceTest extends AbstractServiceUnitTest {
         }
 
         @Test
-        void alreadySuspendedWalletIsNotDebited() {
+        void alreadySuspendedWalletStillDebited() {
+            // rate=2880/mo, qty=5, free=0 -> 5 tokens; already SUSPENDED at -5 -> -10 (debt grows).
             AppBillingConfig cfg = config().setUserTokensPerMonth(BigDecimal.valueOf(WINDOWS_IN_JUNE));
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
             stubActiveWallet(wallet(BigDecimal.valueOf(-5), SecurityWalletStatus.SUSPENDED, (byte) 0));
             when(txnDAO.recordTxn(any())).thenReturn(Mono.just(true));
+            when(walletDAO.debit(eq(WALLET_ID), eq(BigDecimal.valueOf(5)))).thenReturn(Mono.just(1));
 
             StepVerifier.create(service.charge(req(BigDecimal.valueOf(5), BillingActionKeys.USER)))
                     .assertNext(r -> {
-                        assertFalse(r.charged());
+                        assertTrue(r.charged());
                         assertTrue(r.suspended());
+                        assertEquals(BigDecimal.valueOf(-10), r.balanceAfter());
                     })
                     .verifyComplete();
 
-            verify(walletDAO, never()).debitActive(any(), any());
+            verify(walletDAO).debit(WALLET_ID, BigDecimal.valueOf(5));
+            // Already suspended: do not re-flip status or re-fire the suspended event.
+            verify(walletDAO, never()).setStatus(any(), any());
+            verify(ecService, never()).createEvent(argEvent(EventNames.WALLET_SUSPENDED));
         }
     }
 
@@ -407,7 +413,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(walletDAO.findByClientAndApp(M_CLIENT, BUILDER_APP_ID)).thenReturn(Mono.just(w));
             when(txnDAO.recordTxn(any())).thenReturn(Mono.just(true));
             // 2,000,000 weighted * 1000 / 1,000,000 = 2000 tokens.
-            when(walletDAO.debitActive(WALLET_ID, BigDecimal.valueOf(2000))).thenReturn(Mono.just(1));
+            when(walletDAO.debit(WALLET_ID, BigDecimal.valueOf(2000))).thenReturn(Mono.just(1));
 
             AiChargeRequest req = new AiChargeRequest("MMMM", "appbuilder", "opus",
                     BigDecimal.valueOf(2_000_000), "req-1", "sess-1");
@@ -416,7 +422,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     .assertNext(r -> assertTrue(r.charged()))
                     .verifyComplete();
 
-            verify(walletDAO).debitActive(WALLET_ID, BigDecimal.valueOf(2000));
+            verify(walletDAO).debit(WALLET_ID, BigDecimal.valueOf(2000));
         }
 
         @Test
@@ -597,7 +603,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
                     .thenReturn(Mono.just(wallet(BigDecimal.valueOf(50), SecurityWalletStatus.SUSPENDED, (byte) 0)));
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> {
                         assertEquals(WalletDisplayStatus.SUSPENDED, r.status());
                         assertEquals(0, r.balance().compareTo(BigDecimal.valueOf(50)));
@@ -614,7 +620,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
                     .thenReturn(Mono.just(wallet(BigDecimal.valueOf(-1), SecurityWalletStatus.ACTIVE, (byte) 0)));
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> assertEquals(WalletDisplayStatus.SUSPENDED, r.status()))
                     .verifyComplete();
         }
@@ -627,7 +633,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
                     .setAlertThreshold(BigDecimal.valueOf(500));
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.just(w));
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> {
                         assertEquals(WalletDisplayStatus.LOW, r.status());
                         assertEquals(0, r.threshold().compareTo(BigDecimal.valueOf(500)));
@@ -646,7 +652,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
                     .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> {
                         assertEquals(WalletDisplayStatus.LOW, r.status());
                         assertEquals(0, r.threshold().compareTo(BigDecimal.valueOf(400)));
@@ -663,7 +669,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
                     .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> assertEquals(WalletDisplayStatus.ACTIVE, r.status()))
                     .verifyComplete();
         }
@@ -677,7 +683,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.empty());
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> {
                         assertEquals(WalletDisplayStatus.ACTIVE, r.status());
                         assertEquals(0, r.balance().compareTo(BigDecimal.valueOf(5)));
@@ -692,7 +698,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             stubCodes();
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.empty());
 
-            StepVerifier.create(service.getDisplayStatus(APP_CODE, CLIENT_CODE))
+            StepVerifier.create(service.getDisplayStatus(APP_CODE))
                     .assertNext(r -> {
                         assertEquals(WalletDisplayStatus.ACTIVE, r.status());
                         assertNull(r.balance());
