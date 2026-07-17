@@ -29,6 +29,7 @@ import com.fincity.security.jooq.enums.SecurityInvoiceGateway;
 import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.jooq.enums.SecurityPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentStatus;
+import com.fincity.security.model.billing.CheckoutOrderResult;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
@@ -111,6 +112,59 @@ public class RazorpayPaymentService {
     }
 
     /**
+     * Create a Razorpay Order for a PENDING invoice against the seller's credentials,
+     * persist a PENDING payment keyed by the order id, and return everything the browser
+     * needs to open the in-page Checkout.js modal. Only the publishable {@code keyId} is
+     * returned; the secret never leaves the backend. The webhook credits the wallet.
+     */
+    @SuppressWarnings("unchecked")
+    public Mono<CheckoutOrderResult> createOrder(Invoice invoice, AppBillingConfig config,
+            String prefillName, String prefillEmail, String prefillContact) {
+        Map<String, Object> gw = config.getPaymentGatewayConfig();
+        String keyId = str(gw, "keyId");
+        String keySecret = str(gw, "keySecret");
+        if (StringUtil.safeIsBlank(keyId) || StringUtil.safeIsBlank(keySecret))
+            return Mono.error(new IllegalStateException("Razorpay keyId/keySecret missing in billing config"));
+
+        long amountPaise = invoice.getTotalAmount().multiply(PAISE).longValue();
+        String currency = invoice.getCurrency() == null ? "INR" : invoice.getCurrency();
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("amount", amountPaise);
+        body.put("currency", currency);
+        body.put("receipt", "INV_" + invoice.getId());
+        Map<String, Object> notes = new HashMap<>();
+        notes.put("invoiceId", invoice.getId() == null ? null : invoice.getId().toString());
+        notes.put("invoiceNumber", invoice.getInvoiceNumber());
+        body.put("notes", notes);
+
+        return webClient(keyId, keySecret).post()
+                .uri("/orders")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .flatMap(resp -> {
+                    Map<String, Object> r = (Map<String, Object>) resp;
+                    String orderId = (String) r.get("id");
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("init", r);
+                    Payment payment = new Payment()
+                            .setInvoiceId(invoice.getId())
+                            .setClientId(invoice.getClientId())
+                            .setGateway(SecurityPaymentGateway.RAZORPAY)
+                            .setGatewayOrderId(orderId)
+                            .setAmount(invoice.getTotalAmount())
+                            .setStatus(SecurityPaymentStatus.PENDING)
+                            .setResponse(response);
+                    return this.paymentDAO.create(payment).thenReturn(
+                            new CheckoutOrderResult(orderId, keyId, amountPaise, currency, invoice.getId(),
+                                    invoice.getInvoiceNumber(), invoice.getTotalAmount(),
+                                    prefillName, prefillEmail, prefillContact));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RazorpayPaymentService.createOrder"));
+    }
+
+    /**
      * Authoritative webhook: verify the signature with the seller's webhook secret,
      * then on a paid event mark payment + invoice PAID, credit the wallet (idempotent)
      * and emit INVOICE_GENERATED. Unknown / unverified / non-terminal events are no-ops.
@@ -128,24 +182,28 @@ public class RazorpayPaymentService {
             return Mono.empty();
 
         String event = str(payload, "event");
-        Map<String, Object> entity = paymentLinkEntity(payload);
-        if (entity == null)
-            return Mono.empty();
 
-        String linkId = str(entity, "id");
-        String rzpPaymentId = str(entity, "payment_id");
-        if (StringUtil.safeIsBlank(linkId))
+        // Resolve the reconciliation key (= Payment.gatewayOrderId) and Razorpay payment id
+        // per event family: payment_link.* (hosted link), order.* and payment.* (Checkout.js
+        // Orders flow). Link ids (plink_) and order ids (order_) never collide, so a single
+        // findByGatewayOrderId lookup serves both flows.
+        String[] keys = resolveWebhookKeys(event, payload);
+        if (keys == null)
+            return Mono.empty();
+        final String reconKey = keys[0];
+        final String rzpPaymentId = keys[1];
+        if (StringUtil.safeIsBlank(reconKey))
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> this.paymentDAO.findByGatewayOrderId(linkId),
+                () -> this.paymentDAO.findByGatewayOrderId(reconKey),
                 payment -> this.invoiceDAO.readById(payment.getInvoiceId()),
                 (payment, invoice) -> this.configService.readByAppAndClientId(invoice.getAppId(),
                         invoice.getSellerClientId()),
                 (payment, invoice, config) -> {
                     String secret = str(config.getPaymentGatewayConfig(), "webhookSecret");
                     if (StringUtil.safeIsBlank(secret) || !verifySignature(rawBody, signature, secret)) {
-                        logger.warn("Razorpay webhook: signature verification failed for link {}", linkId);
+                        logger.warn("Razorpay webhook: signature verification failed for {}", reconKey);
                         return Mono.empty();
                     }
                     if (!isPaidEvent(event))
@@ -157,6 +215,12 @@ public class RazorpayPaymentService {
     }
 
     private Mono<Void> applyPaid(Payment payment, Invoice invoice, String linkPaymentId, Map<String, Object> payload) {
+        // Idempotency: the Orders flow can fire both payment.captured AND order.paid for one
+        // order (and links can be replayed). Once PAID, re-applying is a no-op - this avoids a
+        // duplicate INVOICE_GENERATED emit. The wallet credit is separately idem-keyed.
+        if (payment.getStatus() == SecurityPaymentStatus.PAID)
+            return Mono.empty();
+
         LocalDateTime now = LocalDateTime.now();
 
         // The real payment entity (amount captured, method, fee, tax) is richer and
@@ -229,11 +293,45 @@ public class RazorpayPaymentService {
     // Helpers
     // ---------------------------------------------------------------------
 
+    /**
+     * Resolve {@code [reconKey, rzpPaymentId]} for the event family, or null if the event is
+     * not one we handle / its entity is missing. reconKey matches {@code Payment.gatewayOrderId}:
+     * the payment_link id for hosted links, the order id for the Checkout.js Orders flow.
+     */
+    private static String[] resolveWebhookKeys(String event, Map<String, Object> payload) {
+        if (event == null)
+            return null;
+        if (event.startsWith("payment_link.")) {
+            Map<String, Object> entity = paymentLinkEntity(payload);
+            if (entity == null)
+                return null;
+            return new String[] { str(entity, "id"), str(entity, "payment_id") };
+        }
+        if (event.startsWith("order.")) {
+            Map<String, Object> order = orderEntity(payload);
+            Map<String, Object> pay = paymentEntity(payload);
+            return new String[] { order == null ? null : str(order, "id"),
+                    pay == null ? null : str(pay, "id") };
+        }
+        if (event.startsWith("payment.")) {
+            Map<String, Object> pay = paymentEntity(payload);
+            if (pay == null)
+                return null;
+            return new String[] { str(pay, "order_id"), str(pay, "id") };
+        }
+        return null;
+    }
+
     private static Map<String, Object> paymentLinkEntity(Map<String, Object> payload) {
         return nestedEntity(payload, "payment_link");
     }
 
-    /** The real payment entity (payload.payment.entity): captured amount, method, fee, tax. */
+    /** The order entity (payload.order.entity): id, amount, receipt, status. */
+    private static Map<String, Object> orderEntity(Map<String, Object> payload) {
+        return nestedEntity(payload, "order");
+    }
+
+    /** The real payment entity (payload.payment.entity): captured amount, method, fee, tax, order_id. */
     private static Map<String, Object> paymentEntity(Map<String, Object> payload) {
         return nestedEntity(payload, "payment");
     }
@@ -264,11 +362,13 @@ public class RazorpayPaymentService {
     }
 
     private static boolean isPaidEvent(String event) {
-        return "payment_link.paid".equals(event);
+        return "payment_link.paid".equals(event) || "order.paid".equals(event)
+                || "payment.captured".equals(event);
     }
 
     private static boolean isFailedEvent(String event) {
-        return "payment_link.expired".equals(event) || "payment_link.cancelled".equals(event);
+        return "payment_link.expired".equals(event) || "payment_link.cancelled".equals(event)
+                || "payment.failed".equals(event);
     }
 
     private static String str(Map<String, Object> map, String key) {

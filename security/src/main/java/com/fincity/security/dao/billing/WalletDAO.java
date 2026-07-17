@@ -42,14 +42,15 @@ public class WalletDAO extends AbstractUpdatableDAO<SecurityWalletRecord, ULong,
     }
 
     /**
-     * Atomic debit, allowed only while ACTIVE (so the charge that crosses zero
-     * still applies once). Returns rows affected (1 = applied, 0 = suspended).
+     * Atomic debit regardless of status: rent keeps accruing as debt even while the
+     * wallet is SUSPENDED / already negative (the client still owns its sites, apps
+     * and users). The balance only recovers when it is credited back above zero.
+     * Returns rows affected (1 = applied).
      */
-    public Mono<Integer> debitActive(ULong walletId, BigDecimal tokens) {
+    public Mono<Integer> debit(ULong walletId, BigDecimal tokens) {
         return Mono.from(this.dslContext.update(SECURITY_WALLET)
                 .set(SECURITY_WALLET.BALANCE, SECURITY_WALLET.BALANCE.minus(tokens))
-                .where(SECURITY_WALLET.ID.eq(walletId))
-                .and(SECURITY_WALLET.STATUS.eq(SecurityWalletStatus.ACTIVE)));
+                .where(SECURITY_WALLET.ID.eq(walletId)));
     }
 
     public Mono<Integer> creditBalance(ULong walletId, BigDecimal tokens) {

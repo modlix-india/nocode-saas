@@ -23,6 +23,7 @@ import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.jooq.enums.SecurityAppBillingBundleBundleType;
 import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
+import com.fincity.security.model.billing.CheckoutOrderResult;
 import com.fincity.security.model.billing.PurchaseResult;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -76,6 +77,38 @@ public class BundlePurchaseService {
                         .map(url -> new PurchaseResult(saved.getId(), saved.getInvoiceNumber(),
                                 saved.getTotalAmount(), saved.getCurrency(), url)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BundlePurchaseService.purchase"));
+    }
+
+    /**
+     * Same pricing/invoice flow as {@link #purchase}, but starts a Razorpay Order for the
+     * in-page Checkout.js modal instead of a hosted payment link. Returns everything the
+     * browser needs to open the modal. The webhook (not this flow) credits the wallet.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
+    public Mono<CheckoutOrderResult> purchaseWithOrder(ULong bundleId, BigDecimal tokensRequested,
+            ULong buyerClientId) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.resolveBuyer(ca, buyerClientId),
+                (ca, buyer) -> this.bundleService.readForPurchase(bundleId)
+                        .switchIfEmpty(this.badRequest("bundle")),
+                (ca, buyer, bundle) -> this.configService.readInternal(bundle.getBillingConfigId())
+                        .switchIfEmpty(this.badRequest("billing config")),
+                (ca, buyer, bundle, config) -> this.buildInvoice(ca, buyer, bundle, config, tokensRequested),
+                (ca, buyer, bundle, config, invoice) -> this.invoiceService.create(invoice),
+                (ca, buyer, bundle, config, invoice, saved) -> this.razorpayService.createOrder(saved, config,
+                        prefillName(ca, buyer), ca.getUser().getEmailId(), ca.getUser().getPhoneNumber()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BundlePurchaseService.purchaseWithOrder"));
+    }
+
+    /** Prefer the user's full name for the Razorpay prefill; fall back to the buyer client name. */
+    private static String prefillName(ContextAuthentication ca, Client buyer) {
+        String first = ca.getUser() == null ? null : ca.getUser().getFirstName();
+        String last = ca.getUser() == null ? null : ca.getUser().getLastName();
+        String full = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
+        if (!full.isEmpty())
+            return full;
+        return buyer == null ? null : buyer.getName();
     }
 
     private Mono<Client> resolveBuyer(ContextAuthentication ca, ULong buyerClientId) {

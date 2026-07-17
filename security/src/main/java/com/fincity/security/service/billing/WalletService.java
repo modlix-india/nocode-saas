@@ -146,21 +146,29 @@ public class WalletService
     }
 
     /**
-     * Derived display status for the (appCode, clientCode) in context: SUSPENDED
-     * (status SUSPENDED or balance &lt; 0), LOW (positive balance below the
-     * effective threshold), else ACTIVE. The effective threshold is the wallet's
-     * own override when set, otherwise the config low-balance threshold. No wallet
-     * -> ACTIVE.
+     * Derived display status of the AUTHENTICATED caller's own wallet on the given
+     * app: SUSPENDED (status SUSPENDED or balance &lt; 0), LOW (positive balance
+     * below the effective threshold), else ACTIVE. The effective threshold is the
+     * wallet's own override when set, otherwise the config low-balance threshold
+     * resolved from the caller's managing hierarchy. No wallet -> ACTIVE.
      */
-    public Mono<WalletStatusResponse> getDisplayStatus(String appCode, String clientCode) {
+    public Mono<WalletStatusResponse> getDisplayStatus(String urlAppCode) {
+        // Which app: appCode is globally unique (one appId), so the hosting owner-client is
+        // NOT needed to find the app - and taking no client identifier from the caller means
+        // no header can ever point this at another client's wallet.
+        // Whose wallet: ALWAYS the authenticated caller's own client (security context).
+        // Which threshold: resolved from the caller's own managing hierarchy inside
+        // deriveDisplayStatus (resolveConfigForBilledClient), independent of any header.
         return FlatMapUtil.flatMapMono(
-                () -> this.appService.getAppByCode(appCode),
-                app -> this.clientService.getClientBy(clientCode),
-                (app, client) -> this.assertCanSeeClient(client.getId()),
-                (app, client, seen) -> this.dao.findByClientAndApp(client.getId(), app.getId())
-                        .flatMap(wallet -> this.deriveDisplayStatus(wallet, app.getId(), client.getId()))
-                        .switchIfEmpty(Mono.just(
-                                new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null))))
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.appService.getAppByCode(urlAppCode),
+                (ca, app) -> {
+                    ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                    return this.dao.findByClientAndApp(clientId, app.getId())
+                            .flatMap(wallet -> this.deriveDisplayStatus(wallet, app.getId(), clientId))
+                            .switchIfEmpty(Mono.just(
+                                    new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null)));
+                })
                 .switchIfEmpty(Mono.just(new WalletStatusResponse(WalletDisplayStatus.ACTIVE, null, null)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getDisplayStatus"));
     }
@@ -389,6 +397,88 @@ public class WalletService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.adjust"));
     }
 
+    /**
+     * Admin grant: add {@code tokens} to the ({@code clientCode}, {@code appCode})
+     * wallet, creating it if absent. Runs under the {@code urlClientCode} tenant
+     * context. The caller must be able to see both the tenant and the target client
+     * (own / managed / SYSTEM) and have write access to the app. Recorded as an
+     * ADJUST transaction, so it reactivates a suspended wallet when it goes positive.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
+    public Mono<ChargeResult> creditTokens(String appCode, String urlClientCode, String clientCode,
+            BigDecimal tokens, String reason) {
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.appService.getAppByCode(appCode).switchIfEmpty(this.forbidden("the application")),
+
+                app -> this.clientService.getClientBy(urlClientCode).switchIfEmpty(this.forbidden("the URL client")),
+
+                (app, urlClient) -> this.clientService.getClientBy(clientCode)
+                        .switchIfEmpty(this.forbidden("the wallet's client")),
+
+                (app, urlClient, rowClient) -> this.authorizeWalletOp(app.getId(), urlClient.getId(),
+                        rowClient.getId()),
+
+                (app, urlClient, rowClient, authorized) -> this.getOrCreateWallet(rowClient.getId(), app.getId()),
+
+                (app, urlClient, rowClient, authorized, wallet) -> SecurityContextUtil.getUsersContextAuthentication()
+                        .flatMap(ca -> this.applyCredit(wallet, tokens, SecurityWalletTransactionType.ADJUST, "ADJUST",
+                                null, "adjust:" + java.util.UUID.randomUUID(), reason,
+                                ULong.valueOf(ca.getUser().getId()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.creditTokens"));
+    }
+
+    /**
+     * The (clientCode, appCode) wallet under the urlClientCode context, for the
+     * add-tokens balance preview. Empty when no wallet exists yet. Same authz as
+     * {@link #creditTokens} via {@link #authorizeWalletOp}.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
+    public Mono<Wallet> lookupWallet(String appCode, String urlClientCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.appService.getAppByCode(appCode).switchIfEmpty(this.forbidden("the application")),
+
+                app -> this.clientService.getClientBy(urlClientCode).switchIfEmpty(this.forbidden("the URL client")),
+
+                (app, urlClient) -> this.clientService.getClientBy(clientCode)
+                        .switchIfEmpty(this.forbidden("the wallet's client")),
+
+                (app, urlClient, rowClient) -> this.authorizeWalletOp(app.getId(), urlClient.getId(),
+                        rowClient.getId()),
+
+                (app, urlClient, rowClient, authorized) -> this.dao.findByClientAndApp(rowClient.getId(), app.getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.lookupWallet"));
+    }
+
+    /**
+     * Shared owner-op authz for credit + balance lookup: a SYSTEM caller passes;
+     * otherwise the caller's client must have write access to the app AND manage
+     * both the URL client and the wallet's client. The ROLE_Owner / Payment_CREATE
+     * authority is enforced by @PreAuthorize on the public entry points.
+     */
+    private Mono<Boolean> authorizeWalletOp(ULong appId, ULong urlClientId, ULong rowClientId) {
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.appService.hasWriteAccess(appId, ULong.valueOf(ca.getUser().getClientId()))
+                                .filter(BooleanUtil::safeValueOf)
+                                .switchIfEmpty(this.forbidden("write access to the application")),
+
+                (ca, appOk) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.clientService.isUserClientManageClient(ca, urlClientId)
+                                .filter(BooleanUtil::safeValueOf)
+                                .switchIfEmpty(this.forbidden("manage the URL client")),
+
+                (ca, appOk, urlOk) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.clientService.isUserClientManageClient(ca, rowClientId)
+                                .filter(BooleanUtil::safeValueOf)
+                                .switchIfEmpty(this.forbidden("manage the wallet's client")))
+                .map(x -> Boolean.TRUE);
+    }
+
     // ---------------------------------------------------------------------
     // Core debit / credit primitives
     // ---------------------------------------------------------------------
@@ -396,9 +486,10 @@ public class WalletService
     private Mono<ChargeResult> applyDebit(Wallet wallet, BigDecimal tokens, AppBillingConfig config, String actionKey,
             BigDecimal quantity, LocalDate chargeDate, Short window, String idemKey, String reason, ULong actingUser) {
 
-        if (wallet.getStatus() == SecurityWalletStatus.SUSPENDED)
-            return Mono.just(new ChargeResult(false, true, false, wallet.getBalance()));
-
+        // Rent accrues even while SUSPENDED / already negative: the client still owns its
+        // sites, apps and users, so the debt keeps growing each window until a top-up lifts
+        // the balance back above zero (see applyCredit's reactivate). We do NOT short-circuit
+        // on SUSPENDED anymore - we still record the txn and debit.
         BigDecimal balanceBefore = wallet.getBalance();
         BigDecimal balanceAfter = balanceBefore.subtract(tokens);
 
@@ -416,13 +507,15 @@ public class WalletService
                 .setReason(reason);
         txn.setCreatedBy(actingUser);
 
+        boolean alreadySuspended = wallet.getStatus() == SecurityWalletStatus.SUSPENDED;
+
         return this.txnDAO.recordTxn(txn).flatMap(inserted -> {
             if (Boolean.FALSE.equals(inserted))
-                return Mono.just(new ChargeResult(false, false, false, balanceBefore));
+                return Mono.just(new ChargeResult(false, alreadySuspended, false, balanceBefore));
 
-            return this.dao.debitActive(wallet.getId(), tokens).flatMap(rows -> {
+            return this.dao.debit(wallet.getId(), tokens).flatMap(rows -> {
                 if (rows == null || rows == 0)
-                    return Mono.just(new ChargeResult(false, true, false, balanceBefore));
+                    return Mono.just(new ChargeResult(false, alreadySuspended, false, balanceBefore));
 
                 BigDecimal threshold = wallet.getAlertThreshold() != null ? wallet.getAlertThreshold()
                         : config != null ? config.getLowBalanceThreshold() : null;
@@ -430,19 +523,22 @@ public class WalletService
                         && balanceBefore.compareTo(threshold) >= 0
                         && balanceAfter.compareTo(threshold) < 0
                         && (wallet.getLowBalanceNotified() == null || wallet.getLowBalanceNotified() == 0);
-                boolean suspend = balanceAfter.signum() < 0;
+                boolean nowNegative = balanceAfter.signum() < 0;
+                // Flip to SUSPENDED and raise the event only on the crossing (active -> negative),
+                // never on every subsequent window while it is already suspended.
+                boolean newlySuspended = nowNegative && !alreadySuspended;
 
                 Mono<Void> effects = Mono.empty();
                 if (lowCross)
                     effects = this.dao.setLowBalanceNotified(wallet.getId(), true)
                             .then(this.raiseWalletEvent(EventNames.WALLET_LOW_BALANCE, wallet, balanceAfter));
-                if (suspend)
+                if (newlySuspended)
                     effects = effects
                             .then(this.dao.setStatus(wallet.getId(), SecurityWalletStatus.SUSPENDED))
                             .then(this.evictWalletStatus(wallet.getClientId(), wallet.getAppId()))
                             .then(this.raiseWalletEvent(EventNames.WALLET_SUSPENDED, wallet, balanceAfter));
 
-                return effects.thenReturn(new ChargeResult(true, suspend, lowCross, balanceAfter));
+                return effects.thenReturn(new ChargeResult(true, nowNegative || alreadySuspended, lowCross, balanceAfter));
             });
         });
     }
