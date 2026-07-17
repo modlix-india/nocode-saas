@@ -67,11 +67,11 @@ class WalletDAOIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("debitActive reduces balance and reports one row when ACTIVE")
-    void debitActiveWhenActive() {
+    @DisplayName("debit reduces balance and reports one row when ACTIVE")
+    void debitWhenActive() {
         ULong id = seed(BigDecimal.valueOf(100));
 
-        StepVerifier.create(walletDAO.debitActive(id, BigDecimal.valueOf(30)))
+        StepVerifier.create(walletDAO.debit(id, BigDecimal.valueOf(30)))
                 .expectNext(1)
                 .verifyComplete();
 
@@ -81,37 +81,38 @@ class WalletDAOIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("debitActive is a no-op (0 rows, balance unchanged) when SUSPENDED")
-    void debitActiveWhenSuspended() {
+    @DisplayName("debit still applies (1 row, balance reduced) when SUSPENDED - rent accrues as debt")
+    void debitWhenSuspended() {
         ULong id = seed(BigDecimal.valueOf(100));
         walletDAO.setStatus(id, SecurityWalletStatus.SUSPENDED).block();
 
-        StepVerifier.create(walletDAO.debitActive(id, BigDecimal.valueOf(30)))
-                .expectNext(0)
+        StepVerifier.create(walletDAO.debit(id, BigDecimal.valueOf(30)))
+                .expectNext(1)
                 .verifyComplete();
 
         StepVerifier.create(walletDAO.findByClientAndApp(clientId, appId))
                 .assertNext(w -> {
                     assertEquals(SecurityWalletStatus.SUSPENDED, w.getStatus());
-                    assertEquals(0, w.getBalance().compareTo(BigDecimal.valueOf(100)), "balance must be unchanged");
+                    assertEquals(0, w.getBalance().compareTo(BigDecimal.valueOf(70)),
+                            "balance must reduce even while suspended");
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("a debit may drive balance negative (the one overshoot), then SUSPENDED debits stop")
-    void debitMayCrossZeroOnceThenStops() {
+    @DisplayName("debits keep applying once the balance is negative - the debt keeps growing")
+    void debitKeepsGoingNegative() {
         ULong id = seed(BigDecimal.valueOf(10));
 
-        // Crosses zero: still ACTIVE at debit time, so it applies.
-        StepVerifier.create(walletDAO.debitActive(id, BigDecimal.valueOf(30))).expectNext(1).verifyComplete();
-        // Caller suspends after seeing negative balance.
+        // Crosses zero.
+        StepVerifier.create(walletDAO.debit(id, BigDecimal.valueOf(30))).expectNext(1).verifyComplete();
+        // Caller suspends after seeing the negative balance.
         walletDAO.setStatus(id, SecurityWalletStatus.SUSPENDED).block();
-        // Next debit is blocked.
-        StepVerifier.create(walletDAO.debitActive(id, BigDecimal.valueOf(5))).expectNext(0).verifyComplete();
+        // Next debit STILL applies: rent accrues as debt even while suspended.
+        StepVerifier.create(walletDAO.debit(id, BigDecimal.valueOf(5))).expectNext(1).verifyComplete();
 
         StepVerifier.create(walletDAO.findByClientAndApp(clientId, appId))
-                .assertNext(w -> assertEquals(0, w.getBalance().compareTo(BigDecimal.valueOf(-20))))
+                .assertNext(w -> assertEquals(0, w.getBalance().compareTo(BigDecimal.valueOf(-25))))
                 .verifyComplete();
     }
 

@@ -9,13 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.billing.AppBillingBundleDAO;
 import com.fincity.security.dto.billing.AppBillingBundle;
+import com.fincity.security.dto.billing.AppBillingConfig;
+import com.fincity.security.jooq.enums.SecurityAppBillingBundleStatus;
 import com.fincity.security.jooq.tables.records.SecurityAppBillingBundleRecord;
+import com.fincity.security.service.AppService;
+import com.fincity.security.service.ClientHierarchyService;
+import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,9 +37,16 @@ public class AppBillingBundleService extends
         AbstractJOOQUpdatableDataService<SecurityAppBillingBundleRecord, ULong, AppBillingBundle, AppBillingBundleDAO> {
 
     private final AppBillingConfigService configService;
+    private final AppService appService;
+    private final ClientService clientService;
+    private final ClientHierarchyService clientHierarchyService;
 
-    public AppBillingBundleService(AppBillingConfigService configService) {
+    public AppBillingBundleService(AppBillingConfigService configService, AppService appService,
+            ClientService clientService, ClientHierarchyService clientHierarchyService) {
         this.configService = configService;
+        this.appService = appService;
+        this.clientService = clientService;
+        this.clientHierarchyService = clientHierarchyService;
     }
 
     @Override
@@ -64,6 +77,42 @@ public class AppBillingBundleService extends
 
     public Mono<List<AppBillingBundle>> findByConfigId(ULong billingConfigId) {
         return this.dao.findByConfigId(billingConfigId);
+    }
+
+    /**
+     * Public buyer view: the ACTIVE bundles for the app hosted under (appCode,
+     * urlClientCode), resolved from the URL - no config id is taken from the caller
+     * and the config itself (which carries rates + gateway secrets) is never
+     * exposed. The config is the one owned by the URL client OR, failing that, the
+     * nearest managing client up its hierarchy (so a buyer under a sub-client still
+     * sees the owner's bundles). Empty list when no config governs that client.
+     */
+    public Mono<List<AppBillingBundle>> findServingByCodes(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                app -> this.clientService.getClientBy(clientCode),
+                (app, client) -> this.resolveConfigForClient(app.getId(), client.getId()),
+                (app, client, config) -> this.dao.findByConfigId(config.getId()))
+                .map(bundles -> bundles.stream()
+                        .filter(b -> b.getStatus() == SecurityAppBillingBundleStatus.ACTIVE)
+                        .toList())
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppBillingBundleService.findServingByCodes"));
+    }
+
+    /**
+     * The config governing (app, client): the config owned by the client, else the
+     * nearest ANCESTOR up its hierarchy. `getClientHierarchyIdInOrder` returns
+     * [self, level0-manager, level1-manager, ...], so a buyer under a sub-client
+     * (e.g. FIN) resolves to the hosting owner's config (e.g. SYSTEM) that actually
+     * governs it. (getManagingClientIds is the wrong direction - it returns the
+     * clients this client manages, i.e. descendants.)
+     */
+    private Mono<AppBillingConfig> resolveConfigForClient(ULong appId, ULong clientId) {
+        return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(ancestorId -> this.configService.readByAppAndClientId(appId, ancestorId))
+                .next();
     }
 
     /** Ungated read for the purchase flow (the buyer is picking a bundle to pay for). */
