@@ -131,17 +131,19 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/app/profiles/internal/**",
 
-                "/api/security/plans/registration",
-
-                "/api/security/plans/internal/limits",
-
                 "/api/security/departments/internal/**",
 
                 "/api/security/departments/internal",
 
                 "/api/security/otp/generate",
 
-                "/api/security/otp/verify");
+                "/api/security/otp/verify",
+
+                "/api/security/internal/billing/**",
+
+                "/api/security/billing/razorpay/webhook",
+
+                "/api/security/billing-bundles/serving");
     }
 
 }

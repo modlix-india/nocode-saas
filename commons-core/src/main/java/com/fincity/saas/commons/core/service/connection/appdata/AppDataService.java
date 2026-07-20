@@ -212,6 +212,21 @@ public class AppDataService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
     }
 
+    /**
+     * Estimated total row count across M's runtime data for an app, for token
+     * metering (action {@code core.storage.rows}). Resolves the app's appData
+     * connection (so a custom Mongo cluster is honoured, not just the default
+     * client) and delegates the count to the resolved data service. Connection
+     * resolution does not require an authenticated context, so this is safe from a
+     * worker-triggered meter. Only the Mongo data service is implemented today.
+     */
+    public Mono<Long> estimatedRowCount(String appCode, String clientCode) {
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .flatMap(conn -> this.mongoAppDataService.estimatedRowCount(conn, appCode, clientCode))
+                .switchIfEmpty(Mono.defer(() -> this.mongoAppDataService.estimatedRowCount(null, appCode, clientCode)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.estimatedRowCount"));
+    }
+
     public Mono<List<Map<String, Object>>> createMany(
             String appCode,
             String clientCode,

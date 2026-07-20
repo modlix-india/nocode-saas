@@ -1,0 +1,194 @@
+package com.fincity.security.service.billing;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.jooq.types.ULong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.fincity.security.dao.billing.InvoiceDAO;
+import com.fincity.security.dao.billing.PaymentDAO;
+import com.fincity.security.dto.billing.AppBillingConfig;
+import com.fincity.security.dto.billing.Invoice;
+import com.fincity.security.dto.billing.Payment;
+import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityPaymentGateway;
+import com.fincity.security.jooq.enums.SecurityPaymentStatus;
+import com.fincity.security.model.billing.ChargeResult;
+import com.google.gson.Gson;
+
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+/**
+ * Unit tests for the Razorpay webhook: signature is verified with the seller's
+ * secret before any state change; a verified payment_link.paid credits the wallet
+ * and emits the invoice; an unverified payload is a no-op.
+ */
+@ExtendWith(MockitoExtension.class)
+class RazorpayPaymentServiceTest {
+
+    @Mock
+    private PaymentDAO paymentDAO;
+    @Mock
+    private InvoiceDAO invoiceDAO;
+    @Mock
+    private InvoiceService invoiceService;
+    @Mock
+    private WalletService walletService;
+    @Mock
+    private AppBillingConfigService configService;
+
+    private RazorpayPaymentService service;
+
+    private static final String SECRET = "whsec_test_123";
+    private static final String LINK_ID = "plink_1";
+    private static final ULong APP_ID = ULong.valueOf(2);
+    private static final ULong C_CLIENT = ULong.valueOf(10);
+    private static final ULong M_CLIENT = ULong.valueOf(20);
+    private static final ULong INVOICE_ID = ULong.valueOf(900);
+
+    private static final String PAID_BODY = "{\"event\":\"payment_link.paid\",\"payload\":{\"payment_link\":"
+            + "{\"entity\":{\"id\":\"" + LINK_ID + "\",\"payment_id\":\"pay_xyz\"}}}}";
+
+    @BeforeEach
+    void setUp() {
+        service = new RazorpayPaymentService(paymentDAO, invoiceDAO, invoiceService, walletService,
+                configService, new Gson());
+
+        Payment payment = new Payment().setInvoiceId(INVOICE_ID).setGatewayOrderId(LINK_ID)
+                .setGateway(SecurityPaymentGateway.RAZORPAY).setStatus(SecurityPaymentStatus.PENDING)
+                .setResponse(new HashMap<>(Map.of("init", Map.of("short_url", "https://rzp.io/x"))));
+        Invoice invoice = new Invoice().setAppId(APP_ID).setSellerClientId(C_CLIENT).setClientId(M_CLIENT)
+                .setTokensPurchased(BigDecimal.valueOf(1000)).setInvoiceNumber("INV/1");
+        invoice.setId(INVOICE_ID);
+        AppBillingConfig config = new AppBillingConfig().setAppId(APP_ID).setClientId(C_CLIENT)
+                .setPaymentGatewayConfig(Map.of("webhookSecret", SECRET));
+
+        lenient().when(paymentDAO.findByGatewayOrderId(LINK_ID)).thenReturn(Mono.just(payment));
+        lenient().when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+        lenient().when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.just(config));
+        lenient().when(paymentDAO.update(any(Payment.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
+        lenient().when(walletService.creditFromPayment(any()))
+                .thenReturn(Mono.just(new ChargeResult(true, false, false, BigDecimal.valueOf(1000))));
+        lenient().when(invoiceService.markPaidAndEmit(any())).thenAnswer(i -> Mono.just(i.getArgument(0)));
+    }
+
+    @Test
+    void verifiedPaidWebhookCreditsWalletAndEmitsInvoice() throws Exception {
+        String signature = sign(PAID_BODY, SECRET);
+
+        StepVerifier.create(service.handleWebhook(PAID_BODY, signature)).verifyComplete();
+
+        verify(walletService).creditFromPayment(any());
+        verify(invoiceService).markPaidAndEmit(any());
+        verify(paymentDAO).update(any(Payment.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void capturesPaymentEntityAndPreservesInit() throws Exception {
+        // payment_link.paid carries the real payment entity (captured amount in paise,
+        // method, fee, tax) alongside the link; the link's payment_id is only a fallback.
+        String body = "{\"event\":\"payment_link.paid\",\"payload\":{"
+                + "\"payment_link\":{\"entity\":{\"id\":\"" + LINK_ID + "\",\"payment_id\":\"pay_link_fallback\"}},"
+                + "\"payment\":{\"entity\":{\"id\":\"pay_real\",\"amount\":106200,\"method\":\"upi\","
+                + "\"fee\":2124,\"tax\":324,\"currency\":\"INR\",\"status\":\"captured\"}}}}";
+
+        StepVerifier.create(service.handleWebhook(body, sign(body, SECRET))).verifyComplete();
+
+        ArgumentCaptor<Payment> cap = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentDAO).update(cap.capture());
+        Payment saved = cap.getValue();
+
+        assertEquals("pay_real", saved.getGatewayPaymentId(), "real payment-entity id wins over the link fallback");
+        assertEquals(SecurityPaymentStatus.PAID, saved.getStatus());
+
+        Map<String, Object> resp = saved.getResponse();
+        assertTrue(resp.containsKey("init"), "init response preserved");
+        assertTrue(resp.containsKey("webhook"), "raw webhook stored");
+        Map<String, Object> captured = (Map<String, Object>) resp.get("captured");
+        assertEquals(0, ((BigDecimal) captured.get("amount")).compareTo(BigDecimal.valueOf(1062)),
+                "paise converted to rupees");
+        assertEquals("upi", captured.get("method"));
+
+        verify(walletService).creditFromPayment(any());
+        verify(invoiceService).markPaidAndEmit(any());
+    }
+
+    @Test
+    void invalidSignatureIsANoOp() {
+        StepVerifier.create(service.handleWebhook(PAID_BODY, "deadbeef")).verifyComplete();
+
+        verify(walletService, never()).creditFromPayment(any());
+        verify(invoiceService, never()).markPaidAndEmit(any());
+    }
+
+    @Test
+    void unparseableBodyIsANoOp() {
+        StepVerifier.create(service.handleWebhook("not-json", "sig")).verifyComplete();
+
+        verify(paymentDAO, never()).findByGatewayOrderId(any());
+        verify(walletService, never()).creditFromPayment(any());
+    }
+
+    @Test
+    void holdsForReviewOnAmountMismatch() throws Exception {
+        // Verified webhook, but the captured amount does not match the invoice total:
+        // the wallet must NOT be credited and the invoice goes UNDER_REVIEW.
+        Invoice invoice = new Invoice().setAppId(APP_ID).setSellerClientId(C_CLIENT).setClientId(M_CLIENT)
+                .setTokensPurchased(BigDecimal.valueOf(1000)).setInvoiceNumber("INV/1")
+                .setTotalAmount(BigDecimal.valueOf(1062));
+        invoice.setId(INVOICE_ID);
+        lenient().when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+        lenient().when(invoiceDAO.update(any(Invoice.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
+
+        // captured 1000.00 (100000 paise) != invoice total 1062
+        String body = "{\"event\":\"payment_link.paid\",\"payload\":{"
+                + "\"payment_link\":{\"entity\":{\"id\":\"" + LINK_ID + "\",\"payment_id\":\"pay_link_fallback\"}},"
+                + "\"payment\":{\"entity\":{\"id\":\"pay_real\",\"amount\":100000,\"method\":\"upi\","
+                + "\"currency\":\"INR\",\"status\":\"captured\"}}}}";
+
+        StepVerifier.create(service.handleWebhook(body, sign(body, SECRET))).verifyComplete();
+
+        verify(walletService, never()).creditFromPayment(any());
+        verify(invoiceService, never()).markPaidAndEmit(any());
+
+        ArgumentCaptor<Invoice> invCap = ArgumentCaptor.forClass(Invoice.class);
+        verify(invoiceDAO).update(invCap.capture());
+        assertEquals(SecurityInvoiceStatus.UNDER_REVIEW, invCap.getValue().getStatus(),
+                "amount mismatch is held for manual reconciliation");
+
+        ArgumentCaptor<Payment> payCap = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentDAO).update(payCap.capture());
+        assertEquals(SecurityPaymentStatus.PAID, payCap.getValue().getStatus(),
+                "money was captured, so the payment still records as PAID");
+    }
+
+    private static String sign(String body, String secret) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] hash = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder(hash.length * 2);
+        for (byte b : hash)
+            hex.append(String.format("%02x", b));
+        return hex.toString();
+    }
+}

@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-ALL_SERVICES="config eureka core files entity-processor security multi ui gateway worker"
+ALL_SERVICES="config eureka core files entity-processor security multi ui gateway worker adzump"
 
 start_service() {
   local name="$1"
@@ -84,6 +84,7 @@ port_for() {
     eureka) echo 9999 ;;
     gateway) echo 8080 ;;
     ui) echo 8002 ;;
+    adzump) echo 8012 ;;
     *) echo "" ;;
   esac
 }
@@ -135,7 +136,7 @@ start_service eureka
 wait_for_port eureka 9999 120
 
 # 3. Everything else — parallel
-for svc in core files entity-processor security multi ui gateway worker; do
+for svc in core files entity-processor security multi ui gateway worker adzump; do
   start_service "$svc"
 done
 

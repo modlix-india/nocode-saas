@@ -53,6 +53,10 @@ spring:
           uri: lb://ai
           predicates:
             - Path=/api/ai/**, /*/api/ai/**, /*/*/api/ai/**, /*/*/*/api/ai/**, /*/*/*/*/api/ai/**, /*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/*/api/ai/**, /*/*/*/*/*/*/*/*/*/api/ai/**,
+        - id: adzump
+          uri: lb://adzump
+          predicates:
+            - Path=/api/adzump/**, /*/api/adzump/**, /*/*/api/adzump/**, /*/*/*/api/adzump/**, /*/*/*/*/api/adzump/**, /*/*/*/*/*/api/adzump/**, /*/*/*/*/*/*/api/adzump/**, /*/*/*/*/*/*/*/api/adzump/**, /*/*/*/*/*/*/*/*/api/adzump/**, /*/*/*/*/*/*/*/*/*/api/adzump/**,
         - id: ui
           uri: lb://ui
           predicates:

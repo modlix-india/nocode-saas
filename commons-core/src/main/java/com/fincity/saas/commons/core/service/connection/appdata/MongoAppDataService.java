@@ -772,6 +772,32 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         return Mono.just(client.getDatabase(clientCode + "_" + appCode).getCollection(uniqueName + "_version"));
     }
 
+    /**
+     * Estimated total document count across M's runtime database
+     * {@code {clientCode}_{appCode}}, used for token metering (action
+     * {@code core.storage.rows}). The Mongo client is resolved from the app's appData
+     * {@link Connection} (null falls back to the platform default client). Sums
+     * {@code estimatedDocumentCount()} over every data collection (excluding
+     * {@code *_version} and {@code system.*}). No SecurityContext and no index
+     * management; a per-collection failure counts as zero.
+     */
+    public Mono<Long> estimatedRowCount(Connection conn, String appCode, String clientCode) {
+        if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank(clientCode))
+            return Mono.just(0L);
+
+        MongoClient client = this.getMongoClient(conn);
+        if (client == null)
+            return Mono.just(0L);
+
+        var db = client.getDatabase(clientCode + "_" + appCode);
+        return Flux.from(db.listCollectionNames())
+                .filter(name -> name != null && !name.endsWith("_version") && !name.startsWith("system."))
+                .flatMap(name -> Mono.from(db.getCollection(name).estimatedDocumentCount())
+                        .onErrorReturn(0L))
+                .reduce(0L, (a, b) -> a + b)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.estimatedRowCount"));
+    }
+
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {
         this.convertBisonId(document, ID);
 

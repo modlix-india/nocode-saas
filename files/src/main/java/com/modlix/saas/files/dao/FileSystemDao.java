@@ -59,6 +59,20 @@ public class FileSystemDao {
         this.context = context;
     }
 
+    /**
+     * Total bytes stored under a client (FILE entries, both static and secured), for
+     * token metering. The file system is keyed by client code, not app, so this is a
+     * per-client total.
+     */
+    public long sumBytesByClient(String clientCode) {
+        java.math.BigDecimal sum = this.context.select(DSL.sum(FILES_FILE_SYSTEM.SIZE))
+                .from(FILES_FILE_SYSTEM)
+                .where(FILES_FILE_SYSTEM.CODE.eq(clientCode))
+                .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE))
+                .fetchOneInto(java.math.BigDecimal.class);
+        return sum == null ? 0L : sum.longValue();
+    }
+
     public boolean exists(FilesFileSystemType type, String clientCode, String path) {
 
         return getId(type, clientCode, path).isPresent();

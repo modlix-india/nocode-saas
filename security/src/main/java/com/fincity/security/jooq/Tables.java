@@ -7,6 +7,8 @@ package com.fincity.security.jooq;
 import com.fincity.security.jooq.tables.SecurityAddress;
 import com.fincity.security.jooq.tables.SecurityApp;
 import com.fincity.security.jooq.tables.SecurityAppAccess;
+import com.fincity.security.jooq.tables.SecurityAppBillingBundle;
+import com.fincity.security.jooq.tables.SecurityAppBillingConfig;
 import com.fincity.security.jooq.tables.SecurityAppDependency;
 import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.SecurityAppRegAccess;
@@ -27,23 +29,18 @@ import com.fincity.security.jooq.tables.SecurityClientManager;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
-import com.fincity.security.jooq.tables.SecurityClientPlan;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityInvoice;
-import com.fincity.security.jooq.tables.SecurityInvoiceItem;
+import com.fincity.security.jooq.tables.SecurityInvoiceCounter;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
 import com.fincity.security.jooq.tables.SecurityPayment;
-import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPermission;
-import com.fincity.security.jooq.tables.SecurityPlan;
-import com.fincity.security.jooq.tables.SecurityPlanCycle;
-import com.fincity.security.jooq.tables.SecurityPlanLimit;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.SecurityProfileRole;
@@ -61,6 +58,8 @@ import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
 import com.fincity.security.jooq.tables.SecurityV2RoleRole;
 import com.fincity.security.jooq.tables.SecurityV2UserRole;
+import com.fincity.security.jooq.tables.SecurityWallet;
+import com.fincity.security.jooq.tables.SecurityWalletTransaction;
 
 
 /**
@@ -83,6 +82,16 @@ public class Tables {
      * The table <code>security.security_app_access</code>.
      */
     public static final SecurityAppAccess SECURITY_APP_ACCESS = SecurityAppAccess.SECURITY_APP_ACCESS;
+
+    /**
+     * The table <code>security.security_app_billing_bundle</code>.
+     */
+    public static final SecurityAppBillingBundle SECURITY_APP_BILLING_BUNDLE = SecurityAppBillingBundle.SECURITY_APP_BILLING_BUNDLE;
+
+    /**
+     * The table <code>security.security_app_billing_config</code>.
+     */
+    public static final SecurityAppBillingConfig SECURITY_APP_BILLING_CONFIG = SecurityAppBillingConfig.SECURITY_APP_BILLING_CONFIG;
 
     /**
      * The table <code>security.security_app_dependency</code>.
@@ -185,11 +194,6 @@ public class Tables {
     public static final SecurityClientPinPolicy SECURITY_CLIENT_PIN_POLICY = SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY;
 
     /**
-     * The table <code>security.security_client_plan</code>.
-     */
-    public static final SecurityClientPlan SECURITY_CLIENT_PLAN = SecurityClientPlan.SECURITY_CLIENT_PLAN;
-
-    /**
      * The table <code>security.security_client_type</code>.
      */
     public static final SecurityClientType SECURITY_CLIENT_TYPE = SecurityClientType.SECURITY_CLIENT_TYPE;
@@ -215,9 +219,9 @@ public class Tables {
     public static final SecurityInvoice SECURITY_INVOICE = SecurityInvoice.SECURITY_INVOICE;
 
     /**
-     * The table <code>security.security_invoice_item</code>.
+     * The table <code>security.security_invoice_counter</code>.
      */
-    public static final SecurityInvoiceItem SECURITY_INVOICE_ITEM = SecurityInvoiceItem.SECURITY_INVOICE_ITEM;
+    public static final SecurityInvoiceCounter SECURITY_INVOICE_COUNTER = SecurityInvoiceCounter.SECURITY_INVOICE_COUNTER;
 
     /**
      * The table <code>security.security_one_time_token</code>.
@@ -245,29 +249,9 @@ public class Tables {
     public static final SecurityPayment SECURITY_PAYMENT = SecurityPayment.SECURITY_PAYMENT;
 
     /**
-     * The table <code>security.security_payment_gateway</code>.
-     */
-    public static final SecurityPaymentGateway SECURITY_PAYMENT_GATEWAY = SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY;
-
-    /**
      * The table <code>security.security_permission</code>.
      */
     public static final SecurityPermission SECURITY_PERMISSION = SecurityPermission.SECURITY_PERMISSION;
-
-    /**
-     * The table <code>security.security_plan</code>.
-     */
-    public static final SecurityPlan SECURITY_PLAN = SecurityPlan.SECURITY_PLAN;
-
-    /**
-     * The table <code>security.security_plan_cycle</code>.
-     */
-    public static final SecurityPlanCycle SECURITY_PLAN_CYCLE = SecurityPlanCycle.SECURITY_PLAN_CYCLE;
-
-    /**
-     * The table <code>security.security_plan_limit</code>.
-     */
-    public static final SecurityPlanLimit SECURITY_PLAN_LIMIT = SecurityPlanLimit.SECURITY_PLAN_LIMIT;
 
     /**
      * The table <code>security.security_profile</code>.
@@ -353,4 +337,14 @@ public class Tables {
      * The table <code>security.security_v2_user_role</code>.
      */
     public static final SecurityV2UserRole SECURITY_V2_USER_ROLE = SecurityV2UserRole.SECURITY_V2_USER_ROLE;
+
+    /**
+     * The table <code>security.security_wallet</code>.
+     */
+    public static final SecurityWallet SECURITY_WALLET = SecurityWallet.SECURITY_WALLET;
+
+    /**
+     * The table <code>security.security_wallet_transaction</code>.
+     */
+    public static final SecurityWalletTransaction SECURITY_WALLET_TRANSACTION = SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION;
 }

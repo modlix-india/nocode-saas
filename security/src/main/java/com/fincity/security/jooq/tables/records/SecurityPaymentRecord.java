@@ -4,8 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
-import com.fincity.security.jooq.enums.SecurityPaymentPaymentMethod;
-import com.fincity.security.jooq.enums.SecurityPaymentPaymentStatus;
+import com.fincity.security.jooq.enums.SecurityPaymentGateway;
+import com.fincity.security.jooq.enums.SecurityPaymentStatus;
 import com.fincity.security.jooq.tables.SecurityPayment;
 
 import java.math.BigDecimal;
@@ -41,7 +41,8 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
     }
 
     /**
-     * Setter for <code>security.security_payment.INVOICE_ID</code>. Invoice ID
+     * Setter for <code>security.security_payment.INVOICE_ID</code>. Invoice
+     * paid
      */
     public SecurityPaymentRecord setInvoiceId(ULong value) {
         set(1, value);
@@ -49,112 +50,141 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
     }
 
     /**
-     * Getter for <code>security.security_payment.INVOICE_ID</code>. Invoice ID
+     * Getter for <code>security.security_payment.INVOICE_ID</code>. Invoice
+     * paid
      */
     public ULong getInvoiceId() {
         return (ULong) get(1);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_DATE</code>. Payment
-     * date
+     * Setter for <code>security.security_payment.CLIENT_ID</code>. Buyer client
      */
-    public SecurityPaymentRecord setPaymentDate(LocalDateTime value) {
+    public SecurityPaymentRecord setClientId(ULong value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_DATE</code>. Payment
-     * date
+     * Getter for <code>security.security_payment.CLIENT_ID</code>. Buyer client
      */
-    public LocalDateTime getPaymentDate() {
-        return (LocalDateTime) get(2);
+    public ULong getClientId() {
+        return (ULong) get(2);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_AMOUNT</code>. Payment
-     * amount
+     * Setter for <code>security.security_payment.GATEWAY</code>. Payment
+     * gateway
      */
-    public SecurityPaymentRecord setPaymentAmount(BigDecimal value) {
+    public SecurityPaymentRecord setGateway(SecurityPaymentGateway value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_AMOUNT</code>. Payment
-     * amount
+     * Getter for <code>security.security_payment.GATEWAY</code>. Payment
+     * gateway
      */
-    public BigDecimal getPaymentAmount() {
-        return (BigDecimal) get(3);
+    public SecurityPaymentGateway getGateway() {
+        return (SecurityPaymentGateway) get(3);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_STATUS</code>. Payment
-     * status
+     * Setter for <code>security.security_payment.GATEWAY_ORDER_ID</code>.
+     * Gateway order id
      */
-    public SecurityPaymentRecord setPaymentStatus(SecurityPaymentPaymentStatus value) {
+    public SecurityPaymentRecord setGatewayOrderId(String value) {
         set(4, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_STATUS</code>. Payment
-     * status
+     * Getter for <code>security.security_payment.GATEWAY_ORDER_ID</code>.
+     * Gateway order id
      */
-    public SecurityPaymentPaymentStatus getPaymentStatus() {
-        return (SecurityPaymentPaymentStatus) get(4);
+    public String getGatewayOrderId() {
+        return (String) get(4);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_METHOD</code>. Payment
-     * method
+     * Setter for <code>security.security_payment.GATEWAY_PAYMENT_ID</code>.
+     * Gateway payment id
      */
-    public SecurityPaymentRecord setPaymentMethod(SecurityPaymentPaymentMethod value) {
+    public SecurityPaymentRecord setGatewayPaymentId(String value) {
         set(5, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_METHOD</code>. Payment
-     * method
+     * Getter for <code>security.security_payment.GATEWAY_PAYMENT_ID</code>.
+     * Gateway payment id
      */
-    public SecurityPaymentPaymentMethod getPaymentMethod() {
-        return (SecurityPaymentPaymentMethod) get(5);
+    public String getGatewayPaymentId() {
+        return (String) get(5);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * Setter for <code>security.security_payment.AMOUNT</code>. Payment amount
      */
-    public SecurityPaymentRecord setPaymentReference(String value) {
+    public SecurityPaymentRecord setAmount(BigDecimal value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * Getter for <code>security.security_payment.AMOUNT</code>. Payment amount
      */
-    public String getPaymentReference() {
-        return (String) get(6);
+    public BigDecimal getAmount() {
+        return (BigDecimal) get(6);
     }
 
     /**
-     * Setter for <code>security.security_payment.PAYMENT_RESPONSE</code>.
-     * Payment response or error message
+     * Setter for <code>security.security_payment.STATUS</code>. Payment status
      */
-    public SecurityPaymentRecord setPaymentResponse(Map value) {
+    public SecurityPaymentRecord setStatus(SecurityPaymentStatus value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_payment.PAYMENT_RESPONSE</code>.
-     * Payment response or error message
+     * Getter for <code>security.security_payment.STATUS</code>. Payment status
      */
-    public Map getPaymentResponse() {
-        return (Map) get(7);
+    public SecurityPaymentStatus getStatus() {
+        return (SecurityPaymentStatus) get(7);
+    }
+
+    /**
+     * Setter for <code>security.security_payment.RESPONSE</code>. Gateway
+     * response / error
+     */
+    public SecurityPaymentRecord setResponse(Map value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment.RESPONSE</code>. Gateway
+     * response / error
+     */
+    public Map getResponse() {
+        return (Map) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_payment.PAID_AT</code>. Time payment
+     * confirmed
+     */
+    public SecurityPaymentRecord setPaidAt(LocalDateTime value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment.PAID_AT</code>. Time payment
+     * confirmed
+     */
+    public LocalDateTime getPaidAt() {
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -162,7 +192,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * user who created this row
      */
     public SecurityPaymentRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -171,7 +201,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(10);
     }
 
     /**
@@ -179,7 +209,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * this row is created
      */
     public SecurityPaymentRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -188,7 +218,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -196,7 +226,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * user who updated this row
      */
     public SecurityPaymentRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -205,7 +235,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(12);
     }
 
     /**
@@ -213,7 +243,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * this row is updated
      */
     public SecurityPaymentRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -222,7 +252,7 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -248,17 +278,19 @@ public class SecurityPaymentRecord extends UpdatableRecordImpl<SecurityPaymentRe
     /**
      * Create a detached, initialised SecurityPaymentRecord
      */
-    public SecurityPaymentRecord(ULong id, ULong invoiceId, LocalDateTime paymentDate, BigDecimal paymentAmount, SecurityPaymentPaymentStatus paymentStatus, SecurityPaymentPaymentMethod paymentMethod, String paymentReference, Map paymentResponse, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityPaymentRecord(ULong id, ULong invoiceId, ULong clientId, SecurityPaymentGateway gateway, String gatewayOrderId, String gatewayPaymentId, BigDecimal amount, SecurityPaymentStatus status, Map response, LocalDateTime paidAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityPayment.SECURITY_PAYMENT);
 
         setId(id);
         setInvoiceId(invoiceId);
-        setPaymentDate(paymentDate);
-        setPaymentAmount(paymentAmount);
-        setPaymentStatus(paymentStatus);
-        setPaymentMethod(paymentMethod);
-        setPaymentReference(paymentReference);
-        setPaymentResponse(paymentResponse);
+        setClientId(clientId);
+        setGateway(gateway);
+        setGatewayOrderId(gatewayOrderId);
+        setGatewayPaymentId(gatewayPaymentId);
+        setAmount(amount);
+        setStatus(status);
+        setResponse(response);
+        setPaidAt(paidAt);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
