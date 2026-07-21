@@ -34,6 +34,9 @@ public class TemplateService extends AbstractOverridableDataService<Template, Te
                     existing.setToExpression(entity.getToExpression());
                     existing.setFromExpression(entity.getFromExpression());
                     existing.setLanguageExpression(entity.getLanguageExpression());
+                    existing.setVariableSchema(entity.getVariableSchema());
+                    existing.setSampleData(entity.getSampleData());
+                    existing.setDesign(entity.getDesign());
 
                     existing.setVersion(existing.getVersion() + 1);
 
