@@ -3,6 +3,10 @@ package com.fincity.security.controller.billing;
 import java.math.BigDecimal;
 
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.security.dto.billing.Wallet;
+import com.fincity.security.dto.billing.WalletTransaction;
 import com.fincity.security.model.billing.ChargeResult;
+import com.fincity.security.model.billing.PlanUsageResponse;
 import com.fincity.security.model.billing.WalletCreditRequest;
 import com.fincity.security.model.billing.WalletStatusResponse;
 import com.fincity.security.service.billing.WalletService;
@@ -56,6 +62,28 @@ public class WalletController {
     public Mono<ResponseEntity<WalletStatusResponse>> status(ServerHttpRequest request) {
         String urlAppCode = request.getHeaders().getFirst("appCode");
         return this.walletService.getDisplayStatus(urlAppCode).map(ResponseEntity::ok);
+    }
+
+    /**
+     * A page of the AUTHENTICATED caller's own wallet ledger for the app in context
+     * (appCode header), newest first. Own history only - the wallet's client is the
+     * security-context caller, never a header.
+     */
+    @GetMapping("/transactions")
+    public Mono<ResponseEntity<Page<WalletTransaction>>> transactions(Pageable pageable, ServerHttpRequest request) {
+        Pageable page = pageable == null ? PageRequest.of(0, 10, Direction.DESC, "id") : pageable;
+        return this.walletService.getMyTransactions(request.getHeaders().getFirst("appCode"), page)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * The caller's own plan: per-action token rates, free allowances and current
+     * usage for the app in context (appCode header). Carries no gateway secrets or
+     * seller details from the underlying billing config.
+     */
+    @GetMapping("/plan")
+    public Mono<ResponseEntity<PlanUsageResponse>> plan(ServerHttpRequest request) {
+        return this.walletService.getPlanUsage(request.getHeaders().getFirst("appCode")).map(ResponseEntity::ok);
     }
 
     @PostMapping("/{walletId}/adjust")

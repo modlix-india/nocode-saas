@@ -4,10 +4,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,8 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -23,6 +29,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.dao.billing.MeteringCountDAO;
 import com.fincity.security.dao.billing.WalletDAO;
 import com.fincity.security.dao.billing.WalletTransactionDAO;
 import com.fincity.security.dto.billing.AppBillingConfig;
@@ -38,6 +45,8 @@ import com.fincity.security.model.billing.BillingActionKeys;
 import com.fincity.security.model.billing.ChargeRequest;
 import com.fincity.security.model.billing.ChargeResult;
 import com.fincity.security.model.billing.HostingDecision;
+import com.fincity.security.model.billing.PlanDimension;
+import com.fincity.security.model.billing.PlanUsageResponse;
 import com.fincity.security.model.billing.WalletDisplayStatus;
 import com.fincity.security.model.billing.WalletStatusResponse;
 import com.fincity.security.model.billing.WalletStatusView;
@@ -65,6 +74,7 @@ public class WalletService
     private static final BigDecimal ONE_MILLION = BigDecimal.valueOf(1_000_000L);
 
     private final WalletTransactionDAO txnDAO;
+    private final MeteringCountDAO meteringCountDAO;
     private final AppBillingConfigService configService;
     private final AppService appService;
     private final ClientService clientService;
@@ -73,10 +83,12 @@ public class WalletService
     private final EventCreationService ecService;
     private final SecurityMessageResourceService messageResourceService;
 
-    public WalletService(WalletTransactionDAO txnDAO, AppBillingConfigService configService, AppService appService,
+    public WalletService(WalletTransactionDAO txnDAO, MeteringCountDAO meteringCountDAO,
+            AppBillingConfigService configService, AppService appService,
             ClientService clientService, ClientHierarchyService clientHierarchyService, CacheService cacheService,
             EventCreationService ecService, SecurityMessageResourceService messageResourceService) {
         this.txnDAO = txnDAO;
+        this.meteringCountDAO = meteringCountDAO;
         this.configService = configService;
         this.appService = appService;
         this.clientService = clientService;
@@ -207,6 +219,85 @@ public class WalletService
         if (threshold != null && balance.compareTo(threshold) < 0)
             return new WalletStatusResponse(WalletDisplayStatus.LOW, balance, threshold);
         return new WalletStatusResponse(WalletDisplayStatus.ACTIVE, balance, threshold);
+    }
+
+    // ---------------------------------------------------------------------
+    // Owner self-service reads: usage ledger + plan/usage projection
+    // ---------------------------------------------------------------------
+
+    /**
+     * A page of the AUTHENTICATED caller's own wallet ledger (credits, debits,
+     * adjustments) for the given app, newest first. Only the appCode header picks
+     * the app; the wallet's client is always the security-context caller, so a
+     * caller can only ever read their own history. No wallet -> empty page.
+     */
+    public Mono<Page<WalletTransaction>> getMyTransactions(String urlAppCode, Pageable pageable) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.appService.getAppByCode(urlAppCode),
+                (ca, app) -> this.dao
+                        .findByClientAndApp(ULong.valueOf(ca.getUser().getClientId()), app.getId())
+                        .flatMap(wallet -> this.txnDAO.readPageFilter(pageable,
+                                FilterCondition.of("walletId", wallet.getId(), FilterConditionOperator.EQUALS)))
+                        .switchIfEmpty(Mono.just(Page.empty(pageable))))
+                .switchIfEmpty(Mono.just(Page.empty(pageable)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getMyTransactions"));
+    }
+
+    /**
+     * The pricing + free-allowance + current-usage projection for the caller's own
+     * (client, app), derived from the config that governs the caller (resolved up
+     * the caller's managing hierarchy, exactly as the low-balance status is). Only
+     * per-action token rates, free allowances and usage counts are exposed - never
+     * the gateway secrets or seller details on the config. No config -> empty plan.
+     */
+    public Mono<PlanUsageResponse> getPlanUsage(String urlAppCode) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.appService.getAppByCode(urlAppCode),
+                (ca, app) -> {
+                    ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                    return this.resolveConfigForBilledClient(app.getId(), clientId)
+                            .flatMap(config -> this.buildPlanUsage(config, app.getId(), clientId))
+                            .switchIfEmpty(Mono.just(new PlanUsageResponse(null, List.of())));
+                })
+                .switchIfEmpty(Mono.just(new PlanUsageResponse(null, List.of())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.getPlanUsage"));
+    }
+
+    private Mono<PlanUsageResponse> buildPlanUsage(AppBillingConfig config, ULong appId, ULong clientId) {
+        return Mono.zip(
+                this.meteringCountDAO.countAppsOwnedBy(clientId),
+                this.meteringCountDAO.countSitesOwnedBy(clientId),
+                this.meteringCountDAO.countUsersWithProfileInApp(clientId, appId))
+                .map(counts -> {
+                    List<PlanDimension> dims = new ArrayList<>();
+                    addDimension(dims, BillingActionKeys.APP_RENT, "Apps", "app / month",
+                            config.getAppRentPerMonth(), config.getFreeApps(), counts.getT1());
+                    addDimension(dims, BillingActionKeys.SITE_RENT, "Sites", "site / month",
+                            config.getSiteRentPerMonth(), config.getFreeSites(), counts.getT2());
+                    addDimension(dims, BillingActionKeys.USER, "Users", "user / month",
+                            config.getUserTokensPerMonth(), config.getFreeUsers(), counts.getT3());
+                    addDimension(dims, BillingActionKeys.STORAGE_ROWS, "Storage rows", "row / month",
+                            config.getStorageRowTokensPerMonth(), config.getFreeStorageRows(), null);
+                    addDimension(dims, BillingActionKeys.DEALS, "Deals", "deal / month",
+                            config.getDealTokensPerMonth(), config.getFreeDeals(), null);
+                    addDimension(dims, BillingActionKeys.FILES_GB, "File storage", "GB / month",
+                            config.getFilesTokensPerMonth(), config.getFreeFilesGb(), null);
+                    addDimension(dims, BillingActionKeys.AI_LLM_TOKENS, "AI usage", "1M AI tokens",
+                            config.getAiTokensPerMillion(), config.getFreeAiTokensPerMonth(), null);
+                    return new PlanUsageResponse(config.getLowBalanceThreshold(), dims);
+                });
+    }
+
+    /** Include a dimension only when it is actually billed or carries a free allowance. */
+    private static void addDimension(List<PlanDimension> dims, String actionKey, String label, String unit,
+            BigDecimal rate, BigDecimal free, Integer usage) {
+        boolean billed = rate != null && rate.signum() > 0;
+        boolean hasFree = free != null && free.signum() > 0;
+        if (!billed && !hasFree)
+            return;
+        dims.add(new PlanDimension(actionKey, label, unit, rate, free, usage));
     }
 
     // ---------------------------------------------------------------------
