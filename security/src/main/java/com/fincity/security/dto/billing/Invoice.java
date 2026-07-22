@@ -58,4 +58,11 @@ public class Invoice extends AbstractUpdatableDTO<ULong, ULong> {
     private SecurityInvoiceGateway gateway;
     private LocalDateTime paidAt;
     private String pdfFileKey;
+
+    /**
+     * The gateway payment method (card / upi / netbanking / wallet ...), read from
+     * the linked payment's captured response at read time. Not a column - never
+     * persisted on the invoice.
+     */
+    private transient String paymentMethod;
 }

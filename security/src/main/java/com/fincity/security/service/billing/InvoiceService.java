@@ -22,7 +22,10 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.billing.InvoiceDAO;
+import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.billing.Invoice;
+import com.fincity.security.dto.billing.Payment;
+import com.fincity.security.jooq.enums.SecurityPaymentStatus;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -40,14 +43,16 @@ import reactor.util.context.Context;
 public class InvoiceService {
 
     private final InvoiceDAO dao;
+    private final PaymentDAO paymentDAO;
     private final AppService appService;
     private final ClientService clientService;
     private final EventCreationService ecService;
     private final SecurityMessageResourceService messageResourceService;
 
-    public InvoiceService(InvoiceDAO dao, AppService appService, ClientService clientService,
+    public InvoiceService(InvoiceDAO dao, PaymentDAO paymentDAO, AppService appService, ClientService clientService,
             EventCreationService ecService, SecurityMessageResourceService messageResourceService) {
         this.dao = dao;
+        this.paymentDAO = paymentDAO;
         this.appService = appService;
         this.clientService = clientService;
         this.ecService = ecService;
@@ -64,6 +69,7 @@ public class InvoiceService {
     public Mono<Invoice> readById(ULong id) {
         return this.dao.readById(id)
                 .flatMap(invoice -> this.assertCanSee(invoice).thenReturn(invoice))
+                .flatMap(this::withPaymentMethod)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.readById"));
     }
 
@@ -78,8 +84,58 @@ public class InvoiceService {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByCode(appCode),
                 app -> this.clientService.getClientBy(clientCode),
-                (app, seller) -> this.dao.readPageFilter(pageable, scope(app.getId(), seller.getId(), condition)))
+                (app, seller) -> this.dao.readPageFilter(pageable, scope(app.getId(), seller.getId(), condition))
+                        .flatMap(this::withPaymentMethods))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.readPageFilter"));
+    }
+
+    /** Attach the gateway payment method to a single invoice from its linked payment. */
+    private Mono<Invoice> withPaymentMethod(Invoice invoice) {
+        return this.paymentDAO.findByInvoiceIds(java.util.List.of(invoice.getId()))
+                .collectList()
+                .map(payments -> {
+                    invoice.setPaymentMethod(methodByInvoice(payments).get(invoice.getId()));
+                    return invoice;
+                });
+    }
+
+    /** Attach the gateway payment method to every invoice on the page (one batched lookup). */
+    private Mono<Page<Invoice>> withPaymentMethods(Page<Invoice> page) {
+        if (page.getContent().isEmpty())
+            return Mono.just(page);
+        java.util.List<ULong> ids = page.getContent().stream().map(Invoice::getId).toList();
+        return this.paymentDAO.findByInvoiceIds(ids)
+                .collectList()
+                .map(payments -> {
+                    Map<ULong, String> methods = methodByInvoice(payments);
+                    page.getContent().forEach(inv -> inv.setPaymentMethod(methods.get(inv.getId())));
+                    return page;
+                });
+    }
+
+    /** invoiceId -> payment method from the captured block, preferring the PAID payment. */
+    private static Map<ULong, String> methodByInvoice(java.util.List<Payment> payments) {
+        Map<ULong, String> out = new HashMap<>();
+        for (Payment p : payments) {
+            String method = capturedMethod(p);
+            if (method == null)
+                continue;
+            if (!out.containsKey(p.getInvoiceId()) || p.getStatus() == SecurityPaymentStatus.PAID)
+                out.put(p.getInvoiceId(), method);
+        }
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String capturedMethod(Payment payment) {
+        Map<String, Object> response = payment.getResponse();
+        if (response == null)
+            return null;
+        Object captured = response.get("captured");
+        if (!(captured instanceof Map))
+            return null;
+        Object method = ((Map<String, Object>) captured).get("method");
+        return method == null ? null : method.toString();
     }
 
     /** AND the seller + app scope from the request context with the caller's filters. */
