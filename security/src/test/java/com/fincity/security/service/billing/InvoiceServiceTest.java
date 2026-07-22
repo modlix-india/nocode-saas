@@ -30,6 +30,7 @@ import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.security.dao.billing.InvoiceDAO;
+import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
@@ -39,6 +40,7 @@ import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.testutil.TestDataFactory;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -52,6 +54,8 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
 
     @Mock
     private InvoiceDAO dao;
+    @Mock
+    private PaymentDAO paymentDAO;
     @Mock
     private AppService appService;
     @Mock
@@ -73,7 +77,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        service = new InvoiceService(dao, appService, clientService, ecService, messageResourceService);
+        service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService);
         setupMessageResourceService(messageResourceService);
     }
 
@@ -153,6 +157,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
             setupSecurityContext(TestDataFactory.createBusinessAuth(SELLER, SELLER_CODE,
                     List.of("Authorities.Invoice_READ")));
             when(dao.readById(INVOICE_ID)).thenReturn(Mono.just(invoice(SELLER, BUYER)));
+            when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
 
             StepVerifier.create(service.readById(INVOICE_ID))
                     .assertNext(inv -> assertEquals(INVOICE_ID, inv.getId()))
@@ -164,6 +169,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
             setupSecurityContext(TestDataFactory.createBusinessAuth(BUYER, "MMMM",
                     List.of("Authorities.Invoice_READ")));
             when(dao.readById(INVOICE_ID)).thenReturn(Mono.just(invoice(SELLER, BUYER)));
+            when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
 
             StepVerifier.create(service.readById(INVOICE_ID))
                     .assertNext(inv -> assertEquals(INVOICE_ID, inv.getId()))
@@ -184,6 +190,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
         void allowsSystemClient() {
             setupSecurityContext(TestDataFactory.createSystemAuth());
             when(dao.readById(INVOICE_ID)).thenReturn(Mono.just(invoice(SELLER, BUYER)));
+            when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
 
             StepVerifier.create(service.readById(INVOICE_ID))
                     .assertNext(inv -> assertEquals(INVOICE_ID, inv.getId()))
