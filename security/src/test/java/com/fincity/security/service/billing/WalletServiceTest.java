@@ -28,6 +28,7 @@ import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.security.dao.billing.MeteringCountDAO;
 import com.fincity.security.dao.billing.WalletDAO;
 import com.fincity.security.dao.billing.WalletTransactionDAO;
 import com.fincity.security.dto.App;
@@ -66,6 +67,8 @@ class WalletServiceTest extends AbstractServiceUnitTest {
     @Mock
     private WalletTransactionDAO txnDAO;
     @Mock
+    private MeteringCountDAO meteringCountDAO;
+    @Mock
     private AppBillingConfigService configService;
     @Mock
     private AppService appService;
@@ -94,7 +97,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        service = new WalletService(txnDAO, configService, appService, clientService,
+        service = new WalletService(txnDAO, meteringCountDAO, configService, appService, clientService,
                 clientHierarchyService, cacheService, ecService, messageResourceService);
         injectDao(service, walletDAO);
         setupCacheService(cacheService);
