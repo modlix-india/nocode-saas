@@ -302,6 +302,10 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 super.getConnectionDetail(
                         details, ExotelConnectAppletResponse.Fields.maxConversationDuration, Long.class),
                 response::setMaxConversationDuration);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(
+                        details, ExotelConnectAppletResponse.Fields.dialPassthruEventUrl, String.class),
+                response::setDialPassthruEventUrl);
 
         ExotelConnectAppletResponse.ParallelRinging parallelRinging = new ExotelConnectAppletResponse.ParallelRinging();
 

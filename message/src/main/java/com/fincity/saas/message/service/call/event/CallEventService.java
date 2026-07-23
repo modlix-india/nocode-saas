@@ -12,10 +12,11 @@ import reactor.core.publisher.Mono;
 @Service
 public class CallEventService extends AbstractServerSentEventService {
 
-    public static final String EVENT_TYPE_MAKE_CALL = "MAKE_CALL";
-    public static final String EVENT_TYPE_INCOMING_CALL = "INCOMING_CALL";
-    public static final String EVENT_TYPE_CALL_STATUS = "CALL_STATUS";
-    public static final String EVENT_TYPE_PASSTHRU_CALLBACK = "PASSTHRU_CALLBACK";
+    public static final String EVENT_TYPE_MAKE_CALL = "makeCall";
+    public static final String EVENT_TYPE_INCOMING_CALL = "incomingCall";
+    public static final String EVENT_TYPE_CALL_STATUS = "callStatus";
+    public static final String EVENT_TYPE_PASSTHRU_CALLBACK = "passthruCallback";
+
 
     public Mono<Void> sendCallEvent(MessageServerEvent event) {
         if (event == null || event.getAppCode() == null || event.getClientCode() == null)

@@ -2,7 +2,6 @@ package com.fincity.saas.message.model.request.call.provider.exotel;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
 import java.io.Serializable;
@@ -32,7 +31,7 @@ public class ExotelPassThruCallback implements Serializable {
     private String callTo;
 
     @JsonProperty("CallStatus")
-    private ExotelCallStatus callStatus;
+    private String callStatus;
 
     @JsonProperty("Direction")
     private String direction;
@@ -65,7 +64,13 @@ public class ExotelPassThruCallback implements Serializable {
     private String currentTime;
 
     @JsonProperty("DialCallStatus")
-    private ExotelCallStatus dialCallStatus;
+    private String dialCallStatus;
+
+    @JsonProperty("Status")
+    private String status;
+
+    @JsonProperty("EventType")
+    private String eventType;
 
     @JsonProperty("Legs")
     private List<Map<String, Object>> legs;
@@ -83,6 +88,9 @@ public class ExotelPassThruCallback implements Serializable {
     private String outgoingPhoneNumber;
 
     public static ExotelPassThruCallback of(MultiValueMap<String, String> formData) {
+        if (formData == null || formData.isEmpty())
+            return new ExotelPassThruCallback();
+
         ExotelPassThruCallback callback = new ExotelPassThruCallback();
 
         SetterUtil.setIfPresent(formData, "CallSid", callback::setCallSid);
@@ -100,27 +108,18 @@ public class ExotelPassThruCallback implements Serializable {
         SetterUtil.setIfPresent(formData, "CustomField", callback::setCustomField);
         SetterUtil.setIfPresent(formData, "RecordingUrl", callback::setRecordingUrl);
         SetterUtil.setIfPresent(formData, "OutgoingPhoneNumber", callback::setOutgoingPhoneNumber);
+        SetterUtil.setIfPresent(formData, "CallStatus", callback::setCallStatus);
+        SetterUtil.setIfPresent(formData, "DialCallStatus", callback::setDialCallStatus);
+        SetterUtil.setIfPresent(formData, "Status", callback::setStatus);
+        SetterUtil.setIfPresent(formData, "EventType", callback::setEventType);
 
         SetterUtil.parseLongIfPresent(formData, "DialCallDuration", callback::setDialCallDuration);
-
-        SetterUtil.parseEnumIfPresent(
-                formData,
-                "CallStatus",
-                ExotelCallStatus.class,
-                status -> status.getDisplayName().equals(formData.getFirst("CallStatus")),
-                callback::setCallStatus);
-
-        SetterUtil.parseEnumIfPresent(
-                formData,
-                "DialCallStatus",
-                ExotelCallStatus.class,
-                status -> status.getDisplayName().equals(formData.getFirst("DialCallStatus")),
-                callback::setDialCallStatus);
 
         String digits = formData.getFirst("digits");
         if (digits != null) {
             digits = digits.trim();
-            if (digits.startsWith("\"") && digits.endsWith("\"")) digits = digits.substring(1, digits.length() - 1);
+            if (digits.startsWith("\"") && digits.endsWith("\""))
+                digits = digits.substring(1, digits.length() - 1);
             callback.setDigits(digits);
         }
 
