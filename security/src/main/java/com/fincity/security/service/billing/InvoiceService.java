@@ -147,6 +147,33 @@ public class InvoiceService {
         return ComplexCondition.and(seller, app, condition);
     }
 
+    /**
+     * The AUTHENTICATED caller's own purchase history: invoices where the caller's
+     * client is the BUYER ({@code clientId}), for the app in context (appCode
+     * header). The buyer is always the security-context caller, never a header, so a
+     * caller can only ever read their own purchases (no @PreAuthorize needed - own
+     * data only). Extra query filters (e.g. status) are ANDed in.
+     */
+    public Mono<Page<Invoice>> readMyPurchases(Pageable pageable, AbstractCondition condition, String appCode) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.appService.getAppByCode(appCode),
+                (ca, app) -> this.dao
+                        .readPageFilter(pageable, buyerScope(app.getId(),
+                                ULong.valueOf(ca.getUser().getClientId()), condition))
+                        .flatMap(this::withPaymentMethods))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.readMyPurchases"));
+    }
+
+    /** AND the buyer + app scope with the caller's filters (buyer = the invoice's clientId). */
+    private static AbstractCondition buyerScope(ULong appId, ULong buyerClientId, AbstractCondition condition) {
+        AbstractCondition buyer = FilterCondition.of("clientId", buyerClientId, FilterConditionOperator.EQUALS);
+        AbstractCondition app = FilterCondition.of("appId", appId, FilterConditionOperator.EQUALS);
+        if (condition == null)
+            return ComplexCondition.and(buyer, app);
+        return ComplexCondition.and(buyer, app, condition);
+    }
+
     /** Allow only when the caller's client is the invoice's seller or buyer (SYSTEM sees all). */
     private Mono<Boolean> assertCanSee(Invoice invoice) {
         return SecurityContextUtil.getUsersContextAuthentication().flatMap(ca -> {

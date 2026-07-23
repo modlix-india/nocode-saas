@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.security.model.billing.CheckoutOrderResult;
 import com.fincity.security.model.billing.PurchaseRequest;
 import com.fincity.security.model.billing.PurchaseResult;
+import com.fincity.security.model.billing.QuoteResult;
 import com.fincity.security.service.billing.BundlePurchaseService;
 import com.fincity.security.service.billing.RazorpayPaymentService;
 
@@ -40,6 +41,13 @@ public class BundlePurchaseController {
     @PostMapping("/purchase/order")
     public Mono<ResponseEntity<CheckoutOrderResult>> purchaseOrder(@RequestBody PurchaseRequest request) {
         return this.purchaseService.purchaseWithOrder(request.bundleId(), request.tokens(), request.clientId())
+                .map(ResponseEntity::ok);
+    }
+
+    /** Compute-only price breakup for the order-summary popup (nothing persisted). */
+    @PostMapping("/quote")
+    public Mono<ResponseEntity<QuoteResult>> quote(@RequestBody PurchaseRequest request) {
+        return this.purchaseService.quote(request.bundleId(), request.tokens())
                 .map(ResponseEntity::ok);
     }
 
