@@ -16,6 +16,7 @@ public class EventNames {
 
     public static final String INVOICE_CREATED = "INVOICE_CREATED";
     public static final String INVOICE_GENERATED = "INVOICE_GENERATED";
+    public static final String INVOICE_PAYMENT_FAILED = "INVOICE_PAYMENT_FAILED";
     public static final String WALLET_LOW_BALANCE = "WALLET_LOW_BALANCE";
     public static final String WALLET_SUSPENDED = "WALLET_SUSPENDED";
 

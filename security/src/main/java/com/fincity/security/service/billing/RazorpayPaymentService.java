@@ -286,7 +286,10 @@ public class RazorpayPaymentService {
             return Mono.empty();
         payment.setStatus(SecurityPaymentStatus.FAILED);
         invoice.setStatus(SecurityInvoiceStatus.FAILED);
-        return this.paymentDAO.update(payment).then(this.invoiceDAO.update(invoice)).then();
+        return this.paymentDAO.update(payment)
+                .then(this.invoiceDAO.update(invoice))
+                .then(this.invoiceService.emitPaymentFailed(invoice))
+                .then();
     }
 
     // ---------------------------------------------------------------------
