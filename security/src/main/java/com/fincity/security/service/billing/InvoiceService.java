@@ -243,11 +243,15 @@ public class InvoiceService {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByIdInternal(invoice.getAppId()),
                 app -> this.clientService.getClientInfoById(invoice.getClientId()),
-                (app, client) -> this.clientUrlService.getAppUrlInternal(app.getAppCode(), invoice.getAppId(),
-                        invoice.getClientId()),
-                (app, client, urlPrefix) -> this.paymentDAO.findByInvoiceIds(java.util.List.of(invoice.getId()))
-                        .collectList(),
-                (app, client, urlPrefix, payments) -> {
+                // The app URL lives under the buyer's managing client (SYSTEM for a direct
+                // customer, the reseller for a white-labelled one), never the buyer itself.
+                (app, client) -> this.clientService.getManagedClientOfClientById(invoice.getClientId()),
+                (app, client, mgmtClient) -> this.clientUrlService.getAppUrlInternal(app.getAppCode(),
+                        invoice.getAppId(),
+                        mgmtClient.getId() != null ? mgmtClient.getId() : invoice.getClientId()),
+                (app, client, mgmtClient, urlPrefix) -> this.paymentDAO
+                        .findByInvoiceIds(java.util.List.of(invoice.getId())).collectList(),
+                (app, client, mgmtClient, urlPrefix, payments) -> {
                     Map<String, Object> data = new HashMap<>();
                     data.put("urlPrefix", urlPrefix);
                     data.put("invoiceId", invoice.getId());

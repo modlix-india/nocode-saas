@@ -74,6 +74,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     private static final ULong SELLER = ULong.valueOf(10);
     private static final ULong BUYER = ULong.valueOf(20);
     private static final ULong OTHER = ULong.valueOf(30);
+    private static final ULong MGMT = ULong.valueOf(1);
     private static final ULong INVOICE_ID = ULong.valueOf(900);
     private static final String APP_CODE = "adzump";
     private static final String SELLER_CODE = "CCCC";
@@ -220,7 +221,10 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
         when(clientService.getClientInfoById(BUYER))
                 .thenReturn(Mono.just(TestDataFactory.createClient(BUYER, "MMMM", "BUS",
                         SecurityClientStatusCode.ACTIVE)));
-        when(clientUrlService.getAppUrlInternal(APP_CODE, APP_ID, BUYER))
+        when(clientService.getManagedClientOfClientById(BUYER))
+                .thenReturn(Mono.just(TestDataFactory.createClient(MGMT, "SYSTEM", "BUS",
+                        SecurityClientStatusCode.ACTIVE)));
+        when(clientUrlService.getAppUrlInternal(APP_CODE, APP_ID, MGMT))
                 .thenReturn(Mono.just("https://sitezump.com"));
         when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
         when(ecService.createEvent(any(EventQueObject.class))).thenReturn(Mono.just(true));
