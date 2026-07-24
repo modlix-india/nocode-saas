@@ -1852,6 +1852,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .defaultIfEmpty(Map.of("emails", List.of(), "addApp", Boolean.FALSE));
     }
 
+    public Mono<Map<String, Object>> getOwnersEmails(ServerHttpRequest request) {
+
+        String appCode = request.getHeaders().getFirst(AppService.AC);
+
+        String clientCode = request.getHeaders().getFirst(ClientService.CC);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                app -> this.clientService.getClientBy(clientCode),
+                (app, client) -> this.clientService.getOwnersEmails(client.getId(), appCode, app.getId())
+                        .map(emails -> Map.<String, Object>of("emails", emails)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getOwnersEmails"))
+                .defaultIfEmpty(Map.of("emails", List.of()));
+    }
+
     public Mono<List<User>> fillDetails(List<User> users, MultiValueMap<String, String> queryParams) {
 
         String appCode = queryParams.getFirst("appCode");

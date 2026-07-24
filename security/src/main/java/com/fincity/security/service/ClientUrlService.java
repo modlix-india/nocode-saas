@@ -269,6 +269,27 @@ public class ClientUrlService
         ).defaultIfEmpty("").contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrl"));
     }
 
+    /**
+     * Request-less variant of {@link #getAppUrl}: resolves the app URL for an explicit
+     * (appCode, appId, clientId) with no security context. Used by event-triggered flows
+     * (e.g. invoice emails raised from the payment webhook) that have no authenticated request.
+     */
+    public Mono<String> getAppUrlInternal(String appCode, ULong appId, ULong clientId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getProperties(clientId, appId, appCode, APP_PROP_URL),
+                prop -> {
+                    if (prop == null || prop.isEmpty())
+                        return this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, clientId);
+                    Map<String, AppProperty> clientProps = prop.get(clientId);
+                    AppProperty urlProp = clientProps != null ? clientProps.get(APP_PROP_URL) : null;
+                    return urlProp != null ? Mono.just(urlProp.getValue())
+                            : this.dao.getLatestClientUrlBasedOnAppAndClient(appCode, clientId);
+                },
+                (prop, url) -> Mono.just(checkUrl(url)))
+                .defaultIfEmpty("")
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getAppUrlInternal"));
+    }
+
     public Mono<Boolean> checkSubDomainAvailabilityWithSuffix(String subDomain) {
 
         if (StringUtil.safeIsBlank(subDomain))
