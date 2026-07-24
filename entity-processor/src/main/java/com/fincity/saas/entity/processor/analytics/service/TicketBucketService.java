@@ -21,6 +21,7 @@ import com.fincity.saas.entity.processor.analytics.util.ReportUtil;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -117,9 +118,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         (access, ptFilter, sFilter) -> Mono.zip(
                                 (filter.isOnlyCurrentStageStatus()
                                                 ? this.dao.getTicketCountPerCurrentStageAndDateWithClientId(
-                                                        access, sFilter, TimePeriod.DAYS)
+                                                        access, sFilter, sFilter.getTimePeriod())
                                                 : this.dao.getTicketCountPerStageAndDateWithClientId(
-                                                        access, sFilter, TimePeriod.DAYS))
+                                                        access, sFilter, sFilter.getTimePeriod()))
                                         .collectList(),
                                 (filter.isOnlyCurrentStageStatus()
                                                 ? this.dao.getUniqueCreatedByCountPerCurrentStageAndDateWithClientId(
@@ -532,30 +533,96 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                 .defaultIfEmpty(List.of());
     }
 
+    private Mono<List<ULong>> getTemplateIdsFromFilter(ProcessorAccess access, TicketBucketFilter filter) {
+        if (filter.getProductTemplateIds() != null && !filter.getProductTemplateIds().isEmpty()) {
+            return Mono.just(filter.getProductTemplateIds());
+        }
+        if (filter.getStageIds() != null && !filter.getStageIds().isEmpty()) {
+            return this.stageService.getValuesFlat(
+                    access.getAppCode(),
+                    access.getClientCode(),
+                    null,
+                    null,
+                    null,
+                    filter.getStageIds().toArray(ULong[]::new))
+                    .map(stages -> stages.stream()
+                            .map(BaseValueDto::getProductTemplateId)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .toList());
+        }
+        if (filter.getStatusIds() != null && !filter.getStatusIds().isEmpty()) {
+            return this.stageService.getValuesFlat(
+                    access.getAppCode(),
+                    access.getClientCode(),
+                    null,
+                    null,
+                    null,
+                    filter.getStatusIds().toArray(ULong[]::new))
+                    .map(stages -> stages.stream()
+                            .map(BaseValueDto::getProductTemplateId)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .toList());
+        }
+        return Mono.just(List.of());
+    }
+
     private Mono<TicketBucketFilter> resolveProductTemplates(ProcessorAccess access, TicketBucketFilter filter) {
 
         if (filter.getProductIds() != null && !filter.getProductIds().isEmpty()) {
             return resolveProductTemplateFromProducts(access, filter);
         }
 
-        return this.dao
-                .getDistinctProductTemplateIds(access, filter)
-                .collectList()
-                .flatMap(distinctTemplateIds -> {
-                    if (distinctTemplateIds.isEmpty()) return Mono.just(filter);
+        return this.getTemplateIdsFromFilter(access, filter)
+                .flatMap(allTemplateIds -> {
+                    if (allTemplateIds.isEmpty()) {
+                        return this.dao
+                                .getDistinctProductTemplateIds(access, filter)
+                                .collectList()
+                                .flatMap(distinctTemplateIds -> {
+                                    if (distinctTemplateIds.isEmpty()) return Mono.just(filter);
 
-                    List<ULong> effectiveIds = (filter.getProductTemplateIds() != null
-                                    && !filter.getProductTemplateIds().isEmpty())
-                            ? com.fincity.saas.entity.processor.util.CollectionUtil.intersectLists(
-                                    filter.getProductTemplateIds(), distinctTemplateIds)
-                            : distinctTemplateIds;
+                                    List<ULong> effectiveIds = (filter.getProductTemplateIds() != null
+                                                    && !filter.getProductTemplateIds().isEmpty())
+                                            ? com.fincity.saas.entity.processor.util.CollectionUtil.intersectLists(
+                                                    filter.getProductTemplateIds(), distinctTemplateIds)
+                                            : distinctTemplateIds;
 
-                    if (effectiveIds.isEmpty()) return Mono.just(filter);
+                                    if (effectiveIds.isEmpty()) return Mono.just(filter);
 
-                    return Flux.fromIterable(effectiveIds)
-                            .flatMap(id -> this.productTemplateService.readById(access, id))
-                            .collectList()
-                            .flatMap(templates -> applyProductTemplateToFilter(access, filter, templates));
+                                    return Flux.fromIterable(effectiveIds)
+                                            .flatMap(id -> this.productTemplateService.readById(access, id))
+                                            .collectList()
+                                            .flatMap(templates -> applyProductTemplateToFilter(access, filter, templates));
+                                });
+                    }
+
+                    filter.setSelectedProductTemplateIds(allTemplateIds);
+
+                    return this.productService
+                            .getAllProducts(access, null)
+                            .defaultIfEmpty(List.of())
+                            .map(allProducts -> {
+                                List<Product> templateProducts = allProducts.stream()
+                                        .filter(p -> allTemplateIds.contains(p.getProductTemplateId()))
+                                        .toList();
+
+                                List<ULong> productIds = templateProducts.stream()
+                                        .map(BaseUpdatableDto::getId)
+                                        .toList();
+
+                                if (productIds.isEmpty()) {
+                                    productIds = List.of(ULong.valueOf(0));
+                                }
+
+                                filter.filterProductIds(productIds)
+                                        .setProducts(templateProducts.stream()
+                                                .map(product -> IdAndValue.of(product.getId(), product.getName()))
+                                                .toList());
+
+                                return filter;
+                            });
                 });
     }
 
