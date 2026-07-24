@@ -37,6 +37,7 @@ import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.service.AbstractServiceUnitTest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -64,6 +65,8 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     private EventCreationService ecService;
     @Mock
     private SecurityMessageResourceService messageResourceService;
+    @Mock
+    private ClientUrlService clientUrlService;
 
     private InvoiceService service;
 
@@ -77,7 +80,8 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService);
+        service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService,
+                clientUrlService);
         setupMessageResourceService(messageResourceService);
     }
 
@@ -216,6 +220,9 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
         when(clientService.getClientInfoById(BUYER))
                 .thenReturn(Mono.just(TestDataFactory.createClient(BUYER, "MMMM", "BUS",
                         SecurityClientStatusCode.ACTIVE)));
+        when(clientUrlService.getAppUrlInternal(APP_CODE, APP_ID, BUYER))
+                .thenReturn(Mono.just("https://sitezump.com"));
+        when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
         when(ecService.createEvent(any(EventQueObject.class))).thenReturn(Mono.just(true));
 
         StepVerifier.create(service.markPaidAndEmit(invoice))
