@@ -23,6 +23,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.billing.InvoiceDAO;
 import com.fincity.security.dao.billing.PaymentDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Payment;
 import com.fincity.security.jooq.enums.SecurityPaymentGateway;
@@ -245,7 +246,10 @@ public class InvoiceService {
                 app -> this.clientService.getClientInfoById(invoice.getClientId()),
                 // The app URL lives under the buyer's managing client (SYSTEM for a direct
                 // customer, the reseller for a white-labelled one), never the buyer itself.
-                (app, client) -> this.clientService.getManagedClientOfClientById(invoice.getClientId()),
+                // URL resolution is best-effort: a client with no hierarchy row throws, so we
+                // swallow it to an empty Client rather than abort the whole invoice event.
+                (app, client) -> this.clientService.getManagedClientOfClientById(invoice.getClientId())
+                        .onErrorResume(e -> Mono.just(new Client())),
                 (app, client, mgmtClient) -> this.clientUrlService.getAppUrlInternal(app.getAppCode(),
                         invoice.getAppId(),
                         mgmtClient.getId() != null ? mgmtClient.getId() : invoice.getClientId()),
