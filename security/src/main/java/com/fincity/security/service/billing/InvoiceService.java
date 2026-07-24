@@ -25,9 +25,11 @@ import com.fincity.security.dao.billing.InvoiceDAO;
 import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Payment;
+import com.fincity.security.jooq.enums.SecurityPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentStatus;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Mono;
@@ -48,15 +50,18 @@ public class InvoiceService {
     private final ClientService clientService;
     private final EventCreationService ecService;
     private final SecurityMessageResourceService messageResourceService;
+    private final ClientUrlService clientUrlService;
 
     public InvoiceService(InvoiceDAO dao, PaymentDAO paymentDAO, AppService appService, ClientService clientService,
-            EventCreationService ecService, SecurityMessageResourceService messageResourceService) {
+            EventCreationService ecService, SecurityMessageResourceService messageResourceService,
+            ClientUrlService clientUrlService) {
         this.dao = dao;
         this.paymentDAO = paymentDAO;
         this.appService = appService;
         this.clientService = clientService;
         this.ecService = ecService;
         this.messageResourceService = messageResourceService;
+        this.clientUrlService = clientUrlService;
     }
 
     /** Ungated: called only from the purchase flow, which carries its own gate. */
@@ -138,6 +143,35 @@ public class InvoiceService {
         return method == null ? null : method.toString();
     }
 
+    /** Prefer the PAID payment; otherwise the last attempt (drives the receipt / failed-attempt detail). */
+    private static Payment pickPayment(java.util.List<Payment> payments) {
+        if (payments == null || payments.isEmpty())
+            return null;
+        Payment fallback = null;
+        for (Payment p : payments) {
+            if (p.getStatus() == SecurityPaymentStatus.PAID)
+                return p;
+            fallback = p;
+        }
+        return fallback;
+    }
+
+    /** Human method label from the captured block (e.g. "upi", "card"), else the gateway name. */
+    private static String paymentLabel(Payment payment) {
+        if (payment == null)
+            return "";
+        String method = capturedMethod(payment);
+        if (method != null)
+            return method;
+        return payment.getGateway() == null ? "" : gatewayLabel(payment.getGateway());
+    }
+
+    /** RAZORPAY -> "Razorpay". */
+    private static String gatewayLabel(SecurityPaymentGateway gateway) {
+        String n = gateway.name();
+        return n.charAt(0) + n.substring(1).toLowerCase();
+    }
+
     /** AND the seller + app scope from the request context with the caller's filters. */
     private static AbstractCondition scope(ULong appId, ULong sellerClientId, AbstractCondition condition) {
         AbstractCondition seller = FilterCondition.of("sellerClientId", sellerClientId, FilterConditionOperator.EQUALS);
@@ -188,21 +222,38 @@ public class InvoiceService {
         });
     }
 
-    /** Persist the (already PAID-stamped) invoice and raise INVOICE_GENERATED. */
+    /** Persist the (already PAID-stamped) invoice and raise INVOICE_GENERATED (success/receipt). */
     public Mono<Invoice> markPaidAndEmit(Invoice invoice) {
         return this.dao.update(invoice)
-                .flatMap(saved -> this.raiseInvoiceEvent(saved).thenReturn(saved))
+                .flatMap(saved -> this.raiseInvoiceEvent(saved, EventNames.INVOICE_GENERATED).thenReturn(saved))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.markPaidAndEmit"));
     }
 
-    private Mono<Void> raiseInvoiceEvent(Invoice invoice) {
+    /**
+     * Raise INVOICE_PAYMENT_FAILED for an invoice the caller has already marked FAILED, so the
+     * seeded EventAction can send the payment-failed email. Persists nothing (the webhook path
+     * already updated the invoice + payment).
+     */
+    public Mono<Void> emitPaymentFailed(Invoice invoice) {
+        return this.raiseInvoiceEvent(invoice, EventNames.INVOICE_PAYMENT_FAILED)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.emitPaymentFailed"));
+    }
+
+    private Mono<Void> raiseInvoiceEvent(Invoice invoice, String eventName) {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByIdInternal(invoice.getAppId()),
                 app -> this.clientService.getClientInfoById(invoice.getClientId()),
-                (app, client) -> {
+                (app, client) -> this.clientUrlService.getAppUrlInternal(app.getAppCode(), invoice.getAppId(),
+                        invoice.getClientId()),
+                (app, client, urlPrefix) -> this.paymentDAO.findByInvoiceIds(java.util.List.of(invoice.getId()))
+                        .collectList(),
+                (app, client, urlPrefix, payments) -> {
                     Map<String, Object> data = new HashMap<>();
+                    data.put("urlPrefix", urlPrefix);
                     data.put("invoiceId", invoice.getId());
                     data.put("invoiceNumber", invoice.getInvoiceNumber());
+                    data.put("invoiceDate", invoice.getInvoiceDate() == null ? ""
+                            : invoice.getInvoiceDate().toLocalDate().toString());
                     data.put("appCode", app.getAppCode());
                     data.put("clientCode", client.getCode());
                     data.put("tokensPurchased", invoice.getTokensPurchased());
@@ -218,10 +269,20 @@ public class InvoiceService {
                     data.put("buyerGstin", invoice.getBuyerGstin());
                     data.put("buyerAddress", invoice.getBuyerAddress());
                     data.put("pdfFileKey", invoice.getPdfFileKey());
+                    data.put("status", invoice.getStatus() == null ? null : invoice.getStatus().name());
+                    Payment payment = pickPayment(payments);
+                    data.put("paymentReference",
+                            payment == null || payment.getGatewayPaymentId() == null ? ""
+                                    : payment.getGatewayPaymentId());
+                    data.put("paymentMethod", paymentLabel(payment));
+                    data.put("paymentGateway",
+                            payment == null || payment.getGateway() == null ? "" : gatewayLabel(payment.getGateway()));
+                    data.put("paidOn", payment == null || payment.getPaidAt() == null ? ""
+                            : payment.getPaidAt().toLocalDate().toString());
                     EventQueObject evt = new EventQueObject()
                             .setAppCode(app.getAppCode())
                             .setClientCode(client.getCode())
-                            .setEventName(EventNames.INVOICE_GENERATED)
+                            .setEventName(eventName)
                             .setData(data);
                     return this.ecService.createEvent(evt);
                 }).then();

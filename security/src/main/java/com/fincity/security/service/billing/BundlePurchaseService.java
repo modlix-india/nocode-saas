@@ -111,6 +111,40 @@ public class BundlePurchaseService {
     }
 
     /**
+     * Start a fresh Razorpay Order for an existing PENDING/FAILED invoice the caller
+     * owns, so a stuck purchase can be paid without creating a duplicate invoice. Reuses
+     * the invoice's frozen amounts; the webhook credits the wallet exactly as for a new
+     * order (it matches on the invoiceId carried in the order notes).
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Payment_CREATE')")
+    public Mono<CheckoutOrderResult> repay(ULong invoiceId) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.invoiceDAO.readById(invoiceId).switchIfEmpty(this.badRequest("invoice")),
+                (ca, invoice) -> this.assertRepayable(ca, invoice),
+                (ca, invoice, ok) -> this.bundleService.readForPurchase(invoice.getBundleId())
+                        .switchIfEmpty(this.badRequest("bundle")),
+                (ca, invoice, ok, bundle) -> this.configService.readInternal(bundle.getBillingConfigId())
+                        .switchIfEmpty(this.badRequest("billing config")),
+                (ca, invoice, ok, bundle, config) -> this.clientService.getClientInfoById(invoice.getClientId())
+                        .flatMap(buyer -> this.razorpayService.createOrder(invoice, config,
+                                prefillName(ca, buyer), ca.getUser().getEmailId(),
+                                ca.getUser().getPhoneNumber())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BundlePurchaseService.repay"));
+    }
+
+    /** Only the invoice's own buyer (or SYSTEM) may repay it, and only while PENDING or FAILED. */
+    private Mono<Boolean> assertRepayable(ContextAuthentication ca, Invoice invoice) {
+        ULong own = ULong.valueOf(ca.getUser().getClientId());
+        if (!ca.isSystemClient() && !own.equals(invoice.getClientId()))
+            return this.forbidden("pay this invoice");
+        SecurityInvoiceStatus status = invoice.getStatus();
+        if (status != SecurityInvoiceStatus.PENDING && status != SecurityInvoiceStatus.FAILED)
+            return this.badRequest("invoice (already " + status + ")");
+        return Mono.just(Boolean.TRUE);
+    }
+
+    /**
      * Compute-only price breakup for the order-summary popup: prices the bundle the
      * same way {@link #buildInvoice} does (FIXED price, or CUSTOM at price-per-token,
      * plus config GST), but persists nothing and creates no gateway order. The buyer

@@ -233,6 +233,11 @@ public interface IFeignSecurityService {
             @RequestHeader(name = "clientCode") String clientCode,
             @RequestHeader(name = "appCode") String headerAppCode);
 
+    @GetMapping(value = "${security.feign.getOwnersEmails:/api/security/users/internal/ownerEmails}")
+    Mono<Map<String, Object>> getOwnersEmailsInternal(
+            @RequestHeader(name = "clientCode") String clientCode,
+            @RequestHeader(name = "appCode") String headerAppCode);
+
     @PostMapping(value = "${security.feign.readClientPageFilterInternal:/api/security/clients/internal/query}")
     Mono<Page<Client>> readClientPageFilterInternal(
             @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
