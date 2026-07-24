@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
-import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
@@ -21,6 +20,7 @@ import com.fincity.saas.entity.processor.analytics.util.ReportUtil;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -117,9 +117,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         (access, ptFilter, sFilter) -> Mono.zip(
                                 (filter.isOnlyCurrentStageStatus()
                                                 ? this.dao.getTicketCountPerCurrentStageAndDateWithClientId(
-                                                        access, sFilter, TimePeriod.DAYS)
+                                                        access, sFilter, sFilter.getTimePeriod())
                                                 : this.dao.getTicketCountPerStageAndDateWithClientId(
-                                                        access, sFilter, TimePeriod.DAYS))
+                                                        access, sFilter, sFilter.getTimePeriod()))
                                         .collectList(),
                                 (filter.isOnlyCurrentStageStatus()
                                                 ? this.dao.getUniqueCreatedByCountPerCurrentStageAndDateWithClientId(
@@ -532,11 +532,55 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                 .defaultIfEmpty(List.of());
     }
 
+    private Mono<List<ULong>> getTemplateIdsFromFilter(ProcessorAccess access, TicketBucketFilter filter) {
+        if (filter.getProductTemplateIds() != null && !filter.getProductTemplateIds().isEmpty()) {
+            return Mono.just(filter.getProductTemplateIds());
+        }
+        if (filter.getStageIds() != null && !filter.getStageIds().isEmpty()) {
+            return this.stageService.getValuesFlat(
+                    access.getAppCode(),
+                    access.getClientCode(),
+                    null,
+                    null,
+                    null,
+                    filter.getStageIds().toArray(ULong[]::new))
+                    .map(stages -> stages.stream()
+                            .map(BaseValueDto::getProductTemplateId)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .toList());
+        }
+        if (filter.getStatusIds() != null && !filter.getStatusIds().isEmpty()) {
+            return this.stageService.getValuesFlat(
+                    access.getAppCode(),
+                    access.getClientCode(),
+                    null,
+                    null,
+                    null,
+                    filter.getStatusIds().toArray(ULong[]::new))
+                    .map(stages -> stages.stream()
+                            .map(BaseValueDto::getProductTemplateId)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .toList());
+        }
+        return Mono.just(List.of());
+    }
+
     private Mono<TicketBucketFilter> resolveProductTemplates(ProcessorAccess access, TicketBucketFilter filter) {
 
         if (filter.getProductIds() != null && !filter.getProductIds().isEmpty()) {
             return resolveProductTemplateFromProducts(access, filter);
         }
+
+        return this.getTemplateIdsFromFilter(access, filter)
+                .flatMap(allTemplateIds -> allTemplateIds.isEmpty()
+                        ? resolveProductTemplatesFromTickets(access, filter)
+                        : applyKnownTemplateIdsToFilter(access, filter, allTemplateIds));
+    }
+
+    private Mono<TicketBucketFilter> resolveProductTemplatesFromTickets(
+            ProcessorAccess access, TicketBucketFilter filter) {
 
         return this.dao
                 .getDistinctProductTemplateIds(access, filter)
@@ -556,6 +600,51 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                             .flatMap(id -> this.productTemplateService.readById(access, id))
                             .collectList()
                             .flatMap(templates -> applyProductTemplateToFilter(access, filter, templates));
+                });
+    }
+
+    private Mono<TicketBucketFilter> applyKnownTemplateIdsToFilter(
+            ProcessorAccess access, TicketBucketFilter filter, List<ULong> allTemplateIds) {
+
+        filter.filterProductTemplateIds(allTemplateIds).setSelectedProductTemplateIds(allTemplateIds);
+
+        return Flux.fromIterable(allTemplateIds)
+                .flatMap(id -> this.productTemplateService.readById(access, id))
+                .collectList()
+                .flatMap(templates -> {
+                    filter.setProductTemplates(templates.stream()
+                            .filter(pt -> pt.getId() != null)
+                            .map(pt -> IdAndValue.of(pt.getId(), pt.getName()))
+                            .toList());
+
+                    return applyTemplateProductsToFilter(access, filter, allTemplateIds);
+                });
+    }
+
+    private Mono<TicketBucketFilter> applyTemplateProductsToFilter(
+            ProcessorAccess access, TicketBucketFilter filter, List<ULong> allTemplateIds) {
+
+        return this.productService
+                .getAllProducts(access, null)
+                .defaultIfEmpty(List.of())
+                .map(allProducts -> {
+                    List<Product> templateProducts = allProducts.stream()
+                            .filter(p -> allTemplateIds.contains(p.getProductTemplateId()))
+                            .toList();
+
+                    List<ULong> productIds =
+                            templateProducts.stream().map(BaseUpdatableDto::getId).toList();
+
+                    if (productIds.isEmpty()) {
+                        productIds = List.of(ULong.valueOf(0));
+                    }
+
+                    filter.filterProductIds(productIds)
+                            .setProducts(templateProducts.stream()
+                                    .map(product -> IdAndValue.of(product.getId(), product.getName()))
+                                    .toList());
+
+                    return filter;
                 });
     }
 
