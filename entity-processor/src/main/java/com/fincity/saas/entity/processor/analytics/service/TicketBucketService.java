@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
-import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
@@ -575,54 +574,77 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
         }
 
         return this.getTemplateIdsFromFilter(access, filter)
-                .flatMap(allTemplateIds -> {
-                    if (allTemplateIds.isEmpty()) {
-                        return this.dao
-                                .getDistinctProductTemplateIds(access, filter)
-                                .collectList()
-                                .flatMap(distinctTemplateIds -> {
-                                    if (distinctTemplateIds.isEmpty()) return Mono.just(filter);
+                .flatMap(allTemplateIds -> allTemplateIds.isEmpty()
+                        ? resolveProductTemplatesFromTickets(access, filter)
+                        : applyKnownTemplateIdsToFilter(access, filter, allTemplateIds));
+    }
 
-                                    List<ULong> effectiveIds = (filter.getProductTemplateIds() != null
-                                                    && !filter.getProductTemplateIds().isEmpty())
-                                            ? com.fincity.saas.entity.processor.util.CollectionUtil.intersectLists(
-                                                    filter.getProductTemplateIds(), distinctTemplateIds)
-                                            : distinctTemplateIds;
+    private Mono<TicketBucketFilter> resolveProductTemplatesFromTickets(
+            ProcessorAccess access, TicketBucketFilter filter) {
 
-                                    if (effectiveIds.isEmpty()) return Mono.just(filter);
+        return this.dao
+                .getDistinctProductTemplateIds(access, filter)
+                .collectList()
+                .flatMap(distinctTemplateIds -> {
+                    if (distinctTemplateIds.isEmpty()) return Mono.just(filter);
 
-                                    return Flux.fromIterable(effectiveIds)
-                                            .flatMap(id -> this.productTemplateService.readById(access, id))
-                                            .collectList()
-                                            .flatMap(templates -> applyProductTemplateToFilter(access, filter, templates));
-                                });
+                    List<ULong> effectiveIds = (filter.getProductTemplateIds() != null
+                                    && !filter.getProductTemplateIds().isEmpty())
+                            ? com.fincity.saas.entity.processor.util.CollectionUtil.intersectLists(
+                                    filter.getProductTemplateIds(), distinctTemplateIds)
+                            : distinctTemplateIds;
+
+                    if (effectiveIds.isEmpty()) return Mono.just(filter);
+
+                    return Flux.fromIterable(effectiveIds)
+                            .flatMap(id -> this.productTemplateService.readById(access, id))
+                            .collectList()
+                            .flatMap(templates -> applyProductTemplateToFilter(access, filter, templates));
+                });
+    }
+
+    private Mono<TicketBucketFilter> applyKnownTemplateIdsToFilter(
+            ProcessorAccess access, TicketBucketFilter filter, List<ULong> allTemplateIds) {
+
+        filter.filterProductTemplateIds(allTemplateIds).setSelectedProductTemplateIds(allTemplateIds);
+
+        return Flux.fromIterable(allTemplateIds)
+                .flatMap(id -> this.productTemplateService.readById(access, id))
+                .collectList()
+                .flatMap(templates -> {
+                    filter.setProductTemplates(templates.stream()
+                            .filter(pt -> pt.getId() != null)
+                            .map(pt -> IdAndValue.of(pt.getId(), pt.getName()))
+                            .toList());
+
+                    return applyTemplateProductsToFilter(access, filter, allTemplateIds);
+                });
+    }
+
+    private Mono<TicketBucketFilter> applyTemplateProductsToFilter(
+            ProcessorAccess access, TicketBucketFilter filter, List<ULong> allTemplateIds) {
+
+        return this.productService
+                .getAllProducts(access, null)
+                .defaultIfEmpty(List.of())
+                .map(allProducts -> {
+                    List<Product> templateProducts = allProducts.stream()
+                            .filter(p -> allTemplateIds.contains(p.getProductTemplateId()))
+                            .toList();
+
+                    List<ULong> productIds =
+                            templateProducts.stream().map(BaseUpdatableDto::getId).toList();
+
+                    if (productIds.isEmpty()) {
+                        productIds = List.of(ULong.valueOf(0));
                     }
 
-                    filter.setSelectedProductTemplateIds(allTemplateIds);
+                    filter.filterProductIds(productIds)
+                            .setProducts(templateProducts.stream()
+                                    .map(product -> IdAndValue.of(product.getId(), product.getName()))
+                                    .toList());
 
-                    return this.productService
-                            .getAllProducts(access, null)
-                            .defaultIfEmpty(List.of())
-                            .map(allProducts -> {
-                                List<Product> templateProducts = allProducts.stream()
-                                        .filter(p -> allTemplateIds.contains(p.getProductTemplateId()))
-                                        .toList();
-
-                                List<ULong> productIds = templateProducts.stream()
-                                        .map(BaseUpdatableDto::getId)
-                                        .toList();
-
-                                if (productIds.isEmpty()) {
-                                    productIds = List.of(ULong.valueOf(0));
-                                }
-
-                                filter.filterProductIds(productIds)
-                                        .setProducts(templateProducts.stream()
-                                                .map(product -> IdAndValue.of(product.getId(), product.getName()))
-                                                .toList());
-
-                                return filter;
-                            });
+                    return filter;
                 });
     }
 
