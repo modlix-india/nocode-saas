@@ -63,6 +63,21 @@ public class InvoiceController {
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * The authenticated caller's OWN purchase history (invoices where they are the
+     * buyer), for the app in the appCode header. Scoped to the caller's client from
+     * the security context, so any logged-in buyer sees only their own purchases.
+     */
+    @GetMapping("/my")
+    public Mono<ResponseEntity<Page<Invoice>>> readMyPurchases(Pageable pageable, ServerHttpRequest request) {
+        Pageable page = pageable == null ? PageRequest.of(0, 10, Direction.DESC, "id") : pageable;
+        return this.invoiceService.readMyPurchases(page,
+                ConditionUtil.parameterMapToMap(request.getQueryParams(), "page", "size", "sort", HEADER_APP_CODE,
+                        HEADER_CLIENT_CODE),
+                appCode(request))
+                .map(ResponseEntity::ok);
+    }
+
     private static String appCode(ServerHttpRequest request) {
         return request.getHeaders().getFirst(HEADER_APP_CODE);
     }

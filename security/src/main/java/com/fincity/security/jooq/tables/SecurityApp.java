@@ -23,6 +23,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
+import com.fincity.security.jooq.tables.SecurityBillingProfile.SecurityBillingProfilePath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
@@ -472,6 +473,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityAppRegUserRoleV2;
     }
 
+    private transient SecurityBillingProfilePath _securityBillingProfile;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_billing_profile</code> table
+     */
+    public SecurityBillingProfilePath securityBillingProfile() {
+        if (_securityBillingProfile == null)
+            _securityBillingProfile = new SecurityBillingProfilePath(this, null, Keys.FK2_BP_APP_ID.getInverseKey());
+
+        return _securityBillingProfile;
+    }
+
     private transient SecurityClientOtpPolicyPath _securityClientOtpPolicy;
 
     /**
@@ -632,6 +646,15 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      */
     public SecurityClientPath fk1AbcClientId() {
         return securityAppBillingConfig().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table, via the
+     * <code>FK1_BP_CLIENT_ID</code> key
+     */
+    public SecurityClientPath fk1BpClientId() {
+        return securityBillingProfile().securityClient();
     }
 
     /**

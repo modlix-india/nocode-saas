@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.fincity.security.dao.billing.BillingProfileDAO;
 import com.fincity.security.dao.billing.InvoiceDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.billing.AppBillingBundle;
@@ -52,6 +53,8 @@ class BundlePurchaseServiceTest extends AbstractServiceUnitTest {
     @Mock
     private InvoiceDAO invoiceDAO;
     @Mock
+    private BillingProfileDAO billingProfileDAO;
+    @Mock
     private RazorpayPaymentService razorpayService;
     @Mock
     private ClientService clientService;
@@ -70,7 +73,7 @@ class BundlePurchaseServiceTest extends AbstractServiceUnitTest {
     @BeforeEach
     void setUp() {
         service = new BundlePurchaseService(bundleService, configService, invoiceService, invoiceDAO,
-                razorpayService, clientService, messageResourceService);
+                billingProfileDAO, razorpayService, clientService, messageResourceService);
         setupMessageResourceService(messageResourceService);
         setupSecurityContext(TestDataFactory.createBusinessAuth(M_CLIENT, "MMMM",
                 List.of("Authorities.ROLE_Owner")));
@@ -86,6 +89,7 @@ class BundlePurchaseServiceTest extends AbstractServiceUnitTest {
             return Mono.just(i);
         });
         lenient().when(razorpayService.initialize(any(), any())).thenReturn(Mono.just("https://rzp.io/i/short"));
+        lenient().when(billingProfileDAO.findByClientAndApp(M_CLIENT, APP_ID)).thenReturn(Mono.empty());
     }
 
     private AppBillingConfig config(BigDecimal gstPct) {

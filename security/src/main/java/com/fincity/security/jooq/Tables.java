@@ -21,6 +21,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
+import com.fincity.security.jooq.tables.SecurityBillingProfile;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientActivity;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
@@ -152,6 +153,11 @@ public class Tables {
      * The table <code>security.security_app_reg_user_role_v2</code>.
      */
     public static final SecurityAppRegUserRoleV2 SECURITY_APP_REG_USER_ROLE_V2 = SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2;
+
+    /**
+     * The table <code>security.security_billing_profile</code>.
+     */
+    public static final SecurityBillingProfile SECURITY_BILLING_PROFILE = SecurityBillingProfile.SECURITY_BILLING_PROFILE;
 
     /**
      * The table <code>security.security_client</code>.

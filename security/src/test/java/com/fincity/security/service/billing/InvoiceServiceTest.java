@@ -37,6 +37,7 @@ import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.service.AbstractServiceUnitTest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -64,6 +65,8 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     private EventCreationService ecService;
     @Mock
     private SecurityMessageResourceService messageResourceService;
+    @Mock
+    private ClientUrlService clientUrlService;
 
     private InvoiceService service;
 
@@ -71,13 +74,15 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     private static final ULong SELLER = ULong.valueOf(10);
     private static final ULong BUYER = ULong.valueOf(20);
     private static final ULong OTHER = ULong.valueOf(30);
+    private static final ULong MGMT = ULong.valueOf(1);
     private static final ULong INVOICE_ID = ULong.valueOf(900);
     private static final String APP_CODE = "adzump";
     private static final String SELLER_CODE = "CCCC";
 
     @BeforeEach
     void setUp() {
-        service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService);
+        service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService,
+                clientUrlService);
         setupMessageResourceService(messageResourceService);
     }
 
@@ -216,6 +221,12 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
         when(clientService.getClientInfoById(BUYER))
                 .thenReturn(Mono.just(TestDataFactory.createClient(BUYER, "MMMM", "BUS",
                         SecurityClientStatusCode.ACTIVE)));
+        when(clientService.getManagedClientOfClientById(BUYER))
+                .thenReturn(Mono.just(TestDataFactory.createClient(MGMT, "SYSTEM", "BUS",
+                        SecurityClientStatusCode.ACTIVE)));
+        when(clientUrlService.getAppUrlInternal(APP_CODE, APP_ID, MGMT))
+                .thenReturn(Mono.just("https://sitezump.com"));
+        when(paymentDAO.findByInvoiceIds(List.of(INVOICE_ID))).thenReturn(Flux.empty());
         when(ecService.createEvent(any(EventQueObject.class))).thenReturn(Mono.just(true));
 
         StepVerifier.create(service.markPaidAndEmit(invoice))
