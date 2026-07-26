@@ -152,9 +152,18 @@ public class FileSystemDao {
         return Optional.ofNullable(folderId);
     }
 
+    /** Split a path into non-blank segments, tolerating leading and repeated separators. */
+    private static String[] splitPathParts(String path) {
+        List<String> parts = new ArrayList<>();
+        for (String s : (path.startsWith(R2_FILE_SEPARATOR_STRING) ? path.substring(1) : path)
+                .split(R2_FILE_SEPARATOR_STRING))
+            if (!StringUtil.safeIsBlank(s))
+                parts.add(s);
+        return parts.toArray(new String[0]);
+    }
+
     public FileDetail getFileDetail(FilesFileSystemType type, String clientCode, String path) {
-        String[] pathParts = (path.startsWith(R2_FILE_SEPARATOR_STRING) ? path.substring(1) : path)
-                .split(R2_FILE_SEPARATOR_STRING);
+        String[] pathParts = splitPathParts(path);
 
         if (pathParts.length == 0)
             return null;
@@ -175,8 +184,7 @@ public class FileSystemDao {
         if (StringUtil.safeIsBlank(path))
             return null;
 
-        String[] pathParts = (path.startsWith(R2_FILE_SEPARATOR_STRING) ? path.substring(1) : path)
-                .split(R2_FILE_SEPARATOR_STRING);
+        String[] pathParts = splitPathParts(path);
 
         return this.getFileRecord(type, clientCode, pathParts, mapper);
     }
