@@ -411,7 +411,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag
+     * Ticket Tag
      */
     public EntityProcessorTicketsRecord setTag(String value) {
         set(21, value);
@@ -420,7 +420,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Getter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag
+     * Ticket Tag
      */
     public String getTag() {
         return (String) get(21);
@@ -542,11 +542,32 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_tickets.FORM_DATA</code>. Lead
+     * form submission captured at intake: normalized standard + custom question
+     * answers, plus raw provider snapshot
+     */
+    public EntityProcessorTicketsRecord setFormData(Map value) {
+        set(28, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.FORM_DATA</code>. Lead
+     * form submission captured at intake: normalized standard + custom question
+     * answers, plus raw provider snapshot
+     */
+    public Map getFormData() {
+        return (Map) get(28);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(28, value);
+        set(29, value);
         return this;
     }
 
@@ -556,7 +577,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(28);
+        return (ULong) get(29);
     }
 
     /**
@@ -565,7 +586,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(29, value);
+        set(30, value);
         return this;
     }
 
@@ -575,7 +596,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(29);
+        return (LocalDateTime) get(30);
     }
 
     /**
@@ -584,7 +605,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(30, value);
+        set(31, value);
         return this;
     }
 
@@ -594,7 +615,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(30);
+        return (ULong) get(31);
     }
 
     /**
@@ -603,7 +624,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(31, value);
+        set(32, value);
         return this;
     }
 
@@ -613,7 +634,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(31);
+        return (LocalDateTime) get(32);
     }
 
     // -------------------------------------------------------------------------
@@ -639,7 +660,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -670,6 +691,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setClientId(clientId);
         setMetaData(metaData);
         setAdData(adData);
+        setFormData(formData);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

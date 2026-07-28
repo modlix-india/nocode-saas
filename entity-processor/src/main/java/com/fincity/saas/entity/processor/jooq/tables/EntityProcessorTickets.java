@@ -215,9 +215,9 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag
+     * Ticket Tag
      */
-    public final TableField<EntityProcessorTicketsRecord, String> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(32), this, "Deal Tag");
+    public final TableField<EntityProcessorTicketsRecord, String> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(32), this, "Ticket Tag");
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
@@ -260,6 +260,14 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * etc.) captured at lead intake
      */
     public final TableField<EntityProcessorTicketsRecord, Map> AD_DATA = createField(DSL.name("AD_DATA"), SQLDataType.JSON, this, "Ad attribution data (gclid, fbclid, wbraid, gbraid, _gcl_au, _fbp, _fbc, etc.) captured at lead intake", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.FORM_DATA</code>. Lead
+     * form submission captured at intake: normalized standard + custom question
+     * answers, plus raw provider snapshot
+     */
+    public final TableField<EntityProcessorTicketsRecord, Map> FORM_DATA = createField(DSL.name("FORM_DATA"), SQLDataType.JSON, this, "Lead form submission captured at intake: normalized standard + custom question answers, plus raw provider snapshot", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
