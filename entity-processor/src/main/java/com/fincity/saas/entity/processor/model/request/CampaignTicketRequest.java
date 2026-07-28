@@ -62,6 +62,10 @@ public class CampaignTicketRequest implements Serializable, INoteRequest {
         // Any extra payload
         private Map<String, Object> customFields;
 
+        // Full lead-form submission: provider, formId, leadGenId, normalized standard/custom
+        // answer maps, and a verbatim raw provider snapshot. Landed on Ticket.formData.
+        private Map<String, Object> formData;
+
         // Ad attribution (gclid, fbclid, wbraid, gbraid, _gcl_au, _fbp, _fbc, etc.)
         private Map<String, Object> adData;
 

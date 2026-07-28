@@ -43,6 +43,15 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
     private Map<String, Object> customFields;
     private Map<String, Object> adData;
 
+    /**
+     * The full lead-form submission as captured at intake: {@code provider}, {@code formId},
+     * {@code leadGenId}, the normalized {@code standard} and {@code custom} answer maps, and a
+     * verbatim {@code raw} provider snapshot. Populated by the Meta collector; for the website
+     * path it stays null and is synthesized in {@code Ticket.of(CampaignTicketRequest)} from
+     * {@link #customFields} plus the standard fields above.
+     */
+    private Map<String, Object> formData;
+
     public T createLead(WebsiteDetails details) {
         this.setEmail(details.getEmail());
         this.setFullName(details.getFullName());
