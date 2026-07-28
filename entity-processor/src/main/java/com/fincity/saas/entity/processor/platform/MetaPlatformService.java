@@ -395,8 +395,7 @@ public class MetaPlatformService extends AbstractAdPlatformService {
                             .flatMap(tuple -> MetaEntityUtil.normalizeMetaEntity(
                                     tuple.getT1(),
                                     tuple.getT2(),
-                                    extracted.adId(),
-                                    extracted.leadGenId(),
+                                    extracted,
                                     accessToken,
                                     integration,
                                     null,
