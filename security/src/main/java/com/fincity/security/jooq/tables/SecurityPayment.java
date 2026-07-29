@@ -7,8 +7,9 @@ package com.fincity.security.jooq.tables;
 import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.enums.SecurityPaymentPaymentMethod;
-import com.fincity.security.jooq.enums.SecurityPaymentPaymentStatus;
+import com.fincity.security.jooq.enums.SecurityPaymentGateway;
+import com.fincity.security.jooq.enums.SecurityPaymentStatus;
+import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
 import com.fincity.security.jooq.tables.records.SecurityPaymentRecord;
 
@@ -70,45 +71,55 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
     public final TableField<SecurityPaymentRecord, ULong> ID = createField(DSL.name("ID"), SQLDataType.BIGINTUNSIGNED.nullable(false).identity(true), this, "Primary key");
 
     /**
-     * The column <code>security.security_payment.INVOICE_ID</code>. Invoice ID
+     * The column <code>security.security_payment.INVOICE_ID</code>. Invoice
+     * paid
      */
-    public final TableField<SecurityPaymentRecord, ULong> INVOICE_ID = createField(DSL.name("INVOICE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Invoice ID");
+    public final TableField<SecurityPaymentRecord, ULong> INVOICE_ID = createField(DSL.name("INVOICE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Invoice paid");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_DATE</code>. Payment
-     * date
+     * The column <code>security.security_payment.CLIENT_ID</code>. Buyer client
      */
-    public final TableField<SecurityPaymentRecord, LocalDateTime> PAYMENT_DATE = createField(DSL.name("PAYMENT_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Payment date");
+    public final TableField<SecurityPaymentRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Buyer client");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_AMOUNT</code>. Payment
-     * amount
+     * The column <code>security.security_payment.GATEWAY</code>. Payment
+     * gateway
      */
-    public final TableField<SecurityPaymentRecord, BigDecimal> PAYMENT_AMOUNT = createField(DSL.name("PAYMENT_AMOUNT"), SQLDataType.DECIMAL(10, 2).nullable(false), this, "Payment amount");
+    public final TableField<SecurityPaymentRecord, SecurityPaymentGateway> GATEWAY = createField(DSL.name("GATEWAY"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("RAZORPAY", SQLDataType.VARCHAR)).asEnumDataType(SecurityPaymentGateway.class), this, "Payment gateway");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_STATUS</code>. Payment
-     * status
+     * The column <code>security.security_payment.GATEWAY_ORDER_ID</code>.
+     * Gateway order id
      */
-    public final TableField<SecurityPaymentRecord, SecurityPaymentPaymentStatus> PAYMENT_STATUS = createField(DSL.name("PAYMENT_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityPaymentPaymentStatus.class), this, "Payment status");
+    public final TableField<SecurityPaymentRecord, String> GATEWAY_ORDER_ID = createField(DSL.name("GATEWAY_ORDER_ID"), SQLDataType.VARCHAR(256), this, "Gateway order id");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_METHOD</code>. Payment
-     * method
+     * The column <code>security.security_payment.GATEWAY_PAYMENT_ID</code>.
+     * Gateway payment id
      */
-    public final TableField<SecurityPaymentRecord, SecurityPaymentPaymentMethod> PAYMENT_METHOD = createField(DSL.name("PAYMENT_METHOD"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("OTHER", SQLDataType.VARCHAR)).asEnumDataType(SecurityPaymentPaymentMethod.class), this, "Payment method");
+    public final TableField<SecurityPaymentRecord, String> GATEWAY_PAYMENT_ID = createField(DSL.name("GATEWAY_PAYMENT_ID"), SQLDataType.VARCHAR(256), this, "Gateway payment id");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_REFERENCE</code>.
-     * Payment reference or trasaction id
+     * The column <code>security.security_payment.AMOUNT</code>. Payment amount
      */
-    public final TableField<SecurityPaymentRecord, String> PAYMENT_REFERENCE = createField(DSL.name("PAYMENT_REFERENCE"), SQLDataType.VARCHAR(256), this, "Payment reference or trasaction id");
+    public final TableField<SecurityPaymentRecord, BigDecimal> AMOUNT = createField(DSL.name("AMOUNT"), SQLDataType.DECIMAL(19, 4).nullable(false), this, "Payment amount");
 
     /**
-     * The column <code>security.security_payment.PAYMENT_RESPONSE</code>.
-     * Payment response or error message
+     * The column <code>security.security_payment.STATUS</code>. Payment status
      */
-    public final TableField<SecurityPaymentRecord, Map> PAYMENT_RESPONSE = createField(DSL.name("PAYMENT_RESPONSE"), SQLDataType.JSON, this, "Payment response or error message", new JSONMysqlMapConvertor());
+    public final TableField<SecurityPaymentRecord, SecurityPaymentStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PENDING", SQLDataType.VARCHAR)).asEnumDataType(SecurityPaymentStatus.class), this, "Payment status");
+
+    /**
+     * The column <code>security.security_payment.RESPONSE</code>. Gateway
+     * response / error
+     */
+    public final TableField<SecurityPaymentRecord, Map> RESPONSE = createField(DSL.name("RESPONSE"), SQLDataType.JSON, this, "Gateway response / error", new JSONMysqlMapConvertor());
+
+    /**
+     * The column <code>security.security_payment.PAID_AT</code>. Time payment
+     * confirmed
+     */
+    public final TableField<SecurityPaymentRecord, LocalDateTime> PAID_AT = createField(DSL.name("PAID_AT"), SQLDataType.LOCALDATETIME(0), this, "Time payment confirmed");
 
     /**
      * The column <code>security.security_payment.CREATED_BY</code>. ID of the
@@ -213,12 +224,12 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
 
     @Override
     public List<UniqueKey<SecurityPaymentRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_PAYMENT_UK1_PAYMENT_INVOICE_ID_PAYMENT_REFERENCE);
+        return Arrays.asList(Keys.KEY_SECURITY_PAYMENT_UK1_PAYMENT_GATEWAY_ORDER_ID);
     }
 
     @Override
     public List<ForeignKey<SecurityPaymentRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PAYMENT_INVOICE_ID);
+        return Arrays.asList(Keys.FK1_PAYMENT_INVOICE_ID, Keys.FK2_PAYMENT_CLIENT_ID);
     }
 
     private transient SecurityInvoicePath _securityInvoice;
@@ -232,6 +243,19 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
             _securityInvoice = new SecurityInvoicePath(this, Keys.FK1_PAYMENT_INVOICE_ID, null);
 
         return _securityInvoice;
+    }
+
+    private transient SecurityClientPath _securityClient;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table.
+     */
+    public SecurityClientPath securityClient() {
+        if (_securityClient == null)
+            _securityClient = new SecurityClientPath(this, Keys.FK2_PAYMENT_CLIENT_ID, null);
+
+        return _securityClient;
     }
 
     @Override

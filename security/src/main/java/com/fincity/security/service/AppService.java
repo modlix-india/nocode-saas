@@ -494,6 +494,17 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
         return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> super.read(appId), appId);
     }
 
+    /**
+     * Unauthenticated read by id (direct DAO, no access join), for machine flows
+     * such as worker-driven metering raising wallet events. {@link #getAppById}
+     * goes through the context-gated access join and fails without a logged-in user.
+     */
+    public Mono<App> getAppByIdInternal(ULong appId) {
+        if (appId == null)
+            return Mono.empty();
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> this.dao.getByAppId(appId), appId);
+    }
+
     public Mono<App> getAppByCodeCheckAccess(String appCode) {
 
         return FlatMapUtil.flatMapMono(

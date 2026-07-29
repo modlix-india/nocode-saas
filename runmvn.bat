@@ -115,6 +115,14 @@ if "%1"=="jooq" (
         exit /b 1
     )
 
+    echo Building adzump...
+    cd ..\adzump
+    call mvn clean install -Pjooq
+    if errorlevel 1 (
+        echo Error: Maven build failed for adzump
+        exit /b 1
+    )
+
     echo Building message...
     cd ..\message
     call mvn clean install -Pjooq
@@ -269,6 +277,14 @@ cd ..\files
 call mvn %*
 if errorlevel 1 (
     echo Error: Maven build failed for files
+    exit /b 1
+)
+
+echo Building adzump...
+cd ..\adzump
+call mvn %*
+if errorlevel 1 (
+    echo Error: Maven build failed for adzump
     exit /b 1
 )
 

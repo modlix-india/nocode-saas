@@ -390,6 +390,20 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))));
     }
 
+    /**
+     * Active "deal" count for token metering: tickets of {@code (appCode, clientCode = M)}
+     * still active. Keyed purely by app + client code, per the billing model.
+     */
+    public Mono<Long> countActiveTickets(String appCode, String clientCode) {
+        return Mono.from(this.dslContext
+                .select(DSL.count())
+                .from(ENTITY_PROCESSOR_TICKETS)
+                .where(ENTITY_PROCESSOR_TICKETS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_TICKETS.CLIENT_CODE.eq(clientCode))
+                .and(ENTITY_PROCESSOR_TICKETS.IS_ACTIVE.eq(true)))
+                .map(r -> r.value1().longValue());
+    }
+
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         if (access.getUser() == null && access.getUserInherit() == null)

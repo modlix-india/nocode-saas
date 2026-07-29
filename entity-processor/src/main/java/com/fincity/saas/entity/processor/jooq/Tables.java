@@ -29,6 +29,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkI
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSources;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTags;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
@@ -179,6 +180,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_tags</code>.
+     */
+    public static final EntityProcessorTags ENTITY_PROCESSOR_TAGS = EntityProcessorTags.ENTITY_PROCESSOR_TAGS;
 
     /**
      * The table <code>entity_processor.entity_processor_task_types</code>.

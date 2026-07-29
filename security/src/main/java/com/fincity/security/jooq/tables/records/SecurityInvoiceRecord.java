@@ -4,7 +4,8 @@
 package com.fincity.security.jooq.tables.records;
 
 
-import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import com.fincity.security.jooq.enums.SecurityInvoiceGateway;
+import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.jooq.tables.SecurityInvoice;
 
 import java.math.BigDecimal;
@@ -39,65 +40,20 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     }
 
     /**
-     * Setter for <code>security.security_invoice.CLIENT_ID</code>. Client ID
+     * Setter for <code>security.security_invoice.INVOICE_NUMBER</code>. Gapless
+     * sequential per seller + financial year
      */
-    public SecurityInvoiceRecord setClientId(ULong value) {
+    public SecurityInvoiceRecord setInvoiceNumber(String value) {
         set(1, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_invoice.CLIENT_ID</code>. Client ID
-     */
-    public ULong getClientId() {
-        return (ULong) get(1);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.PLAN_ID</code>. Plan ID
-     */
-    public SecurityInvoiceRecord setPlanId(ULong value) {
-        set(2, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.PLAN_ID</code>. Plan ID
-     */
-    public ULong getPlanId() {
-        return (ULong) get(2);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.CYCLE_ID</code>. Cycle ID
-     */
-    public SecurityInvoiceRecord setCycleId(ULong value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.CYCLE_ID</code>. Cycle ID
-     */
-    public ULong getCycleId() {
-        return (ULong) get(3);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.INVOICE_NUMBER</code>. Invoice
-     * number
-     */
-    public SecurityInvoiceRecord setInvoiceNumber(String value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.INVOICE_NUMBER</code>. Invoice
-     * number
+     * Getter for <code>security.security_invoice.INVOICE_NUMBER</code>. Gapless
+     * sequential per seller + financial year
      */
     public String getInvoiceNumber() {
-        return (String) get(4);
+        return (String) get(1);
     }
 
     /**
@@ -105,7 +61,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * date
      */
     public SecurityInvoiceRecord setInvoiceDate(LocalDateTime value) {
-        set(5, value);
+        set(2, value);
         return this;
     }
 
@@ -114,58 +70,377 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * date
      */
     public LocalDateTime getInvoiceDate() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(2);
     }
 
     /**
-     * Setter for <code>security.security_invoice.INVOICE_DUE_DATE</code>.
-     * Invoice due date
+     * Setter for <code>security.security_invoice.STATUS</code>. Invoice status
      */
-    public SecurityInvoiceRecord setInvoiceDueDate(LocalDateTime value) {
+    public SecurityInvoiceRecord setStatus(SecurityInvoiceStatus value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.STATUS</code>. Invoice status
+     */
+    public SecurityInvoiceStatus getStatus() {
+        return (SecurityInvoiceStatus) get(3);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.SELLER_CLIENT_ID</code>.
+     * Seller of record (configurator C)
+     */
+    public SecurityInvoiceRecord setSellerClientId(ULong value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.SELLER_CLIENT_ID</code>.
+     * Seller of record (configurator C)
+     */
+    public ULong getSellerClientId() {
+        return (ULong) get(4);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.SELLER_LEGAL_NAME</code>.
+     * Seller legal name snapshot
+     */
+    public SecurityInvoiceRecord setSellerLegalName(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.SELLER_LEGAL_NAME</code>.
+     * Seller legal name snapshot
+     */
+    public String getSellerLegalName() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.SELLER_GSTIN</code>. Seller
+     * GSTIN snapshot
+     */
+    public SecurityInvoiceRecord setSellerGstin(String value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_invoice.INVOICE_DUE_DATE</code>.
-     * Invoice due date
+     * Getter for <code>security.security_invoice.SELLER_GSTIN</code>. Seller
+     * GSTIN snapshot
      */
-    public LocalDateTime getInvoiceDueDate() {
-        return (LocalDateTime) get(6);
+    public String getSellerGstin() {
+        return (String) get(6);
     }
 
     /**
-     * Setter for <code>security.security_invoice.INVOICE_AMOUNT</code>. Invoice
-     * amount
+     * Setter for <code>security.security_invoice.SELLER_ADDRESS</code>. Seller
+     * address snapshot
      */
-    public SecurityInvoiceRecord setInvoiceAmount(BigDecimal value) {
+    public SecurityInvoiceRecord setSellerAddress(String value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_invoice.INVOICE_AMOUNT</code>. Invoice
-     * amount
+     * Getter for <code>security.security_invoice.SELLER_ADDRESS</code>. Seller
+     * address snapshot
      */
-    public BigDecimal getInvoiceAmount() {
-        return (BigDecimal) get(7);
+    public String getSellerAddress() {
+        return (String) get(7);
     }
 
     /**
-     * Setter for <code>security.security_invoice.INVOICE_STATUS</code>. Invoice
-     * status
+     * Setter for <code>security.security_invoice.CLIENT_ID</code>. Buyer client
+     * M
      */
-    public SecurityInvoiceRecord setInvoiceStatus(SecurityInvoiceInvoiceStatus value) {
+    public SecurityInvoiceRecord setClientId(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_invoice.INVOICE_STATUS</code>. Invoice
-     * status
+     * Getter for <code>security.security_invoice.CLIENT_ID</code>. Buyer client
+     * M
      */
-    public SecurityInvoiceInvoiceStatus getInvoiceStatus() {
-        return (SecurityInvoiceInvoiceStatus) get(8);
+    public ULong getClientId() {
+        return (ULong) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BUYER_LEGAL_NAME</code>. Buyer
+     * legal name snapshot
+     */
+    public SecurityInvoiceRecord setBuyerLegalName(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BUYER_LEGAL_NAME</code>. Buyer
+     * legal name snapshot
+     */
+    public String getBuyerLegalName() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BUYER_GSTIN</code>. Buyer
+     * GSTIN snapshot
+     */
+    public SecurityInvoiceRecord setBuyerGstin(String value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BUYER_GSTIN</code>. Buyer
+     * GSTIN snapshot
+     */
+    public String getBuyerGstin() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BUYER_ADDRESS</code>. Buyer
+     * address snapshot
+     */
+    public SecurityInvoiceRecord setBuyerAddress(String value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BUYER_ADDRESS</code>. Buyer
+     * address snapshot
+     */
+    public String getBuyerAddress() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.APP_ID</code>. App whose
+     * wallet is funded
+     */
+    public SecurityInvoiceRecord setAppId(ULong value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.APP_ID</code>. App whose
+     * wallet is funded
+     */
+    public ULong getAppId() {
+        return (ULong) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BUNDLE_ID</code>. Bundle
+     * purchased (soft reference)
+     */
+    public SecurityInvoiceRecord setBundleId(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BUNDLE_ID</code>. Bundle
+     * purchased (soft reference)
+     */
+    public ULong getBundleId() {
+        return (ULong) get(13);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BUNDLE_LABEL</code>. Bundle
+     * label snapshot
+     */
+    public SecurityInvoiceRecord setBundleLabel(String value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BUNDLE_LABEL</code>. Bundle
+     * label snapshot
+     */
+    public String getBundleLabel() {
+        return (String) get(14);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.TOKENS_PURCHASED</code>.
+     * Tokens credited on payment
+     */
+    public SecurityInvoiceRecord setTokensPurchased(BigDecimal value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.TOKENS_PURCHASED</code>.
+     * Tokens credited on payment
+     */
+    public BigDecimal getTokensPurchased() {
+        return (BigDecimal) get(15);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.BASE_AMOUNT</code>. Taxable
+     * value
+     */
+    public SecurityInvoiceRecord setBaseAmount(BigDecimal value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.BASE_AMOUNT</code>. Taxable
+     * value
+     */
+    public BigDecimal getBaseAmount() {
+        return (BigDecimal) get(16);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.GST_PERCENTAGE</code>. GST
+     * percentage applied
+     */
+    public SecurityInvoiceRecord setGstPercentage(BigDecimal value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.GST_PERCENTAGE</code>. GST
+     * percentage applied
+     */
+    public BigDecimal getGstPercentage() {
+        return (BigDecimal) get(17);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.GST_AMOUNT</code>. GST amount
+     * (base x pct)
+     */
+    public SecurityInvoiceRecord setGstAmount(BigDecimal value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.GST_AMOUNT</code>. GST amount
+     * (base x pct)
+     */
+    public BigDecimal getGstAmount() {
+        return (BigDecimal) get(18);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.TOTAL_AMOUNT</code>. Base +
+     * GST
+     */
+    public SecurityInvoiceRecord setTotalAmount(BigDecimal value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.TOTAL_AMOUNT</code>. Base +
+     * GST
+     */
+    public BigDecimal getTotalAmount() {
+        return (BigDecimal) get(19);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.CURRENCY</code>. Currency
+     */
+    public SecurityInvoiceRecord setCurrency(String value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.CURRENCY</code>. Currency
+     */
+    public String getCurrency() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.PAYMENT_REFERENCE</code>.
+     * Gateway payment reference
+     */
+    public SecurityInvoiceRecord setPaymentReference(String value) {
+        set(21, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.PAYMENT_REFERENCE</code>.
+     * Gateway payment reference
+     */
+    public String getPaymentReference() {
+        return (String) get(21);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.GATEWAY</code>. Payment
+     * gateway
+     */
+    public SecurityInvoiceRecord setGateway(SecurityInvoiceGateway value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.GATEWAY</code>. Payment
+     * gateway
+     */
+    public SecurityInvoiceGateway getGateway() {
+        return (SecurityInvoiceGateway) get(22);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.PAID_AT</code>. Time payment
+     * was confirmed
+     */
+    public SecurityInvoiceRecord setPaidAt(LocalDateTime value) {
+        set(23, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.PAID_AT</code>. Time payment
+     * was confirmed
+     */
+    public LocalDateTime getPaidAt() {
+        return (LocalDateTime) get(23);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.PDF_FILE_KEY</code>. Stored
+     * PDF file key
+     */
+    public SecurityInvoiceRecord setPdfFileKey(String value) {
+        set(24, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.PDF_FILE_KEY</code>. Stored
+     * PDF file key
+     */
+    public String getPdfFileKey() {
+        return (String) get(24);
     }
 
     /**
@@ -173,7 +448,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who created this row
      */
     public SecurityInvoiceRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(25, value);
         return this;
     }
 
@@ -182,7 +457,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(25);
     }
 
     /**
@@ -190,7 +465,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is created
      */
     public SecurityInvoiceRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(26, value);
         return this;
     }
 
@@ -199,7 +474,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(26);
     }
 
     /**
@@ -207,7 +482,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who updated this row
      */
     public SecurityInvoiceRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(27, value);
         return this;
     }
 
@@ -216,7 +491,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(27);
     }
 
     /**
@@ -224,7 +499,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is updated
      */
     public SecurityInvoiceRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(28, value);
         return this;
     }
 
@@ -233,58 +508,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
-     * reason
-     */
-    public SecurityInvoiceRecord setInvoiceReason(String value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
-     * reason
-     */
-    public String getInvoiceReason() {
-        return (String) get(13);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.PERIOD_START</code>. Service
-     * period start (UTC)
-     */
-    public SecurityInvoiceRecord setPeriodStart(LocalDateTime value) {
-        set(14, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.PERIOD_START</code>. Service
-     * period start (UTC)
-     */
-    public LocalDateTime getPeriodStart() {
-        return (LocalDateTime) get(14);
-    }
-
-    /**
-     * Setter for <code>security.security_invoice.PERIOD_END</code>. Service
-     * period end (UTC)
-     */
-    public SecurityInvoiceRecord setPeriodEnd(LocalDateTime value) {
-        set(15, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>security.security_invoice.PERIOD_END</code>. Service
-     * period end (UTC)
-     */
-    public LocalDateTime getPeriodEnd() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(28);
     }
 
     // -------------------------------------------------------------------------
@@ -310,25 +534,38 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     /**
      * Create a detached, initialised SecurityInvoiceRecord
      */
-    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String invoiceReason, LocalDateTime periodStart, LocalDateTime periodEnd) {
+    public SecurityInvoiceRecord(ULong id, String invoiceNumber, LocalDateTime invoiceDate, SecurityInvoiceStatus status, ULong sellerClientId, String sellerLegalName, String sellerGstin, String sellerAddress, ULong clientId, String buyerLegalName, String buyerGstin, String buyerAddress, ULong appId, ULong bundleId, String bundleLabel, BigDecimal tokensPurchased, BigDecimal baseAmount, BigDecimal gstPercentage, BigDecimal gstAmount, BigDecimal totalAmount, String currency, String paymentReference, SecurityInvoiceGateway gateway, LocalDateTime paidAt, String pdfFileKey, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityInvoice.SECURITY_INVOICE);
 
         setId(id);
-        setClientId(clientId);
-        setPlanId(planId);
-        setCycleId(cycleId);
         setInvoiceNumber(invoiceNumber);
         setInvoiceDate(invoiceDate);
-        setInvoiceDueDate(invoiceDueDate);
-        setInvoiceAmount(invoiceAmount);
-        setInvoiceStatus(invoiceStatus);
+        setStatus(status);
+        setSellerClientId(sellerClientId);
+        setSellerLegalName(sellerLegalName);
+        setSellerGstin(sellerGstin);
+        setSellerAddress(sellerAddress);
+        setClientId(clientId);
+        setBuyerLegalName(buyerLegalName);
+        setBuyerGstin(buyerGstin);
+        setBuyerAddress(buyerAddress);
+        setAppId(appId);
+        setBundleId(bundleId);
+        setBundleLabel(bundleLabel);
+        setTokensPurchased(tokensPurchased);
+        setBaseAmount(baseAmount);
+        setGstPercentage(gstPercentage);
+        setGstAmount(gstAmount);
+        setTotalAmount(totalAmount);
+        setCurrency(currency);
+        setPaymentReference(paymentReference);
+        setGateway(gateway);
+        setPaidAt(paidAt);
+        setPdfFileKey(pdfFileKey);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        setInvoiceReason(invoiceReason);
-        setPeriodStart(periodStart);
-        setPeriodEnd(periodEnd);
         resetTouchedOnNotNull();
     }
 }

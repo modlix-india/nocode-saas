@@ -8,7 +8,8 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.Tag;
+
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
@@ -18,6 +19,7 @@ import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -37,6 +39,11 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     @Serial
     private static final long serialVersionUID = 1639822311147907381L;
 
+    // formData payload keys; mirrors MetaEntityUtil.FD_* on the collector side.
+    private static final String FORM_DATA_PROVIDER = "provider";
+    private static final String FORM_DATA_STANDARD = "standard";
+    private static final String FORM_DATA_CUSTOM = "custom";
+
     private ULong ownerId;
     private ULong assignedUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
@@ -51,9 +58,10 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong adsetId;
     private ULong adId;
     private Boolean dnc = Boolean.FALSE;
-    private Tag tag;
+    private String tag;
     private Map<String, Object> metaData;
     private Map<String, Object> adData;
+    private Map<String, Object> formData;
 
     private ULong productTemplateId = null;
     private LocalDateTime latestTaskDueDate;
@@ -99,6 +107,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.tag = ticket.tag;
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
         this.adData = CloneUtil.cloneMapObject(ticket.adData);
+        this.formData = CloneUtil.cloneMapObject(ticket.formData);
         this.productTemplateId = ticket.productTemplateId;
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
@@ -175,7 +184,85 @@ public class Ticket extends BaseProcessorDto<Ticket> {
             ticket.setAdData(new HashMap<>(campaignTicketRequest.getLeadDetails().getAdData()));
         }
 
+        ticket.setFormData(buildFormData(campaignTicketRequest.getLeadDetails()));
+
         return ticket;
+    }
+
+    /**
+     * Folds the lead-form submission onto the ticket so nothing the form captured is lost.
+     *
+     * <p>The Meta collector already supplies a complete {@code formData}: provenance, the
+     * normalized {@code standard} / {@code custom} answer maps, and a verbatim Graph API snapshot.
+     * The website path supplies none, so {@code standard} is rebuilt here from the typed
+     * {@code LeadDetails} fields and {@code custom} falls back to {@code customFields}.
+     * Collector-supplied entries win on conflict because they preserve multi-answer questions as
+     * lists, which the flat typed fields cannot represent.
+     *
+     * <p>Only phone, email and name have real ticket columns. Every other answer ({@code city},
+     * {@code dob}, {@code gender}, {@code jobTitle}, {@code zipCode}, custom questions and the
+     * rest) reaches the database only through here.
+     */
+    private static Map<String, Object> buildFormData(CampaignTicketRequest.LeadDetails lead) {
+
+        if (lead == null) return null;
+
+        Map<String, Object> formData =
+                lead.getFormData() != null ? new LinkedHashMap<>(lead.getFormData()) : new LinkedHashMap<>();
+
+        Map<String, Object> standard = new LinkedHashMap<>();
+        putIfPresent(standard, "email", lead.getEmail() != null ? lead.getEmail().getAddress() : null);
+        putIfPresent(standard, "fullName", lead.getFullName());
+        putIfPresent(standard, "phone", phoneText(lead.getPhone()));
+        putIfPresent(standard, "companyName", lead.getCompanyName());
+        putIfPresent(standard, "workEmail", lead.getWorkEmail() != null ? lead.getWorkEmail().getAddress() : null);
+        putIfPresent(standard, "workPhoneNumber", phoneText(lead.getWorkPhoneNumber()));
+        putIfPresent(standard, "jobTitle", lead.getJobTitle());
+        putIfPresent(standard, "militaryStatus", lead.getMilitaryStatus());
+        putIfPresent(standard, "relationshipStatus", lead.getRelationshipStatus());
+        putIfPresent(standard, "maritalStatus", lead.getMaritalStatus());
+        putIfPresent(standard, "gender", lead.getGender());
+        putIfPresent(standard, "dob", lead.getDob());
+        putIfPresent(standard, "firstName", lead.getFirstName());
+        putIfPresent(standard, "lastName", lead.getLastName());
+        putIfPresent(standard, "zipCode", lead.getZipCode());
+        putIfPresent(standard, "postCode", lead.getPostCode());
+        putIfPresent(standard, "country", lead.getCountry());
+        putIfPresent(standard, "province", lead.getProvince());
+        putIfPresent(standard, "streetAddress", lead.getStreetAddress());
+        putIfPresent(standard, "state", lead.getState());
+        putIfPresent(standard, "city", lead.getCity());
+        putIfPresent(standard, "whatsappNumber", phoneText(lead.getWhatsappNumber()));
+
+        if (formData.get(FORM_DATA_STANDARD) instanceof Map<?, ?> collectorStandard)
+            collectorStandard.forEach((key, value) -> standard.put(String.valueOf(key), value));
+
+        if (!standard.isEmpty()) formData.put(FORM_DATA_STANDARD, standard);
+
+        if (!formData.containsKey(FORM_DATA_CUSTOM)
+                && lead.getCustomFields() != null
+                && !lead.getCustomFields().isEmpty())
+            formData.put(FORM_DATA_CUSTOM, new LinkedHashMap<>(lead.getCustomFields()));
+
+        if (!StringUtil.safeIsBlank(lead.getPlatform()))
+            formData.putIfAbsent(FORM_DATA_PROVIDER, lead.getPlatform());
+
+        return formData.isEmpty() ? null : formData;
+    }
+
+    private static void putIfPresent(Map<String, Object> target, String key, String value) {
+        if (!StringUtil.safeIsBlank(value)) target.put(key, value);
+    }
+
+    private static String phoneText(PhoneNumber phone) {
+        if (phone == null || StringUtil.safeIsBlank(phone.getNumber())) return null;
+
+        // PhoneUtil.parse stores the number in E164 form, so the dial code is already on it.
+        // Only prefix when a caller built the object with raw setters and skipped parsing.
+        String number = phone.getNumber();
+        if (number.startsWith("+") || phone.getCountryCode() == null) return number;
+
+        return "+" + phone.getCountryCode() + number;
     }
 
     public static Ticket of(WalkInFormTicketRequest walkInFormTicketRequest) {

@@ -17,4 +17,10 @@ public interface IFeignSecurityService {
     @PostMapping("/api/security/ssl/internal/renew-certificates")
     SSLCertificateRenewalResult renewExpiringCertificates(
             @RequestParam(value = "daysBeforeExpiry", defaultValue = "30") int daysBeforeExpiry);
+
+    @PostMapping("/api/security/internal/billing/meter/security")
+    Boolean triggerSecurityMetering();
+
+    @PostMapping("/api/security/internal/billing/reconcile")
+    Boolean reconcileBilling();
 }

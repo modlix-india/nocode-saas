@@ -16,6 +16,7 @@ import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserToken;
+import com.fincity.security.jooq.tables.SecurityWalletTransaction;
 
 import org.jooq.Index;
 import org.jooq.OrderField;
@@ -44,6 +45,8 @@ public class Indexes {
     public static final Index SECURITY_APP_REG_USER_DESIGNATION_FK3_APP_REG_USER_DESIGNATION_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_USER_DESIGNATION_APP_ID"), SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION, new OrderField[] { SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION.APP_ID }, false);
     public static final Index SECURITY_APP_REG_USER_ROLE_V2_FK3_APP_REG_USER_ROLE_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_USER_ROLE_APP_ID"), SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2, new OrderField[] { SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2.APP_ID }, false);
     public static final Index SECURITY_APP_REG_DESIGNATION_FK4_APP_REG_DESIGNATION_APP_ID = Internal.createIndex(DSL.name("FK4_APP_REG_DESIGNATION_APP_ID"), SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION, new OrderField[] { SecurityAppRegDesignation.SECURITY_APP_REG_DESIGNATION.APP_ID }, false);
+    public static final Index SECURITY_WALLET_TRANSACTION_IDX1_WTXN_WALLET_ID_CREATED_AT = Internal.createIndex(DSL.name("IDX1_WTXN_WALLET_ID_CREATED_AT"), SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION, new OrderField[] { SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION.WALLET_ID, SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION.CREATED_AT }, false);
+    public static final Index SECURITY_WALLET_TRANSACTION_IDX2_WTXN_WALLET_ID_CHARGE_DATE_WINDOW = Internal.createIndex(DSL.name("IDX2_WTXN_WALLET_ID_CHARGE_DATE_WINDOW"), SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION, new OrderField[] { SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION.WALLET_ID, SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION.CHARGE_DATE, SecurityWalletTransaction.SECURITY_WALLET_TRANSACTION.WINDOW_INDEX }, false);
     public static final Index SECURITY_CLIENT_ACTIVITY_IDX_CLIENT_ACTIVITY_CLIENT = Internal.createIndex(DSL.name("IDX_CLIENT_ACTIVITY_CLIENT"), SecurityClientActivity.SECURITY_CLIENT_ACTIVITY, new OrderField[] { SecurityClientActivity.SECURITY_CLIENT_ACTIVITY.CLIENT_ID }, false);
     public static final Index SECURITY_CLIENT_ACTIVITY_IDX_CLIENT_ACTIVITY_CREATED_BY = Internal.createIndex(DSL.name("IDX_CLIENT_ACTIVITY_CREATED_BY"), SecurityClientActivity.SECURITY_CLIENT_ACTIVITY, new OrderField[] { SecurityClientActivity.SECURITY_CLIENT_ACTIVITY.CREATED_BY }, false);
     public static final Index SECURITY_USER_K1_USER_NAME = Internal.createIndex(DSL.name("K1_USER_NAME"), SecurityUser.SECURITY_USER, new OrderField[] { SecurityUser.SECURITY_USER.USER_NAME }, false);

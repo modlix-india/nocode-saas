@@ -22,6 +22,8 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.ui.feign.IFeignSecurityBillingService;
+import com.fincity.saas.ui.model.billing.HostingDecision;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
 import com.fincity.saas.ui.service.ManifestService;
@@ -45,6 +47,8 @@ public class UniversalController {
 
     private final IFeignSecurityService securityService;
 
+    private final IFeignSecurityBillingService billingSecurityService;
+
     private final Gson gson;
 
     @Value("${ui.resourceCacheAge:604800}")
@@ -62,12 +66,14 @@ public class UniversalController {
     private final static String END = "</script></head><body></body></html>";
 
     public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
-            URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
+            URIPathService uriPathService, IFeignSecurityService securityService,
+            IFeignSecurityBillingService billingSecurityService, Gson gson) {
         this.jsService = jsService;
         this.indexHTMLService = indexHTMLService;
         this.manifestService = manifestService;
         this.uriPathService = uriPathService;
         this.securityService = securityService;
+        this.billingSecurityService = billingSecurityService;
         this.gson = gson;
     }
 
@@ -112,8 +118,13 @@ public class UniversalController {
             @RequestHeader(name = "If-None-Match", required = false) String eTag,
             ServerHttpRequest request) {
 
+        // Hosting gate: serve the suspend app/client when M's builder wallet is
+        // suspended. Best-effort — any error or empty result serves the requested app.
         var pageMono = Mono
-                .defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
+                .defer(() -> this.billingSecurityService.checkHosting(appCode, clientCode)
+                        .onErrorReturn(new HostingDecision(false, appCode, clientCode))
+                        .defaultIfEmpty(new HostingDecision(false, appCode, clientCode))
+                        .flatMap(d -> indexHTMLService.getIndexHTML(d.serveAppCode(), d.serveClientCode()))
                         .flatMap(e -> ResponseEntityUtils
                                 .makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE)));
 

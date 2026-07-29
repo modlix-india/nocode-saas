@@ -96,15 +96,21 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         logId),
 
                                 (extractPayload, integration, logId, token, metaData) -> Mono.just(normalizeMetaEntity(
-                                        metaData.getT1(),
-                                        metaData.getT2(),
-                                        extractPayload.adId(),
-                                        extractPayload.leadGenId(),
-                                        token,
-                                        integration,
-                                        msgService,
-                                        entityCollectorLogService,
-                                        logId)),
+                                                metaData.getT1(),
+                                                metaData.getT2(),
+                                                extractPayload,
+                                                token,
+                                                integration,
+                                                msgService,
+                                                entityCollectorLogService,
+                                                logId)
+                                        // This Mono is subscribed twice below: once to log the
+                                        // response, once to POST it to the ticket endpoint. Without
+                                        // cache() each subscription re-ran the 3 campaign-attribution
+                                        // Graph calls and rebuilt the form snapshot, so one lead cost
+                                        // 6 Graph calls and the response logged as OUTGOING_ENTITY_DATA
+                                        // was a different instance than the one actually persisted.
+                                        .cache()),
                                 (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
                                         normalizedEntity.flatMap( response -> this.entityCollectorLogService.update(
                                                 logId,

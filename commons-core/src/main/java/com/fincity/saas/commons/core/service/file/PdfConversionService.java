@@ -51,6 +51,24 @@ public class PdfConversionService extends AbstractTemplateConversionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TemplateConversionService.convert"));
     }
 
+    // Renders already-produced HTML straight to PDF bytes (no template/FreeMarker step). Used by
+    // the preview flow, which renders parts leniently before converting.
+    public Mono<byte[]> renderHtmlToPdf(String htmlContent) {
+        if (htmlContent == null || htmlContent.isBlank())
+            return Mono.error(new GenericException(
+                    HttpStatus.BAD_REQUEST, CoreMessageResourceService.TEMPLATE_DETAILS_MISSING));
+
+        return Mono.fromCallable(() -> {
+                    try (ByteArrayOutputStream os = new ByteArrayOutputStream(INITIAL_BUFFER_SIZE)) {
+                        PdfRendererBuilder builder = createPdfBuilder(htmlContent, os);
+                        builder.run();
+                        return os.toByteArray();
+                    }
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PdfConversionService.renderHtmlToPdf"));
+    }
+
     @Override
     public MediaType getMediaType(String outputFormat) {
         return MediaType.APPLICATION_PDF;

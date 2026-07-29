@@ -411,6 +411,9 @@ public class FileSystemService {
             InputStream inputStream, long length, boolean override, String contentDisposition) {
 
         String filePath = fileName == null ? path : (path + R2_FILE_SEPARATOR_STRING + fileName);
+        // Collapse any accidental repeated separators (e.g. a trailing-slash path + "/" + name)
+        // so the stored key and the folder-tree lookup never diverge on empty segments.
+        filePath = filePath.replaceAll("//+", R2_FILE_SEPARATOR_STRING);
 
         boolean exists = this.exists(clientCode, filePath);
 

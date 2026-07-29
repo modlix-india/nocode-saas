@@ -22,6 +22,7 @@ import com.fincity.saas.commons.core.functions.notification.SendNotification;
 import com.fincity.saas.commons.core.functions.rest.CallRequest;
 import com.fincity.saas.commons.core.functions.security.GetAppUrl;
 import com.fincity.saas.commons.core.functions.security.GetClient;
+import com.fincity.saas.commons.core.functions.security.GetOwnersEmails;
 import com.fincity.saas.commons.core.functions.security.GetUserAdminEmails;
 import com.fincity.saas.commons.core.functions.security.IsBeingManagedByCode;
 import com.fincity.saas.commons.core.functions.security.IsBeingManagedById;
@@ -84,8 +85,9 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
         ReactiveFunction getClient = new GetClient(securityService, gson);
         ReactiveFunction getUserAdminEmails = new GetUserAdminEmails(securityService, gson);
+        ReactiveFunction getOwnersEmails = new GetOwnersEmails(securityService, gson);
 
-        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, getClient, getUserAdminEmails);
+        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, getClient, getUserAdminEmails, getOwnersEmails);
     }
 
     private void makeSecurityContextFunctions(

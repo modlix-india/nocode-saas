@@ -41,6 +41,14 @@ public class Template extends AbstractOverridableDTO<Template> {
     private String fromExpression;
     private String languageExpression;
 
+    // JSON schema describing the shape of the data object this template renders against.
+    private Map<String, Object> variableSchema; // NOSONAR
+    // Sample data object used to render previews (defaults the preview endpoint's data).
+    private Map<String, Object> sampleData; // NOSONAR
+    // Visual editor block tree (per language + part), kept so parts can be re-opened in the
+    // drag-and-drop editor. Rendering only ever uses templateParts (the compiled HTML).
+    private Map<String, Object> design; // NOSONAR
+
     public Template(Template template) {
         super(template);
         this.templateParts = CloneUtil.cloneMapObject(template.templateParts);
@@ -50,6 +58,9 @@ public class Template extends AbstractOverridableDTO<Template> {
         this.defaultLanguage = template.defaultLanguage;
         this.toExpression = template.toExpression;
         this.fromExpression = template.fromExpression;
+        this.variableSchema = CloneUtil.cloneMapObject(template.variableSchema);
+        this.sampleData = CloneUtil.cloneMapObject(template.sampleData);
+        this.design = CloneUtil.cloneMapObject(template.design);
     }
 
     @SuppressWarnings("unchecked")
@@ -60,9 +71,15 @@ public class Template extends AbstractOverridableDTO<Template> {
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
                         tempParts -> DifferenceApplicator.apply(this.resources, base.resources),
-                        (tempParts, rsrc) -> {
+                        (tempParts, rsrc) -> DifferenceApplicator.apply(this.variableSchema, base.variableSchema),
+                        (tempParts, rsrc, varSchema) -> DifferenceApplicator.apply(this.sampleData, base.sampleData),
+                        (tempParts, rsrc, varSchema, sample) -> DifferenceApplicator.apply(this.design, base.design),
+                        (tempParts, rsrc, varSchema, sample, dsgn) -> {
                             this.templateParts = (Map<String, Map<String, String>>) tempParts;
                             this.resources = (Map<String, String>) rsrc;
+                            this.variableSchema = (Map<String, Object>) varSchema;
+                            this.sampleData = (Map<String, Object>) sample;
+                            this.design = (Map<String, Object>) dsgn;
 
                             if (this.templateType == null) this.templateType = base.templateType;
 
@@ -84,12 +101,18 @@ public class Template extends AbstractOverridableDTO<Template> {
     public Mono<Template> extractDifference(Template base) {
         if (base == null) return Mono.just(this);
 
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMonoWithNull(
                         () -> DifferenceExtractor.extract(this.templateParts, base.templateParts),
                         tempParts -> DifferenceExtractor.extract(this.resources, base.resources),
-                        (temParts, rsrc) -> {
+                        (tempParts, rsrc) -> DifferenceExtractor.extract(this.variableSchema, base.variableSchema),
+                        (tempParts, rsrc, varSchema) -> DifferenceExtractor.extract(this.sampleData, base.sampleData),
+                        (tempParts, rsrc, varSchema, sample) -> DifferenceExtractor.extract(this.design, base.design),
+                        (temParts, rsrc, varSchema, sample, dsgn) -> {
                             this.templateParts = (Map<String, Map<String, String>>) temParts;
                             this.resources = (Map<String, String>) rsrc;
+                            this.variableSchema = (Map<String, Object>) varSchema;
+                            this.sampleData = (Map<String, Object>) sample;
+                            this.design = (Map<String, Object>) dsgn;
 
                             if (StringUtil.safeEquals(this.templateType, base.templateType)) this.templateType = null;
 

@@ -282,6 +282,11 @@ public class UserController
         return this.service.getUserAdminEmails(request).map(ResponseEntity::ok);
     }
 
+    @GetMapping("/internal/ownerEmails")
+    public Mono<ResponseEntity<Map<String, Object>>> getOwnersEmails(ServerHttpRequest request) {
+        return this.service.getOwnersEmails(request).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/requestUser/{requestId}")
     public Mono<ResponseEntity<User>> getUserFromRequestId(@PathVariable String requestId) {
         return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);

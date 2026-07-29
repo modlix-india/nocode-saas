@@ -257,6 +257,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .map(e -> e.into(App.class));
     }
 
+    /**
+     * Direct read by id with no access join — usable from unauthenticated /
+     * machine flows (e.g. worker-driven metering raising wallet events), unlike
+     * {@code readById} which goes through the context-gated access join.
+     */
+    public Mono<App> getByAppId(ULong appId) {
+
+        return Mono.from(this.dslContext.selectFrom(SECURITY_APP)
+                .where(SECURITY_APP.ID.eq(appId))
+                .limit(1))
+                .map(e -> e.into(App.class));
+    }
+
     public Mono<com.fincity.saas.commons.security.dto.App> getByAppCodeExplicitInfo(String appCode) {
 
         return FlatMapUtil.flatMapMono(

@@ -26,7 +26,7 @@ import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.Tag;
+
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -860,7 +860,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         return DifferenceExtractor.extract(iObject, eObject);
     }
 
-    public Mono<Void> acTagChange(ProcessorAccess access, Ticket ticket, String comment, Tag oldTagEnum) {
+    public Mono<Void> acTagChange(ProcessorAccess access, Ticket ticket, String comment, String oldTagEnum) {
 
         if (oldTagEnum == null) {
             return this.acTagCreate(access, ticket, comment)
@@ -883,7 +883,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagCreate"));
     }
 
-    private Mono<Void> acTagUpdate(ProcessorAccess access, Ticket ticket, String comment, Tag oldTag) {
+    private Mono<Void> acTagUpdate(ProcessorAccess access, Ticket ticket, String comment, String oldTag) {
 
         return this.createActivityInternal(
                         access,
