@@ -215,8 +215,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
                     AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
 
+                    // this.coreFunctionRepository already leads with a
+                    // KIRunReactiveFunctionRepository, so there is no need to prepend another one.
                     ReactiveRepository<ReactiveFunction> execRepo = new ReactiveHybridRepository<>(
-                            new KIRunReactiveFunctionRepository(),
                             this.coreFunctionRepository,
                             remRepo);
 
