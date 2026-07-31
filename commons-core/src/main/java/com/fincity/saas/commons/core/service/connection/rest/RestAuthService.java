@@ -11,8 +11,10 @@ import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.JsonElement;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -57,7 +59,14 @@ public class RestAuthService extends AbstractRestTokenService {
                         existingAccessToken -> existingAccessToken.getT2().isAfter(LocalDateTime.now())
                                 ? Mono.just(existingAccessToken.getT1())
                                 : Mono.empty())
-                .switchIfEmpty(createNewAccessToken(connection).map(Tuple2::getT1));
+                .switchIfEmpty(Mono.defer(() -> createNewAccessToken(connection).map(Tuple2::getT1)))
+                // Never complete empty. An empty Mono here silently collapses the whole REST call
+                // into an empty result, which callers cannot distinguish from "not attempted".
+                .switchIfEmpty(Mono.defer(() -> msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN,
+                        connection.getName(),
+                        "no access token could be resolved or created")));
     }
 
     private Mono<Tuple2<String, LocalDateTime>> getExistingAccessToken(Connection connection) {
@@ -85,8 +94,14 @@ public class RestAuthService extends AbstractRestTokenService {
     private Mono<EventResult> executeConnectionFunction(Connection connection) {
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
+        if (connectionDetails == null)
+            return this.tokenError(connection, "connection has no connection details");
+
         String authTokenFunctionName = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAME);
         String authTokenFunctionNameSpace = (String) connectionDetails.get(AUTH_TOKEN_FUNCTION_NAMESPACE);
+
+        if (StringUtil.safeIsBlank(authTokenFunctionName))
+            return this.tokenError(connection, AUTH_TOKEN_FUNCTION_NAME + " is not configured");
 
         return coreFunctionService
                 .execute(
@@ -96,13 +111,46 @@ public class RestAuthService extends AbstractRestTokenService {
                         connection.getClientCode(),
                         null,
                         null)
-                .map(fo -> fo.allResults().getFirst());
+                .flatMap(fo -> {
+                    List<EventResult> results = fo.allResults();
+                    if (results == null || results.isEmpty())
+                        return this.tokenError(
+                                connection,
+                                authTokenFunctionNameSpace + "." + authTokenFunctionName + " raised no events");
+                    return Mono.just(results.getFirst());
+                })
+                .switchIfEmpty(Mono.defer(() -> this.tokenError(
+                        connection,
+                        authTokenFunctionNameSpace + "." + authTokenFunctionName + " produced no output")));
+    }
+
+    private <T> Mono<T> tokenError(Connection connection, String reason) {
+        return msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                CoreMessageResourceService.NOT_ABLE_TO_CREATE_TOKEN,
+                connection.getName(),
+                reason);
     }
 
     private Mono<CoreToken> createCoreToken(EventResult authTokenOutput, Connection connection) {
         Map<String, JsonElement> eventMap = authTokenOutput.getResult();
-        String authToken = eventMap.get(AUTH_TOKEN).getAsString();
-        long expiresIn = eventMap.get(EXPIRES_IN).getAsLong();
+
+        // An auth-token function that returns an output event without these fields used to NPE
+        // here, which surfaced as an opaque failure rather than a configuration error.
+        JsonElement authTokenElement = eventMap == null ? null : eventMap.get(AUTH_TOKEN);
+        JsonElement expiresInElement = eventMap == null ? null : eventMap.get(EXPIRES_IN);
+
+        if (authTokenElement == null || authTokenElement.isJsonNull())
+            return this.tokenError(connection, "auth token function returned no '" + AUTH_TOKEN + "'");
+
+        if (expiresInElement == null || expiresInElement.isJsonNull())
+            return this.tokenError(connection, "auth token function returned no '" + EXPIRES_IN + "'");
+
+        String authToken = authTokenElement.getAsString();
+        long expiresIn = expiresInElement.getAsLong();
+
+        if (StringUtil.safeIsBlank(authToken))
+            return this.tokenError(connection, "auth token function returned a blank '" + AUTH_TOKEN + "'");
 
         return this.coreTokenDAO.create(new CoreToken()
                 .setClientCode(connection.getClientCode())
