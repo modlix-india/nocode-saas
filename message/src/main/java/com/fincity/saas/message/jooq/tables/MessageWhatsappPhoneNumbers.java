@@ -315,7 +315,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT);
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT);
     }
 
     @Override

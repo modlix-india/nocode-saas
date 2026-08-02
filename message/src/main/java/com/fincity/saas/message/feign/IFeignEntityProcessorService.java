@@ -27,4 +27,15 @@ public interface IFeignEntityProcessorService {
     @GetMapping(TICKET_PATH + "/{id}")
     Mono<Ticket> getTicketInternal(
             @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("id") BigInteger id);
+
+    /**
+     * Which deal an inbound message belongs to, given the product whose WhatsApp number received it
+     * and the customer's number. Empty when nothing matches; the message is still stored, unassigned.
+     */
+    @GetMapping(TICKET_PATH + "/resolve")
+    Mono<Ticket> resolveTicketForIncomingMessage(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam BigInteger productId,
+            @RequestParam String phoneNumber);
 }

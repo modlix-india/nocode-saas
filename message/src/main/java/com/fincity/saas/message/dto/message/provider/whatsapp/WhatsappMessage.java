@@ -37,6 +37,13 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private String messageId;
 
     private ULong whatsappPhoneNumberId;
+
+    /**
+     * Deal this message belongs to. Null for inbound messages from a number that matches no ticket;
+     * those surface in the inbox as unassigned rather than being dropped.
+     */
+    private ULong ticketId;
+
     private Integer fromDialCode = PhoneUtil.getDefaultCallingCode();
     private String from;
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();
@@ -71,6 +78,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.whatsappBusinessAccountId = whatsappMessage.whatsappBusinessAccountId;
         this.messageId = whatsappMessage.messageId;
         this.whatsappPhoneNumberId = whatsappMessage.whatsappPhoneNumberId;
+        this.ticketId = whatsappMessage.ticketId;
         this.fromDialCode = whatsappMessage.fromDialCode;
         this.from = whatsappMessage.from;
         this.toDialCode = whatsappMessage.toDialCode;
@@ -105,7 +113,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setCustomerPhoneNumber(to.getNumber())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.SENT)
-                .setSentTime(LocalDateTime.now())
+                .setSentTime(LocalDateTime.now(ZoneOffset.UTC))
                 .setOutbound(Boolean.TRUE)
                 .setMessage(message)
                 .setMediaFileDetail(fileDetail);
@@ -138,7 +146,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                         message.getTimestamp() != null
                                 ? LocalDateTime.ofInstant(
                                         Instant.ofEpochSecond(Long.parseLong(message.getTimestamp())), ZoneOffset.UTC)
-                                : LocalDateTime.now())
+                                : LocalDateTime.now(ZoneOffset.UTC))
                 .setOutbound(Boolean.FALSE)
                 .setInMessage(message);
     }

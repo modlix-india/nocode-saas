@@ -121,6 +121,12 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     public final TableField<MessageWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "ID of the associated Business phone number.");
 
     /**
+     * The column <code>message.message_whatsapp_messages.TICKET_ID</code>.
+     * Entity Processor Ticket Id this message belongs to.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Entity Processor Ticket Id this message belongs to.");
+
+    /**
      * The column <code>message.message_whatsapp_messages.FROM_DIAL_CODE</code>.
      * Dial code of the sender's phone number.
      */
@@ -339,7 +345,7 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS);
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX0_WHATSAPP_MESSAGES_AC_CC, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX5_WHATSAPP_MESSAGES_TICKET);
     }
 
     @Override

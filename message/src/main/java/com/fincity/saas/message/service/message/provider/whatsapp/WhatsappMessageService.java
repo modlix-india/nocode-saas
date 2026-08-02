@@ -2,12 +2,14 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
+import com.fincity.saas.message.feign.IFeignEntityProcessorService;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
@@ -48,6 +50,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -70,6 +73,7 @@ public class WhatsappMessageService
     private final WhatsappCswService customerServiceWindowService;
 
     private WhatsappBusinessAccountService businessAccountService;
+    private IFeignEntityProcessorService entityProcessorService;
 
     @Autowired
     public WhatsappMessageService(
@@ -79,6 +83,11 @@ public class WhatsappMessageService
         this.whatsappApiFactory = whatsappApiFactory;
         this.whatsappPhoneNumberService = whatsappPhoneNumberService;
         this.customerServiceWindowService = customerServiceWindowService;
+    }
+
+    @Autowired
+    public void setEntityProcessorService(IFeignEntityProcessorService entityProcessorService) {
+        this.entityProcessorService = entityProcessorService;
     }
 
     @Autowired
@@ -315,11 +324,12 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                         () -> this.whatsappPhoneNumberService.getByPhoneNumberId(access, phoneNumberId),
-                        whatsappPhoneNumber -> this.dao
+                        whatsappPhoneNumber -> this.resolveTicketId(access, whatsappPhoneNumber, iMessage),
+                        (whatsappPhoneNumber, ticketId) -> this.dao
                                 .findByUniqueField(iMessage.getId())
                                 .flatMap(existing -> this.updateExistingMessage(
                                         access.setUserId(whatsappPhoneNumber.getUserId()),
-                                        existing,
+                                        existing.setTicketId(ticketId.orElse(null)),
                                         metadata,
                                         contact,
                                         iMessage,
@@ -328,18 +338,49 @@ public class WhatsappMessageService
                                 .switchIfEmpty(this.createInternal(
                                         access.setUserId(whatsappPhoneNumber.getUserId()),
                                         WhatsappMessage.ofInbound(
-                                                metadata,
-                                                contact,
-                                                iMessage,
-                                                whatsappPhoneNumber.getWhatsappBusinessAccountId(),
-                                                whatsappPhoneNumber.getId()))),
-                        (whatsappPhoneNumber, whatsappMessage) -> this.toMessage(whatsappMessage),
-                        (whatsappPhoneNumber, whatsappMessage, message) -> this.messageService
+                                                        metadata,
+                                                        contact,
+                                                        iMessage,
+                                                        whatsappPhoneNumber.getWhatsappBusinessAccountId(),
+                                                        whatsappPhoneNumber.getId())
+                                                .setTicketId(ticketId.orElse(null)))),
+                        (whatsappPhoneNumber, ticketId, whatsappMessage) -> this.toMessage(whatsappMessage),
+                        (whatsappPhoneNumber, ticketId, whatsappMessage, message) -> this.messageService
                                 .createInternal(access, message)
                                 .flatMap(msgCreated -> this.messageEventService
                                         .sendIncomingMessageEvent(access, whatsappMessage)
                                         .thenReturn(msgCreated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.processIncomingMessage"));
+    }
+
+    /**
+     * Anchors an inbound message to a deal by asking entity-processor, which owns that mapping.
+     *
+     * <p>Wrapped in {@link Optional} because {@code flatMapMono} drops the whole chain on an empty
+     * signal, and "no matching ticket" must not stop the message being stored. A failed lookup is
+     * logged and treated the same way: the message lands unassigned rather than being lost.
+     */
+    private Mono<Optional<ULong>> resolveTicketId(
+            MessageAccess access, WhatsappPhoneNumber whatsappPhoneNumber, IMessage iMessage) {
+
+        if (iMessage.getFrom() == null) return Mono.just(Optional.empty());
+
+        PhoneNumber customerPhone = PhoneNumber.ofWhatsapp(iMessage.getFrom());
+
+        return this.entityProcessorService
+                .resolveTicketForIncomingMessage(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        whatsappPhoneNumber.getProductId() != null
+                                ? whatsappPhoneNumber.getProductId().toBigInteger()
+                                : null,
+                        customerPhone.getNumber())
+                .map(ticket -> Optional.ofNullable(ULongUtil.valueOf(ticket.getId())))
+                .defaultIfEmpty(Optional.empty())
+                .onErrorResume(e -> {
+                    logger.error("Could not resolve ticket for incoming message {}", iMessage.getId(), e);
+                    return Mono.just(Optional.empty());
+                });
     }
 
     private Mono<WhatsappMessage> updateExistingMessage(

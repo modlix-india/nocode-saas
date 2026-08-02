@@ -17,6 +17,7 @@ import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
+import com.fincity.saas.entity.processor.dto.product.ProductMessageConfig;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketExRule;
@@ -65,8 +66,9 @@ public enum EntitySeries implements EnumType {
             "PRODUCT_TICKET_EX_RULE", "Product Ticket Expiration Rule", 34, "ProductTicketExRule"),
     CONVERSION_ACTION_MAPPING(
             "CONVERSION_ACTION_MAPPING", "Conversion Action Mapping", 35, "ConversionActionMapping"),
-    CONVERSION_EVENT(
-            "CONVERSION_EVENT", "Conversion Event", 36, "ConversionEvent");
+    CONVERSION_EVENT("CONVERSION_EVENT", "Conversion Event", 36, "ConversionEvent"),
+    PRODUCT_MESSAGE_CONFIGS(
+            "PRODUCT_MESSAGE_CONFIGS", "Product Message Configs", 37, "ProductMessageConfig");
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -182,6 +184,9 @@ public enum EntitySeries implements EnumType {
             TABLE_MAP.put(
                     CONVERSION_EVENT,
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_CONVERSION_EVENTS);
+            TABLE_MAP.put(
+                    PRODUCT_MESSAGE_CONFIGS,
+                    EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS);
         }
 
         static Table<?> get(EntitySeries series) {
@@ -218,6 +223,7 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(PRODUCT_TICKET_EX_RULE, ProductTicketExRule.class);
             CLASS_MAP.put(CONVERSION_ACTION_MAPPING, ConversionActionMapping.class);
             CLASS_MAP.put(CONVERSION_EVENT, ConversionEvent.class);
+            CLASS_MAP.put(PRODUCT_MESSAGE_CONFIGS, ProductMessageConfig.class);
         }
 
         static Class<?> get(EntitySeries series) {

@@ -66,6 +66,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.message.TicketMessageService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
@@ -109,6 +110,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final DiagnosticsService diagnosticsService;
     private final ConversionActionMappingService conversionActionMappingService;
     private final ConversionEventService conversionEventService;
+    private final TicketMessageService ticketMessageService;
 
     private ProductTicketExRuleService productTicketExRuleService;
 
@@ -139,6 +141,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             DiagnosticsService diagnosticsService,
             @Lazy ConversionActionMappingService conversionActionMappingService,
             @Lazy ConversionEventService conversionEventService,
+            TicketMessageService ticketMessageService,
             Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
@@ -156,6 +159,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.diagnosticsService = diagnosticsService;
         this.conversionActionMappingService = conversionActionMappingService;
         this.conversionEventService = conversionEventService;
+        this.ticketMessageService = ticketMessageService;
         this.gson = gson;
     }
 
@@ -542,8 +546,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, pTicket) -> this.create(access, pTicket),
                         (access, productIdentity, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
-                        (access, productIdentity, pTicket, created, noteCreated) ->
-                                this.activityService.acCreate(created).thenReturn(created))
+                        (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
+                                .acCreate(created)
+                                .then(this.ticketMessageService.sendOnTicketCreate(access, created))
+                                .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 
@@ -1329,6 +1335,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             PhoneNumber ticketPhone,
             Email ticketMail) {
         return this.dao.readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
+    }
+
+    /**
+     * Resolves the deal an inbound message on a product's WhatsApp number belongs to. Called by the
+     * message service, which knows the business number and the customer's number but nothing about
+     * deals. Empty when no ticket matches, so the message is still stored and shows as unassigned.
+     */
+    public Mono<Ticket> resolveTicketForIncomingMessage(
+            String appCode, String clientCode, ULong productId, PhoneNumber customerPhone) {
+
+        return this.dao
+                .readLatestActiveByProductAndPhone(
+                        ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), productId, customerPhone)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.resolveTicketForIncomingMessage"));
     }
 
     private Mono<List<Ticket>> getTickets(

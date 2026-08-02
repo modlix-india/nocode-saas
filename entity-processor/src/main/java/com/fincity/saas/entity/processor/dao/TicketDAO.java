@@ -169,6 +169,44 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .collectList());
     }
 
+    /**
+     * Resolves which deal an inbound WhatsApp message belongs to: the most recently updated active
+     * ticket on that product for that customer number.
+     *
+     * <p>Deliberately a plain phone match rather than reusing {@code readTicketByNumberAndEmail},
+     * whose matching is driven by the per-app duplicate-detection rule. That rule can require an
+     * email, which an inbound message never carries, so it is the wrong instrument here.
+     *
+     * <p>Both sides store E164 with the leading {@code +} ({@code PhoneUtil.parse} on this side,
+     * {@code PhoneNumber.ofWhatsapp} on the message side), so this compares like with like.
+     */
+    public Mono<Ticket> readLatestActiveByProductAndPhone(
+            ProcessorAccess access, ULong productId, PhoneNumber phoneNumber) {
+
+        if (phoneNumber == null || phoneNumber.getNumber() == null || phoneNumber.getNumber().isBlank())
+            return Mono.empty();
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+        conditions.add(FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber.getNumber()));
+
+        // A business number is not always mapped to a product (in production today none are), so
+        // narrow by product when we can and fall back to a phone-only match when we cannot. The
+        // phone-only case can pick the wrong deal if one customer holds deals on several products,
+        // which is the same ambiguity the UI's phone matching has always had.
+        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+
+        AbstractCondition condition = super.addAppCodeAndClientCode(ComplexCondition.and(conditions), access);
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.filter(condition),
+                jCondition -> Mono.from(this.dslContext
+                                .selectFrom(this.table)
+                                .where(jCondition.and(super.isActiveTrue()))
+                                .orderBy(ENTITY_PROCESSOR_TICKETS.UPDATED_AT.desc())
+                                .limit(1))
+                        .map(e -> e.into(this.pojoClass)));
+    }
+
     private Mono<AbstractCondition> getOwnerIdentifierConditions(
             AbstractCondition condition,
             ProcessorAccess access,

@@ -22,6 +22,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketBulkReassignRequest;
@@ -32,6 +33,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
+import org.jooq.types.ULong;
 
 import reactor.core.publisher.Mono;
 
@@ -94,6 +96,23 @@ public class TicketController
         return this.service
                 .readByIdentity(ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)
                 .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Reverse lookup for the message service: which deal does an inbound WhatsApp message on this
+     * product's number belong to? Returns 204 when nothing matches, so an unknown number messaging
+     * in is still recorded and shown as unassigned.
+     */
+    @GetMapping("/internal/resolve")
+    public Mono<ResponseEntity<Ticket>> resolveTicketForIncomingMessage(
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode,
+            @RequestParam(value = "productId", required = false) ULong productId,
+            @RequestParam("phoneNumber") String phoneNumber) {
+        return this.service
+                .resolveTicketForIncomingMessage(appCode, clientCode, productId, PhoneNumber.of(phoneNumber))
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.noContent().build());
     }
 
     @PostMapping("/users/query")

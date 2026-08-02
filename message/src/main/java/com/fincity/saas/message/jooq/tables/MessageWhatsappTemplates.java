@@ -10,6 +10,7 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.Paramet
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
+import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
@@ -26,6 +27,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
@@ -294,6 +296,11 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_TEMPLATES_IDX0_WHATSAPP_TEMPLATES_AC_CC);
     }
 
     @Override

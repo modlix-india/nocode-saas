@@ -69,6 +69,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String TASK_TYPE_ENTITY_ID_MISSING = "task_type_entity_id_missing";
     public static final String PRODUCT_NOT_ACTIVE = "product_not_active";
     public static final String TICKET_EXPIRED = "ticket_expired";
+    public static final String DUPLICATE_PRODUCT_MESSAGE_CONFIG = "duplicate_product_message_config";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq.tables;
 
 
+import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls.MessageExotelCallsPath;
@@ -18,6 +19,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -207,6 +209,11 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.MESSAGE_CALLS_IDX0_CALLS_AC_CC);
     }
 
     @Override
