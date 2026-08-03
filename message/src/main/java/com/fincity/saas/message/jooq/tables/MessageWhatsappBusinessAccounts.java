@@ -106,6 +106,14 @@ public class MessageWhatsappBusinessAccounts extends TableImpl<MessageWhatsappBu
     public final TableField<MessageWhatsappBusinessAccountsRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_business_accounts.CONNECTION_NAME</code>.
+     * Core connection this business account was synced from. Resolves the Meta
+     * app secret used to verify inbound webhook signatures.
+     */
+    public final TableField<MessageWhatsappBusinessAccountsRecord, String> CONNECTION_NAME = createField(DSL.name("CONNECTION_NAME"), SQLDataType.VARCHAR(255), this, "Core connection this business account was synced from. Resolves the Meta app secret used to verify inbound webhook signatures.");
+
+    /**
      * The column <code>message.message_whatsapp_business_accounts.NAME</code>.
      * WhatsApp Business Account Name
      */

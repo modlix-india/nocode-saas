@@ -107,6 +107,13 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     public final TableField<MessageWhatsappPhoneNumbersRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Entity Processor Product Id");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.OWNER_SERVICE</code>. Eureka
+     * service id owning conversations on this number, e.g. entity-processor.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> OWNER_SERVICE = createField(DSL.name("OWNER_SERVICE"), SQLDataType.VARCHAR(64), this, "Eureka service id owning conversations on this number, e.g. entity-processor.");
+
+    /**
      * The column <code>message.message_whatsapp_phone_numbers.CODE</code>.
      * Unique Code to identify this row.
      */

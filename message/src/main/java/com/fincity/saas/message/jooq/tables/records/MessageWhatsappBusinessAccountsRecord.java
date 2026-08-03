@@ -133,11 +133,32 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
     }
 
     /**
+     * Setter for
+     * <code>message.message_whatsapp_business_accounts.CONNECTION_NAME</code>.
+     * Core connection this business account was synced from. Resolves the Meta
+     * app secret used to verify inbound webhook signatures.
+     */
+    public MessageWhatsappBusinessAccountsRecord setConnectionName(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_business_accounts.CONNECTION_NAME</code>.
+     * Core connection this business account was synced from. Resolves the Meta
+     * app secret used to verify inbound webhook signatures.
+     */
+    public String getConnectionName() {
+        return (String) get(6);
+    }
+
+    /**
      * Setter for <code>message.message_whatsapp_business_accounts.NAME</code>.
      * WhatsApp Business Account Name
      */
     public MessageWhatsappBusinessAccountsRecord setName(String value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -146,7 +167,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Name
      */
     public String getName() {
-        return (String) get(6);
+        return (String) get(7);
     }
 
     /**
@@ -155,7 +176,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Currency
      */
     public MessageWhatsappBusinessAccountsRecord setCurrency(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -165,7 +186,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Currency
      */
     public String getCurrency() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -174,7 +195,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Timezone ID
      */
     public MessageWhatsappBusinessAccountsRecord setTimezoneId(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -184,7 +205,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Timezone ID
      */
     public String getTimezoneId() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -193,7 +214,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Message Template Namespace
      */
     public MessageWhatsappBusinessAccountsRecord setMessageTemplateNamespace(String value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -203,7 +224,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Message Template Namespace
      */
     public String getMessageTemplateNamespace() {
-        return (String) get(9);
+        return (String) get(10);
     }
 
     /**
@@ -212,7 +233,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Subscribed App
      */
     public MessageWhatsappBusinessAccountsRecord setSubscribedApp(SubscribedApp value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -222,7 +243,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * WhatsApp Business Account Subscribed App
      */
     public SubscribedApp getSubscribedApp() {
-        return (SubscribedApp) get(10);
+        return (SubscribedApp) get(11);
     }
 
     /**
@@ -231,7 +252,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * to check if this message is active or not.
      */
     public MessageWhatsappBusinessAccountsRecord setIsActive(Boolean value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -241,7 +262,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * to check if this message is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(11);
+        return (Boolean) get(12);
     }
 
     /**
@@ -250,7 +271,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * the user who created this row.
      */
     public MessageWhatsappBusinessAccountsRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -260,7 +281,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(13);
     }
 
     /**
@@ -269,7 +290,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * when this record was created.
      */
     public MessageWhatsappBusinessAccountsRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -279,7 +300,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * when this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -288,7 +309,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * the user who updated this row.
      */
     public MessageWhatsappBusinessAccountsRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -298,7 +319,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(15);
     }
 
     /**
@@ -307,7 +328,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * when this record was last updated.
      */
     public MessageWhatsappBusinessAccountsRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -317,7 +338,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
      * when this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -343,7 +364,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
     /**
      * Create a detached, initialised MessageWhatsappBusinessAccountsRecord
      */
-    public MessageWhatsappBusinessAccountsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String name, String currency, String timezoneId, String messageTemplateNamespace, SubscribedApp subscribedApp, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappBusinessAccountsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String connectionName, String name, String currency, String timezoneId, String messageTemplateNamespace, SubscribedApp subscribedApp, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS);
 
         setId(id);
@@ -352,6 +373,7 @@ public class MessageWhatsappBusinessAccountsRecord extends UpdatableRecordImpl<M
         setUserId(userId);
         setCode(code);
         setWhatsappBusinessAccountId(whatsappBusinessAccountId);
+        setConnectionName(connectionName);
         setName(name);
         setCurrency(currency);
         setTimezoneId(timezoneId);

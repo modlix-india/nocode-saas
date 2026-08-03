@@ -271,6 +271,15 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.LAST_MESSAGE_AT</code>.
+     * Time of the most recent WhatsApp message on this deal, inbound or
+     * outbound. Orders the conversation list. Null until the deal has any
+     * message.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> LAST_MESSAGE_AT = createField(DSL.name("LAST_MESSAGE_AT"), SQLDataType.LOCALDATETIME(0), this, "Time of the most recent WhatsApp message on this deal, inbound or outbound. Orders the conversation list. Null until the deal has any message.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
@@ -369,7 +378,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT);
     }
 
     @Override

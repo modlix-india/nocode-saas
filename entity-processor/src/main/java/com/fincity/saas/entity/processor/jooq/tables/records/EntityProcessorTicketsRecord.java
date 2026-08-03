@@ -563,11 +563,34 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_tickets.LAST_MESSAGE_AT</code>.
+     * Time of the most recent WhatsApp message on this deal, inbound or
+     * outbound. Orders the conversation list. Null until the deal has any
+     * message.
+     */
+    public EntityProcessorTicketsRecord setLastMessageAt(LocalDateTime value) {
+        set(29, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.LAST_MESSAGE_AT</code>.
+     * Time of the most recent WhatsApp message on this deal, inbound or
+     * outbound. Orders the conversation list. Null until the deal has any
+     * message.
+     */
+    public LocalDateTime getLastMessageAt() {
+        return (LocalDateTime) get(29);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(29, value);
+        set(30, value);
         return this;
     }
 
@@ -577,7 +600,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(29);
+        return (ULong) get(30);
     }
 
     /**
@@ -586,7 +609,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(30, value);
+        set(31, value);
         return this;
     }
 
@@ -596,7 +619,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(30);
+        return (LocalDateTime) get(31);
     }
 
     /**
@@ -605,7 +628,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(31, value);
+        set(32, value);
         return this;
     }
 
@@ -615,7 +638,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(31);
+        return (ULong) get(32);
     }
 
     /**
@@ -624,7 +647,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(32, value);
+        set(33, value);
         return this;
     }
 
@@ -634,7 +657,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(32);
+        return (LocalDateTime) get(33);
     }
 
     // -------------------------------------------------------------------------
@@ -660,7 +683,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -692,6 +715,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setMetaData(metaData);
         setAdData(adData);
         setFormData(formData);
+        setLastMessageAt(lastMessageAt);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

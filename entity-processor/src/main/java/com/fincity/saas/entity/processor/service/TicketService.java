@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
@@ -51,6 +55,7 @@ import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
 import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
@@ -90,6 +95,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String DIAG_LOG_FAILURE = "Failed to log diagnostics for ticket {}: {}";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
+    private static final String SOURCE_WHATSAPP = "WhatsApp";
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -1338,17 +1344,123 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     /**
-     * Resolves the deal an inbound message on a product's WhatsApp number belongs to. Called by the
-     * message service, which knows the business number and the customer's number but nothing about
-     * deals. Empty when no ticket matches, so the message is still stored and shows as unassigned.
+     * The WhatsApp inbox. See {@link
+     * com.fincity.saas.entity.processor.dao.TicketDAO#readConversations}.
      */
-    public Mono<Ticket> resolveTicketForIncomingMessage(
-            String appCode, String clientCode, ULong productId, PhoneNumber customerPhone) {
+    public Mono<Page<WhatsappConversationResponse>> readConversations(
+            ProcessorAccess access, ULong productId, String search, Pageable pageable) {
+        return this.dao
+                .readConversations(access, productId, search, pageable)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readConversations"));
+    }
+
+    /**
+     * Records that a WhatsApp message was exchanged with a customer, and answers which deal it
+     * belongs to.
+     *
+     * <p>Called by the message service on both directions. It knows the business number and the
+     * customer's number but nothing about deals, so everything below the phone number happens here.
+     *
+     * <p>Three things happen, in order:
+     *
+     * <ol>
+     *   <li><b>Match.</b> Every active deal on the customer's number, within the product scope. A
+     *       null {@code productId} means the business number is the tenant default and serves every
+     *       product, so the match is on the number alone.
+     *   <li><b>Create, when nothing matched and {@code createIfMissing}.</b> A stranger messaging
+     *       the advertised number is a lead, and with the inbox gated on deal access a message with
+     *       no deal would be visible to nobody. See {@link #createFromInboundWhatsapp}.
+     *   <li><b>Touch.</b> Every matched deal gets {@code LAST_MESSAGE_AT}, not just the newest, so a
+     *       customer holding several deals sees them all rise together. The thread is shared across
+     *       them, so anything else would leave stale rows below a live one.
+     * </ol>
+     *
+     * <p>Returns the most recently updated match, which the caller stamps onto the message as its
+     * {@code TICKET_ID}. Empty only when nothing matched and creation was not asked for; the message
+     * is still stored, it simply has no deal.
+     */
+    public Mono<Ticket> registerWhatsappMessage(
+            String appCode,
+            String clientCode,
+            ULong productId,
+            PhoneNumber customerPhone,
+            LocalDateTime occurredAt,
+            boolean createIfMissing) {
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+        LocalDateTime messageAt = occurredAt != null ? occurredAt : LocalDateTime.now(ZoneOffset.UTC);
 
         return this.dao
-                .readLatestActiveByProductAndPhone(
-                        ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), productId, customerPhone)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.resolveTicketForIncomingMessage"));
+                .readActiveByProductAndPhone(access, productId, customerPhone)
+                .flatMap(matched -> {
+                    if (!matched.isEmpty()) return Mono.just(matched);
+                    if (!createIfMissing) return Mono.just(List.<Ticket>of());
+                    return this.createFromInboundWhatsapp(access, productId, customerPhone)
+                            .map(List::of)
+                            .defaultIfEmpty(List.of());
+                })
+                .flatMap(tickets -> {
+                    if (tickets.isEmpty()) return Mono.empty();
+                    return this.dao
+                            .touchLastMessageAt(
+                                    tickets.stream().map(Ticket::getId).toList(), messageAt)
+                            .thenReturn(tickets.getFirst());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.registerWhatsappMessage"));
+    }
+
+    /**
+     * Creates a deal for a customer who messaged in without one.
+     *
+     * <p>The business number carries the routing information. Mapped to a product, the deal is
+     * created there. Unmapped (the tenant default number), there is nothing to disambiguate on, so
+     * it lands on the oldest active product and a sales agent moves it.
+     *
+     * <p>Only the phone number is known, so it stands in as the deal name until someone edits it.
+     * Assignment, stage and owner are left to {@code checkEntity}, which runs the same distribution
+     * rules as any other intake. Source is {@code WhatsApp} so these are separable from form leads.
+     *
+     * <p>Note this is reachable by anyone who knows the business number. Rate limiting is not built
+     * yet, and the deliberate trade is that dropping the message instead would lose the highest
+     * intent lead the system can receive.
+     */
+    private Mono<Ticket> createFromInboundWhatsapp(
+            ProcessorAccess access, ULong productId, PhoneNumber customerPhone) {
+
+        if (customerPhone == null || StringUtil.safeIsBlank(customerPhone.getNumber())) return Mono.empty();
+
+        Mono<Product> product = productId != null
+                ? this.productService.readById(access, productId)
+                : this.productService.readFirstActive(access);
+
+        return product.flatMap(p -> {
+                    if (!p.isActive()) {
+                        logger.warn(
+                                "Inbound WhatsApp from {} resolved to inactive product {}, no deal created.",
+                                customerPhone.getNumber(),
+                                p.getId());
+                        return Mono.<Ticket>empty();
+                    }
+
+                    Ticket ticket = new Ticket()
+                            .setDialCode(customerPhone.getCountryCode())
+                            .setPhoneNumber(customerPhone.getNumber())
+                            .setSource(SOURCE_WHATSAPP)
+                            .setProductId(p.getId());
+                    ticket.setName(customerPhone.getNumber());
+
+                    return this.create(access, ticket);
+                })
+                .switchIfEmpty(Mono.fromRunnable(() -> logger.warn(
+                        "Inbound WhatsApp from {} has no deal and no product to create one on.",
+                        customerPhone.getNumber())))
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Could not create a deal for inbound WhatsApp from {}: {}",
+                            customerPhone.getNumber(),
+                            e.getMessage());
+                    return Mono.empty();
+                });
     }
 
     private Mono<List<Ticket>> getTickets(

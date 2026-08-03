@@ -1,7 +1,9 @@
 package com.fincity.saas.entity.processor.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -99,18 +101,27 @@ public class TicketController
     }
 
     /**
-     * Reverse lookup for the message service: which deal does an inbound WhatsApp message on this
-     * product's number belong to? Returns 204 when nothing matches, so an unknown number messaging
-     * in is still recorded and shown as unassigned.
+     * Called by the message service whenever a WhatsApp message is exchanged, in either direction.
+     * Answers which deal the message belongs to, and moves every deal on that customer's number to
+     * the top of the conversation list.
+     *
+     * <p>A POST rather than a lookup because it writes: it bumps {@code LAST_MESSAGE_AT}, and with
+     * {@code createIfMissing} it creates a deal for a customer who has none. Returns 204 when
+     * nothing matched and creation was not asked for, in which case the message is still stored but
+     * belongs to no deal.
      */
-    @GetMapping("/internal/resolve")
-    public Mono<ResponseEntity<Ticket>> resolveTicketForIncomingMessage(
+    @PostMapping("/internal/whatsapp/register")
+    public Mono<ResponseEntity<Ticket>> registerWhatsappMessage(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
             @RequestParam(value = "productId", required = false) ULong productId,
-            @RequestParam("phoneNumber") String phoneNumber) {
+            @RequestParam("phoneNumber") String phoneNumber,
+            @RequestParam(value = "occurredAt", required = false)
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime occurredAt,
+            @RequestParam(value = "createIfMissing", defaultValue = "false") boolean createIfMissing) {
         return this.service
-                .resolveTicketForIncomingMessage(appCode, clientCode, productId, PhoneNumber.of(phoneNumber))
+                .registerWhatsappMessage(
+                        appCode, clientCode, productId, PhoneNumber.of(phoneNumber), occurredAt, createIfMissing)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.noContent().build());
     }

@@ -54,4 +54,24 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
                         .map(rec -> rec.into(Product.class))
                         .collectList());
     }
+
+    /**
+     * The tenant's oldest active product.
+     *
+     * <p>Used when an inbound WhatsApp message arrives from a number with no deal and the business
+     * number it landed on is not mapped to a product. Something has to own the deal that gets
+     * created, and {@code Product} carries no ordering column, so lowest id (oldest created) is the
+     * one stable choice available. A sales agent moves the deal afterwards.
+     */
+    public Mono<Product> readFirstActive(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(null, access),
+                super::filter,
+                (condition, jCondition) -> Mono.from(this.dslContext
+                                .selectFrom(this.table)
+                                .where(jCondition.and(super.isActiveTrue()))
+                                .orderBy(ENTITY_PROCESSOR_PRODUCTS.ID.asc())
+                                .limit(1))
+                        .map(rec -> rec.into(Product.class)));
+    }
 }

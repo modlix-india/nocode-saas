@@ -40,14 +40,22 @@ public class WhatsappWebhookController {
                         Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()));
     }
 
+    /**
+     * @param signature Meta's HMAC over the raw body. Without it nothing distinguishes a real
+     *     webhook from a forged one, since {@code appCode} and {@code clientCode} are just headers
+     *     the caller sets.
+     * @param payload taken as a raw String on purpose. The signature is computed over the exact
+     *     bytes received, so binding to a parsed type and re-serialising would break every check.
+     */
     @PostMapping
     public Mono<ResponseEntity<MessageResponse>> receiveWebhook(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
+            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
             @RequestBody String payload) {
 
         return FlatMapUtil.flatMapMono(() -> IWebHook.constructEvent(payload), event -> this.whatsappMessageService
-                .processWebhookEvent(appCode, clientCode, event)
+                .processWebhookEvent(appCode, clientCode, event, signature, payload)
                 .map(response -> response.getStatus().getHttpStatus().is2xxSuccessful()
                         ? ResponseEntity.ok(response)
                         : ResponseEntity.status(response.getStatus().getHttpStatus())

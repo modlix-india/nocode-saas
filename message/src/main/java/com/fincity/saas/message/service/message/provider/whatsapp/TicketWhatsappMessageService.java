@@ -26,9 +26,13 @@ import com.fincity.saas.message.service.message.MessageConnectionService;
 import com.fincity.saas.message.util.PhoneUtil;
 import com.fincity.saas.message.util.WhatsappTemplateAssembler;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.function.BiFunction;
 import lombok.Setter;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -36,6 +40,8 @@ import reactor.util.context.Context;
 
 @Service
 public class TicketWhatsappMessageService implements IMessageAccessService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TicketWhatsappMessageService.class);
 
     private final WhatsappMessageService whatsappMessageService;
     private final WhatsappPhoneNumberService whatsappPhoneNumberService;
@@ -190,17 +196,54 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
                                     .setTo(ticketPhone.getNumber())
                                     .buildTemplateMessage(templateMessage);
 
-                            return this.whatsappMessageService.sendMessageInternal(
-                                    access,
-                                    connection,
-                                    whatsappPhoneNumber.getIdentity(),
-                                    WhatsappMessage.ofOutbound(
-                                                    waMessage,
-                                                    PhoneUtil.parse(
-                                                            access.getUser().getPhoneNumber()),
-                                                    null)
-                                            .setTicketId(ULongUtil.valueOf(ticket.getId())));
+                            return this.whatsappMessageService
+                                    .sendMessageInternal(
+                                            access,
+                                            connection,
+                                            whatsappPhoneNumber.getIdentity(),
+                                            WhatsappMessage.ofOutbound(
+                                                            waMessage,
+                                                            PhoneUtil.parse(access.getUser()
+                                                                    .getPhoneNumber()),
+                                                            null)
+                                                    .setTicketId(ULongUtil.valueOf(ticket.getId())))
+                                    .flatMap(sent ->
+                                            this.registerOutbound(access, ticket, whatsappPhoneNumber, sent));
                         }));
+    }
+
+    /**
+     * Moves the conversation to the top of the inbox after we send.
+     *
+     * <p>Without this the list only reorders on inbound, so a thread the agent is driving sinks
+     * below ones where the customer happens to be talking. entity-processor bumps every deal on the
+     * customer's number, not just this one, since they share the thread.
+     *
+     * <p>Never fails the send. The message is already with Meta by this point, so a failure here is
+     * a stale sort order, not a lost message.
+     */
+    private Mono<Message> registerOutbound(
+            MessageAccess access, Ticket ticket, WhatsappPhoneNumber whatsappPhoneNumber, Message sent) {
+
+        return this.entityProcessorService
+                .registerWhatsappMessage(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        whatsappPhoneNumber.getProductId() != null
+                                ? whatsappPhoneNumber.getProductId().toBigInteger()
+                                : null,
+                        this.createTicketPhoneNumber(ticket).getNumber(),
+                        LocalDateTime.now(ZoneOffset.UTC).toString(),
+                        // The deal exists, we just sent from it.
+                        Boolean.FALSE)
+                .thenReturn(sent)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Sent WhatsApp message on deal {} but could not update its conversation order",
+                            ticket.getId(),
+                            e);
+                    return Mono.just(sent);
+                });
     }
 
     public Mono<Message> sendMessageByTicketId(TicketWhatsappMessageRequest request) {
@@ -227,16 +270,19 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
                             var ticketPhone = this.createTicketPhoneNumber(ticket);
                             var message = request.getMessage();
                             message.setTo(ticketPhone.getNumber());
-                            return this.whatsappMessageService.sendMessageInternal(
-                                    access,
-                                    connection,
-                                    whatsappPhoneNumber.getIdentity(),
-                                    WhatsappMessage.ofOutbound(
-                                                    message,
-                                                    PhoneUtil.parse(
-                                                            access.getUser().getPhoneNumber()),
-                                                    request.getFileDetail())
-                                            .setTicketId(ULongUtil.valueOf(ticket.getId())));
+                            return this.whatsappMessageService
+                                    .sendMessageInternal(
+                                            access,
+                                            connection,
+                                            whatsappPhoneNumber.getIdentity(),
+                                            WhatsappMessage.ofOutbound(
+                                                            message,
+                                                            PhoneUtil.parse(access.getUser()
+                                                                    .getPhoneNumber()),
+                                                            request.getFileDetail())
+                                                    .setTicketId(ULongUtil.valueOf(ticket.getId())))
+                                    .flatMap(sent ->
+                                            this.registerOutbound(access, ticket, whatsappPhoneNumber, sent));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappMessageService.sendMessageByTicketId"));
     }

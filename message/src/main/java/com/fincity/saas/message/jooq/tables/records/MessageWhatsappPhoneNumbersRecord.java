@@ -120,11 +120,30 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
     }
 
     /**
+     * Setter for
+     * <code>message.message_whatsapp_phone_numbers.OWNER_SERVICE</code>. Eureka
+     * service id owning conversations on this number, e.g. entity-processor.
+     */
+    public MessageWhatsappPhoneNumbersRecord setOwnerService(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_phone_numbers.OWNER_SERVICE</code>. Eureka
+     * service id owning conversations on this number, e.g. entity-processor.
+     */
+    public String getOwnerService() {
+        return (String) get(5);
+    }
+
+    /**
      * Setter for <code>message.message_whatsapp_phone_numbers.CODE</code>.
      * Unique Code to identify this row.
      */
     public MessageWhatsappPhoneNumbersRecord setCode(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -133,7 +152,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -142,7 +161,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * WhatsApp Business Account ID.
      */
     public MessageWhatsappPhoneNumbersRecord setWhatsappBusinessAccountId(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -152,7 +171,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * WhatsApp Business Account ID.
      */
     public ULong getWhatsappBusinessAccountId() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -161,7 +180,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Display phone number for WhatsApp Business.
      */
     public MessageWhatsappPhoneNumbersRecord setDisplayPhoneNumber(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -171,7 +190,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Display phone number for WhatsApp Business.
      */
     public String getDisplayPhoneNumber() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -180,7 +199,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Quality rating of the phone number.
      */
     public MessageWhatsappPhoneNumbersRecord setQualityRating(QualityRatingType value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -190,7 +209,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Quality rating of the phone number.
      */
     public QualityRatingType getQualityRating() {
-        return (QualityRatingType) get(8);
+        return (QualityRatingType) get(9);
     }
 
     /**
@@ -199,7 +218,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Quality Score of Whatsapp Phone Number
      */
     public MessageWhatsappPhoneNumbersRecord setQualityScore(QualityScore value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -209,7 +228,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Quality Score of Whatsapp Phone Number
      */
     public QualityScore getQualityScore() {
-        return (QualityScore) get(9);
+        return (QualityScore) get(10);
     }
 
     /**
@@ -218,7 +237,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Verified name associated with the phone number.
      */
     public MessageWhatsappPhoneNumbersRecord setVerifiedName(String value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -228,7 +247,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Verified name associated with the phone number.
      */
     public String getVerifiedName() {
-        return (String) get(10);
+        return (String) get(11);
     }
 
     /**
@@ -237,7 +256,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * WhatsApp phone number ID from Meta.
      */
     public MessageWhatsappPhoneNumbersRecord setPhoneNumberId(String value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -247,7 +266,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * WhatsApp phone number ID from Meta.
      */
     public String getPhoneNumberId() {
-        return (String) get(11);
+        return (String) get(12);
     }
 
     /**
@@ -256,7 +275,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Status of code verification.
      */
     public MessageWhatsappPhoneNumbersRecord setCodeVerificationStatus(CodeVerificationStatus value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -266,7 +285,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Status of code verification.
      */
     public CodeVerificationStatus getCodeVerificationStatus() {
-        return (CodeVerificationStatus) get(12);
+        return (CodeVerificationStatus) get(13);
     }
 
     /**
@@ -275,7 +294,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * of the verified name.
      */
     public MessageWhatsappPhoneNumbersRecord setNameStatus(NameStatusType value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -285,7 +304,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * of the verified name.
      */
     public NameStatusType getNameStatus() {
-        return (NameStatusType) get(13);
+        return (NameStatusType) get(14);
     }
 
     /**
@@ -294,7 +313,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Platform type for WhatsApp Business.
      */
     public MessageWhatsappPhoneNumbersRecord setPlatformType(PlatformType value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -304,7 +323,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Platform type for WhatsApp Business.
      */
     public PlatformType getPlatformType() {
-        return (PlatformType) get(14);
+        return (PlatformType) get(15);
     }
 
     /**
@@ -313,7 +332,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Throughput of Whatsapp Phone Number
      */
     public MessageWhatsappPhoneNumbersRecord setThroughput(Throughput value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -323,7 +342,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Throughput of Whatsapp Phone Number
      */
     public Throughput getThroughput() {
-        return (Throughput) get(15);
+        return (Throughput) get(16);
     }
 
     /**
@@ -331,7 +350,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Status of the Whatsapp Phone Number
      */
     public MessageWhatsappPhoneNumbersRecord setStatus(Status value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -340,7 +359,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Status of the Whatsapp Phone Number
      */
     public Status getStatus() {
-        return (Status) get(16);
+        return (Status) get(17);
     }
 
     /**
@@ -349,7 +368,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Messaging Limit Tier
      */
     public MessageWhatsappPhoneNumbersRecord setMessagingLimitTier(MessagingLimitTier value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -359,7 +378,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Messaging Limit Tier
      */
     public MessagingLimitTier getMessagingLimitTier() {
-        return (MessagingLimitTier) get(17);
+        return (MessagingLimitTier) get(18);
     }
 
     /**
@@ -368,7 +387,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Number webhook config
      */
     public MessageWhatsappPhoneNumbersRecord setWebhookConfig(WebhookConfig value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -378,7 +397,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Number webhook config
      */
     public WebhookConfig getWebhookConfig() {
-        return (WebhookConfig) get(18);
+        return (WebhookConfig) get(19);
     }
 
     /**
@@ -387,7 +406,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * indicate if this is the default phone number.
      */
     public MessageWhatsappPhoneNumbersRecord setIsDefault(Boolean value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -397,7 +416,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * indicate if this is the default phone number.
      */
     public Boolean getIsDefault() {
-        return (Boolean) get(19);
+        return (Boolean) get(20);
     }
 
     /**
@@ -405,7 +424,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Flag to check if this phone number is active or not.
      */
     public MessageWhatsappPhoneNumbersRecord setIsActive(Boolean value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -414,7 +433,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Flag to check if this phone number is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(20);
+        return (Boolean) get(21);
     }
 
     /**
@@ -423,7 +442,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * user who created this row.
      */
     public MessageWhatsappPhoneNumbersRecord setCreatedBy(ULong value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -433,7 +452,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(22);
     }
 
     /**
@@ -442,7 +461,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * this record was created.
      */
     public MessageWhatsappPhoneNumbersRecord setCreatedAt(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -452,7 +471,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     /**
@@ -461,7 +480,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * user who updated this row.
      */
     public MessageWhatsappPhoneNumbersRecord setUpdatedBy(ULong value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -471,7 +490,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(23);
+        return (ULong) get(24);
     }
 
     /**
@@ -480,7 +499,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * this record was last updated.
      */
     public MessageWhatsappPhoneNumbersRecord setUpdatedAt(LocalDateTime value) {
-        set(24, value);
+        set(25, value);
         return this;
     }
 
@@ -490,7 +509,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(24);
+        return (LocalDateTime) get(25);
     }
 
     // -------------------------------------------------------------------------
@@ -516,7 +535,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
     /**
      * Create a detached, initialised MessageWhatsappPhoneNumbersRecord
      */
-    public MessageWhatsappPhoneNumbersRecord(ULong id, String appCode, String clientCode, ULong userId, ULong productId, String code, ULong whatsappBusinessAccountId, String displayPhoneNumber, QualityRatingType qualityRating, QualityScore qualityScore, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, Throughput throughput, Status status, MessagingLimitTier messagingLimitTier, WebhookConfig webhookConfig, Boolean isDefault, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappPhoneNumbersRecord(ULong id, String appCode, String clientCode, ULong userId, ULong productId, String ownerService, String code, ULong whatsappBusinessAccountId, String displayPhoneNumber, QualityRatingType qualityRating, QualityScore qualityScore, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, Throughput throughput, Status status, MessagingLimitTier messagingLimitTier, WebhookConfig webhookConfig, Boolean isDefault, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS);
 
         setId(id);
@@ -524,6 +543,7 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
         setClientCode(clientCode);
         setUserId(userId);
         setProductId(productId);
+        setOwnerService(ownerService);
         setCode(code);
         setWhatsappBusinessAccountId(whatsappBusinessAccountId);
         setDisplayPhoneNumber(displayPhoneNumber);

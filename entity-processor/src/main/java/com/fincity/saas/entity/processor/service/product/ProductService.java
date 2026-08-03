@@ -221,6 +221,11 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         return this.dao.getAllProducts(access, productIds);
     }
 
+    /** See {@link com.fincity.saas.entity.processor.dao.product.ProductDAO#readFirstActive}. */
+    public Mono<Product> readFirstActive(ProcessorAccess access) {
+        return this.dao.readFirstActive(access);
+    }
+
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
         return Mono.just(new ListFunctionRepository(this.functions));

@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -29,13 +30,23 @@ public interface IFeignEntityProcessorService {
             @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("id") BigInteger id);
 
     /**
-     * Which deal an inbound message belongs to, given the product whose WhatsApp number received it
-     * and the customer's number. Empty when nothing matches; the message is still stored, unassigned.
+     * Tells entity-processor a WhatsApp message was exchanged, and gets back the deal it belongs to.
+     *
+     * <p>Call on both directions. Besides answering the question it bumps the conversation ordering
+     * on every deal holding that customer's number, which is why it is a POST.
+     *
+     * @param productId the product the receiving business number is mapped to, or null when that
+     *     number is the tenant default and therefore serves every product
+     * @param createIfMissing create a deal when the customer has none. True for inbound, since an
+     *     unknown number messaging in is a lead and would otherwise be visible to nobody. False for
+     *     outbound, where the deal is already known.
      */
-    @GetMapping(TICKET_PATH + "/resolve")
-    Mono<Ticket> resolveTicketForIncomingMessage(
+    @PostMapping(TICKET_PATH + "/whatsapp/register")
+    Mono<Ticket> registerWhatsappMessage(
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @RequestParam BigInteger productId,
-            @RequestParam String phoneNumber);
+            @RequestParam String phoneNumber,
+            @RequestParam String occurredAt,
+            @RequestParam boolean createIfMissing);
 }

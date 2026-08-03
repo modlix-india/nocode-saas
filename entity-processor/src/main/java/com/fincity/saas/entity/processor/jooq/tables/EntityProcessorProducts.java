@@ -357,7 +357,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         return _entityProcessorProductMessageConfigs;
     }
 
-
     private transient EntityProcessorProductCommsPath _entityProcessorProductComms;
 
     /**

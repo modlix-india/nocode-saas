@@ -1,5 +1,7 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.message.controller.base.BaseUpdatableController;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
@@ -14,8 +16,17 @@ import com.fincity.saas.message.model.request.message.provider.whatsapp.Whatsapp
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappCswService;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
+import java.util.Map;
+import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -52,5 +63,68 @@ public class WhatsappMessageController
     @PostMapping("/media/download")
     public Mono<ResponseEntity<WhatsappMessage>> downloadMediaFile(@RequestBody WhatsappMediaRequest request) {
         return this.service.downloadMediaFile(request).map(ResponseEntity::ok);
+    }
+
+    /**
+     * A deal's thread, for entity-processor only. Behind {@code /internal} because this service
+     * cannot evaluate deal access; entity-processor checks that the caller may see the ticket and
+     * then calls this.
+     */
+    @GetMapping("/internal/ticket/{ticketId}/messages")
+    public Mono<ResponseEntity<Page<WhatsappMessage>>> readByTicketInternal(
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode,
+            @PathVariable("ticketId") ULong ticketId,
+            Pageable pageable) {
+        return this.service
+                .readByTicketInternal(
+                        appCode,
+                        clientCode,
+                        ticketId,
+                        pageable == null ? PageRequest.of(0, 20, Sort.Direction.DESC, "id") : pageable)
+                .map(ResponseEntity::ok);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Generic listing is disabled for WhatsApp messages.
+    //
+    // The inherited endpoints below let any authenticated user in the tenant enumerate any
+    // customer's entire thread by phone number, with no check that they can see the underlying
+    // deal. Reads must go through entity-processor, which owns deal access. These overrides keep
+    // the inherited routes from being served rather than silently leaving them open.
+    // ---------------------------------------------------------------------------------------
+
+    @Override
+    @GetMapping()
+    public Mono<ResponseEntity<Page<WhatsappMessage>>> readPageFilter(
+            Pageable pageable, ServerHttpRequest request) {
+        return listingDisabled();
+    }
+
+    @Override
+    @PostMapping(PATH_QUERY)
+    public Mono<ResponseEntity<Page<WhatsappMessage>>> readPageFilter(@RequestBody Query query) {
+        return listingDisabled();
+    }
+
+    @Override
+    @GetMapping(EAGER_BASE)
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            Pageable pageable, ServerHttpRequest request) {
+        return listingDisabled();
+    }
+
+    @Override
+    @PostMapping(EAGER_PATH_QUERY)
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            @RequestBody Query query, ServerHttpRequest request) {
+        return listingDisabled();
+    }
+
+    private <T> Mono<ResponseEntity<T>> listingDisabled() {
+        return Mono.error(new GenericException(
+                HttpStatus.FORBIDDEN,
+                "Listing WhatsApp messages directly is not permitted. Read a deal's thread through"
+                        + " entity-processor, which checks that you can see the deal."));
     }
 }

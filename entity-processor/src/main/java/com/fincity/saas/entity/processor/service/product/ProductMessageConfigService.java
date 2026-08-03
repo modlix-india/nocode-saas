@@ -90,10 +90,10 @@ public class ProductMessageConfigService
                 self::createRequest));
     }
 
-    @Override
-    protected String getCacheName() {
-        return CACHE_NAME;
-    }
+    // This service was written against an earlier BaseUpdatableService that carried a caching
+    // layer (getCacheName, getCacheKey, evictCache, cacheService). That layer was removed from
+    // entity-processor in "Removed caching completely", and no service here caches today, so the
+    // config lookups go straight to the DAO.
 
     @Override
     protected boolean canOutsideCreate() {
@@ -103,35 +103,6 @@ public class ProductMessageConfigService
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_MESSAGE_CONFIGS;
-    }
-
-    @Override
-    protected Mono<Boolean> evictCache(ProductMessageConfig entity) {
-        return Mono.zip(super.evictCache(entity), this.evictGroupCache(entity))
-                .map(tuple -> tuple.getT1() && tuple.getT2());
-    }
-
-    private Mono<Boolean> evictGroupCache(ProductMessageConfig cfg) {
-        return this.cacheService.evict(
-                this.getCacheName(),
-                this.getConfigsCacheKey(
-                        cfg.getAppCode(),
-                        cfg.getClientCode(),
-                        cfg.getProductId(),
-                        cfg.getStageId(),
-                        cfg.getStatusId(),
-                        cfg.getChannel()));
-    }
-
-    private String getConfigsCacheKey(
-            String appCode,
-            String clientCode,
-            ULong productId,
-            ULong stageId,
-            ULong statusId,
-            MessageChannelType channel) {
-        return super.getCacheKey(
-                appCode, clientCode, productId, stageId, statusId, channel != null ? channel.getLiteral() : null);
     }
 
     @Override
@@ -155,13 +126,6 @@ public class ProductMessageConfigService
                         entity.getOrder())
                 .thenReturn(entity)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.checkEntity"));
-    }
-
-    @Override
-    protected Mono<ProductMessageConfig> create(ProcessorAccess access, ProductMessageConfig entity) {
-        return super.create(access, entity)
-                .flatMap(created -> this.evictCache(created).thenReturn(created))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.create"));
     }
 
     public Mono<List<ProductMessageConfig>> updateOrderForGroup(List<IdAndValue<ULong, Integer>> entries) {
@@ -258,10 +222,8 @@ public class ProductMessageConfigService
                                             })
                                             .collectList());
                         },
-                        (access, product, stageStatusEntry, productMessageConfigs) -> productMessageConfigs.isEmpty()
-                                ? Mono.just(productMessageConfigs)
-                                : this.evictGroupCache(productMessageConfigs.getFirst())
-                                        .thenReturn(productMessageConfigs))
+                        (access, product, stageStatusEntry, productMessageConfigs) ->
+                                Mono.just(productMessageConfigs))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.createRequest"));
     }
 
@@ -281,9 +243,7 @@ public class ProductMessageConfigService
                         (access, productMessageConfig, configGroup) -> {
                             if (configGroup == null || configGroup.isEmpty()) return Mono.just(0);
 
-                            return this.deleteMultiple(configGroup)
-                                    .flatMap(deleted -> this.evictGroupCache(productMessageConfig)
-                                            .thenReturn(deleted));
+                            return this.deleteMultiple(configGroup);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.deleteGroup"));
     }
@@ -382,23 +342,14 @@ public class ProductMessageConfigService
                     .filter(cfg -> orderMap.containsKey(cfg.getId()))
                     .toList();
 
-            if (finalList.isEmpty()) return Mono.just(finalList);
-
-            return this.evictGroupCache(firstConfig).thenReturn(finalList);
+            return Mono.just(finalList);
         });
     }
 
     public Mono<List<ProductMessageConfig>> getConfigs(
             ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, MessageChannelType channel) {
 
-        return this.cacheService
-                .cacheValueOrGet(
-                        this.getCacheName(),
-                        () -> this.getConfigsInternal(access, productId, stageId, statusId, channel)
-                                .contextWrite(
-                                        Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs")),
-                        this.getConfigsCacheKey(
-                                access.getAppCode(), access.getClientCode(), productId, stageId, statusId, channel))
+        return this.getConfigsInternal(access, productId, stageId, statusId, channel)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductMessageConfigService.getConfigs"));
     }
 

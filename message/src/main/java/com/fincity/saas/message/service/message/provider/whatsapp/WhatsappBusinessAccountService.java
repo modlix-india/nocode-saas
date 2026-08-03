@@ -73,6 +73,10 @@ public class WhatsappBusinessAccountService
             existing.setTimezoneId(entity.getTimezoneId());
             existing.setMessageTemplateNamespace(entity.getMessageTemplateNamespace());
             existing.setSubscribedApp(entity.getSubscribedApp());
+            // Only overwrite when the caller actually supplied one, so a generic update cannot
+            // blank the pointer the webhook signature check depends on.
+            if (entity.getConnectionName() != null && !entity.getConnectionName().isBlank())
+                existing.setConnectionName(entity.getConnectionName());
 
             return Mono.just(existing);
         });
@@ -109,7 +113,7 @@ public class WhatsappBusinessAccountService
                 (access, connection, api) -> this.getWhatsappBusinessAccountId(connection),
                 (access, connection, api, businessAccountId) -> api.getBusinessAccount(businessAccountId),
                 (access, connection, api, businessAccountId, businessAccount) ->
-                        this.saveBusinessAccount(access, businessAccount, businessAccountId));
+                        this.saveBusinessAccount(access, businessAccount, businessAccountId, connectionName));
     }
 
     public Mono<WhatsappBusinessAccount> overrideWebhook(String connectionName, Identity whatsappBusinessAccountId) {
@@ -160,16 +164,27 @@ public class WhatsappBusinessAccountService
         return Mono.just(businessAccountId);
     }
 
+    /**
+     * @param connectionName recorded on the row so an inbound webhook can walk back to the Meta app
+     *     secret it must be verified against. Re-set on every sync, so an account moved to a
+     *     different connection corrects itself rather than keeping a stale pointer.
+     */
     private Mono<WhatsappBusinessAccount> saveBusinessAccount(
-            MessageAccess access, BusinessAccount businessAccount, String businessAccountId) {
+            MessageAccess access,
+            BusinessAccount businessAccount,
+            String businessAccountId,
+            String connectionName) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.findByUniqueField(access, businessAccountId),
-                        whatsappBusinessAccount -> super.update(whatsappBusinessAccount.update(businessAccount)),
+                        whatsappBusinessAccount -> super.update(
+                                whatsappBusinessAccount.update(businessAccount).setConnectionName(connectionName)),
                         (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
                                 this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
-                .switchIfEmpty(Mono.defer(() ->
-                        super.createInternal(access, WhatsappBusinessAccount.of(businessAccountId, businessAccount))));
+                .switchIfEmpty(Mono.defer(() -> super.createInternal(
+                        access,
+                        WhatsappBusinessAccount.of(businessAccountId, businessAccount)
+                                .setConnectionName(connectionName))));
     }
 
     private Mono<WhatsappBusinessManagementApi> getBusinessManagementApi(Connection connection) {

@@ -23,6 +23,14 @@ public class WhatsappBusinessAccount extends BaseUpdatableDto<WhatsappBusinessAc
     private String messageTemplateNamespace;
     private SubscribedApp subscribedApp;
 
+    /**
+     * The core connection this account was synced from. Recorded because an inbound webhook has
+     * only the Meta business account id to go on, and verifying its signature means reaching the
+     * Meta app secret, which lives behind this connection's {@code tokenConnection}. Null on rows
+     * created before the column existed; callers fall back to the configured default connection.
+     */
+    private String connectionName;
+
     public WhatsappBusinessAccount() {
         super();
     }
@@ -35,6 +43,7 @@ public class WhatsappBusinessAccount extends BaseUpdatableDto<WhatsappBusinessAc
         this.timezoneId = whatsappBusinessAccount.timezoneId;
         this.messageTemplateNamespace = whatsappBusinessAccount.messageTemplateNamespace;
         this.subscribedApp = whatsappBusinessAccount.subscribedApp;
+        this.connectionName = whatsappBusinessAccount.connectionName;
     }
 
     public static WhatsappBusinessAccount of(String whatsappBusinessAccountId, BusinessAccount businessAccount) {

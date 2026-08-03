@@ -3,6 +3,8 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
@@ -51,6 +53,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -74,6 +78,7 @@ public class WhatsappMessageService
 
     private WhatsappBusinessAccountService businessAccountService;
     private IFeignEntityProcessorService entityProcessorService;
+    private WhatsappWebhookSignatureService whatsappWebhookSignatureService;
 
     @Autowired
     public WhatsappMessageService(
@@ -93,6 +98,11 @@ public class WhatsappMessageService
     @Autowired
     public void setBusinessAccountService(WhatsappBusinessAccountService businessAccountService) {
         this.businessAccountService = businessAccountService;
+    }
+
+    @Autowired
+    public void setWhatsappWebhookSignatureService(WhatsappWebhookSignatureService whatsappWebhookSignatureService) {
+        this.whatsappWebhookSignatureService = whatsappWebhookSignatureService;
     }
 
     @Override
@@ -254,7 +264,13 @@ public class WhatsappMessageService
                 .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
-    public Mono<MessageResponse> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
+    /**
+     * @param signature and {@code rawPayload} establish that Meta actually sent this. Everything
+     *     else about the request is caller-controlled, including the tenant headers, so nothing
+     *     below this check should be treated as trustworthy without it.
+     */
+    public Mono<MessageResponse> processWebhookEvent(
+            String appCode, String clientCode, IWebHookEvent event, String signature, String rawPayload) {
 
         if (clientCode.equals("SYSTEM"))
             return this.msgService.throwMessage(
@@ -264,6 +280,29 @@ public class WhatsappMessageService
         if (event == null || event.getEntry() == null) return Mono.empty();
 
         MessageAccess access = MessageAccess.of(appCode, clientCode, true);
+
+        return this.whatsappWebhookSignatureService
+                .isTrusted(appCode, clientCode, wabaIdOf(event), signature, rawPayload)
+                .flatMap(trusted -> Boolean.TRUE.equals(trusted)
+                        ? this.processTrustedWebhookEvent(access, appCode, clientCode, event)
+                        // Deliberately not 200. A forged payload is not an event we failed to
+                        // process, and Meta never sees this response because Meta never sent it.
+                        : this.msgService.<MessageResponse>throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                MessageResourceService.WEBHOOK_SIGNATURE_INVALID));
+    }
+
+    /**
+     * Meta's business account id, used only to find which connection holds the app secret. Read
+     * from an as-yet unverified body, which is safe: it selects a key, it does not grant anything.
+     */
+    private String wabaIdOf(IWebHookEvent event) {
+        if (event.getEntry() == null || event.getEntry().isEmpty()) return null;
+        return event.getEntry().getFirst().getId();
+    }
+
+    private Mono<MessageResponse> processTrustedWebhookEvent(
+            MessageAccess access, String appCode, String clientCode, IWebHookEvent event) {
 
         return super.messageWebhookService
                 .createWhatsappWebhookEvent(access, event)
@@ -354,10 +393,34 @@ public class WhatsappMessageService
     }
 
     /**
-     * Anchors an inbound message to a deal by asking entity-processor, which owns that mapping.
+     * A deal's WhatsApp thread, for internal callers only.
+     *
+     * <p>Deliberately takes a ticket id rather than a customer number: this service cannot tell
+     * whether a caller may see a given deal, so it refuses to answer questions phrased in terms it
+     * cannot authorize. entity-processor owns that check and is the only intended caller.
+     */
+    public Mono<Page<WhatsappMessage>> readByTicketInternal(
+            String appCode, String clientCode, ULong ticketId, Pageable pageable) {
+
+        if (ticketId == null) return Mono.just(Page.empty(pageable));
+
+        MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+
+        return this.dao
+                .messageAccessCondition(
+                        FilterCondition.make(WhatsappMessage.Fields.ticketId, ticketId)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access)
+                .flatMap(condition -> this.dao.readPageFilter(pageable, condition))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.readByTicketInternal"));
+    }
+
+    /**
+     * Anchors an inbound message to a deal by handing it to entity-processor, which owns that
+     * mapping and creates a deal when the customer has none.
      *
      * <p>Wrapped in {@link Optional} because {@code flatMapMono} drops the whole chain on an empty
-     * signal, and "no matching ticket" must not stop the message being stored. A failed lookup is
+     * signal, and "no matching ticket" must not stop the message being stored. A failed call is
      * logged and treated the same way: the message lands unassigned rather than being lost.
      */
     private Mono<Optional<ULong>> resolveTicketId(
@@ -368,19 +431,36 @@ public class WhatsappMessageService
         PhoneNumber customerPhone = PhoneNumber.ofWhatsapp(iMessage.getFrom());
 
         return this.entityProcessorService
-                .resolveTicketForIncomingMessage(
+                .registerWhatsappMessage(
                         access.getAppCode(),
                         access.getClientCode(),
+                        // Null means this number is the tenant default, so it serves every product
+                        // and entity-processor matches on the customer's number alone.
                         whatsappPhoneNumber.getProductId() != null
                                 ? whatsappPhoneNumber.getProductId().toBigInteger()
                                 : null,
-                        customerPhone.getNumber())
+                        customerPhone.getNumber(),
+                        inboundOccurredAt(iMessage).toString(),
+                        // A stranger messaging the advertised number is a lead. The inbox is gated
+                        // on deal access, so without a deal the message would be visible to nobody.
+                        Boolean.TRUE)
                 .map(ticket -> Optional.ofNullable(ULongUtil.valueOf(ticket.getId())))
                 .defaultIfEmpty(Optional.empty())
                 .onErrorResume(e -> {
-                    logger.error("Could not resolve ticket for incoming message {}", iMessage.getId(), e);
+                    logger.error("Could not register incoming message {} against a deal", iMessage.getId(), e);
                     return Mono.just(Optional.empty());
                 });
+    }
+
+    /** Meta sends the send time as unix epoch seconds. Absent on some payloads, so fall back. */
+    private LocalDateTime inboundOccurredAt(IMessage iMessage) {
+        if (iMessage.getTimestamp() == null) return LocalDateTime.now(ZoneOffset.UTC);
+        try {
+            return LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(Long.parseLong(iMessage.getTimestamp())), ZoneOffset.UTC);
+        } catch (NumberFormatException e) {
+            return LocalDateTime.now(ZoneOffset.UTC);
+        }
     }
 
     private Mono<WhatsappMessage> updateExistingMessage(

@@ -68,6 +68,13 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private LocalDateTime expiresOn;
     private String latestComment;
 
+    /**
+     * Most recent WhatsApp message on this deal, either direction. Orders the conversation list.
+     * Written only by {@code TicketDAO.touchLastMessageAt}, never through the normal update path,
+     * so that a message does not register as an edit in the deal's audit trail.
+     */
+    private LocalDateTime lastMessageAt;
+
     @JsonIgnore
     private transient RuleResult assignmentRuleResult;
 
@@ -112,6 +119,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
         this.latestComment = ticket.latestComment;
+        this.lastMessageAt = ticket.lastMessageAt;
         this.assignmentRuleResult = ticket.assignmentRuleResult;
         this.evaluationTrace = ticket.evaluationTrace;
     }

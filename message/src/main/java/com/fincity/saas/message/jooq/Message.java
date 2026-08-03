@@ -10,6 +10,7 @@ import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappOutbox;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
@@ -65,6 +66,11 @@ public class Message extends SchemaImpl {
     public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
 
     /**
+     * The table <code>message.message_whatsapp_outbox</code>.
+     */
+    public final MessageWhatsappOutbox MESSAGE_WHATSAPP_OUTBOX = MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX;
+
+    /**
      * WhatsApp Business phone numbers
      */
     public final MessageWhatsappPhoneNumbers MESSAGE_WHATSAPP_PHONE_NUMBERS = MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS;
@@ -96,6 +102,7 @@ public class Message extends SchemaImpl {
             MessageMessages.MESSAGE_MESSAGES,
             MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
+            MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX,
             MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS,
             MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES
         );
