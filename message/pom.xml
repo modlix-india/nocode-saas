@@ -322,8 +322,14 @@
                                             <includeExpression>.*\.PAYLOAD</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.WhatsappOutboxEventType</userType>
+                                            <userType>com.fincity.saas.message.enums.dispatch.DispatchEventType</userType>
                                             <includeExpression>.*\.EVENT_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.dispatch.DispatchChannel</userType>
+                                            <includeExpression>.*message_dispatch_outbox\.CHANNEL</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>

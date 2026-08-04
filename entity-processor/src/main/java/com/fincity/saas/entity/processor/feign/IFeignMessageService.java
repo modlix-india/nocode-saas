@@ -29,6 +29,22 @@ public interface IFeignMessageService {
             @RequestBody IncomingCallRequest callRequest);
 
     /**
+     * Places an outbound call through the provider.
+     *
+     * <p>Only call after confirming the caller may act on the deal, and pass the number taken from
+     * that deal rather than one the caller supplied. The message service performs neither check: it
+     * cannot evaluate deal access, and it has no way to tell a legitimate destination from an
+     * arbitrary one.
+     *
+     * <p>Untyped both ways. The response is the message service's own call representation, including
+     * the provider's call id and raw payloads, and mirroring that DTO here would create a second copy
+     * to keep in step for no gain: this service maps it straight onto its own row.
+     */
+    @PostMapping(EXOTEL_CALL_PATH + "/internal/make")
+    Mono<Map<String, Object>> makeCallInternal(
+            @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
+
+    /**
      * Sends a stored WhatsApp template to a ticket. The message service resolves the template by id
      * and fills its body placeholders from {@code variables}, so the caller does not need to know
      * the template's component structure.

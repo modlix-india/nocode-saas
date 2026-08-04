@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
@@ -61,6 +62,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_adsets</code>.
      */
     public static final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_calls</code>.
+     */
+    public static final EntityProcessorCalls ENTITY_PROCESSOR_CALLS = EntityProcessorCalls.ENTITY_PROCESSOR_CALLS;
 
     /**
      * The table

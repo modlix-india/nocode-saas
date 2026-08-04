@@ -1,5 +1,6 @@
 package com.fincity.saas.message.feign;
 
+import com.fincity.saas.message.model.request.dispatch.CallEventDispatch;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappInboundDispatch;
 import com.fincity.saas.message.oserver.entity.processor.model.Product;
 import com.fincity.saas.message.oserver.entity.processor.model.Ticket;
@@ -19,6 +20,7 @@ public interface IFeignEntityProcessorService {
     String PRODUCT_PATH = "api/entity/processor/products/internal";
     String TICKET_PATH = "api/entity/processor/tickets/internal";
     String WHATSAPP_INTERNAL_PATH = "api/entity/processor/whatsapp/internal";
+    String CALL_INTERNAL_PATH = "api/entity/processor/calls/internal";
 
     @GetMapping(PRODUCT_PATH + "/{id}")
     Mono<Product> getProductInternal(
@@ -56,6 +58,16 @@ public interface IFeignEntityProcessorService {
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @RequestBody WhatsappInboundDispatch dispatch);
+
+    /**
+     * Hands a call event to entity-processor, which merges it onto the call it already recorded.
+     *
+     * <p>Errors must propagate, same as above: the caller holds an outbox row that is only deleted
+     * on success, so swallowing a failure here drops the event with nothing left to retry from.
+     */
+    @PostMapping(CALL_INTERNAL_PATH + "/event")
+    Mono<Void> acceptCallEvent(
+            @RequestParam String appCode, @RequestParam String clientCode, @RequestBody CallEventDispatch dispatch);
 
     @PostMapping(TICKET_PATH + "/whatsapp/register")
     Mono<Ticket> registerWhatsappMessage(

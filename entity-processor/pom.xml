@@ -304,6 +304,31 @@
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
+                                        <!--
+                                          Calls. The three raw provider payloads stay untyped Maps rather than porting
+                                          the message service's Exotel model classes across: they are stored verbatim
+                                          and never interpreted here, and a Map round-trips the provider's own key
+                                          casing (Call, StartTime) that the deal profile binds into directly.
+                                        -->
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*entity_processor_calls\.(EXOTEL_CALL_REQUEST|EXOTEL_CONNECT_APPLET_REQUEST|EXOTEL_CALL_RESPONSE)</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.oserver.message.enums.call.CallStatus</userType>
+                                            <includeExpression>.*entity_processor_calls\.CALL_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.oserver.message.enums.call.ExotelCallStatus</userType>
+                                            <includeExpression>.*entity_processor_calls\.(EXOTEL_CALL_STATUS|LEG1_STATUS|LEG2_STATUS)</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.oserver.files.model.FileDetail</userType>
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>

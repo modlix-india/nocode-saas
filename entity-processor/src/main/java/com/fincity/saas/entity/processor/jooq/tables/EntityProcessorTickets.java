@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls.EntityProcessorCallsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents.EntityProcessorConversionEventsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
@@ -467,6 +468,19 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
             _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK1_ACTIVITIES_TICKET_ID.getInverseKey());
 
         return _entityProcessorActivities;
+    }
+
+    private transient EntityProcessorCallsPath _entityProcessorCalls;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_calls</code> table
+     */
+    public EntityProcessorCallsPath entityProcessorCalls() {
+        if (_entityProcessorCalls == null)
+            _entityProcessorCalls = new EntityProcessorCallsPath(this, null, Keys.FK1_CALLS_TICKET_ID.getInverseKey());
+
+        return _entityProcessorCalls;
     }
 
     private transient EntityProcessorConversionEventsPath _entityProcessorConversionEvents;

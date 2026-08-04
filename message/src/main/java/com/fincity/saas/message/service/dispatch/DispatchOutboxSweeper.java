@@ -1,7 +1,7 @@
-package com.fincity.saas.message.service.message.provider.whatsapp.dispatch;
+package com.fincity.saas.message.service.dispatch;
 
 import com.fincity.saas.message.model.common.MessageAccess;
-import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappOutboxService;
+import com.fincity.saas.message.service.dispatch.DispatchOutboxService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Retries handoffs the first attempt could not deliver.
+ * Retries handoffs the first attempt could not deliver, across every channel.
  *
  * <p>Without this the outbox is decoration: rows would accumulate and nothing would ever send them.
  * It is what turns "entity-processor was down for ten minutes" from lost messages into a delay.
@@ -21,24 +21,24 @@ import reactor.core.publisher.Mono;
  * quietly discarding it hide that.
  */
 @Component
-public class WhatsappOutboxSweeper {
+public class DispatchOutboxSweeper {
 
-    private static final Logger logger = LoggerFactory.getLogger(WhatsappOutboxSweeper.class);
+    private static final Logger logger = LoggerFactory.getLogger(DispatchOutboxSweeper.class);
 
-    private final WhatsappOutboxService outboxService;
-    private final WhatsappInboundDispatcher dispatcher;
+    private final DispatchOutboxService outboxService;
+    private final EventDispatcher dispatcher;
 
-    @Value("${message.whatsapp.outbox.sweep-batch-size:50}")
+    @Value("${message.dispatch.outbox.sweep-batch-size:50}")
     private int batchSize;
 
-    public WhatsappOutboxSweeper(WhatsappOutboxService outboxService, WhatsappInboundDispatcher dispatcher) {
+    public DispatchOutboxSweeper(DispatchOutboxService outboxService, EventDispatcher dispatcher) {
         this.outboxService = outboxService;
         this.dispatcher = dispatcher;
     }
 
     @Scheduled(
-            initialDelayString = "${message.whatsapp.outbox.sweep-initial-delay-ms:60000}",
-            fixedDelayString = "${message.whatsapp.outbox.sweep-interval-ms:60000}")
+            initialDelayString = "${message.dispatch.outbox.sweep-initial-delay-ms:60000}",
+            fixedDelayString = "${message.dispatch.outbox.sweep-interval-ms:60000}")
     public void sweep() {
         this.outboxService
                 .readDue(this.batchSize)
@@ -47,10 +47,7 @@ public class WhatsappOutboxSweeper {
                 // hurry, and a burst of parallel calls at a service that is still recovering is
                 // exactly the wrong thing to do.
                 .concatMap(row -> this.dispatcher
-                        .deliver(
-                                MessageAccess.of(row.getAppCode(), row.getClientCode(), Boolean.TRUE),
-                                row,
-                                this.dispatcher.dispatchOf(row))
+                        .deliver(MessageAccess.of(row.getAppCode(), row.getClientCode(), Boolean.TRUE), row)
                         .onErrorResume(e -> {
                             logger.error("Sweeper could not process outbox row {}.", row.getId(), e);
                             return Mono.empty();
@@ -58,7 +55,7 @@ public class WhatsappOutboxSweeper {
                 .then(this.reportExhausted())
                 .subscribe(
                         null,
-                        e -> logger.error("WhatsApp outbox sweep failed.", e));
+                        e -> logger.error("Dispatch outbox sweep failed.", e));
     }
 
     private Mono<Void> reportExhausted() {
@@ -67,7 +64,7 @@ public class WhatsappOutboxSweeper {
                 .doOnNext(count -> {
                     if (count > 0)
                         logger.error(
-                                "{} WhatsApp handoff(s) have exhausted their retries and are stuck in the outbox."
+                                "{} handoff(s) have exhausted their retries and are stuck in the outbox."
                                         + " These messages have not reached the owning service and will not be"
                                         + " retried automatically.",
                                 count);

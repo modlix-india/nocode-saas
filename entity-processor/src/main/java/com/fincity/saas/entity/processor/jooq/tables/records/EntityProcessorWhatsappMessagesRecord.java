@@ -603,11 +603,49 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.NAME</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public EntityProcessorWhatsappMessagesRecord setName(String value) {
+        set(30, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.NAME</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public String getName() {
+        return (String) get(30);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.TEMP_ACTIVE</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public EntityProcessorWhatsappMessagesRecord setTempActive(Boolean value) {
+        set(31, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.TEMP_ACTIVE</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public Boolean getTempActive() {
+        return (Boolean) get(31);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_whatsapp_messages.IS_ACTIVE</code>.
      * Flag to check if this message is active or not.
      */
     public EntityProcessorWhatsappMessagesRecord setIsActive(Boolean value) {
-        set(30, value);
+        set(32, value);
         return this;
     }
 
@@ -617,7 +655,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Flag to check if this message is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(30);
+        return (Boolean) get(32);
     }
 
     /**
@@ -626,7 +664,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public EntityProcessorWhatsappMessagesRecord setCreatedBy(ULong value) {
-        set(31, value);
+        set(33, value);
         return this;
     }
 
@@ -636,7 +674,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(31);
+        return (ULong) get(33);
     }
 
     /**
@@ -645,7 +683,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public EntityProcessorWhatsappMessagesRecord setCreatedAt(LocalDateTime value) {
-        set(32, value);
+        set(34, value);
         return this;
     }
 
@@ -655,7 +693,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(32);
+        return (LocalDateTime) get(34);
     }
 
     /**
@@ -664,7 +702,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public EntityProcessorWhatsappMessagesRecord setUpdatedBy(ULong value) {
-        set(33, value);
+        set(35, value);
         return this;
     }
 
@@ -674,7 +712,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(33);
+        return (ULong) get(35);
     }
 
     /**
@@ -683,7 +721,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public EntityProcessorWhatsappMessagesRecord setUpdatedAt(LocalDateTime value) {
-        set(34, value);
+        set(36, value);
         return this;
     }
 
@@ -693,7 +731,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(34);
+        return (LocalDateTime) get(36);
     }
 
     // -------------------------------------------------------------------------
@@ -719,7 +757,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorWhatsappMessagesRecord
      */
-    public EntityProcessorWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappBusinessAccountId, ULong whatsappPhoneNumberId, String whatsappPhoneNumber, ULong ticketId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, WhatsappMessageType messageType, WhatsappMessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Boolean isOutbound, String bodyText, Map message, FileDetail mediaFileDetail, Map inMessage, Map messageResponse, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappBusinessAccountId, ULong whatsappPhoneNumberId, String whatsappPhoneNumber, ULong ticketId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, WhatsappMessageType messageType, WhatsappMessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Boolean isOutbound, String bodyText, Map message, FileDetail mediaFileDetail, Map inMessage, Map messageResponse, String name, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES);
 
         setId(id);
@@ -752,6 +790,8 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
         setMediaFileDetail(mediaFileDetail);
         setInMessage(inMessage);
         setMessageResponse(messageResponse);
+        setName(name);
+        setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

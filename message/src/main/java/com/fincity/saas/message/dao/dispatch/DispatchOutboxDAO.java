@@ -1,11 +1,12 @@
-package com.fincity.saas.message.dao.message.provider.whatsapp;
+package com.fincity.saas.message.dao.dispatch;
 
-import static com.fincity.saas.message.jooq.tables.MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX;
+import static com.fincity.saas.message.jooq.tables.MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX;
 
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
-import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappOutbox;
-import com.fincity.saas.message.enums.message.provider.whatsapp.WhatsappOutboxEventType;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappOutboxRecord;
+import com.fincity.saas.message.dto.dispatch.DispatchOutbox;
+import com.fincity.saas.message.enums.dispatch.DispatchChannel;
+import com.fincity.saas.message.enums.dispatch.DispatchEventType;
+import com.fincity.saas.message.jooq.tables.records.MessageDispatchOutboxRecord;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.jooq.types.UInteger;
@@ -15,14 +16,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-public class WhatsappOutboxDAO extends BaseProviderDAO<MessageWhatsappOutboxRecord, WhatsappOutbox> {
+public class DispatchOutboxDAO extends BaseProviderDAO<MessageDispatchOutboxRecord, DispatchOutbox> {
 
-    protected WhatsappOutboxDAO() {
+    protected DispatchOutboxDAO() {
         super(
-                WhatsappOutbox.class,
-                MESSAGE_WHATSAPP_OUTBOX,
-                MESSAGE_WHATSAPP_OUTBOX.ID,
-                MESSAGE_WHATSAPP_OUTBOX.META_MESSAGE_ID);
+                DispatchOutbox.class,
+                MESSAGE_DISPATCH_OUTBOX,
+                MESSAGE_DISPATCH_OUTBOX.ID,
+                MESSAGE_DISPATCH_OUTBOX.EVENT_KEY);
     }
 
     /**
@@ -31,11 +32,12 @@ public class WhatsappOutboxDAO extends BaseProviderDAO<MessageWhatsappOutboxReco
      * <p>Deleted rather than flagged, so the table stays empty in the normal case and its size is a
      * usable health signal on its own.
      */
-    public Mono<Integer> clear(String metaMessageId, WhatsappOutboxEventType eventType) {
+    public Mono<Integer> clear(DispatchChannel channel, String eventKey, DispatchEventType eventType) {
         return Mono.from(this.dslContext
-                .deleteFrom(MESSAGE_WHATSAPP_OUTBOX)
-                .where(MESSAGE_WHATSAPP_OUTBOX.META_MESSAGE_ID.eq(metaMessageId))
-                .and(MESSAGE_WHATSAPP_OUTBOX.EVENT_TYPE.eq(eventType)));
+                .deleteFrom(MESSAGE_DISPATCH_OUTBOX)
+                .where(MESSAGE_DISPATCH_OUTBOX.CHANNEL.eq(channel))
+                .and(MESSAGE_DISPATCH_OUTBOX.EVENT_KEY.eq(eventKey))
+                .and(MESSAGE_DISPATCH_OUTBOX.EVENT_TYPE.eq(eventType)));
     }
 
     /**
@@ -46,13 +48,13 @@ public class WhatsappOutboxDAO extends BaseProviderDAO<MessageWhatsappOutboxReco
      */
     public Mono<Integer> recordFailure(ULong id, String error, LocalDateTime nextAttemptAt) {
         return Mono.from(this.dslContext
-                .update(MESSAGE_WHATSAPP_OUTBOX)
-                .set(MESSAGE_WHATSAPP_OUTBOX.ATTEMPTS, MESSAGE_WHATSAPP_OUTBOX.ATTEMPTS.plus(UInteger.valueOf(1)))
+                .update(MESSAGE_DISPATCH_OUTBOX)
+                .set(MESSAGE_DISPATCH_OUTBOX.ATTEMPTS, MESSAGE_DISPATCH_OUTBOX.ATTEMPTS.plus(UInteger.valueOf(1)))
                 .set(
-                        MESSAGE_WHATSAPP_OUTBOX.LAST_ERROR,
+                        MESSAGE_DISPATCH_OUTBOX.LAST_ERROR,
                         error == null ? null : error.substring(0, Math.min(error.length(), 2000)))
-                .set(MESSAGE_WHATSAPP_OUTBOX.NEXT_ATTEMPT_AT, nextAttemptAt)
-                .where(MESSAGE_WHATSAPP_OUTBOX.ID.eq(id)));
+                .set(MESSAGE_DISPATCH_OUTBOX.NEXT_ATTEMPT_AT, nextAttemptAt)
+                .where(MESSAGE_DISPATCH_OUTBOX.ID.eq(id)));
     }
 
     /**
@@ -62,16 +64,16 @@ public class WhatsappOutboxDAO extends BaseProviderDAO<MessageWhatsappOutboxReco
      * so a permanently undeliverable message stays visible for someone to look at instead of
      * spinning forever or being silently dropped.
      */
-    public Mono<List<WhatsappOutbox>> readDue(LocalDateTime now, int maxAttempts, int limit) {
+    public Mono<List<DispatchOutbox>> readDue(LocalDateTime now, int maxAttempts, int limit) {
         return Flux.from(this.dslContext
-                        .selectFrom(MESSAGE_WHATSAPP_OUTBOX)
-                        .where(MESSAGE_WHATSAPP_OUTBOX.NEXT_ATTEMPT_AT
+                        .selectFrom(MESSAGE_DISPATCH_OUTBOX)
+                        .where(MESSAGE_DISPATCH_OUTBOX.NEXT_ATTEMPT_AT
                                 .isNull()
-                                .or(MESSAGE_WHATSAPP_OUTBOX.NEXT_ATTEMPT_AT.le(now)))
-                        .and(MESSAGE_WHATSAPP_OUTBOX.ATTEMPTS.lt(UInteger.valueOf(maxAttempts)))
-                        .orderBy(MESSAGE_WHATSAPP_OUTBOX.CREATED_AT.asc())
+                                .or(MESSAGE_DISPATCH_OUTBOX.NEXT_ATTEMPT_AT.le(now)))
+                        .and(MESSAGE_DISPATCH_OUTBOX.ATTEMPTS.lt(UInteger.valueOf(maxAttempts)))
+                        .orderBy(MESSAGE_DISPATCH_OUTBOX.CREATED_AT.asc())
                         .limit(limit))
-                .map(rec -> rec.into(WhatsappOutbox.class))
+                .map(rec -> rec.into(DispatchOutbox.class))
                 .collectList();
     }
 
@@ -79,8 +81,8 @@ public class WhatsappOutboxDAO extends BaseProviderDAO<MessageWhatsappOutboxReco
     public Mono<Integer> countExhausted(int maxAttempts) {
         return Mono.from(this.dslContext
                         .selectCount()
-                        .from(MESSAGE_WHATSAPP_OUTBOX)
-                        .where(MESSAGE_WHATSAPP_OUTBOX.ATTEMPTS.ge(UInteger.valueOf(maxAttempts))))
+                        .from(MESSAGE_DISPATCH_OUTBOX)
+                        .where(MESSAGE_DISPATCH_OUTBOX.ATTEMPTS.ge(UInteger.valueOf(maxAttempts))))
                 .map(rec -> rec.value1())
                 .defaultIfEmpty(0);
     }

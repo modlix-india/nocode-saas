@@ -44,6 +44,14 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     private LocalDateTime dateCreated;
     private LocalDateTime dateUpdated;
     private String accountSid;
+
+    /**
+     * Which service owns this call, the call-side twin of {@code OWNER_SERVICE} on a WhatsApp phone
+     * number. Stamped when the call is created, because both entry points are initiated by the
+     * owning service, and read back when a status callback arrives carrying nothing but a Sid.
+     */
+    private String ownerService;
+
     private Integer fromDialCode = PhoneUtil.getDefaultCallingCode();
     private String from;
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();

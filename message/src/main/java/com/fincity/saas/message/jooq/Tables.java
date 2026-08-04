@@ -5,12 +5,12 @@ package com.fincity.saas.message.jooq;
 
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
+import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappOutbox;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
@@ -25,6 +25,11 @@ public class Tables {
      * The table <code>message.message_calls</code>.
      */
     public static final MessageCalls MESSAGE_CALLS = MessageCalls.MESSAGE_CALLS;
+
+    /**
+     * The table <code>message.message_dispatch_outbox</code>.
+     */
+    public static final MessageDispatchOutbox MESSAGE_DISPATCH_OUTBOX = MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX;
 
     /**
      * The table <code>message.message_exotel_calls</code>.
@@ -50,11 +55,6 @@ public class Tables {
      * The table <code>message.message_whatsapp_messages</code>.
      */
     public static final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
-
-    /**
-     * The table <code>message.message_whatsapp_outbox</code>.
-     */
-    public static final MessageWhatsappOutbox MESSAGE_WHATSAPP_OUTBOX = MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX;
 
     /**
      * WhatsApp Business phone numbers

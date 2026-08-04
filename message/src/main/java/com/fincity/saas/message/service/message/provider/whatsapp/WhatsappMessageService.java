@@ -37,10 +37,10 @@ import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageCswRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
-import com.fincity.saas.message.enums.message.provider.whatsapp.WhatsappOutboxEventType;
+import com.fincity.saas.message.enums.dispatch.DispatchEventType;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappInboundDispatch;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
-import com.fincity.saas.message.service.message.provider.whatsapp.dispatch.WhatsappInboundDispatcher;
+import com.fincity.saas.message.service.dispatch.EventDispatcher;
 import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
@@ -83,7 +83,7 @@ public class WhatsappMessageService
     private WhatsappBusinessAccountService businessAccountService;
     private IFeignEntityProcessorService entityProcessorService;
     private WhatsappWebhookSignatureService whatsappWebhookSignatureService;
-    private WhatsappInboundDispatcher whatsappInboundDispatcher;
+    private EventDispatcher whatsappInboundDispatcher;
 
     @Autowired
     public WhatsappMessageService(
@@ -111,7 +111,7 @@ public class WhatsappMessageService
     }
 
     @Autowired
-    public void setWhatsappInboundDispatcher(WhatsappInboundDispatcher whatsappInboundDispatcher) {
+    public void setEventDispatcher(EventDispatcher whatsappInboundDispatcher) {
         this.whatsappInboundDispatcher = whatsappInboundDispatcher;
     }
 
@@ -423,7 +423,7 @@ public class WhatsappMessageService
 
         WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
                 .setMetaMessageId(iMessage.getId())
-                .setEventType(WhatsappOutboxEventType.INBOUND_MESSAGE.name())
+                .setEventType(DispatchEventType.INBOUND_MESSAGE.name())
                 .setProductId(
                         whatsappPhoneNumber.getProductId() != null
                                 ? whatsappPhoneNumber.getProductId().toBigInteger()
@@ -452,7 +452,8 @@ public class WhatsappMessageService
         return this.whatsappInboundDispatcher.enqueueAndDispatch(
                 access,
                 whatsappPhoneNumber.getOwnerService(),
-                WhatsappOutboxEventType.INBOUND_MESSAGE,
+                DispatchEventType.INBOUND_MESSAGE,
+                dispatch.getMetaMessageId(),
                 dispatch);
     }
 
@@ -636,7 +637,7 @@ public class WhatsappMessageService
                 .flatMap(phoneNumber -> {
                     WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
                             .setMetaMessageId(whatsappMessage.getMessageId())
-                            .setEventType(WhatsappOutboxEventType.MESSAGE_STATUS.name())
+                            .setEventType(DispatchEventType.MESSAGE_STATUS.name())
                             .setProductId(
                                     phoneNumber.getProductId() != null
                                             ? phoneNumber.getProductId().toBigInteger()
@@ -656,7 +657,8 @@ public class WhatsappMessageService
                     return this.whatsappInboundDispatcher.enqueueAndDispatch(
                             access,
                             phoneNumber.getOwnerService(),
-                            WhatsappOutboxEventType.MESSAGE_STATUS,
+                            DispatchEventType.MESSAGE_STATUS,
+                            dispatch.getMetaMessageId(),
                             dispatch);
                 })
                 .onErrorResume(e -> {

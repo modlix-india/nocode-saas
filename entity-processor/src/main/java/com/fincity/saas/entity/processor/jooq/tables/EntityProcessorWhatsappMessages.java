@@ -284,6 +284,20 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.NAME</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512), this, "Unused. Present only because the shared DAO base expects the column.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.TEMP_ACTIVE</code>.
+     * Unused. Present only because the shared DAO base expects the column.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Unused. Present only because the shared DAO base expects the column.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.IS_ACTIVE</code>.
      * Flag to check if this message is active or not.
      */

@@ -5,11 +5,11 @@ package com.fincity.saas.message.jooq;
 
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
+import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappOutbox;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
@@ -36,8 +36,8 @@ public class Indexes {
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX0_WHATSAPP_MESSAGES_AC_CC = Internal.createIndex(DSL.name("IDX0_WHATSAPP_MESSAGES_AC_CC"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.APP_CODE, MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.CLIENT_CODE }, false);
     public static final Index MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC = Internal.createIndex(DSL.name("IDX0_WHATSAPP_PHONE_NUMBER_AC_CC"), MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, new OrderField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE, MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE }, false);
     public static final Index MESSAGE_WHATSAPP_TEMPLATES_IDX0_WHATSAPP_TEMPLATES_AC_CC = Internal.createIndex(DSL.name("IDX0_WHATSAPP_TEMPLATES_AC_CC"), MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES, new OrderField[] { MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES.APP_CODE, MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES.CLIENT_CODE }, false);
+    public static final Index MESSAGE_DISPATCH_OUTBOX_IDX1_DISPATCH_OUTBOX_SWEEP = Internal.createIndex(DSL.name("IDX1_DISPATCH_OUTBOX_SWEEP"), MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX, new OrderField[] { MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX.NEXT_ATTEMPT_AT, MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX.ATTEMPTS }, false);
     public static final Index MESSAGE_MESSAGE_WEBHOOKS_IDX1_MESSAGE_WEBHOOKS_PROVIDER = Internal.createIndex(DSL.name("IDX1_MESSAGE_WEBHOOKS_PROVIDER"), MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS, new OrderField[] { MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.APP_CODE, MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.CLIENT_CODE, MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.PROVIDER }, false);
-    public static final Index MESSAGE_WHATSAPP_OUTBOX_IDX1_WA_OUTBOX_SWEEP = Internal.createIndex(DSL.name("IDX1_WA_OUTBOX_SWEEP"), MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX, new OrderField[] { MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX.NEXT_ATTEMPT_AT, MessageWhatsappOutbox.MESSAGE_WHATSAPP_OUTBOX.ATTEMPTS }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID = Internal.createIndex(DSL.name("IDX1_WHATSAPP_MESSAGES_MESSAGE_ID"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.MESSAGE_ID }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM = Internal.createIndex(DSL.name("IDX2_WHATSAPP_MESSAGES_FROM"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.FROM_DIAL_CODE, MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.FROM }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO = Internal.createIndex(DSL.name("IDX3_WHATSAPP_MESSAGES_TO"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.TO_DIAL_CODE, MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.TO }, false);

@@ -117,6 +117,13 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, String> ACCOUNT_SID = createField(DSL.name("ACCOUNT_SID"), SQLDataType.CHAR(50).nullable(false), this, "Exotel account SID for this call.");
 
     /**
+     * The column <code>message.message_exotel_calls.OWNER_SERVICE</code>.
+     * Eureka service id owning this call, e.g. entity-processor. Null is
+     * unrouted and must park loudly, never drop.
+     */
+    public final TableField<MessageExotelCallsRecord, String> OWNER_SERVICE = createField(DSL.name("OWNER_SERVICE"), SQLDataType.VARCHAR(64), this, "Eureka service id owning this call, e.g. entity-processor. Null is unrouted and must park loudly, never drop.");
+
+    /**
      * The column <code>message.message_exotel_calls.FROM_DIAL_CODE</code>. Dial
      * code of the caller's phone number.
      */

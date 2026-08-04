@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
@@ -75,6 +76,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_adsets</code>.
      */
     public final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_calls</code>.
+     */
+    public final EntityProcessorCalls ENTITY_PROCESSOR_CALLS = EntityProcessorCalls.ENTITY_PROCESSOR_CALLS;
 
     /**
      * The table
@@ -272,6 +278,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorAds.ENTITY_PROCESSOR_ADS,
             EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
+            EntityProcessorCalls.ENTITY_PROCESSOR_CALLS,
             EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS,
             EntityProcessorCampaignProducts.ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS,
             EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE,
