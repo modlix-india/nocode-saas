@@ -45,23 +45,43 @@ public interface IMessageAccessService {
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             MessageResourceService.PHONE_NUMBER_REQUIRED);
 
+        // Both branches validate. This used to short-circuit for authenticated callers and run the
+        // checks only when unauthenticated, which is backwards: appCode comes from the URL, so a
+        // logged-in user of one app could pass another app's code and operate on its rows, and
+        // nothing confirmed their client was entitled to the client whose data they were touching.
+        // For the ordinary case where the target is the caller's own client both calls are cheap
+        // and trivially true, so correctness here costs a lookup, not a behaviour change.
         if (ca.isAuthenticated())
-            return Mono.just(MessageAccess.of(ca));
+            return this.validatedAccess(ca, ca.getUrlAppCode(), ca.getClientCode());
+
+        return SecurityContextUtil.resolveAppAndClientCode(null, null)
+                .flatMap(acTup -> this.validatedAccess(ca, acTup.getT1(), acTup.getT2()));
+    }
+
+    /**
+     * Confirms the caller may act on this (app, client) pair at all.
+     *
+     * <p>Two separate questions, and both matter. {@code appInheritance} asks whether the client is
+     * entitled to the app, which stops a caller naming an app they have no business in.
+     * {@code isUserClientManageClient} asks whether the caller's own client is that client or
+     * manages it, which is what keeps one tenant out of another's settings and lets a managing
+     * client legitimately administer the clients beneath it.
+     */
+    private Mono<MessageAccess> validatedAccess(ContextAuthentication ca, String appCode, String clientCode) {
 
         return FlatMapUtil.flatMapMono(
-                () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
-                acTup -> this.getSecurityService()
-                        .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
-                        .map(clientCodes -> clientCodes.contains(acTup.getT2()))
+                () -> this.getSecurityService()
+                        .appInheritance(appCode, ca.getUrlClientCode(), clientCode)
+                        .map(clientCodes -> clientCodes.contains(clientCode))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
                         .switchIfEmpty(this.getMsgService()
                                 .throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         MessageResourceService.FORBIDDEN_APP_ACCESS,
-                                        acTup.getT2())),
-                (acTup, hasAppAccess) -> this.getSecurityService().getClientByCode(acTup.getT2()).map(Client::getId)
+                                        clientCode)),
+                hasAppAccess -> this.getSecurityService().getClientByCode(clientCode).map(Client::getId)
                         .flatMap(clientId -> this.getSecurityService()
-                                .isUserClientManageClient(ca.getUrlAppCode(), ca.getUser().getId(),
+                                .isUserClientManageClient(appCode, ca.getUser().getId(),
                                         ca.getUser().getClientId(),
                                         clientId))
                         .flatMap(BooleanUtil::safeValueOfWithEmpty)
@@ -70,10 +90,10 @@ public interface IMessageAccessService {
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         MessageResourceService.INVALID_USER_FOR_CLIENT,
                                         ca.getUser().getId(),
-                                        acTup.getT2())),
-                (acTup, hasAppAccess, isUserManaged) -> Mono.just(MessageAccess.of(
-                        acTup.getT1(),
-                        acTup.getT2(),
+                                        clientCode)),
+                (hasAppAccess, isUserManaged) -> Mono.just(MessageAccess.of(
+                        appCode,
+                        clientCode,
                         ULongUtil.valueOf(ca.getUser().getId()),
                         hasAppAccess && isUserManaged,
                         ca.getUser())));

@@ -15,9 +15,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+/**
+ * WhatsApp configuration, restricted to tenant owners.
+ *
+ * <p>Annotated on the controller rather than the service, which is the usual place in this
+ * codebase, because these services are shared with the inbound webhook path. That path runs
+ * with no user at all, so a class-level rule on the service would gate HTTP access and break
+ * message delivery at the same time. The controller is the boundary that only humans cross.
+ */
+@PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
 @RestController
 @RequestMapping("/api/message/whatsapp/phone-numbers")
 public class WhatsappPhoneNumberController

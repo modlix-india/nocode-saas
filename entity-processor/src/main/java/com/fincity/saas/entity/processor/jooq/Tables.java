@@ -38,6 +38,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplic
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
 
 
 /**
@@ -231,4 +232,10 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_tickets</code>.
      */
     public static final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_whatsapp_messages</code>.
+     */
+    public static final EntityProcessorWhatsappMessages ENTITY_PROCESSOR_WHATSAPP_MESSAGES = EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES;
 }

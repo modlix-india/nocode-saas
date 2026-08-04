@@ -55,4 +55,42 @@ public interface IFeignMessageService {
             @PathVariable("ticketId") BigInteger ticketId,
             @RequestParam int page,
             @RequestParam int size);
+
+    /**
+     * Sends a free-form WhatsApp message on a deal.
+     *
+     * <p>Only call after checking that the caller may act on the deal and that Meta's 24-hour
+     * window is open. The message service performs neither check: it cannot evaluate deal access,
+     * and since the conversation history moved it no longer holds the timestamps the window is
+     * computed from.
+     *
+     * <p>The caller's token is forwarded explicitly, matching how {@code IFeignSecurityService}
+     * does it. Feign here does not propagate the security context on its own, and the message
+     * service still attributes the outbound record to the sending user.
+     */
+    @PostMapping(WHATSAPP_TICKET_PATH + "/internal/send")
+    Mono<Map<String, Object>> sendWhatsappMessageByTicket(
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestBody Map<String, Object> request);
+
+    /**
+     * Pulls a media file down from Meta and stores it, returning where it landed.
+     *
+     * <p>Takes Meta's media id rather than a message id: the two services no longer share message
+     * rows, so a row id means nothing across the boundary. The caller has already checked that the
+     * requester may see the deal.
+     */
+    @PostMapping(WHATSAPP_PATH + "/internal/media/download")
+    Mono<Map<String, Object>> downloadWhatsappMedia(
+            @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
+
+    /** Sends an approved template on a deal. The only thing allowed outside the 24-hour window. */
+    @PostMapping(WHATSAPP_TICKET_PATH + "/internal/template/send")
+    Mono<Map<String, Object>> sendWhatsappTemplateByTicket(
+            @RequestHeader("Authorization") String authorization,
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestBody Map<String, Object> request);
 }

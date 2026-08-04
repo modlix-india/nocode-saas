@@ -16,6 +16,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.Entit
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages.EntityProcessorWhatsappMessagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 
 import java.time.LocalDateTime;
@@ -479,6 +480,19 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
             _entityProcessorConversionEvents = new EntityProcessorConversionEventsPath(this, null, Keys.FK1_CE_TICKET_ID.getInverseKey());
 
         return _entityProcessorConversionEvents;
+    }
+
+    private transient EntityProcessorWhatsappMessagesPath _entityProcessorWhatsappMessages;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_whatsapp_messages</code> table
+     */
+    public EntityProcessorWhatsappMessagesPath entityProcessorWhatsappMessages() {
+        if (_entityProcessorWhatsappMessages == null)
+            _entityProcessorWhatsappMessages = new EntityProcessorWhatsappMessagesPath(this, null, Keys.FK1_WA_MESSAGES_TICKET_ID.getInverseKey());
+
+        return _entityProcessorWhatsappMessages;
     }
 
     private transient EntityProcessorNotesPath _entityProcessorNotes;

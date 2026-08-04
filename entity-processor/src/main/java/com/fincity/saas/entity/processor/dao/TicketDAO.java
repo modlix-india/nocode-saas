@@ -692,6 +692,38 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 });
     }
 
+    /**
+     * The deals on a customer's number that this caller may see.
+     *
+     * <p>This is the gate for a conversation thread, and the reason the thread is a union rather
+     * than a single ticket. A customer's history can span several deals, and a business number
+     * change splits it further, so reading one ticket would show a fragment. Resolving the visible
+     * set first and reading every message filed against it keeps the thread whole without ever
+     * widening past what {@link #processorAccessCondition} allows.
+     *
+     * <p>Runs on the same condition the Deals screen uses, so conversation visibility cannot drift
+     * from deal visibility.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByPhone(
+            ProcessorAccess access, String phoneNumber, ULong productId) {
+
+        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(List.of());
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+        conditions.add(FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber));
+        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(ComplexCondition.and(conditions), access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(this.dslContext
+                                .select(ENTITY_PROCESSOR_TICKETS.ID)
+                                .from(this.table)
+                                .where(jCondition.and(super.isActiveTrue())))
+                        .map(Record1::value1)
+                        .collectList());
+    }
+
     private AbstractCondition conversationFilter(ULong productId, String search) {
 
         List<AbstractCondition> conditions = new ArrayList<>();

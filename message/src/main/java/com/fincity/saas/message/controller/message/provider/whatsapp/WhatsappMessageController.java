@@ -9,7 +9,9 @@ import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.PhoneNumber;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.model.message.whatsapp.response.Response;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaByIdRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageCswRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
@@ -66,9 +68,34 @@ public class WhatsappMessageController
     }
 
     /**
+     * Fetches a media file from Meta and stores it, for a caller whose messages live elsewhere.
+     *
+     * <p>Takes Meta's media id, not a row id here, because the two services no longer share message
+     * rows. entity-processor confirms the requester may see the deal, pulls the media id out of its
+     * own copy of the payload, and calls this.
+     */
+    @PostMapping("/internal/media/download")
+    public Mono<ResponseEntity<FileDetail>> downloadMediaByMediaIdInternal(
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode,
+            @RequestBody WhatsappMediaByIdRequest request) {
+        return this.service
+                .downloadMediaByMediaIdInternal(
+                        appCode,
+                        clientCode,
+                        request.getConnectionName(),
+                        request.getMediaId(),
+                        request.getFileLocation())
+                .map(ResponseEntity::ok);
+    }
+
+    /**
      * A deal's thread, for entity-processor only. Behind {@code /internal} because this service
      * cannot evaluate deal access; entity-processor checks that the caller may see the ticket and
      * then calls this.
+     *
+     * <p>Superseded: entity-processor now stores and reads its own messages. Kept only until the
+     * transitional dual-write is removed and this service's message table is dropped.
      */
     @GetMapping("/internal/ticket/{ticketId}/messages")
     public Mono<ResponseEntity<Page<WhatsappMessage>>> readByTicketInternal(

@@ -31,6 +31,14 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private static final long serialVersionUID = 9214491312043215338L;
 
     private ULong productId;
+
+    /**
+     * Eureka service id of whichever service owns conversations on this number. Inbound events
+     * route to it, which is how this service stays a provider adapter and never learns what a
+     * conversation means. Orthogonal to {@code productId}: a default number serving every product
+     * still has exactly one owner. Null is unrouted, and such an event parks rather than dropping.
+     */
+    private String ownerService;
     private ULong whatsappBusinessAccountId;
     private String displayPhoneNumber;
     private QualityRatingType qualityRating;
@@ -54,6 +62,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     public WhatsappPhoneNumber(WhatsappPhoneNumber whatsappPhoneNumber) {
         super(whatsappPhoneNumber);
         this.productId = whatsappPhoneNumber.productId;
+        this.ownerService = whatsappPhoneNumber.ownerService;
         this.whatsappBusinessAccountId = whatsappPhoneNumber.whatsappBusinessAccountId;
         this.displayPhoneNumber = whatsappPhoneNumber.displayPhoneNumber;
         this.qualityRating = whatsappPhoneNumber.qualityRating;

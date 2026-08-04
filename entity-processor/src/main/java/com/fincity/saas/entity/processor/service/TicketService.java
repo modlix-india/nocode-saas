@@ -1344,6 +1344,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     /**
+     * The deals on a customer's number this caller may see. See {@link
+     * com.fincity.saas.entity.processor.dao.TicketDAO#readAccessibleTicketIdsByPhone}.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByPhone(
+            ProcessorAccess access, String phoneNumber, ULong productId) {
+        return this.dao.readAccessibleTicketIdsByPhone(access, phoneNumber, productId);
+    }
+
+    /**
      * The WhatsApp inbox. See {@link
      * com.fincity.saas.entity.processor.dao.TicketDAO#readConversations}.
      */

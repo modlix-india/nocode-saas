@@ -27,6 +27,30 @@ public class TicketWhatsappMessageController {
         return this.ticketWhatsappMessageService.sendMessageByTicketId(request).map(ResponseEntity::ok);
     }
 
+    // -------------------------------------------------------------------------------------------
+    // Internal variants, for entity-processor only.
+    //
+    // Sending is not gated in this service: it cannot tell whether a caller may act on a given
+    // deal, and it no longer holds the message history that Meta's 24-hour window is computed from.
+    // entity-processor checks both and then calls these. The endpoints above stay for now so the
+    // existing pages keep working, and come out when the UI is repointed and /api/message/** is
+    // denied at the edge.
+    // -------------------------------------------------------------------------------------------
+
+    @PostMapping("/internal/send")
+    public Mono<ResponseEntity<Message>> sendMessageByTicketIdInternal(
+            @RequestBody TicketWhatsappMessageRequest request) {
+        return this.ticketWhatsappMessageService.sendMessageByTicketId(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/template/send")
+    public Mono<ResponseEntity<Message>> sendTemplateMessageByTicketIdInternal(
+            @RequestBody TicketWhatsappTemplateMessageRequest request) {
+        return this.ticketWhatsappMessageService
+                .sendTemplateMessageByTicketId(request)
+                .map(ResponseEntity::ok);
+    }
+
     @PostMapping("/template/send")
     public Mono<ResponseEntity<Message>> sendTemplateMessageByTicketId(
             @RequestBody TicketWhatsappTemplateMessageRequest request) {

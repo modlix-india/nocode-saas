@@ -37,7 +37,10 @@ import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageCswRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
+import com.fincity.saas.message.enums.message.provider.whatsapp.WhatsappOutboxEventType;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappInboundDispatch;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
+import com.fincity.saas.message.service.message.provider.whatsapp.dispatch.WhatsappInboundDispatcher;
 import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
@@ -46,6 +49,7 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
+import com.fincity.saas.message.util.WhatsappBodyText;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -79,6 +83,7 @@ public class WhatsappMessageService
     private WhatsappBusinessAccountService businessAccountService;
     private IFeignEntityProcessorService entityProcessorService;
     private WhatsappWebhookSignatureService whatsappWebhookSignatureService;
+    private WhatsappInboundDispatcher whatsappInboundDispatcher;
 
     @Autowired
     public WhatsappMessageService(
@@ -103,6 +108,11 @@ public class WhatsappMessageService
     @Autowired
     public void setWhatsappWebhookSignatureService(WhatsappWebhookSignatureService whatsappWebhookSignatureService) {
         this.whatsappWebhookSignatureService = whatsappWebhookSignatureService;
+    }
+
+    @Autowired
+    public void setWhatsappInboundDispatcher(WhatsappInboundDispatcher whatsappInboundDispatcher) {
+        this.whatsappInboundDispatcher = whatsappInboundDispatcher;
     }
 
     @Override
@@ -386,10 +396,64 @@ public class WhatsappMessageService
                         (whatsappPhoneNumber, ticketId, whatsappMessage) -> this.toMessage(whatsappMessage),
                         (whatsappPhoneNumber, ticketId, whatsappMessage, message) -> this.messageService
                                 .createInternal(access, message)
-                                .flatMap(msgCreated -> this.messageEventService
-                                        .sendIncomingMessageEvent(access, whatsappMessage)
+                                .flatMap(msgCreated -> this.handOffToOwner(
+                                                access, whatsappPhoneNumber, iMessage, metadata)
+                                        .then(this.messageEventService.sendIncomingMessageEvent(
+                                                access, whatsappMessage))
                                         .thenReturn(msgCreated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.processIncomingMessage"));
+    }
+
+    /**
+     * Queues the message for the service that owns the number it arrived on.
+     *
+     * <p>Returns as soon as the outbox row is durable, so a consumer that is down delays delivery
+     * rather than failing the webhook. That is the point of the outbox: Meta only needs to know we
+     * have the message.
+     *
+     * <p>The local row written just above is transitional. entity-processor is becoming the system
+     * of record for conversations, and this service keeps writing its own copy until that cutover
+     * is verified, at which point both the write and the table go.
+     */
+    private Mono<Void> handOffToOwner(
+            MessageAccess access, WhatsappPhoneNumber whatsappPhoneNumber, IMessage iMessage, IMetadata metadata) {
+
+        PhoneNumber customerPhone =
+                iMessage.getFrom() != null ? PhoneNumber.ofWhatsapp(iMessage.getFrom()) : null;
+
+        WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
+                .setMetaMessageId(iMessage.getId())
+                .setEventType(WhatsappOutboxEventType.INBOUND_MESSAGE.name())
+                .setProductId(
+                        whatsappPhoneNumber.getProductId() != null
+                                ? whatsappPhoneNumber.getProductId().toBigInteger()
+                                : null)
+                .setWhatsappPhoneNumberId(
+                        whatsappPhoneNumber.getId() != null
+                                ? whatsappPhoneNumber.getId().toBigInteger()
+                                : null)
+                .setWhatsappBusinessAccountId(
+                        whatsappPhoneNumber.getWhatsappBusinessAccountId() != null
+                                ? whatsappPhoneNumber
+                                        .getWhatsappBusinessAccountId()
+                                        .toBigInteger()
+                                : null)
+                .setWhatsappPhoneNumber(whatsappPhoneNumber.getDisplayPhoneNumber())
+                .setCustomerWaId(iMessage.getFrom())
+                .setCustomerDialCode(customerPhone != null ? customerPhone.getCountryCode() : null)
+                .setCustomerPhoneNumber(customerPhone != null ? customerPhone.getNumber() : null)
+                .setFrom(iMessage.getFrom())
+                .setTo(metadata != null ? metadata.getDisplayPhoneNumber() : null)
+                .setMessageType(iMessage.getType() != null ? iMessage.getType().name() : null)
+                .setOccurredAt(inboundOccurredAt(iMessage))
+                .setBodyText(WhatsappBodyText.of(iMessage))
+                .setOutbound(Boolean.FALSE);
+
+        return this.whatsappInboundDispatcher.enqueueAndDispatch(
+                access,
+                whatsappPhoneNumber.getOwnerService(),
+                WhatsappOutboxEventType.INBOUND_MESSAGE,
+                dispatch);
     }
 
     /**
@@ -551,7 +615,69 @@ public class WhatsappMessageService
             }
         }
 
-        return super.updateInternalWithoutUser(access, whatsappMessage);
+        return super.updateInternalWithoutUser(access, whatsappMessage)
+                .flatMap(updated -> this.handOffStatusToOwner(access, updated, status)
+                        .thenReturn(updated));
+    }
+
+    /**
+     * Queues a delivery receipt for the service that owns the number.
+     *
+     * <p>Rides the same outbox and keys on the same Meta message id as the message itself, which is
+     * what lets a receipt that overtakes its own message still land: the owner upserts on that id
+     * rather than assuming the message is already there.
+     */
+    private Mono<Void> handOffStatusToOwner(MessageAccess access, WhatsappMessage whatsappMessage, IStatus status) {
+
+        if (whatsappMessage.getMessageId() == null) return Mono.empty();
+
+        return this.whatsappPhoneNumberService
+                .readById(access, whatsappMessage.getWhatsappPhoneNumberId())
+                .flatMap(phoneNumber -> {
+                    WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
+                            .setMetaMessageId(whatsappMessage.getMessageId())
+                            .setEventType(WhatsappOutboxEventType.MESSAGE_STATUS.name())
+                            .setProductId(
+                                    phoneNumber.getProductId() != null
+                                            ? phoneNumber.getProductId().toBigInteger()
+                                            : null)
+                            .setWhatsappPhoneNumberId(
+                                    phoneNumber.getId() != null
+                                            ? phoneNumber.getId().toBigInteger()
+                                            : null)
+                            .setWhatsappPhoneNumber(phoneNumber.getDisplayPhoneNumber())
+                            .setCustomerWaId(whatsappMessage.getCustomerWaId())
+                            .setCustomerPhoneNumber(whatsappMessage.getCustomerPhoneNumber())
+                            .setMessageStatus(status.getStatus() != null ? status.getStatus().name() : null)
+                            .setOccurredAt(statusOccurredAt(status))
+                            .setOutbound(whatsappMessage.isOutbound())
+                            .setFailureReason(whatsappMessage.getFailureReason());
+
+                    return this.whatsappInboundDispatcher.enqueueAndDispatch(
+                            access,
+                            phoneNumber.getOwnerService(),
+                            WhatsappOutboxEventType.MESSAGE_STATUS,
+                            dispatch);
+                })
+                .onErrorResume(e -> {
+                    // A lost receipt is a stale tick in the UI, not a lost message, so it must
+                    // never fail the webhook that carried it.
+                    logger.error(
+                            "Could not hand the status of WhatsApp message {} to its owner.",
+                            whatsappMessage.getMessageId(),
+                            e);
+                    return Mono.empty();
+                });
+    }
+
+    private LocalDateTime statusOccurredAt(IStatus status) {
+        if (status.getTimestamp() == null) return LocalDateTime.now(ZoneOffset.UTC);
+        try {
+            return LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(Long.parseLong(status.getTimestamp())), ZoneOffset.UTC);
+        } catch (NumberFormatException e) {
+            return LocalDateTime.now(ZoneOffset.UTC);
+        }
     }
 
     private Mono<Boolean> validateCustomerServiceWindow(
@@ -677,6 +803,43 @@ public class WhatsappMessageService
                                             this.updateInternal(whatsappMessage.setMediaFileDetail(fileDetails)));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.downloadMediaFile"));
+    }
+
+    /**
+     * Fetches a media file from Meta and stores it, returning where it landed.
+     *
+     * <p>Keyed on Meta's media id and nothing else, deliberately. The row-based {@link
+     * #downloadMediaFile} cannot serve a caller whose messages live in another service: the ids
+     * belong to different tables. Taking the media id instead keeps the split clean, this service
+     * owns the Graph API and the file store, the owning service owns the row and decides who may
+     * ask. It also survives this service's own message table going away.
+     *
+     * @param fileLocation caller-supplied so the owning service controls its own layout rather than
+     *     inheriting one built from a row this service no longer has
+     */
+    public Mono<FileDetail> downloadMediaByMediaIdInternal(
+            String appCode, String clientCode, String connectionName, String mediaId, String fileLocation) {
+
+        if (mediaId == null || mediaId.isBlank())
+            return super.throwMissingParam(WhatsappMediaRequest.Fields.whatsappMessageId);
+
+        MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.messageConnectionService
+                                .getCoreDocument(access.getAppCode(), access.getClientCode(), connectionName)
+                                .flatMap(super::isValidConnection),
+                        connection -> this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
+                        (connection, api) -> api.retrieveMediaUrl(mediaId),
+                        (connection, api, media) -> api.downloadMediaFile(media.getUrl()),
+                        (connection, api, media, mediaFile) -> this.makeFileInFiles(
+                                access.getClientCode(),
+                                mediaFile.getFileName(),
+                                fileLocation == null || fileLocation.isBlank()
+                                        ? WHATSAPP_CLOUD_MESSAGE_LOCATION
+                                        : fileLocation,
+                                mediaFile.getContent()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.downloadMediaByMediaIdInternal"));
     }
 
     private String createImagePath(WhatsappMessage whatsappMessage) {

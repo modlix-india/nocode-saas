@@ -38,6 +38,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplic
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsetsRecord;
@@ -72,6 +73,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketPeDuplicationRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketRuUserDistributionsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorWhatsappMessagesRecord;
 
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
@@ -189,6 +191,9 @@ public class Keys {
     public static final UniqueKey<EntityProcessorTicketRuUserDistributionsRecord> KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK6_TRUUD_CODE_DEPARTMENT_ID = Internal.createUniqueKey(EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS, DSL.name("KEY_entity_processor_ticket_ru_user_distributions_UK6_TRUUD_CODE_DEPARTMENT_ID"), new TableField[] { EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS.RULE_ID, EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS.DEPARTMENT_ID }, true);
     public static final UniqueKey<EntityProcessorTicketsRecord> KEY_ENTITY_PROCESSOR_TICKETS_PRIMARY = Internal.createUniqueKey(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS, DSL.name("KEY_entity_processor_tickets_PRIMARY"), new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ID }, true);
     public static final UniqueKey<EntityProcessorTicketsRecord> KEY_ENTITY_PROCESSOR_TICKETS_UK1_TICKETS_CODE = Internal.createUniqueKey(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS, DSL.name("KEY_entity_processor_tickets_UK1_TICKETS_CODE"), new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.CODE }, true);
+    public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_PRIMARY = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_PRIMARY"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID }, true);
+    public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_UK1_WA_MESSAGES_CODE = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_UK1_WA_MESSAGES_CODE"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CODE }, true);
+    public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_UK2_WA_MESSAGES_AC_CC_MESSAGE_ID = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_UK2_WA_MESSAGES_AC_CC_MESSAGE_ID"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.APP_CODE, EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CLIENT_CODE, EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_ID }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
@@ -250,4 +255,5 @@ public class Keys {
     public static final ForeignKey<EntityProcessorTicketsRecord, EntityProcessorProductsRecord> FK2_TICKETS_PRODUCT_ID = Internal.createForeignKey(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS, DSL.name("FK2_TICKETS_PRODUCT_ID"), new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.PRODUCT_ID }, Keys.KEY_ENTITY_PROCESSOR_PRODUCTS_PRIMARY, new TableField[] { EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID }, true);
     public static final ForeignKey<EntityProcessorTicketsRecord, EntityProcessorStagesRecord> FK3_TICKETS_STAGE_ID = Internal.createForeignKey(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS, DSL.name("FK3_TICKETS_STAGE_ID"), new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.STAGE }, Keys.KEY_ENTITY_PROCESSOR_STAGES_PRIMARY, new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.ID }, true);
     public static final ForeignKey<EntityProcessorTicketsRecord, EntityProcessorStagesRecord> FK4_TICKETS_STATUS_ID = Internal.createForeignKey(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS, DSL.name("FK4_TICKETS_STATUS_ID"), new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.STATUS }, Keys.KEY_ENTITY_PROCESSOR_STAGES_PRIMARY, new TableField[] { EntityProcessorStages.ENTITY_PROCESSOR_STAGES.ID }, true);
+    public static final ForeignKey<EntityProcessorWhatsappMessagesRecord, EntityProcessorTicketsRecord> FK1_WA_MESSAGES_TICKET_ID = Internal.createForeignKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("FK1_WA_MESSAGES_TICKET_ID"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID }, Keys.KEY_ENTITY_PROCESSOR_TICKETS_PRIMARY, new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ID }, true);
 }

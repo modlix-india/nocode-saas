@@ -38,6 +38,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplic
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
 
 import java.util.Arrays;
 import java.util.List;
@@ -247,6 +248,12 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_whatsapp_messages</code>.
+     */
+    public final EntityProcessorWhatsappMessages ENTITY_PROCESSOR_WHATSAPP_MESSAGES = EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES;
+
+    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -295,7 +302,8 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES,
             EntityProcessorTicketPeDuplicationRules.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES,
             EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS,
-            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS
+            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS,
+            EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES
         );
     }
 }
