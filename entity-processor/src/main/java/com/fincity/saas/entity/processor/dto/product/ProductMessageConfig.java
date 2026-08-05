@@ -4,6 +4,7 @@ import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.MessageChannelType;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -32,6 +33,19 @@ public class ProductMessageConfig extends BaseUpdatableDto<ProductMessageConfig>
 
     private ULong messageTemplateId;
 
+    /**
+     * The asset this config sends, as the template's header media.
+     *
+     * <p>Null for a plain text config. When set, the send path supplies it as the header parameter
+     * at call time, because an approved WhatsApp media template declares only its header
+     * <em>format</em> (IMAGE / VIDEO / DOCUMENT) and never the media itself. Several configs on the
+     * same stage, ordered by {@link #order}, are what makes up a welcome packet.
+     */
+    private FileDetail assetFileDetail;
+
+    /** Body variable sent with the asset. Capped at Meta's 1024-character body limit by the column. */
+    private String caption;
+
     public ProductMessageConfig() {
         super();
     }
@@ -44,6 +58,8 @@ public class ProductMessageConfig extends BaseUpdatableDto<ProductMessageConfig>
         this.channel = other.channel;
         this.order = other.order;
         this.messageTemplateId = other.messageTemplateId;
+        this.assetFileDetail = other.assetFileDetail;
+        this.caption = other.caption;
     }
 
     @Override

@@ -270,24 +270,43 @@ public class WhatsappMessageService
 
     private Mono<WhatsappPhoneNumber> getAccountWhatsappPhoneNumber(MessageAccess access, ULong businessAccountId) {
         return whatsappPhoneNumberService
-                .getByAccountId(access, businessAccountId)
+                .getDefaultPhoneNumber(access, businessAccountId)
                 .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
     /**
-     * @param signature and {@code rawPayload} establish that Meta actually sent this. Everything
-     *     else about the request is caller-controlled, including the tenant headers, so nothing
-     *     below this check should be treated as trustworthy without it.
+     * Handles one webhook delivery, working out whose it is from the payload.
+     *
+     * <p>There is a single callback URL for the whole platform, configured once on the Meta app, so
+     * nothing in the request identifies the tenant. It does not need to: {@code
+     * metadata.phone_number_id} names a number, {@code MESSAGE_WHATSAPP_PHONE_NUMBERS} holds a
+     * unique key on that column alone, and the row carries the app and client codes. The tenant is
+     * therefore a property of the message rather than of the URL it arrived on, which is what makes
+     * one URL workable and removes any per-tenant callback for two tenants on one Meta account to
+     * fight over.
+     *
+     * <p>An unknown number is dropped, deliberately. It means a number that is live at Meta was
+     * never synced here, and the only honest thing to do with a message for an account we do not
+     * hold is nothing.
+     *
+     * @param signature and {@code rawPayload} establish that Meta actually sent this. Read the
+     *     ordering carefully: the number lookup happens first, on an unverified body, purely to
+     *     select which tenant's app secret to check the signature against. That is the same
+     *     trade the business account id already made - it chooses a key, it grants nothing, and a
+     *     forged body still fails the check unless the sender holds that tenant's secret.
      */
-    public Mono<MessageResponse> processWebhookEvent(
-            String appCode, String clientCode, IWebHookEvent event, String signature, String rawPayload) {
-
-        if (clientCode.equals("SYSTEM"))
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    MessageResourceService.WEBHOOK_CONFIG_NOT_DONE);
+    public Mono<MessageResponse> processWebhookEvent(IWebHookEvent event, String signature, String rawPayload) {
 
         if (event == null || event.getEntry() == null) return Mono.empty();
+
+        return this.whatsappPhoneNumberService
+                .getByPhoneNumberIdInternal(phoneNumberIdOf(event))
+                .flatMap(phoneNumber -> this.processWebhookEventFor(
+                        phoneNumber.getAppCode(), phoneNumber.getClientCode(), event, signature, rawPayload));
+    }
+
+    private Mono<MessageResponse> processWebhookEventFor(
+            String appCode, String clientCode, IWebHookEvent event, String signature, String rawPayload) {
 
         MessageAccess access = MessageAccess.of(appCode, clientCode, true);
 
@@ -309,6 +328,31 @@ public class WhatsappMessageService
     private String wabaIdOf(IWebHookEvent event) {
         if (event.getEntry() == null || event.getEntry().isEmpty()) return null;
         return event.getEntry().getFirst().getId();
+    }
+
+    /**
+     * The business number this delivery concerns, which is what the tenant is resolved from.
+     *
+     * <p>Scans rather than reading the first entry, because a delivery can batch several changes
+     * and an empty one is possible. Every change we act on carries the same number: {@link
+     * #processChange} handles messages and statuses only, and both sit in a {@code value} alongside
+     * this metadata. Returns null when there is none, which drops the event.
+     */
+    private String phoneNumberIdOf(IWebHookEvent event) {
+
+        for (IEntry entry : event.getEntry()) {
+            if (entry.getChanges() == null) continue;
+
+            for (IChange change : entry.getChanges()) {
+                IValue value = change.getValue();
+                if (value == null || value.getMetadata() == null) continue;
+
+                String phoneNumberId = value.getMetadata().getPhoneNumberId();
+                if (phoneNumberId != null && !phoneNumberId.isBlank()) return phoneNumberId;
+            }
+        }
+
+        return null;
     }
 
     private Mono<MessageResponse> processTrustedWebhookEvent(

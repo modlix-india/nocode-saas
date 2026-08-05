@@ -32,5 +32,23 @@ public class MessageTemplateQueObject implements Serializable {
 
     private Map<String, Object> variables; // NOSONAR
 
+    /**
+     * Welcome-packet asset, sent as the template's header media.
+     *
+     * <p>Carried as a URL rather than an uploaded media id on purpose: Meta fetches the link itself
+     * at send time, so there is no upload step, no media-id expiry and no per-phone-number media
+     * cache to keep. The URL must therefore be reachable by Meta's servers without a session, and
+     * the key on it must outlive the send plus the retry window.
+     *
+     * <p>Null for an ordinary text template, which is every config that predates the welcome pack.
+     */
+    private String headerMediaUrl;
+
+    /** {@code image}, {@code video} or {@code document} - the Graph header parameter type. */
+    private String headerMediaType;
+
+    /** Body variable accompanying the asset. */
+    private String caption;
+
     private ContextAuthentication authentication;
 }

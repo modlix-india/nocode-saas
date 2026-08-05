@@ -64,6 +64,26 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         return apiService.getBusinessAccount(apiVersion.getValue(), whatsappBusinessAccountId);
     }
 
+    /**
+     * Subscribes the app to a business account's events, leaving the callback URL alone.
+     *
+     * <p>Same Graph edge as {@link #overrideBusinessWebhook}, with no body. That difference is the
+     * whole point: with a body Meta records a per-account callback override, without one the
+     * account simply delivers to the app's own callback, which is what we want since one URL serves
+     * every tenant.
+     */
+    public Mono<Response> subscribeApp(String whatsappBusinessAccountId) {
+        return apiService.subscribeApp(apiVersion.getValue(), whatsappBusinessAccountId);
+    }
+
+    /**
+     * @deprecated a per-account callback override is exactly what this platform must not set. One
+     *     URL serves every tenant and the inbound handler resolves the tenant from the phone number
+     *     in the payload, so an override only makes each tenant's URL different and lets two
+     *     tenants on one business account overwrite each other. Kept because it is the only way to
+     *     <i>clear</i> an override left behind by the previous design. Use {@link #subscribeApp}.
+     */
+    @Deprecated(since = "feature/whatsapp")
     public Mono<Response> overrideBusinessWebhook(String whatsappBusinessAccountId, WebhookOverride webhookOverride) {
         return apiService.overrideBusinessWebhook(apiVersion.getValue(), whatsappBusinessAccountId, webhookOverride);
     }
@@ -209,6 +229,21 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
                     .bodyToMono(new ParameterizedTypeReference<FbData<SubscribedApp>>() {});
+        }
+
+        @Override
+        public Mono<Response> subscribeApp(String apiVersion, String whatsappBusinessAccountId) {
+            return webClient
+                    .post()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/subscribed_apps",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(Response.class);
         }
 
         @Override

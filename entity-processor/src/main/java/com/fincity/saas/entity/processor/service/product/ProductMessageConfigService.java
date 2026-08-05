@@ -218,6 +218,18 @@ public class ProductMessageConfigService
                                                         .setOrder(baseOrder + (int) idx)
                                                         .setMessageTemplateId(templateId);
 
+                                                // A welcome packet is these same rows with a file
+                                                // attached to each. Looked up by template id rather
+                                                // than by index so reordering cannot mismatch an
+                                                // asset to the wrong template.
+                                                ProductMessageConfigRequest.MessageAsset asset =
+                                                        request.getAssets() == null
+                                                                ? null
+                                                                : request.getAssets().get(templateId);
+                                                if (asset != null)
+                                                    entity.setAssetFileDetail(asset.getFileDetail())
+                                                            .setCaption(asset.getCaption());
+
                                                 return super.create(access, entity);
                                             })
                                             .collectList());

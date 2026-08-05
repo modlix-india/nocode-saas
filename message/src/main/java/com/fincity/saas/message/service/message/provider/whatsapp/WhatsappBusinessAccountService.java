@@ -116,7 +116,21 @@ public class WhatsappBusinessAccountService
                         this.saveBusinessAccount(access, businessAccount, businessAccountId, connectionName));
     }
 
-    public Mono<WhatsappBusinessAccount> overrideWebhook(String connectionName, Identity whatsappBusinessAccountId) {
+    /**
+     * Subscribes our Meta app to this business account, so its events start arriving.
+     *
+     * <p>Subscribe only. It used to send {@code override_callback_uri} and {@code verify_token}
+     * alongside, pointing the account at a URL built per tenant. That is Meta's mechanism for a
+     * provider that needs to route each customer somewhere different, and we do not: the callback
+     * is configured once on the Meta app, and the inbound handler works out the tenant from the
+     * phone number in the payload. Sending an override made every tenant's URL distinct, so two
+     * tenants sharing a business account overwrote each other's, last click winning, with no way to
+     * see it from either side.
+     *
+     * <p>Now that the body is empty this is idempotent, which is the behaviour a setup step should
+     * have had in the first place.
+     */
+    public Mono<WhatsappBusinessAccount> subscribeApp(String connectionName, Identity whatsappBusinessAccountId) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> super.readIdentityWithAccess(access, whatsappBusinessAccountId),
@@ -124,9 +138,8 @@ public class WhatsappBusinessAccountService
                         .getCoreDocument(access.getAppCode(), access.getClientCode(), connectionName)
                         .flatMap(this::isValidConnection),
                 (access, waba, connection) -> this.getBusinessManagementApi(connection),
-                (access, waba, connection, api) -> this.createWebhookOverride(access)
-                        .flatMap(wo -> api.overrideBusinessWebhook(waba.getWhatsappBusinessAccountId(), wo)
-                                .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId()))),
+                (access, waba, connection, api) -> api.subscribeApp(waba.getWhatsappBusinessAccountId())
+                        .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId())),
                 (MessageAccess access,
                         WhatsappBusinessAccount waba,
                         Connection connection,
@@ -146,11 +159,6 @@ public class WhatsappBusinessAccountService
                             waba.getId(),
                             waba.getName());
                 });
-    }
-
-    private Mono<WebhookOverride> createWebhookOverride(MessageAccess access) {
-        return super.getWebhookUrl(access.getAppCode(), access.getClientCode())
-                .map(url -> new WebhookOverride().setOverrideCallbackUri(url).setVerifyToken(super.verifyToken));
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {

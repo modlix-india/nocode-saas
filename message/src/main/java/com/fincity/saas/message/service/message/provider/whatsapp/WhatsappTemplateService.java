@@ -2,6 +2,10 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappTemplateDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
@@ -11,6 +15,7 @@ import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.base.BaseMessageRequest;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
@@ -22,8 +27,12 @@ import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappAp
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -204,6 +213,62 @@ public class WhatsappTemplateService
                             return super.update(existingTemplate);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.updateTemplateStatus"));
+    }
+
+    /**
+     * The tenant's templates, for internal callers only.
+     *
+     * <p>Takes the tenant explicitly rather than reading it off a security context, because the
+     * caller is another service and there is no user on this hop. Same shape as {@code
+     * WhatsappMessageService.readByTicketInternal}: an access built from the two codes, then the
+     * ordinary access condition, so an internal caller can still only see one tenant's rows.
+     *
+     * <p>{@code statuses} is a comma-separated list rather than a repeated parameter, which is how
+     * {@code ConditionUtil} already encodes an {@code IN} value, so the query this builds is the
+     * same one {@code ?status=APPROVED&status=PENDING} used to build on the public route. Blank
+     * means every status.
+     */
+    public Mono<Page<WhatsappTemplate>> readPageInternal(
+            String appCode, String clientCode, String statuses, String templateName, Pageable pageable) {
+
+        MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+
+        List<AbstractCondition> filters = new ArrayList<>();
+
+        if (statuses != null && !statuses.isBlank())
+            filters.add(FilterCondition.make(WhatsappTemplate.Fields.status, statuses)
+                    .setOperator(FilterConditionOperator.IN));
+
+        // Kept because the deal profile's template preview looks a template up by name, not by id:
+        // it only has the name off the message it is rendering. The old public route supported this
+        // for free, since the generic list controller turns any query param into a field filter.
+        // The internal route names its parameters explicitly, so without this the preview silently
+        // returned an unfiltered first page and showed the wrong template.
+        if (templateName != null && !templateName.isBlank())
+            filters.add(FilterCondition.make(WhatsappTemplate.Fields.templateName, templateName)
+                    .setOperator(FilterConditionOperator.EQUALS));
+
+        AbstractCondition filter =
+                switch (filters.size()) {
+                    case 0 -> null;
+                    case 1 -> filters.getFirst();
+                    default -> ComplexCondition.and(filters.toArray(new AbstractCondition[0]));
+                };
+
+        return this.dao
+                .messageAccessCondition(filter, access)
+                .flatMap(condition -> this.dao.readPageFilter(pageable, condition))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.readPageInternal"));
+    }
+
+    /**
+     * One template, for internal callers only. Resolves by id or code, and only within the tenant
+     * the caller named, so a template id from another tenant reads as not found rather than as
+     * someone else's template.
+     */
+    public Mono<WhatsappTemplate> readByIdentityInternal(String appCode, String clientCode, Identity identity) {
+        return super.readIdentityWithAccess(MessageAccess.of(appCode, clientCode, Boolean.TRUE), identity)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.readByIdentityInternal"));
     }
 
     private Mono<WhatsappBusinessAccount> getWhatsappBusinessAccount(MessageAccess access, Connection connection) {

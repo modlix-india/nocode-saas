@@ -17,4 +17,18 @@ public class WhatsappTemplateSendRequest implements Serializable {
     private String ticketId;
     private Long messageTemplateId;
     private Map<String, Object> variables;
+
+    /**
+     * Welcome-packet asset, sent as the template's header media.
+     *
+     * <p>A link, not an uploaded media id: Meta fetches it at send time, so there is no upload step
+     * and no media-id expiry. Null for an ordinary text template.
+     */
+    private String headerMediaUrl;
+
+    /** {@code image}, {@code video} or {@code document}. */
+    private String headerMediaType;
+
+    /** Body variable accompanying the asset, exposed to the template as {{caption}}. */
+    private String caption;
 }

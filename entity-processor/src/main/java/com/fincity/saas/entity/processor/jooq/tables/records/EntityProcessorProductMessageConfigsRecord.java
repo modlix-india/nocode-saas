@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 import com.fincity.saas.entity.processor.enums.MessageChannelType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 
@@ -253,11 +254,51 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_message_configs.ASSET_FILE_DETAIL</code>.
+     * files-service FileDetail sent as the template header media. Null for a
+     * text-only config.
+     */
+    public EntityProcessorProductMessageConfigsRecord setAssetFileDetail(FileDetail value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_message_configs.ASSET_FILE_DETAIL</code>.
+     * files-service FileDetail sent as the template header media. Null for a
+     * text-only config.
+     */
+    public FileDetail getAssetFileDetail() {
+        return (FileDetail) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_message_configs.CAPTION</code>.
+     * Body variable sent alongside the asset.
+     */
+    public EntityProcessorProductMessageConfigsRecord setCaption(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_message_configs.CAPTION</code>.
+     * Body variable sent alongside the asset.
+     */
+    public String getCaption() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_message_configs.TEMP_ACTIVE</code>.
      * Temporary active flag for this config.
      */
     public EntityProcessorProductMessageConfigsRecord setTempActive(Boolean value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -267,7 +308,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Temporary active flag for this config.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(12);
+        return (Boolean) get(14);
     }
 
     /**
@@ -276,7 +317,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Flag to check if this config is active or not.
      */
     public EntityProcessorProductMessageConfigsRecord setIsActive(Boolean value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -286,7 +327,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Flag to check if this config is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(13);
+        return (Boolean) get(15);
     }
 
     /**
@@ -295,7 +336,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who created this row.
      */
     public EntityProcessorProductMessageConfigsRecord setCreatedBy(ULong value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -305,7 +346,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(16);
     }
 
     /**
@@ -314,7 +355,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is created.
      */
     public EntityProcessorProductMessageConfigsRecord setCreatedAt(LocalDateTime value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -324,7 +365,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -333,7 +374,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who updated this row.
      */
     public EntityProcessorProductMessageConfigsRecord setUpdatedBy(ULong value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -343,7 +384,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(18);
     }
 
     /**
@@ -352,7 +393,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is updated.
      */
     public EntityProcessorProductMessageConfigsRecord setUpdatedAt(LocalDateTime value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -362,7 +403,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -388,7 +429,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
     /**
      * Create a detached, initialised EntityProcessorProductMessageConfigsRecord
      */
-    public EntityProcessorProductMessageConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, ULong statusId, UInteger order, MessageChannelType messageChannelType, ULong messageTemplateId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductMessageConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, ULong statusId, UInteger order, MessageChannelType messageChannelType, ULong messageTemplateId, FileDetail assetFileDetail, String caption, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS);
 
         setId(id);
@@ -403,6 +444,8 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
         setOrder(order);
         setMessageChannelType(messageChannelType);
         setMessageTemplateId(messageTemplateId);
+        setAssetFileDetail(assetFileDetail);
+        setCaption(caption);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

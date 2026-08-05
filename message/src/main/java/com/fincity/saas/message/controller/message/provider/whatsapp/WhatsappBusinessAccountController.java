@@ -23,8 +23,21 @@ import reactor.core.publisher.Mono;
  * codebase, because these services are shared with the inbound webhook path. That path runs
  * with no user at all, so a class-level rule on the service would gate HTTP access and break
  * message delivery at the same time. The controller is the boundary that only humans cross.
+ *
+ * <p>Annotated per method, never on the class. A class-level rule applies to every public method
+ * including the inherited {@code @InitBinder}, and reactive method security only supports methods
+ * returning a {@code Publisher}, so a {@code void} binder callback makes every request to this
+ * controller fail with a 500 before it is even routed. It fails for owners too, so it is not the
+ * kind of mistake that shows up only in an access test.
+ *
+ * <p>What that leaves open is deliberate rather than incidental. The declared methods here are all
+ * administrative writes and carry the gate; the generic read endpoints inherited from
+ * {@code BaseUpdatableController} do not, because the deal profile calls them as an ordinary sales
+ * agent to list approved templates and business numbers in order to send a message. Reading the
+ * templates you are allowed to send is deal work, not settings administration. Those reads are
+ * closed by moving them behind entity-processor and blocking {@code /api/message/**} at nginx, not
+ * by an authority a salesperson will never hold.
  */
-@PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
 @RestController
 @RequestMapping("/api/message/whatsapp/accounts/business")
 public class WhatsappBusinessAccountController
@@ -34,18 +47,29 @@ public class WhatsappBusinessAccountController
                 WhatsappBusinessAccountDAO,
                 WhatsappBusinessAccountService> {
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/sync")
     public Mono<ResponseEntity<WhatsappBusinessAccount>> syncBusinessAccount(
             @RequestParam final String connectionName) {
         return this.service.syncBusinessAccount(connectionName).map(ResponseEntity::ok);
     }
 
+    /**
+     * Subscribes our Meta app to this business account, which is what makes its events start
+     * arriving. Surfaced in the UI as "Connect events".
+     *
+     * <p>The path still says {@code webhook/override} while the behaviour no longer overrides
+     * anything. Kept so the settings page keeps working; the name is the thing to correct, not the
+     * route, and doing both at once would mean a page change for no user-visible gain.
+     */
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/webhook/override/{id}")
-    public Mono<ResponseEntity<WhatsappBusinessAccount>> overrideWebhook(
+    public Mono<ResponseEntity<WhatsappBusinessAccount>> subscribeApp(
             @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam final String connectionName) {
-        return this.service.overrideWebhook(connectionName, identity).map(ResponseEntity::ok);
+        return this.service.subscribeApp(connectionName, identity).map(ResponseEntity::ok);
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @GetMapping("/fb" + PATH_ID)
     public Mono<ResponseEntity<WhatsappBusinessAccount>> getBusinessAccount(@PathVariable final String id) {
         return this.service.getBusinessAccount(id).map(ResponseEntity::ok);

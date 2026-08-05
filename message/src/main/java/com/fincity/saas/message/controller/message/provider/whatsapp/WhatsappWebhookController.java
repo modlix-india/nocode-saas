@@ -41,24 +41,35 @@ public class WhatsappWebhookController {
     }
 
     /**
-     * @param signature Meta's HMAC over the raw body. Without it nothing distinguishes a real
-     *     webhook from a forged one, since {@code appCode} and {@code clientCode} are just headers
-     *     the caller sets.
+     * One callback for every tenant, configured once on the Meta app.
+     *
+     * <p>Takes no {@code appCode} or {@code clientCode}. It used to take both as headers, which the
+     * gateway derived from a tenant-specific URL path, and that was wrong twice over: the path
+     * segment in a Modlix URL names the client <b>hosting</b> the application rather than the one
+     * consuming it, and giving each tenant its own callback URL meant two tenants sharing a Meta
+     * business account each believed they owned the single override that account can hold. The
+     * service resolves the tenant from {@code metadata.phone_number_id} instead, which identifies
+     * it exactly and cannot be contradicted by how the request was addressed.
+     *
+     * @param signature Meta's HMAC over the raw body, and the only thing establishing that Meta
+     *     sent this at all.
      * @param payload taken as a raw String on purpose. The signature is computed over the exact
      *     bytes received, so binding to a parsed type and re-serialising would break every check.
      */
     @PostMapping
     public Mono<ResponseEntity<MessageResponse>> receiveWebhook(
-            @RequestHeader("appCode") String appCode,
-            @RequestHeader("clientCode") String clientCode,
             @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
             @RequestBody String payload) {
 
         return FlatMapUtil.flatMapMono(() -> IWebHook.constructEvent(payload), event -> this.whatsappMessageService
-                .processWebhookEvent(appCode, clientCode, event, signature, payload)
+                .processWebhookEvent(event, signature, payload)
                 .map(response -> response.getStatus().getHttpStatus().is2xxSuccessful()
                         ? ResponseEntity.ok(response)
                         : ResponseEntity.status(response.getStatus().getHttpStatus())
-                                .body(response)));
+                                .body(response)))
+                // An event for a number this platform does not hold, or one carrying nothing we
+                // act on. Meta is told 200 on purpose: it did its job, and a non-2xx would have it
+                // redeliver something that will never resolve.
+                .defaultIfEmpty(ResponseEntity.ok().build());
     }
 }

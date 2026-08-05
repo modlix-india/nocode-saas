@@ -30,12 +30,6 @@ public abstract class AbstractMessageService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IMessageService<D> {
 
-    private static final String WEBHOOK_URI = "/api/message/webhooks";
-
-    private static final String SYSTEM = "SYSTEM";
-
-    private static final String PAGE_URI = "/page";
-
     protected MessageConnectionService messageConnectionService;
     protected MessageEventService messageEventService;
     protected MessageService messageService;
@@ -44,9 +38,6 @@ public abstract class AbstractMessageService<
 
     @Value("${meta.webhook.verify-token:null}")
     protected String verifyToken;
-
-    @Value("${app.base-url:http://localhost:8080}")
-    private String appBaseUrl;
 
     @Lazy
     @Autowired
@@ -120,35 +111,21 @@ public abstract class AbstractMessageService<
                 paramName);
     }
 
-    protected Mono<String> getWebhookUrl(String appCode, String clientCode) {
-        return this.buildWebhookUrl(appCode, clientCode != null ? clientCode : SYSTEM);
-    }
-
-    protected Mono<String> getWebhookAppUrl(String appCode) {
-        return this.buildWebhookUrl(appCode, SYSTEM);
-    }
-
     protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
         return this.securityService
                 .getUserInternal(userId.toBigInteger(), null)
                 .map(userResponse -> IdAndValue.of(
                         ULongUtil.valueOf(userResponse.getId()), PhoneUtil.parse(userResponse.getPhoneNumber())));
     }
-
-    private Mono<String> buildWebhookUrl(String appCode, String clientCode) {
-        return this.securityService
-                .getAppUrl(appCode, clientCode.equals(SYSTEM) ? null : clientCode)
-                .switchIfEmpty(this.securityService.getAppUrl(appCode, SYSTEM))
-                .map(appUrl -> this.buildUrl(
-                        appUrl, appCode, clientCode, this.getConnectionSubType().getProvider()))
-                .switchIfEmpty(Mono.just(this.buildUrl(
-                        this.appBaseUrl,
-                        appCode,
-                        clientCode,
-                        this.getConnectionSubType().getProvider())));
-    }
-
-    private String buildUrl(String baseUrl, String appCode, String clientCode, String provider) {
-        return baseUrl + "/" + appCode + "/" + clientCode + PAGE_URI + WEBHOOK_URI + "/" + provider;
-    }
 }
+
+/*
+ * Removed with the move to a single platform-wide callback: getWebhookUrl, getWebhookAppUrl and the
+ * URL builders behind them, which composed
+ * "<appUrl>/<appCode>/<clientCode>/page/api/message/webhooks/<provider>".
+ *
+ * Nothing constructs a callback URL here any more. It is configured once on the provider's own app
+ * and the inbound handler resolves the tenant from the payload, so there is no per-tenant URL to
+ * build, no per-tenant app URL to look up, and nothing for two tenants sharing a provider account
+ * to overwrite. Restoring any of this would reintroduce that conflict.
+ */

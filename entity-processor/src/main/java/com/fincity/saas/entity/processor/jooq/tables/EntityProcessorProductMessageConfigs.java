@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.MessageChannelType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductMessageConfigsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -21,6 +23,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -147,6 +150,21 @@ public class EntityProcessorProductMessageConfigs extends TableImpl<EntityProces
      * ID of the message/template in message service.
      */
     public final TableField<EntityProcessorProductMessageConfigsRecord, ULong> MESSAGE_TEMPLATE_ID = createField(DSL.name("MESSAGE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "ID of the message/template in message service.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_message_configs.ASSET_FILE_DETAIL</code>.
+     * files-service FileDetail sent as the template header media. Null for a
+     * text-only config.
+     */
+    public final TableField<EntityProcessorProductMessageConfigsRecord, FileDetail> ASSET_FILE_DETAIL = createField(DSL.name("ASSET_FILE_DETAIL"), SQLDataType.JSON, this, "files-service FileDetail sent as the template header media. Null for a text-only config.", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_message_configs.CAPTION</code>.
+     * Body variable sent alongside the asset.
+     */
+    public final TableField<EntityProcessorProductMessageConfigsRecord, String> CAPTION = createField(DSL.name("CAPTION"), SQLDataType.VARCHAR(1024), this, "Body variable sent alongside the asset.");
 
     /**
      * The column

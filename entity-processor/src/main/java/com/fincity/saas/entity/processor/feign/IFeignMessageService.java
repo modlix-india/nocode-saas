@@ -109,4 +109,50 @@ public interface IFeignMessageService {
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestBody Map<String, Object> request);
+
+    /**
+     * The tenant's WhatsApp templates.
+     *
+     * <p>{@code statuses} is one comma-separated value rather than a repeated parameter, which is
+     * the encoding the message service's own {@code ConditionUtil} uses for an {@code IN}, so the
+     * query it builds is the one {@code ?status=APPROVED&status=PENDING} used to build when the UI
+     * called that service directly. Blank means every status.
+     *
+     * <p>Untyped, for the same reason the conversation reads are: the response is a Spring {@code
+     * Page}, which does not deserialize cleanly into {@code PageImpl} over Feign, and mirroring the
+     * template DTO here would be a second copy of a large provider-shaped object to keep in step.
+     * The body is passed straight through, so the UI sees the shape it already binds to.
+     */
+    @GetMapping(WHATSAPP_PATH + "/templates/internal")
+    Mono<Map<String, Object>> getWhatsappTemplates(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam String statuses,
+            @RequestParam String templateName,
+            @RequestParam int page,
+            @RequestParam int size);
+
+    /**
+     * One template, by id or code. The message service resolves it within the tenant named here, so
+     * an id belonging to another tenant reads as not found.
+     */
+    @GetMapping(WHATSAPP_PATH + "/templates/internal/{id}")
+    Mono<Map<String, Object>> getWhatsappTemplate(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("id") String idOrCode);
+
+    /** The tenant's WhatsApp business numbers. Untyped for the same reason as the template page. */
+    @GetMapping(WHATSAPP_PATH + "/phone-numbers/internal")
+    Mono<Map<String, Object>> getWhatsappPhoneNumbers(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam int page,
+            @RequestParam int size);
+
+    /**
+     * The number a composer preselects. Empty when the tenant has marked no default, which is a
+     * working configuration rather than a missing record.
+     */
+    @GetMapping(WHATSAPP_PATH + "/phone-numbers/internal/default")
+    Mono<Map<String, Object>> getDefaultWhatsappPhoneNumber(
+            @RequestParam String appCode, @RequestParam String clientCode);
 }

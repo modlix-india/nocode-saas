@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.enums.MessageChannelType;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.oserver.message.model.MessageTemplateQueObject;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
@@ -125,7 +126,7 @@ public class TicketWhatsappTemplateMessageService implements TicketChannelMessag
         ULong stageId = ticket.getStage();
         ULong statusId = ticket.getStatus();
 
-        return new MessageTemplateQueObject()
+        MessageTemplateQueObject que = new MessageTemplateQueObject()
                 .setEventName("TicketCreated")
                 .setAppCode(access.getAppCode())
                 .setClientCode(access.getClientCode())
@@ -140,5 +141,30 @@ public class TicketWhatsappTemplateMessageService implements TicketChannelMessag
                         cfg.getMessageTemplateId() != null
                                 ? cfg.getMessageTemplateId().toBigInteger().longValue()
                                 : null);
+
+        FileDetail asset = cfg.getAssetFileDetail();
+        if (asset != null && asset.getUrl() != null)
+            que.setHeaderMediaUrl(asset.getUrl())
+                    .setHeaderMediaType(headerMediaType(asset))
+                    .setCaption(cfg.getCaption());
+
+        return que;
+    }
+
+    /**
+     * Maps the stored file onto the three header types Graph accepts.
+     *
+     * <p>Defaults to {@code document} rather than failing, because Graph rejects an unknown header
+     * type outright and a brochure arriving as a document is a far better outcome than a welcome
+     * packet that silently stops at the first unrecognised MIME type.
+     */
+    private static String headerMediaType(FileDetail asset) {
+
+        String mime = asset.getType() == null ? "" : asset.getType().toLowerCase();
+
+        if (mime.startsWith("image/")) return "image";
+        if (mime.startsWith("video/")) return "video";
+
+        return "document";
     }
 }

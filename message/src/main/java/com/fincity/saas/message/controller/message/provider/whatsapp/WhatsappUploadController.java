@@ -26,8 +26,21 @@ import reactor.core.publisher.Mono;
  * codebase, because these services are shared with the inbound webhook path. That path runs
  * with no user at all, so a class-level rule on the service would gate HTTP access and break
  * message delivery at the same time. The controller is the boundary that only humans cross.
+ *
+ * <p>Annotated per method, never on the class. A class-level rule applies to every public method
+ * including the inherited {@code @InitBinder}, and reactive method security only supports methods
+ * returning a {@code Publisher}, so a {@code void} binder callback makes every request to this
+ * controller fail with a 500 before it is even routed. It fails for owners too, so it is not the
+ * kind of mistake that shows up only in an access test.
+ *
+ * <p>What that leaves open is deliberate rather than incidental. The declared methods here are all
+ * administrative writes and carry the gate; the generic read endpoints inherited from
+ * {@code BaseUpdatableController} do not, because the deal profile calls them as an ordinary sales
+ * agent to list approved templates and business numbers in order to send a message. Reading the
+ * templates you are allowed to send is deal work, not settings administration. Those reads are
+ * closed by moving them behind entity-processor and blocking {@code /api/message/**} at nginx, not
+ * by an authority a salesperson will never hold.
  */
-@PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
 @RestController
 @RequestMapping("/api/message/whatsapp/uploads")
 public class WhatsappUploadController {
@@ -41,12 +54,14 @@ public class WhatsappUploadController {
         this.objectMapper = objectMapper;
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/session")
     public Mono<ResponseEntity<UploadSessionId>> startUploadSession(
             @RequestBody UploadSessionRequest uploadSessionRequest) {
         return this.service.startUploadSession(uploadSessionRequest).map(ResponseEntity::ok);
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping
     public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
             @RequestPart(name = "file") Mono<FilePart> filePart,
@@ -56,11 +71,13 @@ public class WhatsappUploadController {
                 .map(ResponseEntity::ok);
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/status")
     public Mono<ResponseEntity<UploadStatus>> getUploadStatus(@RequestBody UploadRequest uploadRequest) {
         return this.service.getUploadStatus(uploadRequest).map(ResponseEntity::ok);
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/resume")
     public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
             @RequestPart(name = "file") Mono<FilePart> filePart,

@@ -112,6 +112,14 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration
                 "/api/entity/processor/partners/internal/**",
                 "/api/entity/processor/campaigns/internal/**",
                 "/api/entity/processor/conversions/internal/**",
-                "/api/entity/processor/internal/billing/**");
+                "/api/entity/processor/internal/billing/**",
+                // The message service dispatches inbound WhatsApp events and Exotel call events
+                // here. These must be listed explicitly: the generic "(.*internal.*)" entry in
+                // ISecurityConfiguration is passed to pathMatchers, which takes a PathPattern and
+                // not a regex, so it matches nothing and every /internal route is authenticated
+                // unless named here. Without these two the dispatch 401s and every event parks in
+                // the outbox forever, which looks like a delivery outage rather than a config gap.
+                "/api/entity/processor/whatsapp/internal/**",
+                "/api/entity/processor/calls/internal/**");
     }
 }

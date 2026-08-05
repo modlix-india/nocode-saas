@@ -109,6 +109,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
         this.status = phoneNumber.getStatus();
         this.nameStatus = phoneNumber.getNameStatus();
         this.messagingLimitTier = phoneNumber.getMessagingLimitTier();
+        this.codeVerificationStatus = phoneNumber.getCodeVerificationStatus();
         return this;
     }
 }

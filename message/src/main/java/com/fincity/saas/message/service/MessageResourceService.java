@@ -61,6 +61,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String WEBHOOK_SIGNATURE_INVALID = "webhook_signature_invalid";
     public static final String PRODUCT_TO_DEFAULT = "product_to_default";
     public static final String PRODUCT_ALREADY_ASSIGNED = "product_already_assigned";
+    public static final String PHONE_NUMBER_VERIFICATION_FAILED = "phone_number_verification_failed";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

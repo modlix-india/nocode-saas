@@ -8,6 +8,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.dto.message.Call;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCallsRecord;
 import java.util.List;
@@ -20,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -27,10 +30,25 @@ import reactor.core.publisher.Mono;
 public class CallDAO extends BaseUpdatableDAO<EntityProcessorCallsRecord, Call> {
 
     /**
-     * What the eager read expands. Matches the fields the old message-service query asked for, so
-     * the page's {@code Parent.createdBy.firstName} binding keeps resolving.
+     * The relation the eager read expands, and the flag that turns expansion on.
+     *
+     * <p>Both have to travel as query parameters rather than as the {@code tableFields} argument:
+     * {@link com.fincity.saas.entity.processor.eager.EagerUtil} reads {@code eager} and
+     * {@code eagerField} straight out of the map and dereferences it without a null check, so
+     * passing {@code null} here is an NPE rather than "no expansion".
+     *
+     * <p>{@code createdBy} is what the deal profile binds as {@code Parent.createdBy.firstName} to
+     * show who placed a call. On an outbound call it is the only thing identifying the agent, so
+     * losing it is a visible regression rather than a cosmetic one.
      */
-    private static final List<String> EAGER_USER_FIELDS = List.of("userId", "firstName", "lastName");
+    private static MultiValueMap<String, String> eagerParams() {
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add(EagerUtil.EAGER, Boolean.TRUE.toString());
+        params.add(EagerUtil.EAGER_FIELD, "createdBy");
+
+        return params;
+    }
 
     protected CallDAO() {
         super(Call.class, ENTITY_PROCESSOR_CALLS, ENTITY_PROCESSOR_CALLS.ID);
@@ -99,7 +117,7 @@ public class CallDAO extends BaseUpdatableDAO<EntityProcessorCallsRecord, Call> 
                         .setOperator(FilterConditionOperator.IN)
                         .setMultiValue(ticketIds));
 
-        return this.readPageFilterEager(pageable, condition, EAGER_USER_FIELDS, null, null);
+        return this.readPageFilterEager(pageable, condition, null, eagerParams(), null);
     }
 
     /** The row a provider event refers to, if we have already seen this call. */

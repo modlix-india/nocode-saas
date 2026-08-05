@@ -31,6 +31,20 @@ public class TicketWhatsappQueueTemplateRequest extends BaseMessageRequest {
     private ULong messageTemplateId;
     private Map<String, Object> variables;
 
+    /**
+     * Welcome-packet asset, supplied as the template's header media.
+     *
+     * <p>A link rather than an uploaded media id: Meta fetches it itself at send time, so there is
+     * no upload round trip and no media-id expiry to manage. Null for an ordinary text template.
+     */
+    private String headerMediaUrl;
+
+    /** {@code image}, {@code video} or {@code document}. Ignored when there is no header media. */
+    private String headerMediaType;
+
+    /** Body variable accompanying the asset. */
+    private String caption;
+
     public boolean isValid() {
         return this.ticketId != null && !this.ticketId.isNull() && this.messageTemplateId != null;
     }

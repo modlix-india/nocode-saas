@@ -2,9 +2,17 @@ package com.fincity.saas.message.util;
 
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
 import com.fincity.saas.message.model.message.whatsapp.messages.BodyComponent;
+import com.fincity.saas.message.model.message.whatsapp.messages.Document;
+import com.fincity.saas.message.model.message.whatsapp.messages.DocumentParameter;
+import com.fincity.saas.message.model.message.whatsapp.messages.HeaderComponent;
+import com.fincity.saas.message.model.message.whatsapp.messages.Image;
+import com.fincity.saas.message.model.message.whatsapp.messages.ImageParameter;
 import com.fincity.saas.message.model.message.whatsapp.messages.Language;
 import com.fincity.saas.message.model.message.whatsapp.messages.TemplateMessage;
 import com.fincity.saas.message.model.message.whatsapp.messages.TextParameter;
+import com.fincity.saas.message.model.message.whatsapp.messages.Video;
+import com.fincity.saas.message.model.message.whatsapp.messages.VideoParameter;
+import com.fincity.saas.message.model.message.whatsapp.messages.type.ParameterType;
 import com.fincity.saas.message.model.message.whatsapp.templates.Component;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.ComponentType;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.LanguageType;
@@ -31,9 +39,28 @@ public final class WhatsappTemplateAssembler {
     private WhatsappTemplateAssembler() {}
 
     public static TemplateMessage assemble(WhatsappTemplate template, Map<String, Object> variables) {
+        return assemble(template, variables, null, null);
+    }
+
+    /**
+     * Same, plus a media header for a welcome-packet asset.
+     *
+     * <p>An approved media template declares only its header <em>format</em>; the media itself is a
+     * runtime parameter, which is what lets one approved template deliver a different brochure per
+     * product. The link is passed straight through for Meta to fetch, so it must be reachable
+     * without a session and must outlive the send plus Meta's retry window.
+     *
+     * <p>A null or blank url produces exactly the text-only message the two-argument overload does,
+     * so a config with no asset is unaffected.
+     */
+    public static TemplateMessage assemble(
+            WhatsappTemplate template, Map<String, Object> variables, String headerMediaUrl, String headerMediaType) {
 
         TemplateMessage templateMessage =
                 new TemplateMessage().setName(template.getTemplateName()).setLanguage(toLanguage(template));
+
+        if (headerMediaUrl != null && !headerMediaUrl.isBlank())
+            templateMessage.addComponent(mediaHeader(headerMediaUrl, headerMediaType));
 
         String bodyText = findBodyText(template);
         if (bodyText == null) return templateMessage;
@@ -45,6 +72,23 @@ public final class WhatsappTemplateAssembler {
         for (String token : tokens) body.addParameter(new TextParameter(resolve(variables, token)));
 
         return templateMessage.addComponent(body);
+    }
+
+    /**
+     * Falls back to a document header for anything unrecognised, because Graph rejects an unknown
+     * header type outright and a brochure arriving as a document beats a packet that stops dead at
+     * the first unfamiliar MIME type.
+     */
+    private static HeaderComponent mediaHeader(String url, String mediaType) {
+
+        HeaderComponent header = new HeaderComponent();
+        String type = mediaType == null ? "" : mediaType.toLowerCase();
+
+        return switch (type) {
+            case "image" -> header.addParameter(new ImageParameter(new Image().setLink(url)));
+            case "video" -> header.addParameter(new VideoParameter(ParameterType.VIDEO, new Video().setLink(url)));
+            default -> header.addParameter(new DocumentParameter(new Document().setLink(url)));
+        };
     }
 
     private static String findBodyText(WhatsappTemplate template) {

@@ -55,7 +55,10 @@ public class WhatsappTemplateQueueListener {
                 .setConnectionName(qob.getConnectionName())
                 .setTicketId(qob.getTicketId())
                 .setMessageTemplateId(qob.getMessageTemplateId())
-                .setVariables(qob.getVariables());
+                .setVariables(qob.getVariables())
+                .setHeaderMediaUrl(qob.getHeaderMediaUrl())
+                .setHeaderMediaType(qob.getHeaderMediaType())
+                .setCaption(qob.getCaption());
 
         return this.feignMessageService
                 .sendWhatsappTemplateFromQueue(qob.getAppCode(), qob.getClientCode(), request)

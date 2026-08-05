@@ -28,6 +28,8 @@ import com.fincity.saas.message.util.WhatsappTemplateAssembler;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiFunction;
 import lombok.Setter;
 import org.jooq.types.ULong;
@@ -120,12 +122,23 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
         return this.businessAccountService.getBusinessAccount(access, businessAccountId);
     }
 
+    /**
+     * The number mapped to the deal's product, or the account's default when it has none.
+     *
+     * <p>Falling back is the normal path, not the exception. Most tenants run a single number and
+     * map nothing to it, so requiring a per-product mapping made the ordinary configuration a
+     * NOT_FOUND on every send. Mapping is for tenants who want a distinct number per product.
+     *
+     * <p>The default is taken from the business account this send resolved to, so a tenant with two
+     * WABAs falls back onto a number that belongs to the identity the customer is talking to.
+     */
     private Mono<WhatsappPhoneNumber> getWhatsappPhoneNumberByProduct(
             MessageAccess access, ULong businessAccountId, ULong productId) {
         return this.whatsappPhoneNumberService
                 .getByProductId(access, productId)
-                .filter(phoneNumber ->
-                        phoneNumber.getWhatsappBusinessAccountId().equals(businessAccountId))
+                .filter(phoneNumber -> businessAccountId.equals(phoneNumber.getWhatsappBusinessAccountId()))
+                .switchIfEmpty(Mono.defer(
+                        () -> this.whatsappPhoneNumberService.getDefaultPhoneNumber(access, businessAccountId)))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         MessageResourceService.IDENTITY_WRONG,
@@ -169,9 +182,31 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
                                         MessageResourceService.IDENTITY_WRONG,
                                         "WhatsApp template",
                                         request.getMessageTemplateId().toString()))
-                                .map(template ->
-                                        WhatsappTemplateAssembler.assemble(template, request.getVariables())))
+                                .map(template -> WhatsappTemplateAssembler.assemble(
+                                        template,
+                                        withCaption(request),
+                                        request.getHeaderMediaUrl(),
+                                        request.getHeaderMediaType())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappMessageService.sendTemplateFromQueue"));
+    }
+
+    /**
+     * Exposes the asset's caption to the template body as {@code {{caption}}}.
+     *
+     * <p>A welcome-packet template is one approved body reused for every asset, so the line that
+     * describes the file has to arrive as a placeholder value rather than being baked into the
+     * template. Copied rather than mutated because the request may be replayed by the outbox sweeper
+     * and a caller's map should not grow a key each time.
+     */
+    private static Map<String, Object> withCaption(TicketWhatsappQueueTemplateRequest request) {
+
+        if (request.getCaption() == null) return request.getVariables();
+
+        Map<String, Object> variables =
+                request.getVariables() == null ? new HashMap<>() : new HashMap<>(request.getVariables());
+        variables.put("caption", request.getCaption());
+
+        return variables;
     }
 
     private Mono<Message> sendTemplate(

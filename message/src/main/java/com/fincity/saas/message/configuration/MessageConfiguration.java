@@ -58,7 +58,22 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "/api/message/call/callback/**",
                 "/api/message/call/exotel/connect",
                 "/api/message/webhooks",
-                "/api/message/webhooks/**");
+                "/api/message/webhooks/**",
+                // Service-to-service reads and sends that entity-processor fronts. Listed
+                // explicitly because the generic "(.*internal.*)" entry in ISecurityConfiguration
+                // goes to pathMatchers, which takes a PathPattern rather than a regex and so
+                // matches nothing. nginx is what actually keeps these off the public internet.
+                "/api/message/whatsapp/internal/**",
+                // Bare and wildcard forms both listed, matching how the products entry is written
+                // in ProcessorConfiguration: these two controllers expose an exact "/internal"
+                // route as well as sub-paths, and relying on "/internal/**" to also cover the bare
+                // segment is the kind of assumption that fails silently as a 401.
+                "/api/message/whatsapp/templates/internal",
+                "/api/message/whatsapp/templates/internal/**",
+                "/api/message/whatsapp/phone-numbers/internal",
+                "/api/message/whatsapp/phone-numbers/internal/**",
+                "/api/message/whatsapp/ticket/internal/**",
+                "/api/message/call/exotel/internal/**");
     }
 
     @Bean

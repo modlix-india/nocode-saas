@@ -20,8 +20,21 @@ import reactor.core.publisher.Mono;
  * {@code client_id|client_secret} and returns Meta's introspection of it. It is a debugging aid
  * that has been reachable by any authenticated user in the tenant, and is a fair candidate for
  * deletion rather than protection.
+ *
+ * <p>Annotated per method, never on the class. A class-level rule applies to every public method
+ * including the inherited {@code @InitBinder}, and reactive method security only supports methods
+ * returning a {@code Publisher}, so a {@code void} binder callback makes every request to this
+ * controller fail with a 500 before it is even routed. It fails for owners too, so it is not the
+ * kind of mistake that shows up only in an access test.
+ *
+ * <p>What that leaves open is deliberate rather than incidental. The declared methods here are all
+ * administrative writes and carry the gate; the generic read endpoints inherited from
+ * {@code BaseUpdatableController} do not, because the deal profile calls them as an ordinary sales
+ * agent to list approved templates and business numbers in order to send a message. Reading the
+ * templates you are allowed to send is deal work, not settings administration. Those reads are
+ * closed by moving them behind entity-processor and blocking {@code /api/message/**} at nginx, not
+ * by an authority a salesperson will never hold.
  */
-@PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
 @RestController
 @RequestMapping("/api/message/whatsapp/debug-token")
 public class WhatsappTokenDebugController {
@@ -33,6 +46,7 @@ public class WhatsappTokenDebugController {
         this.whatsappDebugTokenService = whatsappDebugTokenService;
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @GetMapping("/{connectionName}")
     public Mono<ResponseEntity<Map<String, Object>>> sendWhatsappMessage(@PathVariable String connectionName) {
         return this.whatsappDebugTokenService.debugToken(connectionName).map(ResponseEntity::ok);
