@@ -55,18 +55,17 @@ public class WhatsappBusinessAccountController
     }
 
     /**
-     * Subscribes our Meta app to this business account, which is what makes its events start
-     * arriving. Surfaced in the UI as "Connect events".
+     * Subscribes our Meta app to this business account and claims the account's events for this
+     * environment. Surfaced in the UI as "Connect events".
      *
-     * <p>The path still says {@code webhook/override} while the behaviour no longer overrides
-     * anything. Kept so the settings page keeps working; the name is the thing to correct, not the
-     * route, and doing both at once would mean a page change for no user-visible gain.
+     * <p>Idempotent, because the URL it registers is per environment rather than per tenant, so
+     * every tenant on an account produces the same one.
      */
     @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     @PostMapping("/webhook/override/{id}")
-    public Mono<ResponseEntity<WhatsappBusinessAccount>> subscribeApp(
+    public Mono<ResponseEntity<WhatsappBusinessAccount>> overrideWebhook(
             @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam final String connectionName) {
-        return this.service.subscribeApp(connectionName, identity).map(ResponseEntity::ok);
+        return this.service.overrideWebhook(connectionName, identity).map(ResponseEntity::ok);
     }
 
     @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")

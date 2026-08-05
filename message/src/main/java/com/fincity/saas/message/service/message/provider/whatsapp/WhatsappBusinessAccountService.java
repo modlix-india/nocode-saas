@@ -112,25 +112,99 @@ public class WhatsappBusinessAccountService
                 (access, connection) -> this.getBusinessManagementApi(connection),
                 (access, connection, api) -> this.getWhatsappBusinessAccountId(connection),
                 (access, connection, api, businessAccountId) -> api.getBusinessAccount(businessAccountId),
-                (access, connection, api, businessAccountId, businessAccount) ->
-                        this.saveBusinessAccount(access, businessAccount, businessAccountId, connectionName));
+                (access, connection, api, businessAccountId, businessAccount) -> this.saveBusinessAccount(
+                                access, businessAccount, businessAccountId, connectionName)
+                        .flatMap(saved -> this.reconcileWebhook(api, connection, saved)));
     }
 
     /**
-     * Subscribes our Meta app to this business account, so its events start arriving.
+     * Brings the stored subscription in line with Meta and, on a first connect, claims the account.
      *
-     * <p>Subscribe only. It used to send {@code override_callback_uri} and {@code verify_token}
-     * alongside, pointing the account at a URL built per tenant. That is Meta's mechanism for a
-     * provider that needs to route each customer somewhere different, and we do not: the callback
-     * is configured once on the Meta app, and the inbound handler works out the tenant from the
-     * phone number in the payload. Sending an override made every tenant's URL distinct, so two
-     * tenants sharing a business account overwrote each other's, last click winning, with no way to
-     * see it from either side.
+     * <p>Replaces asking the user to press a button they had no way to evaluate. An account is
+     * claimed automatically the first time we see it, because there is exactly one right answer
+     * then. After that the state is simply reported: {@code webhookConnected} compares Meta's live
+     * override against the URL this environment would register, and the UI offers the action only
+     * when they differ, which is the one case a human has to decide - the account is currently
+     * delivering somewhere else, and taking it is a choice with consequences elsewhere.
      *
-     * <p>Now that the body is empty this is idempotent, which is the behaviour a setup step should
-     * have had in the first place.
+     * <p>"First connect" means no subscription has ever been recorded here, not strictly a new row.
+     * An account carrying one already, from another environment or an earlier setup, is left alone.
+     *
+     * <p>Reads the subscription from Meta rather than trusting the stored copy. The stored copy is
+     * what made a claimed account look connected forever.
+     *
+     * <p>Never fails the sync. This runs on every settings page load, and a Graph hiccup must show
+     * the page with the connect action offered, not an error.
      */
-    public Mono<WhatsappBusinessAccount> subscribeApp(String connectionName, Identity whatsappBusinessAccountId) {
+    private Mono<WhatsappBusinessAccount> reconcileWebhook(
+            WhatsappBusinessManagementApi api, Connection connection, WhatsappBusinessAccount waba) {
+
+        boolean claimable = waba.getSubscribedApp() == null && !super.isLocalEnvironment();
+
+        return this.readSubscribedApp(api, connection, waba)
+                .flatMap(app -> claimable && !this.isThisEnvironment(app)
+                        ? api.overrideBusinessWebhook(waba.getWhatsappBusinessAccountId(), this.webhookOverride())
+                                .then(this.readSubscribedApp(api, connection, waba))
+                        : Mono.just(app))
+                .flatMap(app -> super.updateInternal(waba.setSubscribedApp(app)))
+                .defaultIfEmpty(waba)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Could not reconcile the webhook subscription for business account {}. Reporting it as"
+                                    + " not connected so the action stays available.",
+                            waba.getWhatsappBusinessAccountId(),
+                            e);
+                    return Mono.just(waba);
+                })
+                .map(saved -> saved.setWebhookConnected(this.isThisEnvironment(saved.getSubscribedApp())));
+    }
+
+    /**
+     * Our app's subscription on this account, as Meta currently has it.
+     *
+     * <p>Empty when our app is not among the subscribers, which is a real state rather than an
+     * error: it means nobody has connected this account yet.
+     */
+    private Mono<SubscribedApp> readSubscribedApp(
+            WhatsappBusinessManagementApi api, Connection connection, WhatsappBusinessAccount waba) {
+
+        String facebookAppId = (String) connection.getConnectionDetails().get(KEY_META_APP_ID);
+
+        return api.getSubscribedApp(waba.getWhatsappBusinessAccountId()).flatMap(subscribedApps -> {
+            if (subscribedApps.getData() == null) return Mono.empty();
+
+            for (SubscribedApp app : subscribedApps.getData())
+                if (app.getBusinessApiData() != null
+                        && app.getBusinessApiData().getId().equalsIgnoreCase(facebookAppId)) return Mono.just(app);
+
+            return Mono.empty();
+        });
+    }
+
+    /** Whether the account's callback is the one this environment registers. */
+    private boolean isThisEnvironment(SubscribedApp app) {
+        return app != null && super.getWebhookUrl().equals(app.getOverrideCallBackUrl());
+    }
+
+    /**
+     * Subscribes our Meta app to this business account and claims it for this environment.
+     *
+     * <p>The override is <b>per environment</b>, not per tenant. One Meta app holds one app-level
+     * callback URL, so without an override only whichever environment that URL points at can ever
+     * receive; the override is what lets dev, stage and prod each own the business accounts they
+     * use while sharing an app. What was wrong before was not that an override existed but that its
+     * URL was built per tenant, which made every tenant's URL distinct and let two tenants sharing
+     * an account overwrite each other's, last click winning, invisibly from both sides.
+     *
+     * <p>{@link #getWebhookUrl()} now returns one value for the whole environment, so every tenant
+     * on an account produces the same URL and clicking this from either is idempotent. The tenant
+     * is resolved on arrival from the phone number in the payload.
+     *
+     * <p>Two environments pointed at the <b>same</b> business account still contend, and no amount
+     * of URL construction fixes that: an account can deliver to exactly one place. Give each
+     * environment its own account.
+     */
+    public Mono<WhatsappBusinessAccount> overrideWebhook(String connectionName, Identity whatsappBusinessAccountId) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> super.readIdentityWithAccess(access, whatsappBusinessAccountId),
@@ -138,7 +212,8 @@ public class WhatsappBusinessAccountService
                         .getCoreDocument(access.getAppCode(), access.getClientCode(), connectionName)
                         .flatMap(this::isValidConnection),
                 (access, waba, connection) -> this.getBusinessManagementApi(connection),
-                (access, waba, connection, api) -> api.subscribeApp(waba.getWhatsappBusinessAccountId())
+                (access, waba, connection, api) -> api.overrideBusinessWebhook(
+                                waba.getWhatsappBusinessAccountId(), this.webhookOverride())
                         .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId())),
                 (MessageAccess access,
                         WhatsappBusinessAccount waba,
@@ -159,6 +234,19 @@ public class WhatsappBusinessAccountService
                             waba.getId(),
                             waba.getName());
                 });
+    }
+
+    /**
+     * The environment's callback plus the verify token Meta echoes back to it.
+     *
+     * <p>The token has to travel with the override: an override URL is a fresh subscription as far
+     * as Meta is concerned, and it runs the GET handshake against it before delivering anything. It
+     * must equal {@code meta.webhook.verify-token}, which is what {@code verifyMetaWebhook} checks.
+     */
+    private WebhookOverride webhookOverride() {
+        return new WebhookOverride()
+                .setOverrideCallbackUri(super.getWebhookUrl())
+                .setVerifyToken(super.verifyToken);
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {

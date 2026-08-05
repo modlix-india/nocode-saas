@@ -36,8 +36,24 @@ public abstract class AbstractMessageService<
     protected MessageWebhookService messageWebhookService;
     protected IFeignFileService fileService;
 
+    private static final String WEBHOOK_URI = "/api/message/webhooks";
+
+    private static final String WEBHOOK_HOST = "modlix.com";
+
     @Value("${meta.webhook.verify-token:null}")
     protected String verifyToken;
+
+    /**
+     * Which environment this is, as {@code ""}, {@code ".dev"}, {@code ".stage"} or {@code
+     * ".local"}, and the only thing that varies in a callback URL.
+     *
+     * <p>Reused rather than introducing a webhook-specific base URL property, because a second
+     * property would be a second thing to get wrong per environment and would silently disagree
+     * with this one. {@code IndexHTMLService.deriveBeaconHost} derives the authzump host from the
+     * same value in the same way.
+     */
+    @Value("${security.appCodeSuffix:}")
+    private String appCodeSuffix;
 
     @Lazy
     @Autowired
@@ -117,15 +133,64 @@ public abstract class AbstractMessageService<
                 .map(userResponse -> IdAndValue.of(
                         ULongUtil.valueOf(userResponse.getId()), PhoneUtil.parse(userResponse.getPhoneNumber())));
     }
-}
 
-/*
- * Removed with the move to a single platform-wide callback: getWebhookUrl, getWebhookAppUrl and the
- * URL builders behind them, which composed
- * "<appUrl>/<appCode>/<clientCode>/page/api/message/webhooks/<provider>".
- *
- * Nothing constructs a callback URL here any more. It is configured once on the provider's own app
- * and the inbound handler resolves the tenant from the payload, so there is no per-tenant URL to
- * build, no per-tenant app URL to look up, and nothing for two tenants sharing a provider account
- * to overwrite. Restoring any of this would reintroduce that conflict.
- */
+    /**
+     * This environment's callback URL for this provider. One value, whoever is asking.
+     *
+     * <pre>
+     *   ""       -> https://modlix.com/api/message/webhooks/whatsapp
+     *   ".dev"   -> https://dev.modlix.com/api/message/webhooks/whatsapp
+     *   ".stage" -> https://stage.modlix.com/api/message/webhooks/whatsapp
+     * </pre>
+     *
+     * <p>Takes no {@code appCode} and no {@code clientCode}, and that is the point rather than an
+     * omission. It used to compose
+     * {@code <appUrl>/<appCode>/<clientCode>/page/api/message/webhooks/<provider>} off a per-tenant
+     * app URL lookup, which was wrong twice: the client code in a Modlix URL names the client
+     * <b>hosting</b> the application rather than the one consuming it, and a provider stores one
+     * callback per business account, so giving each tenant a different URL meant two tenants
+     * sharing an account silently overwrote each other's, last write winning.
+     *
+     * <p>Registering it per account is still necessary, just not per tenant. A provider account is
+     * reachable by exactly one environment at a time, and this is what decides which. The tenant is
+     * a property of the message, resolved on arrival from the number it came in on.
+     *
+     * <p>Synchronous because it is configuration, not a lookup. The {@code Mono} the previous
+     * version returned only existed to wrap the app URL call that is now gone.
+     */
+    protected String getWebhookUrl() {
+        return "https://" + environmentHost() + WEBHOOK_URI + "/"
+                + this.getConnectionSubType().getProvider();
+    }
+
+    /**
+     * Whether this environment is a developer machine, and so unreachable by any provider.
+     *
+     * <p>Matters because registering a callback is not a local action: it is written to the
+     * provider's copy of a shared business account. A local machine claiming one points it at a
+     * host the provider cannot resolve and takes it away from the environment that was serving it,
+     * with no error anywhere. Anything that registers a callback without a human deciding to must
+     * check this first.
+     */
+    protected boolean isLocalEnvironment() {
+        return environmentHost().startsWith("local.");
+    }
+
+    /**
+     * {@code ".dev"} to {@code dev.modlix.com}, blank to {@code modlix.com}.
+     *
+     * <p>Tolerates a suffix with or without its leading dot, and takes only the first segment, so a
+     * compound value cannot leak into the host. Same handling as
+     * {@code IndexHTMLService.deriveBeaconHost}.
+     */
+    private String environmentHost() {
+
+        if (this.appCodeSuffix == null || this.appCodeSuffix.isBlank()) return WEBHOOK_HOST;
+
+        String trimmed = this.appCodeSuffix.startsWith(".") ? this.appCodeSuffix.substring(1) : this.appCodeSuffix;
+        int dotIdx = trimmed.indexOf('.');
+        String env = dotIdx >= 0 ? trimmed.substring(0, dotIdx) : trimmed;
+
+        return env.isBlank() ? WEBHOOK_HOST : env + "." + WEBHOOK_HOST;
+    }
+}

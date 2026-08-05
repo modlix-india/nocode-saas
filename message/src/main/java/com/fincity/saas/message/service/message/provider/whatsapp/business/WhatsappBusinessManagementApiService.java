@@ -23,8 +23,6 @@ public interface WhatsappBusinessManagementApiService {
 
     Mono<FbData<SubscribedApp>> getSubscribedApp(String apiVersion, String whatsappBusinessAccountId);
 
-    Mono<Response> subscribeApp(String apiVersion, String whatsappBusinessAccountId);
-
     Mono<Response> overrideBusinessWebhook(
             String apiVersion, String whatsappBusinessAccountId, WebhookOverride webhookOverride);
 

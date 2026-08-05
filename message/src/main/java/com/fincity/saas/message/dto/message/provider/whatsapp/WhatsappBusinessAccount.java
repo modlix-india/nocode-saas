@@ -31,6 +31,19 @@ public class WhatsappBusinessAccount extends BaseUpdatableDto<WhatsappBusinessAc
      */
     private String connectionName;
 
+    /**
+     * Whether this account currently delivers its events to <b>this</b> environment.
+     *
+     * <p>Not a column and never persisted: it compares Meta's live {@code override_callback_uri}
+     * against the URL this environment would register, so it is only meaningful at the moment it is
+     * computed. Storing it would produce exactly the stale "already connected" that made a claimed
+     * account impossible to reclaim.
+     *
+     * <p>Set on sync. False also covers "we could not tell", which is the safe direction: the UI
+     * offers the connect action, and the action is idempotent.
+     */
+    private transient boolean webhookConnected;
+
     public WhatsappBusinessAccount() {
         super();
     }
