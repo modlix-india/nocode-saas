@@ -75,6 +75,26 @@ public class Ticket extends BaseProcessorDto<Ticket> {
      */
     private LocalDateTime lastMessageAt;
 
+    /**
+     * The lead asked not to be contacted on WhatsApp.
+     *
+     * <p>Permanent, and deliberately on the deal rather than in a rule: a stage change re-runs the
+     * rules, and a rule set that re-enrols an opted-out lead is precisely the complaint that becomes
+     * a report against the number. Checked before every automated send.
+     */
+    private Boolean whatsappOptedOut = Boolean.FALSE;
+
+    private LocalDateTime whatsappOptedOutAt;
+
+    /**
+     * The inbound message that triggered it.
+     *
+     * <p>Kept because detection is a text match and text matches produce false positives. Without
+     * the original message nobody can tell an opt-out from a lead who happened to write "stop by
+     * tomorrow", and the flag is permanent, so a wrong one is unreversible in practice.
+     */
+    private String whatsappOptedOutText;
+
     @JsonIgnore
     private transient RuleResult assignmentRuleResult;
 
@@ -120,6 +140,9 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.expiresOn = ticket.expiresOn;
         this.latestComment = ticket.latestComment;
         this.lastMessageAt = ticket.lastMessageAt;
+        this.whatsappOptedOut = ticket.whatsappOptedOut;
+        this.whatsappOptedOutAt = ticket.whatsappOptedOutAt;
+        this.whatsappOptedOutText = ticket.whatsappOptedOutText;
         this.assignmentRuleResult = ticket.assignmentRuleResult;
         this.evaluationTrace = ticket.evaluationTrace;
     }

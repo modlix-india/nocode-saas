@@ -228,6 +228,157 @@ public class WhatsappMessageDAO
                 .collectList();
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Pacing.
+    //
+    // Every figure the Layer-2 gate decides on is computed here rather than stored, because this
+    // table is the only honest record of what was actually sent. A counter kept alongside it would
+    // drift the first time a send failed halfway, and it would drift silently in the direction that
+    // lets more messages out.
+    // ---------------------------------------------------------------------------------------------
+
+    /** The last time we wrote to this deal. Half of the 24-hour comparison. */
+    public Mono<LocalDateTime> lastOutboundAt(String appCode, String clientCode, List<ULong> ticketIds) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.empty();
+
+        return Mono.from(this.dslContext
+                        .select(DSL.max(orderKey()))
+                        .from(this.table)
+                        .where(tenant(appCode, clientCode))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                        .and(this.isActiveTrue()))
+                .mapNotNull(Record1::value1);
+    }
+
+    /**
+     * Replies divided by sends for one session over a window.
+     *
+     * <p>Counted per deal rather than per message, and that is the meaningful denominator: a lead
+     * who received four messages and answered once has replied, and scoring that as 25% would
+     * penalise a number for following up properly. What the metric is really detecting is a number
+     * writing to people who never write back at all.
+     */
+    public Mono<Double> replyRate(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(1.0d);
+
+        Field<ULong> ticket = ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID;
+
+        Mono<Integer> contacted = Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ticket))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+
+        Mono<Integer> replied = Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ticket))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isFalse()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+
+        return Mono.zip(contacted, replied)
+                // A number that has written to nobody is not failing; it is new. Reporting 0% would
+                // suspend a freshly linked session before it ever sent anything.
+                .map(t -> t.getT1() == 0 ? 1.0d : (double) t.getT2() / (double) t.getT1());
+    }
+
+    /**
+     * Deals this session opened a conversation with since a given time.
+     *
+     * <p>First contact means the first outbound to a deal that had no prior message either way, which
+     * is the thing the daily cap is actually about. Replying to an existing thread is not opening a
+     * conversation and must not count against it, or a busy support day would exhaust the allowance
+     * for genuine outreach.
+     */
+    public Mono<Integer> firstContactsSince(
+            String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        Table<?> earlier = this.table.as("earlier");
+        Field<ULong> earlierTicket = earlier.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID);
+        Field<LocalDateTime> earlierAt = earlier.field(orderKey().getName(), LocalDateTime.class);
+
+        return Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                        .andNotExists(this.dslContext
+                                .selectOne()
+                                .from(earlier)
+                                .where(earlierTicket.eq(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
+                                .and(earlierAt.lt(since))))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    /** Messages this session has sent in the last hour, so a pointless call to a capped session is avoided. */
+    public Mono<Integer> sentSince(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    /**
+     * Consecutive outbound messages to a deal with no reply after them.
+     *
+     * <p>Counts back from the most recent inbound, so a lead who answers resets it. Two or three of
+     * these is where a sequence should stop and a person should look, both because continuing is
+     * useless and because unanswered messages are themselves part of what throttles the number.
+     */
+    public Mono<Integer> consecutiveUnanswered(String appCode, String clientCode, List<ULong> ticketIds) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.just(0);
+
+        return this.lastInboundAt(appCode, clientCode, ticketIds)
+                .defaultIfEmpty(LocalDateTime.of(1970, 1, 1, 0, 0))
+                .flatMap(lastInbound -> Mono.from(this.dslContext
+                                .selectCount()
+                                .from(this.table)
+                                .where(tenant(appCode, clientCode))
+                                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                                .and(orderKey().gt(lastInbound))
+                                .and(this.isActiveTrue()))
+                        .map(Record1::value1)
+                        .defaultIfEmpty(0));
+    }
+
+    /** Failed sends on this session recently, because repeated failures usually mean something is already wrong. */
+    public Mono<Integer> recentFailures(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_STATUS.eq(WhatsappMessageStatus.FAILED)))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    private Condition sessionWindow(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+        return tenant(appCode, clientCode)
+                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.BRIDGE_SESSION_ID.eq(sessionId))
+                .and(orderKey().ge(since))
+                .and(this.isActiveTrue());
+    }
+
     private Condition tenant(String appCode, String clientCode) {
         return ENTITY_PROCESSOR_WHATSAPP_MESSAGES
                 .APP_CODE

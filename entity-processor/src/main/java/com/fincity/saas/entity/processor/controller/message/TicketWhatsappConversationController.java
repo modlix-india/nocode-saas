@@ -1,10 +1,11 @@
 package com.fincity.saas.entity.processor.controller.message;
 
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.service.message.TicketWhatsappConversationService;
-import com.fincity.saas.entity.processor.service.message.WhatsappCswService;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -61,21 +62,38 @@ public class TicketWhatsappConversationController {
     }
 
     /**
-     * Whether Meta's 24-hour window is open, so the UI knows whether to offer a free-text composer
-     * or force a template.
+     * How the number this deal sends from is placed against every limit, plus whether anything is
+     * currently holding a send.
+     *
+     * <p>What the composer calls before offering the override, and what fills the override panel.
+     * Same figures as the standing panel on the settings page, from the same computation, so the two
+     * cannot tell a person different things about the same number.
      */
-    @GetMapping("/{ticketId}/csw")
-    public Mono<ResponseEntity<WhatsappCswService.CswStatus>> readCswStatus(
-            @PathVariable("ticketId") Identity ticketId) {
-        return this.service.readCswStatus(ticketId).map(ResponseEntity::ok);
+    @GetMapping("/{ticketId}/health")
+    public Mono<ResponseEntity<WhatsappSessionHealth>> readHealth(@PathVariable("ticketId") Identity ticketId) {
+        return this.service.readHealth(ticketId).map(ResponseEntity::ok);
     }
 
     /**
-     * Sends a free-form message. 409 when the 24-hour window has closed, which is a real state the
-     * UI has to handle by offering a template rather than an error toast.
+     * Lets a person undo an opt-out that was detected in error.
      *
-     * <p>The ticket comes from the path, not the body: the path is what gets access-checked, so any
-     * ticket id in the payload is overwritten before the send.
+     * <p>Separate from the send on purpose. Opt-out is the one hold a {@code force} flag will not
+     * override, because a checkbox on the send button is how "they asked us to stop" turns into a
+     * report. Reversing it is a deliberate act on the deal instead.
+     */
+    @PostMapping("/{ticketId}/opt-out/clear")
+    public Mono<ResponseEntity<Ticket>> clearOptOut(@PathVariable("ticketId") Identity ticketId) {
+        return this.service.clearOptOut(ticketId).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Sends a message the agent typed.
+     *
+     * <p>409 when a pacing gate is holding it, which is a real state the UI handles by showing the
+     * override panel rather than an error toast. Retrying the same call with {@code force: true}
+     * sends anyway, for every hold except opt-out and "no number connected".
+     *
+     * <p>The ticket comes from the path, not the body: the path is what gets access-checked.
      */
     @PostMapping("/{ticketId}/send")
     public Mono<ResponseEntity<Map<String, Object>>> sendMessage(
@@ -97,13 +115,6 @@ public class TicketWhatsappConversationController {
             @PathVariable("messageId") ULong messageId,
             @RequestParam(value = "connectionName", required = false) String connectionName) {
         return this.service.downloadMedia(ticketId, messageId, connectionName).map(ResponseEntity::ok);
-    }
-
-    /** Sends an approved template, which is the only thing permitted outside the window. */
-    @PostMapping("/{ticketId}/send/template")
-    public Mono<ResponseEntity<Map<String, Object>>> sendTemplate(
-            @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {
-        return this.service.sendTemplate(ticketId, request).map(ResponseEntity::ok);
     }
 
     /**

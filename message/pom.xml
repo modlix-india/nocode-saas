@@ -333,6 +333,25 @@
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
+                                        <!--
+                                            Bridge control plane. Both are scoped to their exact
+                                            table rather than to the bare column name: STATE in
+                                            particular is a word that will be reused, and an
+                                            unscoped pattern here would silently retype a future
+                                            column to an enum that knows nothing about its values.
+                                        -->
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.bridge.BridgeInstanceState</userType>
+                                            <includeExpression>.*message_bridge_instances\.STATE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.bridge.WhatsappSessionState</userType>
+                                            <includeExpression>.*message_whatsapp_phone_numbers\.SESSION_STATE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.message.model.message.whatsapp.messages.Message</userType>
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>

@@ -147,9 +147,19 @@ public class EntityProcessorProductMessageConfigs extends TableImpl<EntityProces
     /**
      * The column
      * <code>entity_processor.entity_processor_product_message_configs.MESSAGE_TEMPLATE_ID</code>.
-     * ID of the message/template in message service.
+     * Row in entity_processor_message_templates. Was a message-service Cloud
+     * API template before the pivot; existing values are dead and are migrated
+     * by hand.
      */
-    public final TableField<EntityProcessorProductMessageConfigsRecord, ULong> MESSAGE_TEMPLATE_ID = createField(DSL.name("MESSAGE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "ID of the message/template in message service.");
+    public final TableField<EntityProcessorProductMessageConfigsRecord, ULong> MESSAGE_TEMPLATE_ID = createField(DSL.name("MESSAGE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Row in entity_processor_message_templates. Was a message-service Cloud API template before the pivot; existing values are dead and are migrated by hand.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_message_configs.BODY_VARIANTS</code>.
+     * Interchangeable message bodies, rotated per recipient so one rule does
+     * not send identical text to every lead.
+     */
+    public final TableField<EntityProcessorProductMessageConfigsRecord, List> BODY_VARIANTS = createField(DSL.name("BODY_VARIANTS"), SQLDataType.JSON, this, "Interchangeable message bodies, rotated per recipient so one rule does not send identical text to every lead.", new JSONtoClassConverter<JSON, List>(JSON.class, List.class));
 
     /**
      * The column

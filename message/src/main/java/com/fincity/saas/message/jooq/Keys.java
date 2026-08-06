@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq;
 
 
+import com.fincity.saas.message.jooq.tables.MessageBridgeInstances;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
@@ -13,6 +14,7 @@ import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
+import com.fincity.saas.message.jooq.tables.records.MessageBridgeInstancesRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageDispatchOutboxRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
@@ -41,6 +43,8 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<MessageBridgeInstancesRecord> KEY_MESSAGE_BRIDGE_INSTANCES_PRIMARY = Internal.createUniqueKey(MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES, DSL.name("KEY_message_bridge_instances_PRIMARY"), new TableField[] { MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES.ID }, true);
+    public static final UniqueKey<MessageBridgeInstancesRecord> KEY_MESSAGE_BRIDGE_INSTANCES_UK1_BRIDGE_INSTANCES_INSTANCE_ID = Internal.createUniqueKey(MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES, DSL.name("KEY_message_bridge_instances_UK1_BRIDGE_INSTANCES_INSTANCE_ID"), new TableField[] { MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES.INSTANCE_ID }, true);
     public static final UniqueKey<MessageCallsRecord> KEY_MESSAGE_CALLS_PRIMARY = Internal.createUniqueKey(MessageCalls.MESSAGE_CALLS, DSL.name("KEY_message_calls_PRIMARY"), new TableField[] { MessageCalls.MESSAGE_CALLS.ID }, true);
     public static final UniqueKey<MessageCallsRecord> KEY_MESSAGE_CALLS_UK1_CALLS_CODE = Internal.createUniqueKey(MessageCalls.MESSAGE_CALLS, DSL.name("KEY_message_calls_UK1_CALLS_CODE"), new TableField[] { MessageCalls.MESSAGE_CALLS.CODE }, true);
     public static final UniqueKey<MessageDispatchOutboxRecord> KEY_MESSAGE_DISPATCH_OUTBOX_PRIMARY = Internal.createUniqueKey(MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX, DSL.name("KEY_message_dispatch_outbox_PRIMARY"), new TableField[] { MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX.ID }, true);
@@ -61,6 +65,7 @@ public class Keys {
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_PRIMARY = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_PRIMARY"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.ID }, true);
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_UK1_WHATSAPP_PHONE_NUMBER_CODE"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.CODE }, true);
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.PHONE_NUMBER_ID }, true);
+    public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.LINKED_NUMBER_KEY }, true);
     public static final UniqueKey<MessageWhatsappTemplatesRecord> KEY_MESSAGE_WHATSAPP_TEMPLATES_PRIMARY = Internal.createUniqueKey(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES, DSL.name("KEY_message_whatsapp_templates_PRIMARY"), new TableField[] { MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES.ID }, true);
     public static final UniqueKey<MessageWhatsappTemplatesRecord> KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE = Internal.createUniqueKey(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES, DSL.name("KEY_message_whatsapp_templates_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE"), new TableField[] { MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES.CODE }, true);
     public static final UniqueKey<MessageWhatsappTemplatesRecord> KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME = Internal.createUniqueKey(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES, DSL.name("KEY_message_whatsapp_templates_UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME"), new TableField[] { MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES.TEMPLATE_NAME }, true);

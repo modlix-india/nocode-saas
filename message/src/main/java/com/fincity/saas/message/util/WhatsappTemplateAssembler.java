@@ -84,11 +84,17 @@ public final class WhatsappTemplateAssembler {
         HeaderComponent header = new HeaderComponent();
         String type = mediaType == null ? "" : mediaType.toLowerCase();
 
-        return switch (type) {
+        // A statement switch, not an expression one. addParameter is declared on the base class and
+        // returns Component<HeaderComponent> rather than HeaderComponent, so as an expression the
+        // switch cannot type against this method's return. It mutates and returns this, so
+        // discarding the result and returning the header is equivalent.
+        switch (type) {
             case "image" -> header.addParameter(new ImageParameter(new Image().setLink(url)));
             case "video" -> header.addParameter(new VideoParameter(ParameterType.VIDEO, new Video().setLink(url)));
             default -> header.addParameter(new DocumentParameter(new Document().setLink(url)));
-        };
+        }
+
+        return header;
     }
 
     private static String findBodyText(WhatsappTemplate template) {

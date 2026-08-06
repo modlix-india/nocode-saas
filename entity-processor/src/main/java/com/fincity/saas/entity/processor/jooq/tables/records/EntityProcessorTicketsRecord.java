@@ -660,6 +660,67 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         return (LocalDateTime) get(33);
     }
 
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOut(Boolean value) {
+        set(34, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public Boolean getWhatsappOptedOut() {
+        return (Boolean) get(34);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOutAt(LocalDateTime value) {
+        set(35, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public LocalDateTime getWhatsappOptedOutAt() {
+        return (LocalDateTime) get(35);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOutText(String value) {
+        set(36, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public String getWhatsappOptedOutText() {
+        return (String) get(36);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -683,7 +744,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean whatsappOptedOut, LocalDateTime whatsappOptedOutAt, String whatsappOptedOutText) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -720,6 +781,9 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setWhatsappOptedOut(whatsappOptedOut);
+        setWhatsappOptedOutAt(whatsappOptedOutAt);
+        setWhatsappOptedOutText(whatsappOptedOutText);
         resetChangedOnNotNull();
     }
 }

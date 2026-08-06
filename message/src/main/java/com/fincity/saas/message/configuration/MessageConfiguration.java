@@ -73,7 +73,22 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "/api/message/whatsapp/phone-numbers/internal",
                 "/api/message/whatsapp/phone-numbers/internal/**",
                 "/api/message/whatsapp/ticket/internal/**",
-                "/api/message/call/exotel/internal/**");
+                // Session control that entity-processor fronts for the UI. Both forms listed,
+                // because create is a POST to the bare "/internal" and everything else hangs below
+                // it; relying on "/internal/**" to also cover the bare segment is the assumption
+                // that fails silently as a 401.
+                "/api/message/whatsapp/sessions/internal",
+                "/api/message/whatsapp/sessions/internal/**",
+                "/api/message/call/exotel/internal/**",
+                // Bridge control plane. Named one route at a time rather than as
+                // "/api/message/bridges/**", because these carry their own credentials (an HMAC over
+                // the raw body, plus a bootstrap secret on the two that need it) while the fleet
+                // view at GET /api/message/bridges does not, and must keep going through normal
+                // authentication: it exposes instance ids and internal base URLs.
+                "/api/message/bridges/register",
+                "/api/message/bridges/release",
+                "/api/message/bridges/*/heartbeat",
+                "/api/message/bridges/*/events");
     }
 
     @Bean

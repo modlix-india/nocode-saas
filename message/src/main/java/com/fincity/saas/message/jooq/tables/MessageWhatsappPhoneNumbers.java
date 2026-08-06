@@ -5,6 +5,7 @@ package com.fincity.saas.message.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.message.enums.bridge.WhatsappSessionState;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.MessagingLimitTier;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
@@ -114,6 +115,56 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     public final TableField<MessageWhatsappPhoneNumbersRecord, String> OWNER_SERVICE = createField(DSL.name("OWNER_SERVICE"), SQLDataType.VARCHAR(64), this, "Eureka service id owning conversations on this number, e.g. entity-processor.");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.BRIDGE_INSTANCE_ID</code>.
+     * Instance holding this session. Authoritative: routing is a table lookup,
+     * never a hash and never a balance. Null means unplaced, which for a Cloud
+     * API era row is its permanent state.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> BRIDGE_INSTANCE_ID = createField(DSL.name("BRIDGE_INSTANCE_ID"), SQLDataType.VARCHAR(64), this, "Instance holding this session. Authoritative: routing is a table lookup, never a hash and never a balance. Null means unplaced, which for a Cloud API era row is its permanent state.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.SESSION_STATE</code>.
+     * Lifecycle state as the bridge reports it, surfaced verbatim to the UI.
+     * COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only
+     * failure here a customer can fix themselves in seconds, and only if told
+     * what it is.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, WhatsappSessionState> SESSION_STATE = createField(DSL.name("SESSION_STATE"), SQLDataType.VARCHAR(16), this, "Lifecycle state as the bridge reports it, surfaced verbatim to the UI. COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only failure here a customer can fix themselves in seconds, and only if told what it is.", new EnumConverter<String, WhatsappSessionState>(String.class, WhatsappSessionState.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.SESSION_REASON</code>. Why
+     * the session is in this state. A BANNED row with no reason is
+     * unexplainable three months later.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> SESSION_REASON = createField(DSL.name("SESSION_REASON"), SQLDataType.VARCHAR(512), this, "Why the session is in this state. A BANNED row with no reason is unexplainable three months later.");
+
+    /**
+     * The column <code>message.message_whatsapp_phone_numbers.COUNTRY</code>.
+     * ISO country of the linked number, established authoritatively at
+     * PairSuccess from the linked JID rather than from what the caller
+     * declared. Placement and re-verification both read this.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> COUNTRY = createField(DSL.name("COUNTRY"), SQLDataType.CHAR(2), this, "ISO country of the linked number, established authoritatively at PairSuccess from the linked JID rather than from what the caller declared. Placement and re-verification both read this.");
+
+    /**
+     * The column <code>message.message_whatsapp_phone_numbers.LINKED_AT</code>.
+     * When the number was linked, UTC. Drives the warm-up ramp, which is
+     * derived from this and must not be an editable field.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> LINKED_AT = createField(DSL.name("LINKED_AT"), SQLDataType.LOCALDATETIME(0), this, "When the number was linked, UTC. Drives the warm-up ramp, which is derived from this and must not be an editable field.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.STATE_SINCE</code>. When
+     * SESSION_STATE last changed, UTC. Distinct from UPDATED_AT so a dead
+     * session cannot reset its own retirement clock by being touched.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> STATE_SINCE = createField(DSL.name("STATE_SINCE"), SQLDataType.LOCALDATETIME(0), this, "When SESSION_STATE last changed, UTC. Distinct from UPDATED_AT so a dead session cannot reset its own retirement clock by being touched.");
+
+    /**
      * The column <code>message.message_whatsapp_phone_numbers.CODE</code>.
      * Unique Code to identify this row.
      */
@@ -122,9 +173,10 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     /**
      * The column
      * <code>message.message_whatsapp_phone_numbers.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
-     * WhatsApp Business Account ID.
+     * Meta business account. Null for every bridge session; retained until the
+     * Graph API layer is retired.
      */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "WhatsApp Business Account ID.");
+    public final TableField<MessageWhatsappPhoneNumbersRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Meta business account. Null for every bridge session; retained until the Graph API layer is retired.");
 
     /**
      * The column
@@ -250,6 +302,14 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      */
     public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this record was last updated.");
 
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.LINKED_NUMBER_KEY</code>.
+     * DISPLAY_PHONE_NUMBER for placed sessions only, NULL otherwise. Exists
+     * purely to carry the unique key below.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> LINKED_NUMBER_KEY = createField(DSL.name("LINKED_NUMBER_KEY"), SQLDataType.CHAR(20), this, "DISPLAY_PHONE_NUMBER for placed sessions only, NULL otherwise. Exists purely to carry the unique key below.");
+
     private MessageWhatsappPhoneNumbers(Name alias, Table<MessageWhatsappPhoneNumbersRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -322,7 +382,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT);
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX4_WHATSAPP_PHONE_NUMBERS_SESSION, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX5_WHATSAPP_PHONE_NUMBERS_COUNTRY);
     }
 
     @Override
@@ -337,7 +397,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     @Override
     public List<UniqueKey<MessageWhatsappPhoneNumbersRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID);
+        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER);
     }
 
     @Override

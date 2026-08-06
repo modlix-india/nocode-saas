@@ -2,9 +2,9 @@ package com.fincity.saas.entity.processor.feign;
 
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
-import com.fincity.saas.entity.processor.oserver.message.model.WhatsappTemplateSendRequest;
 import java.math.BigInteger;
 import java.util.Map;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,17 +43,6 @@ public interface IFeignMessageService {
     @PostMapping(EXOTEL_CALL_PATH + "/internal/make")
     Mono<Map<String, Object>> makeCallInternal(
             @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
-
-    /**
-     * Sends a stored WhatsApp template to a ticket. The message service resolves the template by id
-     * and fills its body placeholders from {@code variables}, so the caller does not need to know
-     * the template's component structure.
-     */
-    @PostMapping(WHATSAPP_TICKET_PATH + "/template/send-from-queue")
-    Mono<Void> sendWhatsappTemplateFromQueue(
-            @RequestHeader("appCode") String appCode,
-            @RequestHeader("clientCode") String clientCode,
-            @RequestBody WhatsappTemplateSendRequest request);
 
     /**
      * A deal's WhatsApp thread. Only call this after confirming the caller may see the ticket; the
@@ -102,57 +91,83 @@ public interface IFeignMessageService {
     Mono<Map<String, Object>> downloadWhatsappMedia(
             @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
 
-    /** Sends an approved template on a deal. The only thing allowed outside the 24-hour window. */
-    @PostMapping(WHATSAPP_TICKET_PATH + "/internal/template/send")
-    Mono<Map<String, Object>> sendWhatsappTemplateByTicket(
-            @RequestHeader("Authorization") String authorization,
-            @RequestHeader("appCode") String appCode,
-            @RequestHeader("clientCode") String clientCode,
+    // ---------------------------------------------------------------------------------------------
+    // Linked-device sessions.
+    //
+    // Replaces the template and business-number half of this interface, which went with the Cloud
+    // API: there is no approval to request and no WABA to sync. This service never learns that a
+    // fleet of bridges exists, which is the point of the message service being the control plane.
+    // Placement, routing and instance health all resolve on the far side of these calls.
+    // ---------------------------------------------------------------------------------------------
+
+    String WHATSAPP_SESSION_PATH = WHATSAPP_PATH + "/sessions/internal";
+
+    /**
+     * Starts linking a number, returning as soon as the instance is pairing.
+     *
+     * <p>Not when the customer has scanned: that can take minutes and may never happen. The QR code
+     * is polled from {@link #getWhatsappSessionQr} instead, because a code rotates roughly every 20
+     * seconds and holding a socket open for it buys nothing.
+     *
+     * <p>A country with no instance registered surfaces as a plain "not available in that country
+     * yet", raised at placement, rather than as a connection error.
+     */
+    @PostMapping(WHATSAPP_SESSION_PATH)
+    Mono<Map<String, Object>> createWhatsappSession(
+            @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
+
+    /** Every session the tenant has, for the integration page. Cached view, up to a heartbeat stale. */
+    @GetMapping(WHATSAPP_SESSION_PATH)
+    Mono<java.util.List<Map<String, Object>>> listWhatsappSessions(
+            @RequestParam String appCode, @RequestParam String clientCode);
+
+    /**
+     * The session a product sends from, falling back to the tenant's default.
+     *
+     * <p>Answers 200 with an empty body when there is no linked number, rather than 404. Not being
+     * configured is a state every send path has to handle anyway, and making it an error would mean
+     * each one distinguishing that from the message service being down.
+     */
+    @GetMapping(WHATSAPP_SESSION_PATH + "/by-product/{productId}")
+    Mono<Map<String, Object>> getWhatsappSessionByProduct(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @PathVariable("productId") BigInteger productId);
+
+    /** Live state, read from the holding instance rather than from a cached row. */
+    @GetMapping(WHATSAPP_SESSION_PATH + "/{sessionId}")
+    Mono<Map<String, Object>> getWhatsappSession(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("sessionId") String sessionId);
+
+    /** The current pairing code, polled by the link panel while the session is PAIRING. */
+    @GetMapping(WHATSAPP_SESSION_PATH + "/{sessionId}/qr")
+    Mono<Map<String, Object>> getWhatsappSessionQr(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("sessionId") String sessionId);
+
+    /** Unlinks a number and frees its slot on the instance. */
+    @DeleteMapping(WHATSAPP_SESSION_PATH + "/{sessionId}")
+    Mono<Void> unlinkWhatsappSession(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("sessionId") String sessionId);
+
+    /**
+     * Sends a message through a linked session.
+     *
+     * <p><b>Slow by design.</b> The bridge holds the call open for its randomised 5-15 second gap and
+     * the typing indicator, so this can take most of a minute. A client that gives up early does not
+     * cancel the send: the message still goes, and nobody is left holding the id it returned.
+     */
+    @PostMapping(WHATSAPP_SESSION_PATH + "/{sessionId}/messages")
+    Mono<Map<String, Object>> sendWhatsappSessionMessage(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @PathVariable("sessionId") String sessionId,
             @RequestBody Map<String, Object> request);
 
-    /**
-     * The tenant's WhatsApp templates.
-     *
-     * <p>{@code statuses} is one comma-separated value rather than a repeated parameter, which is
-     * the encoding the message service's own {@code ConditionUtil} uses for an {@code IN}, so the
-     * query it builds is the one {@code ?status=APPROVED&status=PENDING} used to build when the UI
-     * called that service directly. Blank means every status.
-     *
-     * <p>Untyped, for the same reason the conversation reads are: the response is a Spring {@code
-     * Page}, which does not deserialize cleanly into {@code PageImpl} over Feign, and mirroring the
-     * template DTO here would be a second copy of a large provider-shaped object to keep in step.
-     * The body is passed straight through, so the UI sees the shape it already binds to.
-     */
-    @GetMapping(WHATSAPP_PATH + "/templates/internal")
-    Mono<Map<String, Object>> getWhatsappTemplates(
+    /** Marks a thread read on the customer's handset, called when a person opens it rather than on arrival. */
+    @PostMapping(WHATSAPP_SESSION_PATH + "/{sessionId}/read")
+    Mono<Void> markWhatsappSessionRead(
             @RequestParam String appCode,
             @RequestParam String clientCode,
-            @RequestParam String statuses,
-            @RequestParam String templateName,
-            @RequestParam int page,
-            @RequestParam int size);
-
-    /**
-     * One template, by id or code. The message service resolves it within the tenant named here, so
-     * an id belonging to another tenant reads as not found.
-     */
-    @GetMapping(WHATSAPP_PATH + "/templates/internal/{id}")
-    Mono<Map<String, Object>> getWhatsappTemplate(
-            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("id") String idOrCode);
-
-    /** The tenant's WhatsApp business numbers. Untyped for the same reason as the template page. */
-    @GetMapping(WHATSAPP_PATH + "/phone-numbers/internal")
-    Mono<Map<String, Object>> getWhatsappPhoneNumbers(
-            @RequestParam String appCode,
-            @RequestParam String clientCode,
-            @RequestParam int page,
-            @RequestParam int size);
-
-    /**
-     * The number a composer preselects. Empty when the tenant has marked no default, which is a
-     * working configuration rather than a missing record.
-     */
-    @GetMapping(WHATSAPP_PATH + "/phone-numbers/internal/default")
-    Mono<Map<String, Object>> getDefaultWhatsappPhoneNumber(
-            @RequestParam String appCode, @RequestParam String clientCode);
+            @PathVariable("sessionId") String sessionId,
+            @RequestBody Map<String, Object> request);
 }

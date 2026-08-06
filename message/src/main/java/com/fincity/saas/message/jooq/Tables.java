@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq;
 
 
+import com.fincity.saas.message.jooq.tables.MessageBridgeInstances;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
@@ -20,6 +21,12 @@ import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * Registry of WhatsApp bridge instances. Fleet infrastructure, not tenant
+     * data.
+     */
+    public static final MessageBridgeInstances MESSAGE_BRIDGE_INSTANCES = MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES;
 
     /**
      * The table <code>message.message_calls</code>.

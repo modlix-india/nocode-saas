@@ -1,24 +1,24 @@
 package com.fincity.saas.entity.processor.service.message;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
-import com.fincity.saas.entity.processor.feign.IFeignMessageService;
-import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
+import com.fincity.saas.entity.processor.enums.message.WhatsappHoldReason;
+import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +45,7 @@ public class TicketWhatsappConversationService {
     private final TicketService ticketService;
     private final ProductService productService;
     private final WhatsappMessageDAO whatsappMessageDAO;
-    private final WhatsappCswService cswService;
+    private final WhatsappSessionService sessionService;
     private final IFeignMessageService feignMessageService;
     private final ProcessorMessageResourceService msgService;
 
@@ -53,13 +53,13 @@ public class TicketWhatsappConversationService {
             TicketService ticketService,
             ProductService productService,
             WhatsappMessageDAO whatsappMessageDAO,
-            WhatsappCswService cswService,
+            WhatsappSessionService sessionService,
             IFeignMessageService feignMessageService,
             ProcessorMessageResourceService msgService) {
         this.ticketService = ticketService;
         this.productService = productService;
         this.whatsappMessageDAO = whatsappMessageDAO;
-        this.cswService = cswService;
+        this.sessionService = sessionService;
         this.feignMessageService = feignMessageService;
         this.msgService = msgService;
     }
@@ -115,62 +115,127 @@ public class TicketWhatsappConversationService {
     }
 
     /**
-     * Sends a free-form message on a deal.
+     * Sends a message a person typed, on a deal.
      *
-     * <p>Two gates, both here because neither can be evaluated downstream. The deal check is the
-     * usual {@code readByIdentity}. The 24-hour window check is new to this service: it moved with
-     * the message history, so the message service can no longer refuse an out-of-window send and
-     * would simply forward it to Meta and take the policy hit.
+     * <p>What used to gate this was Meta's 24-hour window, and a template was the sanctioned way
+     * through it. Both are gone: on the linked-device protocol free-form is always technically
+     * available, which means nothing outside this method stops an agent messaging a lead who has
+     * gone quiet. So the same 24-hour rule is applied here as our own, with one difference that
+     * matters: a person may override it, where Meta's API simply refused.
      *
-     * <p>Refuses rather than silently converting to a template. A template costs money per send and
-     * reads differently to the customer, so substituting one for a message the agent typed is not a
-     * decision to make on their behalf.
+     * <p><b>The override is enforced here, not in the UI.</b> A checkbox that is merely hidden has
+     * not enforced anything, and the automated path constructs its own request and can never reach
+     * this method. The flag is honoured only for a caller with a real user context, and who forced
+     * it is recorded against the message, because if a number is later banned that record is the
+     * only account of what actually happened.
+     *
+     * <p>Note what is <em>not</em> gated: a reply in a live conversation. An inbound message since
+     * our last outbound releases the hold outright, so the override panel only ever appears when
+     * somebody is chasing a lead who has not answered, which is exactly when they should be told.
      */
     public Mono<Map<String, Object>> sendMessage(Identity ticketId, Map<String, Object> request) {
+
+        boolean requestedForce = isForced(request);
 
         return FlatMapUtil.flatMapMono(
                         this.ticketService::hasAccess,
                         access -> this.ticketService.readByIdentity(access, ticketId),
                         (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
-                        (access, ticket, ticketIds) ->
-                                this.cswService.status(access.getAppCode(), access.getClientCode(), ticketIds),
-                        (access, ticket, ticketIds, csw) -> {
-                            // A template is exactly what Meta permits once the window shuts, so the
-                            // check applies to free-form only. Refusing templates here would break
-                            // the cold-lead case the whole template mechanism exists for.
-                            if (!csw.windowOpen() && !isTemplate(request))
-                                return this.msgService.<Map<String, Object>>throwMessage(
-                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
-                                        ProcessorMessageResourceService.WHATSAPP_WINDOW_CLOSED);
+                        (access, ticket, ticketIds) -> this.sessionService.resolveForTicket(access, ticket),
+                        (access, ticket, ticketIds, session) -> this.sessionService
+                                .evaluateForTicket(access, ticket, ticketIds, session)
+                                .flatMap(decision -> {
 
-                            return SecurityContextUtil.getUsersContextAuthentication()
-                                    .flatMap(ca -> this.feignMessageService.sendWhatsappMessageByTicket(
-                                            bearer(ca),
-                                            access.getAppCode(),
-                                            access.getClientCode(),
-                                            withTicketId(request, ticket.getId())));
-                        })
+                                    // A real user, not merely a flag in the body. The stage-rule
+                                    // path never reaches this method, but the flag arrives over
+                                    // HTTP and anyone can set it, so the authority to use it is
+                                    // taken from the security context rather than the payload.
+                                    ULong userId = access.getUserId();
+                                    boolean force = requestedForce
+                                            && userId != null
+                                            && !BigInteger.ZERO.equals(userId.toBigInteger());
+
+                                    if (!decision.allowed() && (!force || !isForceable(decision.reason())))
+                                        return this.msgService.<Map<String, Object>>throwMessage(
+                                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                                ProcessorMessageResourceService.WHATSAPP_SEND_HELD,
+                                                WhatsappHoldReason.explain(decision.reason()));
+
+                                    return this.sessionService.sendInteractive(
+                                            access, ticket, session, request, decision, force, userId);
+                                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.sendMessage"));
     }
 
     /**
-     * Sends an approved template on a deal.
+     * Whether a person is allowed to override this particular hold.
      *
-     * <p>No window check: a template is precisely what is allowed when the window is shut, and is
-     * the only way to reach a lead who has never replied.
+     * <p>Most of them yes: they are our own pacing rules, a person can see the state and there are
+     * legitimate reasons to send anyway. Two are not overridable, for different reasons.
+     *
+     * <p>{@code SESSION_NOT_READY} is not a pacing rule at all, it means there is no connected
+     * number to send through. Forcing it would fail deeper in with something far less comprehensible
+     * than "connect a number first".
+     *
+     * <p>{@code OPTED_OUT} is deliberately not a checkbox. Someone asked us to stop, and a one-click
+     * override on the send button is exactly how that becomes a report against the number. Clearing
+     * an opt-out is a separate, recorded act ({@link #clearOptOut}), which is the right amount of
+     * friction: still possible when a lead changes their mind, never accidental.
      */
-    public Mono<Map<String, Object>> sendTemplate(Identity ticketId, Map<String, Object> request) {
+    private static boolean isForceable(String reason) {
+        return !WhatsappHoldReason.SESSION_NOT_READY.equals(reason) && !WhatsappHoldReason.OPTED_OUT.equals(reason);
+    }
+
+    /**
+     * Whether the caller asked to override a hold.
+     *
+     * <p>Read from the request rather than trusted from anywhere else, and meaningless on its own:
+     * it only has an effect further up, where a real user context is required. The stage-rule path
+     * never passes through here at all.
+     */
+    private static boolean isForced(Map<String, Object> request) {
+        Object force = request == null ? null : request.get("force");
+        return force instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(force));
+    }
+
+    /**
+     * What the composer needs to decide whether to override, and how the deal is placed against
+     * every limit.
+     *
+     * <p>The same computation the gate itself runs, on purpose. A panel that showed different
+     * reasoning from the rule actually holding the message would be worse than no panel: people
+     * would learn to distrust it and tick through anyway.
+     */
+    public Mono<WhatsappSessionHealth> readHealth(Identity ticketId) {
 
         return FlatMapUtil.flatMapMono(
                         this.ticketService::hasAccess,
                         access -> this.ticketService.readByIdentity(access, ticketId),
-                        (access, ticket) -> SecurityContextUtil.getUsersContextAuthentication()
-                                .flatMap(ca -> this.feignMessageService.sendWhatsappTemplateByTicket(
-                                        bearer(ca),
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        withTicketId(request, ticket.getId()))))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.sendTemplate"));
+                        (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
+                        (access, ticket, ticketIds) -> this.sessionService.resolveForTicket(access, ticket),
+                        (access, ticket, ticketIds, session) -> this.sessionService
+                                .health(access, session, ticketIds)
+                                .map(health -> health.setOptedOut(Boolean.TRUE.equals(ticket.getWhatsappOptedOut()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.readHealth"));
+    }
+
+    /**
+     * Reverses an opt-out, because detection is a text match and text matches are wrong sometimes.
+     *
+     * <p>"Stop by the site on Sunday" is a lead asking for a visit, not asking us to go away. The
+     * flag is permanent and checked before every automated send, so with no way back a single false
+     * positive would silently end a real conversation. The original message is kept on the deal so
+     * whoever clears it can see what actually triggered it.
+     */
+    public Mono<Ticket> clearOptOut(Identity ticketId) {
+
+        return FlatMapUtil.flatMapMono(
+                        this.ticketService::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, ticketId),
+                        (access, ticket) -> this.ticketService.update(ticket.setWhatsappOptedOut(Boolean.FALSE)
+                                .setWhatsappOptedOutAt(null)
+                                .setWhatsappOptedOutText(null)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.clearOptOut"));
     }
 
     /**
@@ -257,57 +322,6 @@ public class TicketWhatsappConversationService {
         if (raw.get("name") instanceof String s) detail.setName(s);
         if (raw.get("url") instanceof String s) detail.setUrl(s);
         return detail;
-    }
-
-    /**
-     * Whether the payload carries an approved template rather than free-form content.
-     *
-     * <p>Read off {@code message.type} because that is how the UI has always built these, and it is
-     * what Meta itself keys on. Anything unrecognised counts as free-form, so a malformed payload
-     * gets the stricter treatment rather than slipping past the window check.
-     */
-    @SuppressWarnings("unchecked")
-    private static boolean isTemplate(Map<String, Object> request) {
-        if (request == null) return false;
-        Object message = request.get("message");
-        if (!(message instanceof Map)) return false;
-        Object type = ((Map<String, Object>) message).get("type");
-        return type instanceof String s && "template".equalsIgnoreCase(s);
-    }
-
-    /**
-     * Overwrites whatever ticket id the caller sent with the one we actually gated on.
-     *
-     * <p>Without this the body is unchecked: a caller could pass a deal they can see in the path
-     * and a different one in the payload, and the send would go against the second.
-     */
-    private Map<String, Object> withTicketId(Map<String, Object> request, ULong ticketId) {
-        Map<String, Object> body = request == null ? new HashMap<>() : new HashMap<>(request);
-        body.put("ticketId", Map.of("id", ticketId.toBigInteger()));
-        return body;
-    }
-
-    private String bearer(ContextAuthentication ca) {
-        String token = ca.getAccessToken();
-        return token != null && token.startsWith("Bearer ") ? token : "Bearer " + token;
-    }
-
-    /**
-     * Whether Meta's 24-hour window is open on this conversation.
-     *
-     * <p>Drives whether the composer offers free text or forces a template. Evaluated over the same
-     * visible union as the thread, so a customer reply filed against a sibling deal still counts as
-     * having opened the window.
-     */
-    public Mono<WhatsappCswService.CswStatus> readCswStatus(Identity ticketId) {
-
-        return FlatMapUtil.flatMapMono(
-                        this.ticketService::hasAccess,
-                        access -> this.ticketService.readByIdentity(access, ticketId),
-                        (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
-                        (access, ticket, ticketIds) ->
-                                this.cswService.status(access.getAppCode(), access.getClientCode(), ticketIds))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.readCswStatus"));
     }
 
     /**

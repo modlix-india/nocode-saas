@@ -49,7 +49,49 @@ public class WhatsappInboundService {
                 .readByMessageId(appCode, clientCode, request.getMetaMessageId())
                 .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
                 .switchIfEmpty(Mono.defer(() -> this.insert(appCode, clientCode, request)))
+                .flatMap(message -> this.applyOptOut(request, message))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.accept"));
+    }
+
+    /**
+     * Flags the deal when a lead has asked us to stop.
+     *
+     * <p>Acted on the moment the message lands rather than at the next sweep. The gap between the two
+     * is fifteen minutes, and a message going out in that window is precisely the one that turns an
+     * annoyed lead into a report against the number.
+     *
+     * <p>Only genuine inbound text is examined. A status update carries no body, and an outbound
+     * message is our own words: matching on those would let a salesperson opt a lead out by typing
+     * "shall I stop sending these?".
+     *
+     * <p>The triggering message is stored on the deal. Detection is a text match and text matches are
+     * wrong sometimes, and since the flag is permanent and blocks all automated sending, whoever looks
+     * at it later needs to see what actually caused it before deciding whether to clear it.
+     */
+    private Mono<WhatsappMessage> applyOptOut(WhatsappInboundRequest request, WhatsappMessage message) {
+
+        if (message.getTicketId() == null
+                || request.isStatusUpdate()
+                || Boolean.TRUE.equals(request.getOutbound())
+                || !WhatsappOptOutDetector.isOptOut(message.getBodyText())) return Mono.just(message);
+
+        return this.ticketService
+                .markWhatsappOptedOut(message.getTicketId(), message.getBodyText())
+                .doOnSuccess(ticket -> logger.warn(
+                        "Deal {} asked to stop receiving WhatsApp messages. Automated sending is now off for it"
+                                + " permanently until somebody clears the flag.",
+                        message.getTicketId()))
+                .thenReturn(message)
+                .onErrorResume(e -> {
+                    // Loud, because the consequence of missing this is the one failure in the whole
+                    // design that cannot be undone.
+                    logger.error(
+                            "Detected an opt-out on deal {} but could not record it. This deal may keep receiving"
+                                    + " automated messages after asking not to.",
+                            message.getTicketId(),
+                            e);
+                    return Mono.just(message);
+                });
     }
 
     /**

@@ -178,6 +178,29 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.findById"));
     }
 
+    /**
+     * Records that a lead asked not to be contacted on WhatsApp.
+     *
+     * <p>No {@code hasAccess()}, like {@link #findById} above it and for the same reason: this is
+     * driven by an inbound message arriving from the bridge, where there is no user and never will
+     * be. Nothing here is caller-supplied except the message text we just stored ourselves.
+     *
+     * <p>Idempotent. A lead who writes "stop" three times should not have the original timestamp
+     * overwritten, because when they first asked is the fact that matters if this is ever questioned.
+     */
+    public Mono<Ticket> markWhatsappOptedOut(ULong ticketId, String triggeringText) {
+
+        return this.findById(ticketId)
+                .filter(ticket -> !Boolean.TRUE.equals(ticket.getWhatsappOptedOut()))
+                .flatMap(ticket -> this.dao.update(ticket.setWhatsappOptedOut(Boolean.TRUE)
+                        .setWhatsappOptedOutAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                        .setWhatsappOptedOutText(
+                                triggeringText == null
+                                        ? null
+                                        : triggeringText.substring(0, Math.min(triggeringText.length(), 512)))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.markWhatsappOptedOut"));
+    }
+
     @PostConstruct
     private void init() {
 
@@ -554,7 +577,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(created)
-                                .then(this.ticketMessageService.sendOnTicketCreate(access, created))
+                                .then(this.ticketMessageService.enqueueForStage(access, created))
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
@@ -1036,8 +1059,40 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 : Mono.just(fTicket),
                         (uTicket, cTask, fTicket, rTicket) -> this.enqueueConversionEventsForStageTransition(
                                         access, rTicket, oldStage, oldStatus)
+                                .then(this.enqueueStageMessages(access, rTicket, oldStage, oldStatus))
                                 .thenReturn(rTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+    }
+
+    /**
+     * Queues whatever the new stage's rules say this deal is owed.
+     *
+     * <p>The stage-change half of the messaging trigger. Creation was already wired; a move was not,
+     * which meant every rule beyond the first stage was configurable and dead. A deal reaching "Site
+     * visit booked" is exactly when its confirmation should go out.
+     *
+     * <p>Skipped when neither stage nor status actually changed, so re-saving a deal does not re-run
+     * the rules. Even if it did, the per-rule check in the channel service would refuse the duplicate;
+     * this is the cheaper of the two guards, not the load-bearing one.
+     *
+     * <p>Best-effort, like the conversion hook above it. Failing a person's stage update because a
+     * message could not be queued would be the wrong trade, and the queue row is not the message: the
+     * sweeper decides whether anything is sent at all.
+     */
+    private Mono<Void> enqueueStageMessages(
+            ProcessorAccess access, Ticket ticket, ULong oldStage, ULong oldStatus) {
+
+        if (java.util.Objects.equals(oldStage, ticket.getStage())
+                && java.util.Objects.equals(oldStatus, ticket.getStatus())) return Mono.empty();
+
+        return this.ticketMessageService.enqueueForStage(access, ticket).onErrorResume(e -> {
+            logger.error(
+                    "Could not queue stage messages for ticket {} moving to stage {}.",
+                    ticket.getId(),
+                    ticket.getStage(),
+                    e);
+            return Mono.empty();
+        });
     }
 
     /**

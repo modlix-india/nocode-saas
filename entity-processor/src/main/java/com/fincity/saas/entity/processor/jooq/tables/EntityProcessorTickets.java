@@ -308,6 +308,29 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      */
     public final TableField<EntityProcessorTicketsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated.");
 
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> WHATSAPP_OPTED_OUT = createField(DSL.name("WHATSAPP_OPTED_OUT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Lead asked us to stop. Permanent, checked before every automated send, and unaffected by stage changes.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> WHATSAPP_OPTED_OUT_AT = createField(DSL.name("WHATSAPP_OPTED_OUT_AT"), SQLDataType.LOCALDATETIME(0), this, "When the opt-out was seen, UTC.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_OPTED_OUT_TEXT = createField(DSL.name("WHATSAPP_OPTED_OUT_TEXT"), SQLDataType.VARCHAR(512), this, "The message that triggered it, kept so a false positive can be recognised and reversed by a person.");
+
     private EntityProcessorTickets(Name alias, Table<EntityProcessorTicketsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

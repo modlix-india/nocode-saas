@@ -122,9 +122,19 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
     /**
      * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
-     * message.message_whatsapp_phone_numbers ID. Not an FK, same reason.
+     * Cloud API phone-number row. Null for every bridge-era message; retained
+     * so pre-pivot history still resolves.
      */
-    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "message.message_whatsapp_phone_numbers ID. Not an FK, same reason.");
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Cloud API phone-number row. Null for every bridge-era message; retained so pre-pivot history still resolves.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.BRIDGE_SESSION_ID</code>.
+     * The linked-device session this message belongs to. Matches
+     * message_whatsapp_phone_numbers.CODE in the message service. Null on rows
+     * that predate the pivot.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> BRIDGE_SESSION_ID = createField(DSL.name("BRIDGE_SESSION_ID"), SQLDataType.CHAR(22), this, "The linked-device session this message belongs to. Matches message_whatsapp_phone_numbers.CODE in the message service. Null on rows that predate the pivot.");
 
     /**
      * The column
@@ -204,6 +214,31 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
      * Delivery status.
      */
     public final TableField<EntityProcessorWhatsappMessagesRecord, WhatsappMessageStatus> MESSAGE_STATUS = createField(DSL.name("MESSAGE_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("SENT", SQLDataType.VARCHAR)), this, "Delivery status.", new EnumConverter<String, WhatsappMessageStatus>(String.class, WhatsappMessageStatus.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.SEND_DECISION</code>.
+     * How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY,
+     * RELEASED_BY_TIMER or FORCED.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> SEND_DECISION = createField(DSL.name("SEND_DECISION"), SQLDataType.VARCHAR(64), this, "How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY, RELEASED_BY_TIMER or FORCED.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCED_BY</code>.
+     * User who overrode a hold. Set only on a forced send, and the only
+     * evidence of what happened if the number is later banned.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> FORCED_BY = createField(DSL.name("FORCED_BY"), SQLDataType.BIGINTUNSIGNED, this, "User who overrode a hold. Set only on a forced send, and the only evidence of what happened if the number is later banned.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCE_STATE</code>.
+     * Session health at the moment of the override: caps used, warm-up day,
+     * reply rate. Captured because it is what tells you afterwards whether
+     * forcing was reasonable.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Map> FORCE_STATE = createField(DSL.name("FORCE_STATE"), SQLDataType.JSON, this, "Session health at the moment of the override: caps used, warm-up day, reply rate. Captured because it is what tells you afterwards whether forcing was reasonable.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
@@ -405,7 +440,7 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX6_WHATSAPP_MESSAGES_BRIDGE_SESSION);
     }
 
     @Override
