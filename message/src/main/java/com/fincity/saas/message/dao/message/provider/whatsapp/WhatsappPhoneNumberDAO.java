@@ -68,65 +68,20 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<WhatsappPhoneNumber> getByAccountAndPhoneNumberId(
-            MessageAccess messageAccess, ULong whatsappBusinessAccountId, String phoneNumberId) {
-
-        if (whatsappBusinessAccountId == null) return Mono.empty();
-
-        return FlatMapUtil.flatMapMono(
-                () -> super.messageAccessCondition(
-                        ComplexCondition.and(
-                                FilterCondition.make(
-                                                WhatsappPhoneNumber.Fields.whatsappBusinessAccountId,
-                                                whatsappBusinessAccountId)
-                                        .setOperator(FilterConditionOperator.EQUALS),
-                                FilterCondition.make(WhatsappPhoneNumber.Fields.phoneNumberId, phoneNumberId)
-                                        .setOperator(FilterConditionOperator.EQUALS)),
-                        messageAccess),
-                super::filter,
-                (messageAccessCondition, jCondition) -> Mono.from(
-                                this.dslContext.selectFrom(this.table).where(jCondition))
-                        .map(e -> e.into(this.pojoClass)));
-    }
-
+    // getByAccountAndPhoneNumberId and getDefaultPhoneNumber were both scoped by WhatsApp Business
+    // Account, and retired with it. A linked-device session has no business account: the number is
+    // the customer's own, resolved by product or by PHONE_NUMBER_ID, and "default" is now a property
+    // of the tenant rather than of an account within it.
     /**
-     * The default number of one business account, not of the tenant.
+     * The tenant's default number.
      *
-     * <p>The account filter is what makes the answer usable. A tenant running two WABAs has a
-     * default on each, and without it whichever row the database returned first would win: a send
-     * that falls back to the default could go out under a business identity the customer has never
-     * contacted, and their reply would arrive on an account nobody is watching. "Default" is only
-     * meaningful inside the account whose numbers it is chosen from.
-     */
-    public Mono<WhatsappPhoneNumber> getDefaultPhoneNumber(
-            MessageAccess messageAccess, ULong whatsappBusinessAccountId) {
-
-        if (whatsappBusinessAccountId == null) return Mono.empty();
-
-        return FlatMapUtil.flatMapMono(
-                () -> super.messageAccessCondition(
-                        ComplexCondition.and(
-                                FilterCondition.make(
-                                                WhatsappPhoneNumber.Fields.whatsappBusinessAccountId,
-                                                whatsappBusinessAccountId)
-                                        .setOperator(FilterConditionOperator.EQUALS),
-                                FilterCondition.make(WhatsappPhoneNumber.Fields.isDefault, Boolean.TRUE)
-                                        .setOperator(FilterConditionOperator.IS_TRUE)),
-                        messageAccess),
-                super::filter,
-                (messageAccessCondition, jCondition) -> Mono.from(
-                                this.dslContext.selectFrom(this.table).where(jCondition))
-                        .map(e -> e.into(this.pojoClass)));
-    }
-
-    /**
-     * The tenant's default number without regard to which business account it sits on.
+     * <p>Unambiguous now in a way it was not before. Under the Cloud API "default" was scoped to a
+     * business account, so a tenant with two WABAs had two defaults and this unscoped read answered
+     * from whichever row the database reached first. A linked-device tenant has numbers and one
+     * default among them, so there is nothing left to disambiguate.
      *
-     * <p>Only for callers that genuinely have no account in hand, which today means the internal
-     * cross-service read where the other side knows a tenant and nothing more. Never use it to pick
-     * the number a message goes out on: with two WABAs it answers from whichever the database
-     * reaches first, and that is the wrong business identity half the time. Use the account-scoped
-     * overload there.
+     * <p>Prefer {@link #getPlacedByProduct} when a product is in hand: a deal should send from its
+     * product's number, and falling back to the default is the last resort rather than the norm.
      */
     public Mono<WhatsappPhoneNumber> getDefaultPhoneNumber(MessageAccess messageAccess) {
         return FlatMapUtil.flatMapMono(

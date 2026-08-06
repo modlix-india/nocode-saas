@@ -4,25 +4,19 @@ import com.fincity.saas.message.controller.base.BaseUpdatableController;
 import com.fincity.saas.message.dao.message.MessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
-import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.service.message.MessageService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
 
+/**
+ * CRUD over the generic message record.
+ *
+ * <p>{@code POST /send} went with the Cloud API. It dispatched to a provider by connection subtype
+ * and WhatsApp was the only one registered, so once that was retired the route could only fail.
+ * WhatsApp now sends through {@code /api/message/whatsapp/sessions/internal/{id}/messages}, which
+ * routes to the bridge instance holding that session.
+ */
 @RestController
 @RequestMapping("/api/message")
 public class MessageController
-        extends BaseUpdatableController<MessageMessagesRecord, Message, MessageDAO, MessageService> {
-
-    @PostMapping("/send")
-    public Mono<ResponseEntity<Message>> sendMessage(@RequestBody MessageRequest messageRequest) {
-        return this.service
-                .sendMessage(messageRequest)
-                .map(ResponseEntity::ok)
-                .defaultIfEmpty(ResponseEntity.notFound().build());
-    }
-}
+        extends BaseUpdatableController<MessageMessagesRecord, Message, MessageDAO, MessageService> {}

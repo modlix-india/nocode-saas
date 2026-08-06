@@ -4,22 +4,11 @@
 package com.fincity.saas.message.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.bridge.WhatsappSessionState;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.MessagingLimitTier;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.Status;
 import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
-import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
-import com.fincity.saas.message.model.message.whatsapp.phone.QualityScore;
-import com.fincity.saas.message.model.message.whatsapp.phone.Throughput;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -28,16 +17,11 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
-import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -187,20 +171,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     /**
      * The column
-     * <code>message.message_whatsapp_phone_numbers.QUALITY_RATING</code>.
-     * Quality rating of the phone number.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, QualityRatingType> QUALITY_RATING = createField(DSL.name("QUALITY_RATING"), SQLDataType.VARCHAR(7), this, "Quality rating of the phone number.", new EnumConverter<String, QualityRatingType>(String.class, QualityRatingType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.QUALITY_SCORE</code>.
-     * Quality Score of Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, QualityScore> QUALITY_SCORE = createField(DSL.name("QUALITY_SCORE"), SQLDataType.JSON, this, "Quality Score of Whatsapp Phone Number", new JSONtoClassConverter<JSON, QualityScore>(JSON.class, QualityScore.class));
-
-    /**
-     * The column
      * <code>message.message_whatsapp_phone_numbers.VERIFIED_NAME</code>.
      * Verified name associated with the phone number.
      */
@@ -212,54 +182,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      * WhatsApp phone number ID from Meta.
      */
     public final TableField<MessageWhatsappPhoneNumbersRecord, String> PHONE_NUMBER_ID = createField(DSL.name("PHONE_NUMBER_ID"), SQLDataType.VARCHAR(255), this, "WhatsApp phone number ID from Meta.");
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.CODE_VERIFICATION_STATUS</code>.
-     * Status of code verification.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, CodeVerificationStatus> CODE_VERIFICATION_STATUS = createField(DSL.name("CODE_VERIFICATION_STATUS"), SQLDataType.VARCHAR(12), this, "Status of code verification.", new EnumConverter<String, CodeVerificationStatus>(String.class, CodeVerificationStatus.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.NAME_STATUS</code>. Status
-     * of the verified name.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, NameStatusType> NAME_STATUS = createField(DSL.name("NAME_STATUS"), SQLDataType.VARCHAR(24).nullable(false).defaultValue(DSL.inline("NONE", SQLDataType.VARCHAR)), this, "Status of the verified name.", new EnumConverter<String, NameStatusType>(String.class, NameStatusType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.PLATFORM_TYPE</code>.
-     * Platform type for WhatsApp Business.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, PlatformType> PLATFORM_TYPE = createField(DSL.name("PLATFORM_TYPE"), SQLDataType.VARCHAR(14), this, "Platform type for WhatsApp Business.", new EnumConverter<String, PlatformType>(String.class, PlatformType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.THROUGHPUT</code>.
-     * Throughput of Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, Throughput> THROUGHPUT = createField(DSL.name("THROUGHPUT"), SQLDataType.JSON, this, "Throughput of Whatsapp Phone Number", new JSONtoClassConverter<JSON, Throughput>(JSON.class, Throughput.class));
-
-    /**
-     * The column <code>message.message_whatsapp_phone_numbers.STATUS</code>.
-     * Status of the Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, Status> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(12).nullable(false).defaultValue(DSL.inline("UNKNOWN", SQLDataType.VARCHAR)), this, "Status of the Whatsapp Phone Number", new EnumConverter<String, Status>(String.class, Status.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.MESSAGING_LIMIT_TIER</code>.
-     * Messaging Limit Tier
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, MessagingLimitTier> MESSAGING_LIMIT_TIER = createField(DSL.name("MESSAGING_LIMIT_TIER"), SQLDataType.VARCHAR(14), this, "Messaging Limit Tier", new EnumConverter<String, MessagingLimitTier>(String.class, MessagingLimitTier.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.WEBHOOK_CONFIG</code>. Phone
-     * Number webhook config
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, WebhookConfig> WEBHOOK_CONFIG = createField(DSL.name("WEBHOOK_CONFIG"), SQLDataType.JSON, this, "Phone Number webhook config", new JSONtoClassConverter<JSON, WebhookConfig>(JSON.class, WebhookConfig.class));
 
     /**
      * The column
@@ -342,39 +264,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
         this(DSL.name("message_whatsapp_phone_numbers"), null);
     }
 
-    public <O extends Record> MessageWhatsappPhoneNumbers(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumbersRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumbersRecord> parentPath) {
-        super(path, childPath, parentPath, MESSAGE_WHATSAPP_PHONE_NUMBERS);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class MessageWhatsappPhoneNumbersPath extends MessageWhatsappPhoneNumbers implements Path<MessageWhatsappPhoneNumbersRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> MessageWhatsappPhoneNumbersPath(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumbersRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumbersRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private MessageWhatsappPhoneNumbersPath(Name alias, Table<MessageWhatsappPhoneNumbersRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(String alias) {
-            return new MessageWhatsappPhoneNumbersPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(Name alias) {
-            return new MessageWhatsappPhoneNumbersPath(alias, this);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(Table<?> alias) {
-            return new MessageWhatsappPhoneNumbersPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
@@ -398,24 +287,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     @Override
     public List<UniqueKey<MessageWhatsappPhoneNumbersRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER);
-    }
-
-    @Override
-    public List<ForeignKey<MessageWhatsappPhoneNumbersRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID);
-    }
-
-    private transient MessageWhatsappBusinessAccountsPath _messageWhatsappBusinessAccounts;
-
-    /**
-     * Get the implicit join path to the
-     * <code>message.message_whatsapp_business_accounts</code> table.
-     */
-    public MessageWhatsappBusinessAccountsPath messageWhatsappBusinessAccounts() {
-        if (_messageWhatsappBusinessAccounts == null)
-            _messageWhatsappBusinessAccounts = new MessageWhatsappBusinessAccountsPath(this, Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
-
-        return _messageWhatsappBusinessAccounts;
     }
 
     @Override
