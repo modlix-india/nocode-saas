@@ -68,13 +68,25 @@ public class BridgeSessionService {
      * of, which is precisely the stray that reconciliation exists to catch and that nobody wants to
      * create deliberately.
      */
+    /**
+     * Starts linking a number.
+     *
+     * <p>Refuses up front when the number already has a placed session, rather than letting it reach
+     * the unique key on the generated linked-number column. The constraint is correct and stays; the
+     * point is that a customer clicking Link twice is an ordinary thing to do and deserves a sentence
+     * instead of an integrity violation, whose text used to end up on screen.
+     */
     public Mono<BridgeSessionSnapshot> createSession(
             MessageAccess access, String phone, ULong productId, String ownerService) {
 
-        return FlatMapUtil.flatMapMono(
+        return this.sessionDao
+                .getPlacedByNumber(access.getAppCode(), access.getClientCode(), phone)
+                .flatMap(existing -> Mono.<BridgeSessionSnapshot>error(new BridgeNumberAlreadyLinkedException(
+                        phone, existing.getSessionState() == null ? null : existing.getSessionState().name())))
+                .switchIfEmpty(Mono.defer(() -> FlatMapUtil.flatMapMono(
                         () -> this.placementService.place(phone),
                         instance -> this.createRow(access, phone, productId, ownerService, instance),
-                        (instance, row) -> this.claimAndStart(access, instance, row, phone))
+                        (instance, row) -> this.claimAndStart(access, instance, row, phone))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.createSession"));
     }
 
@@ -125,19 +137,21 @@ public class BridgeSessionService {
                 })
                 .onErrorResume(e -> {
                     logger.error(
-                            "Bridge {} refused to create session {} for {}. Releasing the assignment"
+                            "Could not start session {} for {} on bridge {}. Releasing the assignment"
                                     + " so the number can be linked again.",
-                            instance.getInstanceId(),
                             row.getCode(),
                             phone,
+                            instance.getInstanceId(),
                             e);
 
+                    // A short sentence, never the exception text. SESSION_REASON is rendered to the
+                    // customer on the numbers page, and a JOOQ IntegrityConstraintViolationException
+                    // carries the whole SQL statement in its message: that is how an UPDATE with its
+                    // bind placeholders ended up on screen. The detail belongs in the log above,
+                    // which has the stack trace and the ids to correlate on.
                     return this.sessionDao
                             .releaseAssignment(
-                                    row.getCode(),
-                                    WhatsappSessionState.LOGGED_OUT,
-                                    "the instance refused to create the session: " + e.getMessage(),
-                                    now)
+                                    row.getCode(), WhatsappSessionState.LOGGED_OUT, "linking could not be started", now)
                             .then(Mono.error(e));
                 });
     }
@@ -198,24 +212,64 @@ public class BridgeSessionService {
      * is wiped by the bridge when it next sees the session gone, and reconciliation reports the
      * mismatch in the meantime.
      */
+    /**
+     * Unlinks a number, whether or not any instance currently holds it.
+     *
+     * <p>Deliberately not routed through {@link #withInstance}. That helper refuses a session with
+     * no instance assigned, which is right for sending and wrong here: unlinking a session nobody
+     * holds is trivially satisfiable, because there is no process to tell. Refusing was the one
+     * failure that left a row the customer could not get rid of by any means in the UI.
+     *
+     * <p>The rows that hit this are real: pre-pivot Cloud API numbers carry a phone-number id and no
+     * bridge instance at all, and cutover leaves them in the list needing removal. So does any
+     * session whose instance was decommissioned.
+     *
+     * <p>The release happens regardless of what the bridge says. A local row still pointing at a
+     * session the customer has already unlinked is worse than a bridge that finds out late, and
+     * reconciliation reports the difference until it catches up.
+     */
     public Mono<Void> unlink(MessageAccess access, String sessionId) {
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        return this.withInstance(access, sessionId, (row, instance) -> this.bridgeClient
-                        .unlink(instance.getBaseUrl(), sessionId)
-                        .onErrorResume(e -> {
-                            logger.error(
-                                    "Bridge {} could not unlink session {}. Releasing the assignment"
-                                            + " anyway; reconciliation will report it until the"
-                                            + " instance catches up.",
-                                    instance.getInstanceId(),
-                                    sessionId,
-                                    e);
-                            return Mono.empty();
-                        })
-                        .then(this.sessionDao.releaseAssignment(
-                                sessionId, WhatsappSessionState.LOGGED_OUT, "unlinked by the customer", now)))
+        return this.withRow(access, sessionId)
+                .flatMap(row -> {
+                    if (row.getBridgeInstanceId() == null) {
+                        logger.info(
+                                "Unlinking session {}, which no instance holds. Releasing the row"
+                                        + " locally; there is nothing to tell.",
+                                sessionId);
+                        return Mono.empty();
+                    }
+
+                    return this.instanceDao
+                            .findByInstanceId(row.getBridgeInstanceId())
+                            .flatMap(instance -> this.bridgeClient
+                                    .unlink(instance.getBaseUrl(), sessionId)
+                                    .onErrorResume(e -> {
+                                        logger.error(
+                                                "Bridge {} could not unlink session {}. Releasing the"
+                                                        + " assignment anyway; reconciliation will report"
+                                                        + " it until the instance catches up.",
+                                                instance.getInstanceId(),
+                                                sessionId,
+                                                e);
+                                        return Mono.empty();
+                                    }))
+                            .onErrorResume(e -> {
+                                logger.error(
+                                        "Could not reach the instance holding session {}. Releasing the"
+                                                + " assignment anyway.",
+                                        sessionId,
+                                        e);
+                                return Mono.empty();
+                            });
+                })
+                .then(this.sessionDao.releaseAssignment(
+                        sessionId, WhatsappSessionState.LOGGED_OUT, "unlinked by the customer", now))
+                // And take it off the tenant's list. Releasing the assignment alone left the row
+                // showing with a new state, which reads as the unlink having done nothing.
+                .then(this.sessionDao.deactivate(sessionId))
                 .then()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.unlink"));
     }
@@ -268,6 +322,28 @@ public class BridgeSessionService {
             String sessionId,
             java.util.function.BiFunction<WhatsappPhoneNumber, BridgeInstance, Mono<T>> operation) {
 
+        return this.withRow(access, sessionId).flatMap(row -> {
+            if (row.getBridgeInstanceId() == null)
+                return Mono.error(new IllegalStateException(
+                        "Session " + sessionId + " is not on any instance. It needs to be linked again."));
+
+            return this.instanceDao
+                    .findByInstanceId(row.getBridgeInstanceId())
+                    .switchIfEmpty(Mono.error(new IllegalStateException("Session " + sessionId
+                            + " is assigned to instance " + row.getBridgeInstanceId()
+                            + ", which is not registered.")))
+                    .flatMap(instance -> operation.apply(row, instance));
+        });
+    }
+
+    /**
+     * Loads a session row and checks it belongs to the caller.
+     *
+     * <p>Split out of {@link #withInstance} because unlinking needs the row and the tenancy check
+     * without the requirement that some instance currently holds it.
+     */
+    private Mono<WhatsappPhoneNumber> withRow(MessageAccess access, String sessionId) {
+
         return this.sessionDao
                 .getBySessionIdInternal(sessionId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("No WhatsApp session " + sessionId + ".")))
@@ -286,16 +362,7 @@ public class BridgeSessionService {
                         return Mono.error(new IllegalArgumentException("No WhatsApp session " + sessionId + "."));
                     }
 
-                    if (row.getBridgeInstanceId() == null)
-                        return Mono.error(new IllegalStateException(
-                                "Session " + sessionId + " is not on any instance. It needs to be linked again."));
-
-                    return this.instanceDao
-                            .findByInstanceId(row.getBridgeInstanceId())
-                            .switchIfEmpty(Mono.error(new IllegalStateException("Session " + sessionId
-                                    + " is assigned to instance " + row.getBridgeInstanceId()
-                                    + ", which is not registered.")))
-                            .flatMap(instance -> operation.apply(row, instance));
+                    return Mono.just(row);
                 });
     }
 }

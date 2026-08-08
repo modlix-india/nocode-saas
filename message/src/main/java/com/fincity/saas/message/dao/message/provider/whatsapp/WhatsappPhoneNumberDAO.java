@@ -115,15 +115,41 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                 .map(e -> e.into(this.pojoClass));
     }
 
-    /** Every session a tenant has, placed or not, for the integration page's list. */
+    /**
+     * Every session a tenant has, placed or not, for the integration page's list.
+     *
+     * <p>Excludes rows the customer unlinked. Note the distinction, because it is the whole reason
+     * this filter is on {@code IS_ACTIVE} rather than on the state: a session that went LOGGED_OUT
+     * or BANNED on its own must stay in this list and be seen, since somebody has to do something
+     * about it. One the customer deliberately unlinked has already been dealt with, and leaving it
+     * on screen reads as the unlink not having worked.
+     */
     public Mono<List<WhatsappPhoneNumber>> listForTenant(String appCode, String clientCode) {
         return Flux.from(this.dslContext
                         .selectFrom(this.table)
                         .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
                         .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_ACTIVE.isTrue())
                         .orderBy(MESSAGE_WHATSAPP_PHONE_NUMBERS.ID.desc()))
                 .map(e -> e.into(this.pojoClass))
                 .collectList();
+    }
+
+    /**
+     * Retires a row from the tenant's list, without deleting it.
+     *
+     * <p>Soft, because {@code entity_processor_whatsapp_messages} rows still point at this id and a
+     * hard delete would orphan the conversation history the pivot exists to preserve.
+     *
+     * <p>Deliberately separate from {@link #releaseAssignment}, which the automatic retirement path
+     * also calls. Folding this in there would quietly hide every session that got itself banned,
+     * which is the one thing that must never disappear from the list.
+     */
+    public Mono<Integer> deactivate(String sessionId) {
+        return Mono.from(this.dslContext
+                .update(this.table)
+                .set(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_ACTIVE, Boolean.FALSE)
+                .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.CODE.eq(sessionId)));
     }
 
     /**
@@ -173,6 +199,31 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                         .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.BRIDGE_INSTANCE_ID.eq(instanceId)))
                 .map(e -> e.into(this.pojoClass))
                 .collectList();
+    }
+
+    /**
+     * The placed session for a number, if one exists.
+     *
+     * <p>Placed only, matching {@code UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER}, whose generated
+     * column is the number for assigned rows and null otherwise. So this answers exactly the
+     * question the unique key would answer by throwing: does linking this number again collide.
+     *
+     * <p>Exists so that collision is refused with a sentence rather than surfacing as an integrity
+     * violation. Before this, a second link attempt on a number already pairing failed deep in an
+     * update and the JOOQ exception text, the whole SQL statement, was written to the session reason
+     * and rendered to the customer.
+     */
+    public Mono<WhatsappPhoneNumber> getPlacedByNumber(String appCode, String clientCode, String phone) {
+
+        if (phone == null || phone.isBlank()) return Mono.empty();
+
+        return Mono.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.DISPLAY_PHONE_NUMBER.eq(phone))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.BRIDGE_INSTANCE_ID.isNotNull()))
+                .map(e -> e.into(this.pojoClass));
     }
 
     /**

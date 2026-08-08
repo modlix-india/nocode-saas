@@ -108,16 +108,23 @@ public class BridgeRegistryService {
 
         return this.instanceDao
                 .findByInstanceId(instanceId)
-                // A heartbeat from an instance we have never seen is not an error to swallow. It
-                // means this service restarted and lost the fleet, or the instance was started
-                // without registering. Either way the answer is the same: tell it, so it
-                // re-registers with its held sessions and reconciliation runs.
+                // A heartbeat from an instance we have never seen means this service restarted and
+                // lost the fleet, or the instance came up while this service was down and its
+                // registration never landed. Either way it must re-register, with its held sessions,
+                // so reconciliation runs.
+                //
+                // Answering NOT_FOUND rather than OK, because that is the only answer the bridge
+                // acts on: its heartbeat loop re-registers after consecutive FAILURES, so a 200 here
+                // leaves it heartbeating into a void indefinitely. It looks healthy in its own logs
+                // and in ours, while placement cannot see it and every session create for its
+                // country fails with "no instance available". This returned OK until 2026-08-07 and
+                // that is exactly how it presented.
                 .switchIfEmpty(Mono.defer(() -> {
                     logger.warn(
-                            "Heartbeat from unregistered bridge {}. Answering so it re-registers"
+                            "Heartbeat from unregistered bridge {}. Answering NOT_FOUND so it re-registers"
                                     + " and reconciliation can run.",
                             instanceId);
-                    return Mono.empty();
+                    return Mono.error(new BridgeNotRegisteredException(instanceId));
                 }))
                 .flatMap(existing -> this.instanceDao
                         .recordHeartbeat(instanceId, active, held, existing.getVersion(), now)

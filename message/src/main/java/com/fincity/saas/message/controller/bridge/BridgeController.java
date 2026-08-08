@@ -7,6 +7,7 @@ import com.fincity.saas.message.model.request.bridge.BridgeHeartbeatRequest;
 import com.fincity.saas.message.model.request.bridge.BridgeRegisterRequest;
 import com.fincity.saas.message.model.response.bridge.BridgeControlResponse;
 import com.fincity.saas.message.service.bridge.BridgeEventIngestService;
+import com.fincity.saas.message.service.bridge.BridgeNotRegisteredException;
 import com.fincity.saas.message.service.bridge.BridgeRegistryService;
 import com.fincity.saas.message.service.bridge.BridgeSignatureService;
 import java.util.List;
@@ -109,7 +110,15 @@ public class BridgeController {
             return Mono.just(ResponseEntity.badRequest().build());
         }
 
-        return this.registryService.heartbeat(instanceId, request).map(ResponseEntity::ok);
+        return this.registryService
+                .heartbeat(instanceId, request)
+                .map(ResponseEntity::ok)
+                // NOT_FOUND is a instruction to the bridge, not a failure to report. Its heartbeat
+                // loop re-registers after consecutive failures, and this is the signal that starts
+                // that. Mapped here rather than left to the generic handler so the status is part of
+                // this contract and visible next to the route it belongs to.
+                .onErrorResume(BridgeNotRegisteredException.class, e -> Mono.just(
+                        ResponseEntity.status(HttpStatus.NOT_FOUND).build()));
     }
 
     /**

@@ -303,7 +303,7 @@ public class WhatsappMessageDAO
 
         Table<?> earlier = this.table.as("earlier");
         Field<ULong> earlierTicket = earlier.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID);
-        Field<LocalDateTime> earlierAt = earlier.field(orderKey().getName(), LocalDateTime.class);
+        Field<LocalDateTime> earlierAt = orderKeyOf(earlier);
 
         return Mono.from(this.dslContext
                         .select(DSL.countDistinct(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
@@ -391,8 +391,22 @@ public class WhatsappMessageDAO
      * than letting those sort to the bottom of a thread regardless of when they happened.
      */
     private Field<LocalDateTime> orderKey() {
+        return orderKeyOf(this.table);
+    }
+
+    /**
+     * The same ordering key, resolved against a specific table instance.
+     *
+     * <p>Needed because {@link #orderKey()} is a {@code coalesce} expression rather than a column, so
+     * it has no name to look up on an alias. Asking an aliased table for a field by that expression's
+     * generated name returns null, and the null only surfaces when jOOQ tries to build the
+     * comparison: every send and every health read failed with a NullPointerException out of the
+     * first-contact subquery, nowhere near the line at fault.
+     */
+    private static Field<LocalDateTime> orderKeyOf(Table<?> t) {
         return DSL.coalesce(
-                ENTITY_PROCESSOR_WHATSAPP_MESSAGES.SENT_TIME, ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT);
+                t.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.SENT_TIME),
+                t.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT));
     }
 
     /**

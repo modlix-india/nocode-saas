@@ -51,7 +51,14 @@ class WhatsappMessageSerializationTest {
                 .setBodyText("hello"));
 
         // Every one of these is read by dealProfile's WhatsApp tab.
-        for (String field : new String[] {"messageId", "customerWaId", "messageType", "messageStatus", "outbound"})
+        //
+        // bodyText is the message itself, and it is here because it was briefly not read at all:
+        // both composers bound the retired Cloud API payload shape (message.text.body), which the
+        // bridge does not fill, so every bubble rendered its fallback dash while the text sat
+        // correctly in the database. That failure is silent by construction - a missing binding
+        // shows a placeholder, not an error - so the wire name is worth pinning down.
+        for (String field :
+                new String[] {"messageId", "customerWaId", "messageType", "messageStatus", "outbound", "bodyText"})
             assertTrue(json.containsKey(field), "missing wire field: " + field);
     }
 

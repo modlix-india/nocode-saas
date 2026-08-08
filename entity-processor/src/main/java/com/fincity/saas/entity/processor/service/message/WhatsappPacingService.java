@@ -6,9 +6,12 @@ import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionH
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +96,24 @@ public class WhatsappPacingService {
 
     @Value("${processor.whatsapp.pacing.quiet-hours-end:09:00}")
     private String quietHoursEnd;
+
+    /**
+     * The clock quiet hours fall back to when the lead's own number says nothing.
+     *
+     * <p>A fallback, not the rule. The rule is the <b>lead's</b> local time, derived from their phone
+     * number, because the lead is the person being woken up and the person who reports the number.
+     * This is only reached when the number cannot be placed at all: a malformed one, or a
+     * non-geographic range such as a satellite number.
+     *
+     * <p>Everything else in this service works in UTC because that is how the timestamps are stored,
+     * and comparing a UTC wall clock against local hours is off by the whole offset: with 21:00 to
+     * 09:00 and a UTC server, 13:30 in India is 08:00 UTC, which reads as the middle of the quiet
+     * window, so every automated message was held through the entire Indian working morning. The
+     * reverse is worse, because 21:00 local falls outside the UTC window and the messages that were
+     * held all day would have gone out at nine in the evening.
+     */
+    @Value("${processor.whatsapp.pacing.quiet-hours-zone:Asia/Kolkata}")
+    private String quietHoursZone;
 
     public WhatsappPacingService(WhatsappMessageDAO messageDao) {
         this.messageDao = messageDao;
@@ -180,7 +201,12 @@ public class WhatsappPacingService {
      * never be evaluated against a quota at all, and because that answer never changes so there is
      * no point computing anything else.
      */
-    public Decision evaluate(WhatsappSessionHealth health, boolean optedOut, boolean sessionSendable, int unanswered) {
+    public Decision evaluate(
+            WhatsappSessionHealth health,
+            boolean optedOut,
+            boolean sessionSendable,
+            int unanswered,
+            List<ZoneId> leadZones) {
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
@@ -231,33 +257,102 @@ public class WhatsappPacingService {
                 && health.getFirstContactsToday() >= health.getFirstContactCap())
             return Decision.holdUntil(WhatsappHoldReason.NEW_CONTACT_CAP, tomorrow);
 
-        LocalDateTime windowOpens = this.quietHoursHold(now);
+        LocalDateTime windowOpens = this.quietHoursHold(now, leadZones);
         if (windowOpens != null) return Decision.holdUntil(WhatsappHoldReason.QUIET_HOURS, windowOpens);
 
         return Decision.allow();
     }
 
     /**
-     * Whether now is inside quiet hours, and when the window next opens.
+     * Whether now is inside quiet hours <b>where the lead is</b>, and when the window next opens.
      *
-     * <p>Handles a window that wraps midnight, which the default one does. A 3am nudge is the
-     * complaint that produces the report that produces the ban, so this reschedules rather than
+     * <p>Judged on the lead's clock, not ours. They are the person a 3am message wakes up and the
+     * person who reports the number for it, so the business's own hours are the wrong measure the
+     * moment it writes to anyone abroad. That is not a hypothetical here: an India-hosted number
+     * selling to Gulf buyers is the case B6c explicitly refuses to restrict, and India to the UAE is
+     * an hour and a half apart, so 21:00 in Bangalore is 19:30 in Dubai. Judging the Dubai lead on
+     * Indian hours holds a message that was fine to send and, worse, releases one at half past seven
+     * in the morning.
+     *
+     * <p><b>Several zones means quiet if any of them is quiet.</b> A number that cannot be pinned to
+     * one zone is usually one of a handful of adjacent candidates, and the two ways of being wrong
+     * are not symmetrical: waiting a few extra hours costs a few extra hours, and guessing early
+     * costs a complaint against a number that cannot be appealed. The release time is then the last
+     * of the candidate windows to open, for the same reason.
+     *
+     * <p>Handles a window that wraps midnight, which the default one does. Reschedules rather than
      * dropping: the message is still wanted, just not now.
+     *
+     * @param zones the lead's candidate zones, from {@link PhoneUtil#zonesOf}. Empty falls back to
+     *     the configured zone, which is all that can be done for a number that cannot be placed.
      */
-    public LocalDateTime quietHoursHold(LocalDateTime now) {
+    public LocalDateTime quietHoursHold(LocalDateTime now, List<ZoneId> zones) {
         LocalTime start = this.parseTime(this.quietHoursStart);
         LocalTime end = this.parseTime(this.quietHoursEnd);
 
         if (start == null || end == null || start.equals(end)) return null;
 
-        LocalTime at = now.toLocalTime();
+        LocalDateTime latestOpening = null;
+
+        for (ZoneId zone : zones == null || zones.isEmpty() ? List.of(this.fallbackZone()) : zones) {
+            LocalDateTime opens = this.quietHoursHoldIn(now, start, end, zone);
+
+            // Quiet in any candidate holds the message, and the last window to open is when every
+            // candidate is clear. Both follow from not knowing which zone the lead is actually in.
+            if (opens != null && (latestOpening == null || opens.isAfter(latestOpening))) latestOpening = opens;
+        }
+
+        return latestOpening;
+    }
+
+    /**
+     * The same test in one specific zone.
+     *
+     * <p>Into that clock before comparing, and back to UTC before returning. The caller works in UTC
+     * throughout; only this comparison is local, because only these hours are local.
+     */
+    private LocalDateTime quietHoursHoldIn(LocalDateTime now, LocalTime start, LocalTime end, ZoneId zone) {
+
+        ZonedDateTime local = now.atZone(ZoneOffset.UTC).withZoneSameInstant(zone);
+
+        LocalTime at = local.toLocalTime();
         boolean wraps = start.isAfter(end);
         boolean quiet = wraps ? (!at.isBefore(start) || at.isBefore(end)) : (!at.isBefore(start) && at.isBefore(end));
 
         if (!quiet) return null;
 
-        LocalDateTime opensToday = now.toLocalDate().atTime(end);
-        return at.isBefore(end) ? opensToday : opensToday.plusDays(1);
+        ZonedDateTime opensToday = local.toLocalDate().atTime(end).atZone(zone);
+        ZonedDateTime opens = at.isBefore(end) ? opensToday : opensToday.plusDays(1);
+
+        return opens.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+    }
+
+    /**
+     * The clock a lead's quiet hours are being judged on, named for display.
+     *
+     * <p>Lists every candidate rather than picking one when the number does not pin a zone down,
+     * because the hold really is against all of them: reporting one of three would make a countdown
+     * derived from a different one look like an error.
+     */
+    public String quietHoursZoneLabel(List<ZoneId> leadZones) {
+
+        if (leadZones == null || leadZones.isEmpty()) return this.fallbackZone().getId();
+
+        return leadZones.stream().map(ZoneId::getId).collect(Collectors.joining(", "));
+    }
+
+    /** Falls back to UTC on an unusable zone, so a typo cannot hold every message indefinitely. */
+    private ZoneId fallbackZone() {
+        try {
+            return ZoneId.of(this.quietHoursZone);
+        } catch (Exception e) {
+            logger.error(
+                    "quiet-hours-zone '{}' is not a zone id, so quiet hours are being judged in UTC."
+                            + " Messages will be held at the wrong times until this is corrected.",
+                    this.quietHoursZone,
+                    e);
+            return ZoneOffset.UTC;
+        }
     }
 
     /**

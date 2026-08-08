@@ -10,7 +10,9 @@ import com.fincity.saas.entity.processor.enums.message.WhatsappHoldReason;
 import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.service.message.WhatsappPacingService.Decision;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,13 +64,13 @@ class WhatsappPacingServiceTest {
     @Test
     @DisplayName("a healthy number with nothing outstanding may send")
     void allowsHealthy() {
-        assertTrue(this.pacing.evaluate(this.healthy(), false, true, 0).allowed());
+        assertTrue(this.pacing.evaluate(this.healthy(), false, true, 0, List.of()).allowed());
     }
 
     @Test
     @DisplayName("opt-out beats everything, and is checked before any cap is computed")
     void optOutWins() {
-        Decision decision = this.pacing.evaluate(this.healthy(), true, true, 0);
+        Decision decision = this.pacing.evaluate(this.healthy(), true, true, 0, List.of());
 
         assertFalse(decision.allowed());
         assertEquals(WhatsappHoldReason.OPTED_OUT, decision.reason());
@@ -79,7 +81,7 @@ class WhatsappPacingServiceTest {
     void holdsWhenNotConnected() {
         assertEquals(
                 WhatsappHoldReason.SESSION_NOT_READY,
-                this.pacing.evaluate(this.healthy(), false, false, 0).reason());
+                this.pacing.evaluate(this.healthy(), false, false, 0, List.of()).reason());
     }
 
     @Test
@@ -87,7 +89,7 @@ class WhatsappPacingServiceTest {
     void stopsChasingQuietLeads() {
         assertEquals(
                 WhatsappHoldReason.LEAD_QUIET,
-                this.pacing.evaluate(this.healthy(), false, true, 3).reason());
+                this.pacing.evaluate(this.healthy(), false, true, 3, List.of()).reason());
     }
 
     @Test
@@ -97,7 +99,7 @@ class WhatsappPacingServiceTest {
 
         assertEquals(
                 WhatsappHoldReason.REPLY_RATE_LOW,
-                this.pacing.evaluate(health, false, true, 0).reason());
+                this.pacing.evaluate(health, false, true, 0, List.of()).reason());
     }
 
     @Test
@@ -106,7 +108,7 @@ class WhatsappPacingServiceTest {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         WhatsappSessionHealth health = this.healthy().setLastOutboundAt(now.minusHours(3));
 
-        Decision decision = this.pacing.evaluate(health, false, true, 0);
+        Decision decision = this.pacing.evaluate(health, false, true, 0, List.of());
 
         assertEquals(WhatsappHoldReason.WAITING_24H, decision.reason());
         // A hold with no retry time is a hold somebody has to poll blindly.
@@ -121,7 +123,7 @@ class WhatsappPacingServiceTest {
                 .setLastOutboundAt(now.minusHours(3))
                 .setLastInboundAt(now.minusHours(1));
 
-        assertTrue(this.pacing.evaluate(health, false, true, 0).allowed());
+        assertTrue(this.pacing.evaluate(health, false, true, 0, List.of()).allowed());
     }
 
     @Test
@@ -135,7 +137,7 @@ class WhatsappPacingServiceTest {
 
         assertEquals(
                 WhatsappHoldReason.WARM_UP_CAP,
-                this.pacing.evaluate(atRampCeiling, false, true, 0).reason());
+                this.pacing.evaluate(atRampCeiling, false, true, 0, List.of()).reason());
 
         // A mature number, no ramp left, that has already opened its allowance of new conversations.
         // The contact cap does not expire with the ramp.
@@ -144,7 +146,7 @@ class WhatsappPacingServiceTest {
 
         assertEquals(
                 WhatsappHoldReason.NEW_CONTACT_CAP,
-                this.pacing.evaluate(atContactCeiling, false, true, 0).reason());
+                this.pacing.evaluate(atContactCeiling, false, true, 0, List.of()).reason());
 
         // And the case the conflation bug produced: a young number well inside its ramp with a
         // handful of new contacts used. Neither cap is reached, so it must send. Before the fix the
@@ -153,7 +155,7 @@ class WhatsappPacingServiceTest {
         WhatsappSessionHealth midRamp =
                 this.healthy().setWarmUpDay(10).setWarmUpCap(100).setSentToday(45).setFirstContactsToday(5);
 
-        assertTrue(this.pacing.evaluate(midRamp, false, true, 0).allowed());
+        assertTrue(this.pacing.evaluate(midRamp, false, true, 0, List.of()).allowed());
     }
 
     @Test
@@ -191,18 +193,94 @@ class WhatsappPacingServiceTest {
     void quietHoursWrapMidnight() {
         ReflectionTestUtils.setField(this.pacing, "quietHoursStart", "21:00");
         ReflectionTestUtils.setField(this.pacing, "quietHoursEnd", "09:00");
+        // UTC, so the times below read as both the wall clock and the instant. The zone is set
+        // explicitly rather than left to the default, because the whole point of the test below is
+        // that those two are not the same thing.
+        ReflectionTestUtils.setField(this.pacing, "quietHoursZone", "UTC");
 
         // 23:00 is inside the window, which opens at 09:00 the following morning.
         LocalDateTime lateEvening = LocalDateTime.of(2026, 8, 6, 23, 0);
-        LocalDateTime opens = this.pacing.quietHoursHold(lateEvening);
+        LocalDateTime opens = this.pacing.quietHoursHold(lateEvening, List.of());
         assertEquals(LocalDateTime.of(2026, 8, 7, 9, 0), opens);
 
         // 03:00 is the same window seen from the other side of midnight, and opens the same morning.
         LocalDateTime earlyMorning = LocalDateTime.of(2026, 8, 7, 3, 0);
-        assertEquals(LocalDateTime.of(2026, 8, 7, 9, 0), this.pacing.quietHoursHold(earlyMorning));
+        assertEquals(LocalDateTime.of(2026, 8, 7, 9, 0), this.pacing.quietHoursHold(earlyMorning, List.of()));
 
         // Mid-afternoon is not quiet at all.
-        assertNull(this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 7, 15, 0)));
+        assertNull(this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 7, 15, 0), List.of()));
+    }
+
+    @Test
+    @DisplayName("with no zone from the number, quiet hours fall back to the configured one, not to UTC")
+    void quietHoursFallBackToTheConfiguredZone() {
+        // Local hours against a UTC clock. The caller passes UTC because that is what the schema
+        // stores, so the two have to be reconciled here or the whole offset is lost.
+        ReflectionTestUtils.setField(this.pacing, "quietHoursStart", "21:00");
+        ReflectionTestUtils.setField(this.pacing, "quietHoursEnd", "09:00");
+        ReflectionTestUtils.setField(this.pacing, "quietHoursZone", "Asia/Kolkata");
+
+        // The case that was actually broken. 08:05 UTC is 13:35 in India: the middle of a working
+        // afternoon, and nowhere near the 21:00-09:00 window. Compared as a UTC wall clock it looks
+        // like early morning, so every automated message was held right through the working day.
+        assertNull(
+                this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 8, 8, 5), List.of()),
+                "13:35 in India is business hours; nothing should be held");
+
+        // And the mirror of it, which is the one that would have done damage. 16:00 UTC is 21:30 in
+        // India, inside the window. Judged in UTC it looks like a fine time to send, so the backlog
+        // held all day would have gone out at half past nine in the evening.
+        LocalDateTime opens = this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 8, 16, 0), List.of());
+        assertNotNull(opens, "21:30 in India is inside quiet hours");
+
+        // Opens at 09:00 India the next morning, which is 03:30 UTC, and the answer is in UTC
+        // because that is what the caller schedules against.
+        assertEquals(LocalDateTime.of(2026, 8, 9, 3, 30), opens);
+    }
+
+    @Test
+    @DisplayName("quiet hours follow the lead's clock, not the business's")
+    void quietHoursFollowTheLead() {
+        ReflectionTestUtils.setField(this.pacing, "quietHoursStart", "21:00");
+        ReflectionTestUtils.setField(this.pacing, "quietHoursEnd", "09:00");
+        // An Indian business, which is what the fallback would have judged everybody on.
+        ReflectionTestUtils.setField(this.pacing, "quietHoursZone", "Asia/Kolkata");
+
+        List<ZoneId> gulf = List.of(ZoneId.of("Asia/Dubai"));
+
+        // 15:45 UTC is 21:15 in Bangalore and 19:45 in Dubai. On the business's clock this lead is
+        // inside quiet hours and the message waits; on their own clock it is a quarter to eight in
+        // the evening and perfectly sendable. India to the Gulf is exactly the case B6c refuses to
+        // restrict, so getting this backwards costs real messages on a real route.
+        assertNull(
+                this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 8, 15, 45), gulf),
+                "19:45 where the lead is; nothing should be held");
+
+        // The direction that matters more. 17:15 UTC is 21:15 in Dubai, so it is quiet where the
+        // lead is even though the numbers differ from India's.
+        LocalDateTime opens = this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 8, 17, 15), gulf);
+        assertEquals(
+                LocalDateTime.of(2026, 8, 9, 5, 0), opens, "opens at 09:00 in Dubai, which is 05:00 UTC");
+    }
+
+    @Test
+    @DisplayName("when a number could be in several zones, quiet in any one of them holds it")
+    void severalZonesHoldIfAnyIsQuiet() {
+        ReflectionTestUtils.setField(this.pacing, "quietHoursStart", "21:00");
+        ReflectionTestUtils.setField(this.pacing, "quietHoursEnd", "09:00");
+
+        // A +1 number the mapper cannot pin down. The two coasts are three hours apart, so there is
+        // no single answer and picking one silently would be wrong for half the leads it applies to.
+        List<ZoneId> unsureAboutAmerica = List.of(ZoneId.of("America/New_York"), ZoneId.of("America/Los_Angeles"));
+
+        // 01:30 UTC is 21:30 on the east coast and 18:30 on the west. Quiet in one of them, so it
+        // holds: waiting a few extra hours costs a few extra hours, and guessing early costs a
+        // complaint against a number that cannot be appealed.
+        LocalDateTime opens = this.pacing.quietHoursHold(LocalDateTime.of(2026, 8, 9, 1, 30), unsureAboutAmerica);
+
+        // And it opens at 09:00 on the coast that was quiet, which is 13:00 UTC. Taking the earliest
+        // opening instead would release the message while the east coast was still asleep.
+        assertEquals(LocalDateTime.of(2026, 8, 9, 13, 0), opens);
     }
 
     @Test
@@ -219,13 +297,13 @@ class WhatsappPacingServiceTest {
         };
 
         for (WhatsappSessionHealth health : cases) {
-            Decision decision = this.pacing.evaluate(health, false, true, 0);
+            Decision decision = this.pacing.evaluate(health, false, true, 0, List.of());
             assertFalse(decision.allowed(), "fixture was expected to be held");
             assertNotNull(decision.reason(), "a hold with no reason is unexplainable later");
         }
 
-        assertNotNull(this.pacing.evaluate(this.healthy(), true, true, 0).reason());
-        assertNotNull(this.pacing.evaluate(this.healthy(), false, false, 0).reason());
-        assertNotNull(this.pacing.evaluate(this.healthy(), false, true, 5).reason());
+        assertNotNull(this.pacing.evaluate(this.healthy(), true, true, 0, List.of()).reason());
+        assertNotNull(this.pacing.evaluate(this.healthy(), false, false, 0, List.of()).reason());
+        assertNotNull(this.pacing.evaluate(this.healthy(), false, true, 5, List.of()).reason());
     }
 }

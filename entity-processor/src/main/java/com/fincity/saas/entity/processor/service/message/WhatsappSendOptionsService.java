@@ -8,7 +8,6 @@ import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionH
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import java.math.BigInteger;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
@@ -40,17 +39,17 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
     private final IFeignMessageService feignMessageService;
     private final ProcessorMessageResourceService msgService;
     private final IFeignSecurityService securityService;
-    private final WhatsappPacingService pacingService;
+    private final WhatsappSessionService sessionService;
 
     public WhatsappSendOptionsService(
             IFeignMessageService feignMessageService,
             ProcessorMessageResourceService msgService,
             IFeignSecurityService securityService,
-            WhatsappPacingService pacingService) {
+            WhatsappSessionService sessionService) {
         this.feignMessageService = feignMessageService;
         this.msgService = msgService;
         this.securityService = securityService;
-        this.pacingService = pacingService;
+        this.sessionService = sessionService;
     }
 
     @Override
@@ -115,6 +114,14 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
      * able to disagree, because the entire purpose of the override panel is that a person makes a
      * decision on the strength of these numbers.
      *
+     * <p>Delegated rather than computed here, so the session row is read by one set of field names.
+     * This method used to pluck {@code phone} and {@code state} off the row, which are not what the
+     * row calls them, and the panel showed a blank number in a blank state without erroring.
+     *
+     * <p>Opt-out is passed as false because it is a property of a deal and there is no deal here.
+     * The per-deal reader supplies the real value; the holds this one can report are the ones that
+     * belong to the number itself, which is exactly what the standing panel is for.
+     *
      * @param ticketIds the deal being looked at, or empty for the standing tenant-level view. The
      *     24-hour figures are per-deal and are simply absent without it.
      */
@@ -122,14 +129,8 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> this.readSession(sessionId),
-                        (access, session) -> this.pacingService.health(
-                                access.getAppCode(),
-                                access.getClientCode(),
-                                sessionId,
-                                asString(session.get("phone")),
-                                asString(session.get("state")),
-                                asDateTime(session.get("linkedAt")),
-                                ticketIds))
+                        (access, session) -> this.sessionService.healthWithDecision(
+                                access.getAppCode(), access.getClientCode(), session, ticketIds, false, null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.readHealth"));
     }
 
@@ -169,25 +170,4 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.unlinkSession"));
     }
 
-    private static String asString(Object value) {
-        return value == null ? null : value.toString();
-    }
-
-    /**
-     * The bridge sends RFC 3339 with an offset; this side speaks UTC LocalDateTime.
-     *
-     * <p>Unparseable is treated as absent rather than fatal. A missing link date only means the
-     * warm-up ramp cannot be computed, and reporting no ramp is far better than failing the whole
-     * health read, which is what the composer decides whether to warn on.
-     */
-    private static LocalDateTime asDateTime(Object value) {
-        if (value == null) return null;
-        try {
-            return java.time.OffsetDateTime.parse(value.toString())
-                    .atZoneSameInstant(java.time.ZoneOffset.UTC)
-                    .toLocalDateTime();
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

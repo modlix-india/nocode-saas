@@ -10,12 +10,16 @@ import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionH
 import com.fincity.saas.entity.processor.service.message.WhatsappPacingService.Decision;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import com.fincity.saas.entity.processor.util.PhoneUtil;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fincity.saas.entity.processor.model.request.message.WhatsappInboundRequest;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -41,13 +45,36 @@ public class WhatsappSessionService {
     private final WhatsappPacingService pacingService;
     private final WhatsappMessageDAO messageDao;
 
+    /**
+     * Used to record our own outbound messages into the conversation.
+     *
+     * <p>The same path inbound events take, deliberately: it is idempotent on the message id, so an
+     * outbound row and the receipt that follows it converge on one row instead of racing.
+     */
+    private final WhatsappInboundService inboundService;
+
+    /**
+     * {@code inboundService} is {@link Lazy} to break a genuine cycle rather than to paper over a
+     * design problem.
+     *
+     * <p>The chain is {@code TicketService -> TicketMessageService -> TicketWhatsappEnqueueService ->
+     * WhatsappSessionService -> WhatsappInboundService -> TicketService}, and it closes because
+     * recording a message needs to resolve which deal it belongs to, which is exactly what
+     * TicketService is for. Both directions are legitimate: sending needs the deal, and storing a
+     * message needs the deal too.
+     *
+     * <p>Lazy is the honest resolution here because the call is made per message rather than at
+     * startup, so the proxy is resolved long after the context is built.
+     */
     public WhatsappSessionService(
             IFeignMessageService feignMessageService,
             WhatsappPacingService pacingService,
-            WhatsappMessageDAO messageDao) {
+            WhatsappMessageDAO messageDao,
+            @Lazy WhatsappInboundService inboundService) {
         this.feignMessageService = feignMessageService;
         this.pacingService = pacingService;
         this.messageDao = messageDao;
+        this.inboundService = inboundService;
     }
 
     /**
@@ -100,7 +127,8 @@ public class WhatsappSessionService {
                 access.getClientCode(),
                 session,
                 ticketIds,
-                Boolean.TRUE.equals(ticket.getWhatsappOptedOut()));
+                Boolean.TRUE.equals(ticket.getWhatsappOptedOut()),
+                ticket);
     }
 
     /**
@@ -110,27 +138,95 @@ public class WhatsappSessionService {
      * must never disagree about why a message is being held: the override panel exists so a person
      * can decide on the strength of those numbers, and it is worthless if the rule actually holding
      * the message was a different one.
+     *
+     * @param lead the deal being written to, used only for its phone number, which is what decides
+     *     the clock quiet hours are judged on. Null for the tenant-level standing view, where there
+     *     is no lead and quiet hours fall back to the configured zone.
      */
     public Mono<Decision> evaluate(
-            String appCode, String clientCode, Map<String, Object> session, List<ULong> ticketIds, boolean optedOut) {
+            String appCode,
+            String clientCode,
+            Map<String, Object> session,
+            List<ULong> ticketIds,
+            boolean optedOut,
+            Ticket lead) {
 
         String sessionId = string(session, KEY_ID);
 
         if (sessionId == null) return Mono.just(Decision.hold(WhatsappHoldReason.SESSION_NOT_READY));
 
         boolean sendable = "CONNECTED".equals(string(session, KEY_STATE));
+        List<ZoneId> leadZones = zonesOf(lead);
 
         return this.healthFor(appCode, clientCode, session, ticketIds)
                 .flatMap(health -> this.messageDao
                         .consecutiveUnanswered(appCode, clientCode, ticketIds)
-                        .map(unanswered -> this.pacingService.evaluate(health, optedOut, sendable, unanswered)))
+                        .map(unanswered ->
+                                this.pacingService.evaluate(health, optedOut, sendable, unanswered, leadZones)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.evaluate"));
+    }
+
+    /**
+     * The lead's candidate time zones, or empty when there is no usable number.
+     *
+     * <p>Empty rather than a default, so that {@link WhatsappPacingService#quietHoursHold} is the one
+     * place that decides what to do about not knowing. A default invented here would be invisible to
+     * it and indistinguishable from a number that really is in that zone.
+     */
+    private static List<ZoneId> zonesOf(Ticket lead) {
+        return lead == null ? List.of() : PhoneUtil.zonesOf(lead.getDialCode(), lead.getPhoneNumber());
     }
 
     /** Session health for a deal, or for the tenant when no deal is in view. */
     public Mono<WhatsappSessionHealth> health(
             ProcessorAccess access, Map<String, Object> session, List<ULong> ticketIds) {
         return this.healthFor(access.getAppCode(), access.getClientCode(), session, ticketIds);
+    }
+
+    /**
+     * Session health with the gate's verdict stamped on it.
+     *
+     * <p>Health on its own answers "how is this number doing". It does not answer "will the next
+     * message actually go", and the override panel is built entirely around the second question:
+     * without this the panel has a hold to explain and no reason to explain it with.
+     *
+     * <p>Runs the same {@link #evaluate} the send path runs, deliberately. A panel that worked out
+     * the hold independently would eventually explain one rule while a different rule was the one
+     * holding the message, which is worse than showing nothing.
+     */
+    public Mono<WhatsappSessionHealth> healthWithDecision(
+            String appCode,
+            String clientCode,
+            Map<String, Object> session,
+            List<ULong> ticketIds,
+            boolean optedOut,
+            Ticket lead) {
+
+        String zoneLabel = this.pacingService.quietHoursZoneLabel(zonesOf(lead));
+
+        return Mono.zip(
+                        this.healthFor(appCode, clientCode, session, ticketIds),
+                        this.evaluate(appCode, clientCode, session, ticketIds, optedOut, lead))
+                .map(t -> applyDecision(t.getT1(), t.getT2()).setQuietHoursZone(zoneLabel))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.healthWithDecision"));
+    }
+
+    /**
+     * Copies a decision onto a health reading.
+     *
+     * <p>{@code heldUntil} is taken from the decision rather than left as computed, because the
+     * computed one only ever describes the 24-hour rule. A message held by quiet hours or a daily
+     * cap releases at a different time entirely, and a countdown that quietly showed the wrong one
+     * would be read as fact by whoever is deciding whether to override it.
+     */
+    static WhatsappSessionHealth applyDecision(WhatsappSessionHealth health, Decision decision) {
+
+        if (decision == null || decision.allowed())
+            return health.setHoldReason(null).setHoldExplanation(null).setHeldUntil(null);
+
+        return health.setHoldReason(decision.reason())
+                .setHoldExplanation(WhatsappHoldReason.explain(decision.reason()))
+                .setHeldUntil(decision.retryAt());
     }
 
     public Mono<WhatsappSessionHealth> healthFor(
@@ -162,7 +258,81 @@ public class WhatsappSessionService {
 
         return this.feignMessageService
                 .sendWhatsappSessionMessage(appCode, clientCode, sessionId, Map.of("to", toPhone, "text", text))
+                .flatMap(response -> this.recordOutbound(appCode, clientCode, session(sessionId), toPhone, text, response)
+                        .thenReturn(response))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendQueued"));
+    }
+
+    /** A minimal session map, for the record path when only the id is to hand. */
+    private static Map<String, Object> session(String sessionId) {
+        return Map.of(KEY_ID, sessionId);
+    }
+
+    /**
+     * Writes the message we just sent into the conversation.
+     *
+     * <p>Nothing else does. whatsmeow does not echo this client's own sends back as inbound events,
+     * so without this the thread has no record of anything we said: the deal profile showed "Chat has
+     * not yet started" while the message sat delivered on the customer's handset.
+     *
+     * <p>What made it look stored was the receipts. Those arrive by message id, find no row, and
+     * create a stub, which is why the table filled with rows carrying a status and a null ticket and
+     * a null body. Recording through {@link WhatsappInboundService#accept} instead of inserting
+     * directly is what makes the two meet: accept is idempotent on the message id, so whichever
+     * arrives second merges into the same row rather than racing it.
+     *
+     * <p>A failure here is logged and swallowed. The message has already gone to the customer, and
+     * turning a bookkeeping problem into a failed send would tell the person the opposite of what
+     * happened and invite them to send it twice.
+     */
+    private Mono<Void> recordOutbound(
+            String appCode,
+            String clientCode,
+            Map<String, Object> session,
+            String toPhone,
+            String text,
+            Map<String, Object> response) {
+
+        String messageId = string(response, "messageId");
+        if (messageId == null || messageId.isBlank()) {
+            logger.error(
+                    "A WhatsApp send returned no message id, so it cannot be recorded against the"
+                            + " conversation. The customer has the message; the thread will not show it.");
+            return Mono.empty();
+        }
+
+        WhatsappInboundRequest sent = new WhatsappInboundRequest()
+                .setMetaMessageId(messageId)
+                .setEventType("MESSAGE")
+                .setMessageType("text")
+                .setMessageStatus("sent")
+                .setOutbound(Boolean.TRUE)
+                .setBodyText(text)
+                .setCustomerPhoneNumber(toPhone)
+                .setCustomerWaId(digitsOf(toPhone))
+                .setWhatsappPhoneNumber(string(session, KEY_PHONE))
+                .setTo(digitsOf(toPhone))
+                .setFrom(digitsOf(string(session, KEY_PHONE)))
+                .setOccurredAt(LocalDateTime.now(ZoneOffset.UTC));
+
+        return this.inboundService
+                .accept(appCode, clientCode, sent)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Sent a WhatsApp message ({}) but could not record it against the"
+                                    + " conversation. It will not appear in the thread.",
+                            messageId,
+                            e);
+                    return Mono.empty();
+                })
+                .then();
+    }
+
+    /** JID user parts are digits only; numbers reach us in E.164 or display form. */
+    private static String digitsOf(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("\\D", "");
+        return digits.isEmpty() ? null : digits;
     }
 
     /**
@@ -212,6 +382,14 @@ public class WhatsappSessionService {
                                 sessionId);
                     else logger.debug("Sent an interactive WhatsApp message on deal {}.", ticket.getId());
                 })
+                .flatMap(response -> this.recordOutbound(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                session,
+                                ticket.getPhoneNumber(),
+                                text,
+                                response)
+                        .thenReturn(response))
                 .map(response -> withDecision(response, outcome, decision, userId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendInteractive"));
     }

@@ -213,9 +213,23 @@ public class TicketWhatsappConversationService {
                         access -> this.ticketService.readByIdentity(access, ticketId),
                         (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
                         (access, ticket, ticketIds) -> this.sessionService.resolveForTicket(access, ticket),
-                        (access, ticket, ticketIds, session) -> this.sessionService
-                                .health(access, session, ticketIds)
-                                .map(health -> health.setOptedOut(Boolean.TRUE.equals(ticket.getWhatsappOptedOut()))))
+                        (access, ticket, ticketIds, session) -> {
+                            boolean optedOut = Boolean.TRUE.equals(ticket.getWhatsappOptedOut());
+
+                            // With the decision, not without it. This read is what fills the
+                            // composer's override panel, and a panel that knows a message is held
+                            // but cannot say why is the thing that teaches people to click through
+                            // it without reading.
+                            return this.sessionService
+                                    .healthWithDecision(
+                                            access.getAppCode(),
+                                            access.getClientCode(),
+                                            session,
+                                            ticketIds,
+                                            optedOut,
+                                            ticket)
+                                    .map(health -> health.setOptedOut(optedOut));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.readHealth"));
     }
 

@@ -3,11 +3,13 @@ package com.fincity.saas.message.controller.bridge;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.request.bridge.BridgeSessionSnapshot;
+import com.fincity.saas.message.service.bridge.BridgeNumberAlreadyLinkedException;
 import com.fincity.saas.message.service.bridge.BridgeSessionService;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,6 +47,14 @@ public class BridgeSessionInternalController {
      * <p>Returns as soon as the instance is pairing, not when the customer has scanned. The QR code
      * is then polled from the endpoint below, because a code rotates roughly every 20 seconds and
      * holding a socket open for it buys nothing.
+     *
+     * <p>The number arrives as {@code phoneNumber}, which is what entity-processor documents and
+     * what the page sends. It is forwarded to the bridge as {@code phone}, which is that hop's own
+     * contract and is tested on both sides. The two names are not a mistake to tidy away: this is
+     * the boundary between them.
+     *
+     * <p>This read {@code phone} until 2026-08-07, so every attempt to link a number failed with an
+     * empty 400 and nothing anywhere said which field was missing. Hence the message below.
      */
     @PostMapping
     public Mono<ResponseEntity<BridgeSessionSnapshot>> create(
@@ -52,9 +62,11 @@ public class BridgeSessionInternalController {
             @RequestParam("clientCode") String clientCode,
             @RequestBody Map<String, Object> request) {
 
-        Object phone = request.get("phone");
+        Object phone = request.get("phoneNumber");
         if (phone == null || phone.toString().isBlank())
-            return Mono.just(ResponseEntity.badRequest().build());
+            return Mono.just(ResponseEntity.badRequest()
+                    .header("X-Reason", "phoneNumber is required")
+                    .build());
 
         Object productId = request.get("productId");
         Object ownerService = request.get("ownerService");
@@ -65,7 +77,15 @@ public class BridgeSessionInternalController {
                         phone.toString(),
                         productId == null ? null : ULong.valueOf(productId.toString()),
                         ownerService == null ? null : ownerService.toString())
-                .map(ResponseEntity::ok);
+                .map(ResponseEntity::ok)
+                // CONFLICT rather than a 500, because this is a normal thing to do: click Link
+                // twice, or link again after abandoning a pairing attempt. The reason travels in a
+                // header so the caller can say something specific without this endpoint growing an
+                // error body shape it does not otherwise have.
+                .onErrorResume(BridgeNumberAlreadyLinkedException.class, e -> Mono.just(ResponseEntity.status(
+                                HttpStatus.CONFLICT)
+                        .header("X-Reason", "already-linked")
+                        .build()));
     }
 
     /** Every session the tenant has, for the integration page's list. */

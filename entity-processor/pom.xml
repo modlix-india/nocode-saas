@@ -49,6 +49,12 @@
         <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <!-- open source -->
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
+        <!--
+            Kept in step with libphonenumber above: geocoder 3.N is published against
+            libphonenumber 9.0.N, so bumping one without the other silently pulls a second,
+            newer libphonenumber onto the classpath.
+        -->
+        <package.o.com.googlecode.libphonenumber.geocoder.version>3.9</package.o.com.googlecode.libphonenumber.geocoder.version>
         <package.o.jakarta.mail.version>2.0.2</package.o.jakarta.mail.version>
         <package.o.jooq.version>3.20.5</package.o.jooq.version>
         <package.o.palantir-java.format.version>2.70.0</package.o.palantir-java.format.version>
@@ -96,6 +102,17 @@
             <groupId>com.googlecode.libphonenumber</groupId>
             <artifactId>libphonenumber</artifactId>
             <version>${package.o.com.googlecode.libphonenumber.version}</version>
+        </dependency>
+        <!--
+            Carries PhoneNumberToTimeZonesMapper, which is what decides the local clock a lead is
+            judged on for quiet hours. The dial code alone cannot do it: +1 spans six zones and +7
+            eleven, so a New Jersey and a California number would otherwise share one answer and one
+            of them gets messaged three hours off.
+        -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>geocoder</artifactId>
+            <version>${package.o.com.googlecode.libphonenumber.geocoder.version}</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>

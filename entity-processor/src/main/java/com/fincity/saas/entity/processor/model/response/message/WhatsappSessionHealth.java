@@ -95,6 +95,16 @@ public class WhatsappSessionHealth implements Serializable {
     private String quietHoursStart;
     private String quietHoursEnd;
 
+    /**
+     * The clock those hours were judged on, which is the lead's and not ours.
+     *
+     * <p>Worth showing rather than leaving implicit. A salesperson in Bangalore told a message is
+     * held until 09:00 will read that as 09:00 their time, and for a Gulf lead it is not: the two
+     * are ninety minutes apart. Naming the zone is the difference between a countdown somebody can
+     * check and one they learn to distrust.
+     */
+    private String quietHoursZone;
+
     /** Whether this deal has asked not to be contacted. Shown even when nothing is queued. */
     private Boolean optedOut;
 

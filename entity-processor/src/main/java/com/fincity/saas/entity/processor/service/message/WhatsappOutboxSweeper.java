@@ -144,7 +144,8 @@ public class WhatsappOutboxSweeper {
                                             row.getClientCode(),
                                             session,
                                             List.of(ticket.getId()),
-                                            Boolean.FALSE)
+                                            Boolean.FALSE,
+                                            ticket)
                                     .flatMap(decision -> this.act(row, ticket, session, decision)));
                 });
     }
