@@ -33,10 +33,13 @@ public class WhatsappInboundService {
 
     private final WhatsappMessageDAO dao;
     private final TicketService ticketService;
+    private final WhatsappEventService eventService;
 
-    public WhatsappInboundService(WhatsappMessageDAO dao, TicketService ticketService) {
+    public WhatsappInboundService(
+            WhatsappMessageDAO dao, TicketService ticketService, WhatsappEventService eventService) {
         this.dao = dao;
         this.ticketService = ticketService;
+        this.eventService = eventService;
     }
 
     public Mono<WhatsappMessage> accept(String appCode, String clientCode, WhatsappInboundRequest request) {
@@ -50,7 +53,51 @@ public class WhatsappInboundService {
                 .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
                 .switchIfEmpty(Mono.defer(() -> this.insert(appCode, clientCode, request)))
                 .flatMap(message -> this.applyOptOut(request, message))
+                .flatMap(message -> this.announce(appCode, clientCode, request, message))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.accept"));
+    }
+
+    /**
+     * Tells any browser looking at this deal that it has something to refetch.
+     *
+     * <p>Placed here, at the end of the one funnel every inbound message, outbound mirror and status
+     * receipt passes through, so there is a single place that can fall out of step with what was
+     * actually written. Placed <i>after</i> the write for the same reason: a browser told to refetch
+     * before the row is committed reads the old thread and stops asking.
+     *
+     * <p>Silent when the message has no deal attached. The client keys on a deal id, so a ping
+     * without one has nothing to say, and this is not the place to notice orphans: that is the
+     * inbound resolution's job and it logs it there.
+     *
+     * <p>Returns the message unchanged and cannot fail the chain. A stale screen is a nuisance; a
+     * customer message rejected because a Redis publish failed is a lost conversation.
+     */
+    private Mono<WhatsappMessage> announce(
+            String appCode, String clientCode, WhatsappInboundRequest request, WhatsappMessage message) {
+
+        if (message.getTicketId() == null) return Mono.just(message);
+
+        // One indexed read per stored message, to learn who is entitled to hear about it. This used
+        // to be free because the event carried only an id and every browser resolved access itself;
+        // moving that decision to the server is what this read buys, and one read here replaces one
+        // authenticated read per open browser there.
+        return this.ticketService
+                .findById(message.getTicketId())
+                .map(ticket -> new WhatsappEventService.TicketRouting(
+                        ticket.getId(),
+                        ticket.getClientId(),
+                        ticket.getAssignedUserId(),
+                        ticket.getCreatedBy(),
+                        ticket.getName(),
+                        ticket.getCode()))
+                .flatMap(routing -> request.isStatusUpdate()
+                        ? this.eventService.publishStatus(appCode, clientCode, routing)
+                        : this.eventService.publishMessage(appCode, clientCode, routing))
+                .onErrorResume(e -> {
+                    logger.warn("Stored WhatsApp message {} but could not announce it.", request.getMetaMessageId(), e);
+                    return Mono.empty();
+                })
+                .thenReturn(message);
     }
 
     /**

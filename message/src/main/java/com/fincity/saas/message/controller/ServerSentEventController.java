@@ -8,6 +8,15 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
+/**
+ * Live call events for the browser.
+ *
+ * <p>Note the {@code userId} parameter on every handler: accepted, named {@code ignoredUserId}, and
+ * not used. It used to be passed straight to the sink lookup, which let any authenticated caller
+ * read another user's call stream by editing the URL. The id now comes from the token. The parameter
+ * stays because the UI still sends it and rejecting it would break those pages for no benefit; it is
+ * simply no longer believed. Delete it once no page sends it.
+ */
 @RestController
 @RequestMapping("/api/message/events")
 public class ServerSentEventController {
@@ -23,18 +32,18 @@ public class ServerSentEventController {
     public Flux<MessageServerEvent> getEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
-        return eventService.getEventStream(appCode, clientCode, userId);
+        return eventService.getEventStreamForCurrentUser(appCode, clientCode);
     }
 
     @GetMapping(value = "/call/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<MessageServerEvent> getCallEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
-        return eventService.getEventStream(appCode, clientCode, userId).filter(event -> {
+        return eventService.getEventStreamForCurrentUser(appCode, clientCode).filter(event -> {
             String eventType = event.getEventType();
             return eventType != null
                     && (eventType.equals(CallEventService.EVENT_TYPE_MAKE_CALL)
@@ -48,10 +57,10 @@ public class ServerSentEventController {
     public Flux<MessageServerEvent> getMakeCallEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
         return eventService
-                .getEventStream(appCode, clientCode, userId)
+                .getEventStreamForCurrentUser(appCode, clientCode)
                 .filter(event -> CallEventService.EVENT_TYPE_MAKE_CALL.equals(event.getEventType()));
     }
 
@@ -59,10 +68,10 @@ public class ServerSentEventController {
     public Flux<MessageServerEvent> getIncomingCallEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
         return eventService
-                .getEventStream(appCode, clientCode, userId)
+                .getEventStreamForCurrentUser(appCode, clientCode)
                 .filter(event -> CallEventService.EVENT_TYPE_INCOMING_CALL.equals(event.getEventType()));
     }
 
@@ -70,10 +79,10 @@ public class ServerSentEventController {
     public Flux<MessageServerEvent> getCallStatusEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
         return eventService
-                .getEventStream(appCode, clientCode, userId)
+                .getEventStreamForCurrentUser(appCode, clientCode)
                 .filter(event -> CallEventService.EVENT_TYPE_CALL_STATUS.equals(event.getEventType()));
     }
 
@@ -81,10 +90,10 @@ public class ServerSentEventController {
     public Flux<MessageServerEvent> getPassthruCallbackEventStream(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestParam("userId") BigInteger userId) {
+            @RequestParam(value = "userId", required = false) BigInteger ignoredUserId) {
 
         return eventService
-                .getEventStream(appCode, clientCode, userId)
+                .getEventStreamForCurrentUser(appCode, clientCode)
                 .filter(event -> CallEventService.EVENT_TYPE_PASSTHRU_CALLBACK.equals(event.getEventType()));
     }
 }

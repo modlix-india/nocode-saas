@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionH
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +43,9 @@ import reactor.util.context.Context;
  */
 @Service
 public class TicketWhatsappConversationService {
+
+    private static final org.slf4j.Logger logger =
+            org.slf4j.LoggerFactory.getLogger(TicketWhatsappConversationService.class);
 
     private final TicketService ticketService;
     private final ProductService productService;
@@ -155,11 +160,28 @@ public class TicketWhatsappConversationService {
                                             && userId != null
                                             && !BigInteger.ZERO.equals(userId.toBigInteger());
 
-                                    if (!decision.allowed() && (!force || !isForceable(decision.reason())))
+                                    if (!decision.allowed() && (!force || !isForceable(decision.reason()))) {
+                                        // The plan asks for every send's pacing decision to be
+                                        // recorded, and this is the half that is otherwise invisible:
+                                        // the refusal reaches the person as one sentence about the
+                                        // hold, which reads identically whether they never asked to
+                                        // override, asked and were not entitled to, or asked for a
+                                        // hold that cannot be overridden at all. Those are three
+                                        // different bugs and they looked the same from the outside.
+                                        logger.info(
+                                                "Holding a WhatsApp send on deal {}: {}. Override requested={},"
+                                                    + " user={}, this hold overridable={}",
+                                                ticket.getId(),
+                                                decision.reason(),
+                                                requestedForce,
+                                                userId,
+                                                isForceable(decision.reason()));
+
                                         return this.msgService.<Map<String, Object>>throwMessage(
                                                 msg -> new GenericException(HttpStatus.CONFLICT, msg),
                                                 ProcessorMessageResourceService.WHATSAPP_SEND_HELD,
                                                 WhatsappHoldReason.explain(decision.reason()));
+                                    }
 
                                     return this.sessionService.sendInteractive(
                                             access, ticket, session, request, decision, force, userId);
@@ -396,6 +418,36 @@ public class TicketWhatsappConversationService {
      * <p>Counts are summed across the deals sharing a number, because the row is the customer, not
      * the deal: an agent looking at one conversation should see one badge covering all of it.
      */
+    /**
+     * Product id to name, for every product named across a page of conversations.
+     *
+     * <p>One batched read for the whole page rather than one per deal: a page of twenty numbers can
+     * easily carry sixty deals and will normally span a handful of products.
+     *
+     * <p>Read through {@code getAllProducts}, which applies the access condition, so a product the
+     * caller cannot read resolves to no name rather than leaking one. The chip then falls back to
+     * the deal name on the client, which is the same information they had before.
+     */
+    private Mono<Map<ULong, String>> productNames(ProcessorAccess access, List<WhatsappConversationResponse> rows) {
+
+        List<ULong> productIds = rows.stream()
+                .filter(row -> row.getDeals() != null)
+                .flatMap(row -> row.getDeals().stream())
+                .map(WhatsappConversationResponse.Deal::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (productIds.isEmpty()) return Mono.just(Map.of());
+
+        return this.productService
+                .getAllProducts(access, productIds)
+                .map(products -> products.stream()
+                        .filter(product -> product.getId() != null && product.getName() != null)
+                        .collect(Collectors.toMap(Product::getId, Product::getName, (a, b) -> a)))
+                .defaultIfEmpty(Map.of());
+    }
+
     private Mono<Page<WhatsappConversationResponse>> enrich(
             ProcessorAccess access, Page<WhatsappConversationResponse> page) {
 
@@ -413,10 +465,19 @@ public class TicketWhatsappConversationService {
 
         return Mono.zip(
                         this.whatsappMessageDAO.summarise(access.getAppCode(), access.getClientCode(), ticketIds),
-                        this.whatsappMessageDAO.latestBodies(access.getAppCode(), access.getClientCode(), ticketIds))
+                        this.whatsappMessageDAO.latestBodies(access.getAppCode(), access.getClientCode(), ticketIds),
+                        this.productNames(access, rows))
                 .map(tuple -> {
                     Map<ULong, WhatsappMessageDAO.ThreadSummary> summaries = tuple.getT1();
                     Map<ULong, String> bodies = tuple.getT2();
+                    Map<ULong, String> productNames = tuple.getT3();
+
+                    rows.forEach(row -> {
+                        if (row.getDeals() == null) return;
+                        row.getDeals()
+                                .forEach(deal -> deal.setProductName(
+                                        deal.getProductId() == null ? null : productNames.get(deal.getProductId())));
+                    });
 
                     rows.forEach(row -> {
                         if (row.getDeals() == null) return;

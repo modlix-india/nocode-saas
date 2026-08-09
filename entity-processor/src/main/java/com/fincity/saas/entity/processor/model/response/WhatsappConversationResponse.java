@@ -60,6 +60,17 @@ public class WhatsappConversationResponse implements Serializable {
         private String code;
         private String name;
         private ULong productId;
+
+        /**
+         * The product's name, resolved for display.
+         *
+         * <p>Here because the deals sharing a number are frequently the <i>same lead</i> registered
+         * against different products, so their {@code name} is identical on every one of them. A
+         * picker showing three chips all reading "G&amp;SS1" tells the user nothing about which
+         * deal a reply will be filed against, which is the single decision that picker exists to
+         * support. The product is what distinguishes them.
+         */
+        private String productName;
         private ULong stage;
         private ULong status;
         private ULong assignedUserId;
