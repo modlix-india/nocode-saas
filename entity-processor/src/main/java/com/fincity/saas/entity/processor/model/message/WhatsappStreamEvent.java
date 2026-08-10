@@ -10,32 +10,41 @@ import lombok.experimental.Accessors;
 /**
  * What travels down a browser's WhatsApp event stream, and across Redis to get there.
  *
- * <h2>This is delivered to entitled users only, and that is why it may carry a name</h2>
+ * <h2>Addressed, not broadcast</h2>
  *
- * <p>The first version of this class was broadcast to every logged-in browser in a tenant and
- * therefore carried nothing but a deal id: each browser then fetched the ticket through the normal
- * read, which is what enforced access. That worked and did not scale. Twenty people online with a
- * handful of tabs each turned one inbound message into hundreds of ticket reads, every one of them
- * running the full {@code hasAccess()} path with its security calls, and all but a few thrown away
- * as 403s.
+ * <p>{@link #recipients} is the whole routing story: it is resolved once at publish, by
+ * {@code TicketAudienceService} inverting the condition {@code TicketDAO} puts on every deal read,
+ * and the fan-out on each instance is a membership test against it.
  *
- * <p>So the fan-out now applies the access rule itself, in
- * {@code WhatsappEventService.entitled(...)}, and the fields below exist to let it: the deal's
- * {@code clientId}, {@code assignedUserId} and {@code createdBy} are the three columns the DAO's own
- * filter tests. Because only an entitled browser receives the event, the display fields can ride
- * along and the client fetch disappears entirely.
+ * <p>Two designs preceded it and both are worth remembering, because each looked right.
  *
- * <p><b>The consequence, stated plainly.</b> A lead's name is now on a Redis channel shared by every
- * instance and every tenant, and the only thing standing between it and the wrong browser is that
- * filter. Previously the guard was the ticket read, which is the same code paying customers rely on
- * everywhere else; now it is a second implementation of the same rule. That is a real reduction in
- * safety margin bought for a real reduction in load. It is defensible only while
- * {@code WhatsappEventServiceTest} keeps pinning the filter to
- * {@code BaseProcessorDAO.addUserIds}'s behaviour, so if that rule changes and the test is deleted
- * rather than fixed, this class should go back to carrying an id alone.
+ * <p><b>Broadcast to the tenant, id only.</b> Every logged-in browser received every event and
+ * fetched the ticket through the normal read, which is what enforced access. Correct by
+ * construction, and it did not scale: twenty people with a handful of tabs turned one message into
+ * hundreds of authenticated ticket reads, each running a sub-organisation expansion, nearly all
+ * discarded as 403s.
  *
- * <p><b>It still carries no message body and no phone number.</b> Those buy nothing: the client has
- * to refetch the thread anyway to render it in order.
+ * <p><b>Re-evaluate the rule per connection.</b> The event carried the deal's {@code clientId},
+ * {@code assignedUserId} and {@code createdBy} and each instance applied the access rule itself.
+ * This was wrong in both directions: it copied one branch of a rule that has three, ignored the
+ * per-product rule engine entirely, compared the wrong client code for business partners, and
+ * required every connection to hold its subscriber's entire sub-organisation in memory for the life
+ * of the connection.
+ *
+ * <p>Resolving the audience once, where the rule lives, is cheaper than both and has one place to be
+ * wrong instead of two.
+ *
+ * <h2>Why it may carry a name and a body</h2>
+ *
+ * <p>Because only an entitled user receives it. That is a real trade: this crosses a Redis channel
+ * shared by every instance and every tenant, and the guard is now an inversion of the read rule
+ * rather than the read itself. It is defensible only while {@code TicketAudienceServiceTest} keeps
+ * asserting that a user is in the audience exactly when the real read returns the row for them. If
+ * that rule changes and the test is deleted rather than fixed, this class should go back to carrying
+ * an id alone and the client should go back to fetching.
+ *
+ * <p>It still carries no phone number, and no media: the thread is fetched for anything richer than
+ * a line of text.
  *
  * <h2>It carries no authority</h2>
  *
@@ -80,24 +89,45 @@ public class WhatsappStreamEvent implements Serializable {
     private String kind;
 
     /**
-     * The three columns the access filter tests, copied off the deal at publish.
+     * Exactly who may receive this, resolved at publish by inverting the deal read rule.
      *
-     * <p>They are a snapshot. A deal reassigned between the publish and the fan-out is routed by who
-     * owned it a millisecond ago, which is the same staleness window the client-fetch version had
-     * and is not worth closing: the next event corrects it, and the thread itself is fetched through
-     * the real read either way.
+     * <p>The fan-out is a membership test against this list and nothing else. An earlier version
+     * carried the deal's {@code clientId}, {@code assignedUserId} and {@code createdBy} instead and
+     * had each instance re-evaluate the access rule per connection. That reimplemented a rule with
+     * three user branches plus a whole product-rule engine, got it wrong in both directions, and
+     * required every connection to hold its subscriber's entire sub-organisation in memory. See
+     * {@code TicketAudienceService}.
+     *
+     * <p>A snapshot, like anything computed at publish. A deal reassigned a millisecond later is
+     * routed by who owned it a millisecond ago; the next event corrects it and the thread itself is
+     * always fetched through the real read.
      */
-    private BigInteger clientId;
+    private java.util.List<BigInteger> recipients;
 
-    private BigInteger assignedUserId;
-
-    private BigInteger createdBy;
+    /**
+     * The deal's product.
+     *
+     * <p>Needed because the inbox is product-filtered: a browser scoped to one product has to know
+     * whether a ping about another concerns its list at all.
+     */
+    private BigInteger productId;
 
     /** For the toast. Present only because the fan-out has already decided this browser may see it. */
     private String dealName;
 
     /** For the toast's deep link into {@code /dealProfile/<code>?tab=Whatsapp}. */
     private String dealCode;
+
+    /**
+     * The message text, for a thread that is already open and for the toast's preview.
+     *
+     * <p>Present only because {@link #recipients} is authoritative. It raises the cost of an
+     * audience bug from disclosing a name to disclosing what a customer wrote, which is why the
+     * equivalence test in {@code TicketAudienceServiceTest} is not optional.
+     *
+     * <p>Null for a status receipt, which has no body, and for media arriving without a caption.
+     */
+    private String body;
 
     /** Set on the {@link #KIND_INIT} frame only. */
     private String connectionId;

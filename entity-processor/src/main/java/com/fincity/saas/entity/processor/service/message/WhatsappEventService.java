@@ -16,11 +16,9 @@ import java.math.BigInteger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -37,7 +35,7 @@ import reactor.core.publisher.Sinks;
 import reactor.core.publisher.Sinks.Many;
 
 /**
- * Pushes "this deal changed, go and refetch" to the browsers entitled to hear it.
+ * Pushes "this deal changed" to the browsers the event is addressed to.
  *
  * <h2>Why this cannot be an in-process map, unlike the two SSE services already in this codebase</h2>
  *
@@ -58,20 +56,15 @@ import reactor.core.publisher.Sinks.Many;
  *
  * <p>Two filters, in this order.
  *
- * <p><b>Entitlement, always.</b> {@link #entitled} evaluates the same rule
- * {@code BaseProcessorDAO.addUserIds} compiles into SQL for every deal query:
+ * <p><b>Addressing, always.</b> {@link #addressed} tests whether the event names this connection's
+ * user. The list was resolved at publish by {@code TicketAudienceService}, which inverts the
+ * condition {@code TicketDAO} puts on every deal read. Nothing about the rule is evaluated here.
  *
- * <pre>{@code clientId IN managingClientIds  OR  <userField> IN subOrg}</pre>
- *
- * where {@code userField} is {@code assignedUserId} for a normal user and {@code createdBy} for an
- * outside (business partner) user, exactly as {@code BaseProcessorDAO.getUserField} decides. Both
- * sets come from the {@link ProcessorAccess} built by the shared {@link IProcessorAccessService},
- * not from anything re-derived here, so there is one place that knows how a subOrg is computed.
- *
- * <p>This replaced a tenant-wide broadcast in which every browser fetched the ticket to discover
- * whether it was allowed to care. That was correct and cost one authenticated ticket read per open
- * browser per event; twenty people with a few tabs each made a single inbound message into hundreds
- * of {@code hasAccess()} evaluations, nearly all of them 403s.
+ * <p>Two earlier designs are worth remembering. A tenant-wide broadcast where each browser fetched
+ * the ticket to discover whether it was allowed to care was correct but cost one authenticated read
+ * per open browser per event. Re-evaluating the rule per connection was cheap but wrong: it copied
+ * one branch of a rule that has three, ignored per-product read rules, and compared the wrong client
+ * code for business partners.
  *
  * <p><b>Interest, for status receipts only.</b> A delivery or read receipt is worth nothing to
  * anyone not looking at that thread, and receipts are the highest-volume kind by some distance. A
@@ -82,12 +75,10 @@ import reactor.core.publisher.Sinks.Many;
  *
  * <h2>The staleness this accepts</h2>
  *
- * <p>{@code subOrg} and {@code managingClientIds} are resolved once, when the stream opens, and held
- * for the life of the connection. Someone moved under a new manager mid-session keeps the old
- * routing until their browser reconnects. The alternative is resolving the org tree on every event,
- * which is the load this change exists to remove. Reconnects are frequent enough in practice
- * (navigation, sign-out, proxy timeouts) that the window is small, but it is not zero and nothing
- * here should be relied on for anything but a refetch nudge.
+ * <p>The audience is a snapshot taken when the message was stored. A deal reassigned immediately
+ * afterwards is routed by who owned it a moment earlier. The window is one event wide, the next
+ * event corrects it, and the thread itself is always fetched through the real read, so nothing here
+ * should be relied on for anything but a refetch nudge.
  *
  * <h2>Two deliberate differences from AbstractServerSentEventService</h2>
  *
@@ -133,9 +124,6 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
             String appCode,
             String clientCode,
             BigInteger userId,
-            Set<BigInteger> subOrg,
-            Set<BigInteger> managingClientIds,
-            boolean outsideUser,
             Many<WhatsappStreamEvent> sink,
             AtomicReference<BigInteger> watching) {}
 
@@ -242,18 +230,12 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
         // behind and catch up, not silently miss the event that would have told it to refetch.
         Many<WhatsappStreamEvent> sink = Sinks.many().multicast().onBackpressureBuffer();
 
-        Subscriber subscriber = new Subscriber(
-                appCode,
-                access.getClientCode(),
-                toBig(access.getUserId()),
-                toBigSet(access.getUserInherit() == null ? null : access.getUserInherit().getSubOrg()),
-                toBigSet(
-                        access.getUserInherit() == null
-                                ? null
-                                : access.getUserInherit().getManagingClientIds()),
-                access.isOutsideUser(),
-                sink,
-                new AtomicReference<>());
+        // Nothing about the caller's access is cached here any more. An earlier version held the
+        // subscriber's whole sub-organisation, which for a senior manager in a deep organisation is
+        // thousands of ids per connection per tab, and which went stale the moment anybody moved
+        // team. Entitlement is decided once at publish instead.
+        Subscriber subscriber =
+                new Subscriber(appCode, access.getClientCode(), toBig(access.getUserId()), sink, new AtomicReference<>());
 
         this.subscribers.put(connectionId, subscriber);
 
@@ -295,7 +277,7 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
      * <p>Authorised by ownership of the connection, not of the deal: a caller may only touch a
      * connection their own user opened, and the worst a lie about {@code ticketId} achieves is
      * receiving fewer events, or receiving a {@code STATUS} ping for a deal id they made up and
-     * cannot read anyway. Entitlement is still enforced on the way out by {@link #entitled}, so this
+     * cannot read anyway. Addressing is still enforced on the way out by {@link #addressed}, so this
      * narrows and never widens.
      *
      * <p>A null {@code ticketId} clears the interest, which restores "send me every receipt I am
@@ -337,12 +319,19 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
     }
 
     /**
-     * Everything the fan-out needs off a deal, so callers do not pass six loose arguments.
+     * A resolved event, ready to address.
      *
-     * <p>The first three are the access rule's columns; the last two are for the toast.
+     * <p>{@code recipients} is the audience already worked out by {@code TicketAudienceService};
+     * this service does not resolve it, so there is no way to publish without having decided who may
+     * hear it.
      */
     public record TicketRouting(
-            ULong ticketId, ULong clientId, ULong assignedUserId, ULong createdBy, String dealName, String dealCode) {}
+            ULong ticketId,
+            ULong productId,
+            String dealName,
+            String dealCode,
+            String body,
+            List<BigInteger> recipients) {}
 
     /**
      * Hands an event to every instance, including this one.
@@ -357,15 +346,20 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
         if (appCode == null || clientCode == null || routing == null || routing.ticketId() == null)
             return Mono.empty();
 
+        // Nobody to tell is not an error: a deal whose assignee has left and whose product carries
+        // no rules genuinely has no live audience. Publishing it anyway would put a customer's
+        // message on a shared channel for no reader.
+        if (routing.recipients() == null || routing.recipients().isEmpty()) return Mono.empty();
+
         WhatsappStreamEvent event = new WhatsappStreamEvent()
                 .setAppCode(appCode)
                 .setClientCode(clientCode)
                 .setTicketId(routing.ticketId().toBigInteger())
-                .setClientId(toBig(routing.clientId()))
-                .setAssignedUserId(toBig(routing.assignedUserId()))
-                .setCreatedBy(toBig(routing.createdBy()))
+                .setProductId(toBig(routing.productId()))
+                .setRecipients(routing.recipients())
                 .setDealName(routing.dealName())
                 .setDealCode(routing.dealCode())
+                .setBody(routing.body())
                 .setKind(kind)
                 .setAt(System.currentTimeMillis());
 
@@ -409,7 +403,7 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
     }
 
     /**
-     * Emits to the connections this instance holds that are entitled to the deal.
+     * Emits to the connections this instance holds that the event names.
      *
      * <p>Most instances match nothing and do nothing, which is the design working rather than a
      * problem: the event was broadcast precisely because nobody knows which instance is holding the
@@ -422,7 +416,7 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
         this.subscribers.values().stream()
                 .filter(s -> event.getClientCode().equals(s.clientCode())
                         && event.getAppCode().equals(s.appCode()))
-                .filter(s -> this.entitled(s, event))
+                .filter(s -> this.addressed(s, event))
                 .filter(s -> this.interested(s, event))
                 .forEach(s -> {
                     Sinks.EmitResult result = s.sink().tryEmitNext(event);
@@ -432,24 +426,20 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
     }
 
     /**
-     * The access rule, evaluated in Java instead of in SQL.
+     * Whether this event names this browser's user.
      *
-     * <p>Mirrors {@code BaseProcessorDAO.processorAccessCondition}, which for a deal query produces
-     * {@code (clientId IN managingClientIds) OR (<userField> IN subOrg)} and picks {@code userField}
-     * in {@code BaseProcessorDAO.getUserField}: {@code createdBy} for an outside user,
-     * {@code assignedUserId} for everyone else.
+     * <p>The entire routing decision. {@code recipients} was resolved at publish by inverting the
+     * deal read rule; nothing is re-derived here, because a second evaluation of that rule is
+     * exactly what this replaced.
      *
-     * <p>Deliberately closed rather than open on missing data. An event with no routing columns
-     * reaches nobody, so a publisher that forgets to fill them shows up as a dead feature rather
-     * than as a leak.
+     * <p>Closed on a missing list, so a publisher that forgets to resolve an audience makes the
+     * feature go quiet rather than send a customer's message to a whole tenant.
      */
-    private boolean entitled(Subscriber subscriber, WhatsappStreamEvent event) {
+    private boolean addressed(Subscriber subscriber, WhatsappStreamEvent event) {
 
-        if (event.getClientId() != null && subscriber.managingClientIds().contains(event.getClientId())) return true;
+        List<BigInteger> recipients = event.getRecipients();
 
-        BigInteger userField = subscriber.outsideUser() ? event.getCreatedBy() : event.getAssignedUserId();
-
-        return userField != null && subscriber.subOrg().contains(userField);
+        return recipients != null && subscriber.userId() != null && recipients.contains(subscriber.userId());
     }
 
     /**
@@ -471,11 +461,6 @@ public class WhatsappEventService extends RedisPubSubAdapter<String, String> imp
 
     private static BigInteger toBig(ULong value) {
         return value == null ? null : value.toBigInteger();
-    }
-
-    private static Set<BigInteger> toBigSet(List<ULong> values) {
-        if (values == null || values.isEmpty()) return Set.of();
-        return values.stream().filter(java.util.Objects::nonNull).map(ULong::toBigInteger).collect(Collectors.toSet());
     }
 
     /** Test seam and a diagnostic: how many browsers this instance is currently holding. */

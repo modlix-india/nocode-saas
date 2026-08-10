@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.request.message.WhatsappInboundRequest;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+import com.fincity.saas.entity.processor.service.TicketAudienceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -34,9 +35,14 @@ public class WhatsappInboundService {
     private final WhatsappMessageDAO dao;
     private final TicketService ticketService;
     private final WhatsappEventService eventService;
+    private final TicketAudienceService audienceService;
 
     public WhatsappInboundService(
-            WhatsappMessageDAO dao, TicketService ticketService, WhatsappEventService eventService) {
+            WhatsappMessageDAO dao,
+            TicketService ticketService,
+            WhatsappEventService eventService,
+            TicketAudienceService audienceService) {
+        this.audienceService = audienceService;
         this.dao = dao;
         this.ticketService = ticketService;
         this.eventService = eventService;
@@ -77,19 +83,24 @@ public class WhatsappInboundService {
 
         if (message.getTicketId() == null) return Mono.just(message);
 
-        // One indexed read per stored message, to learn who is entitled to hear about it. This used
-        // to be free because the event carried only an id and every browser resolved access itself;
-        // moving that decision to the server is what this read buys, and one read here replaces one
-        // authenticated read per open browser there.
+        // One indexed read plus one audience resolution per stored message. Both used to be free,
+        // because the event carried only a deal id and every browser worked out for itself whether
+        // it cared. That cost one authenticated ticket read per open browser per event; this costs
+        // one resolution per event, whoever is watching.
         return this.ticketService
                 .findById(message.getTicketId())
-                .map(ticket -> new WhatsappEventService.TicketRouting(
-                        ticket.getId(),
-                        ticket.getClientId(),
-                        ticket.getAssignedUserId(),
-                        ticket.getCreatedBy(),
-                        ticket.getName(),
-                        ticket.getCode()))
+                .flatMap(ticket -> this.audienceService.audienceFor(ticket).map(recipients -> {
+                    // The body only rides along for a real message. A status receipt has none, and
+                    // an outbound mirror's text is already on the sender's screen.
+                    String body = request.isStatusUpdate() ? null : message.getBodyText();
+                    return new WhatsappEventService.TicketRouting(
+                            ticket.getId(),
+                            ticket.getProductId(),
+                            ticket.getName(),
+                            ticket.getCode(),
+                            body,
+                            recipients);
+                }))
                 .flatMap(routing -> request.isStatusUpdate()
                         ? this.eventService.publishStatus(appCode, clientCode, routing)
                         : this.eventService.publishMessage(appCode, clientCode, routing))
