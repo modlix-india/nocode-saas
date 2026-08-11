@@ -5,10 +5,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.OrgStructure;
 import com.fincity.security.dto.User;
@@ -58,19 +61,54 @@ import reactor.util.context.Context;
 @Service
 public class RecordAudienceService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RecordAudienceService.class);
+
     private final OrgStructureService orgStructureService;
+    private final ClientService clientService;
     private final UserDAO userDAO;
 
-    public RecordAudienceService(OrgStructureService orgStructureService, UserDAO userDAO) {
+    public RecordAudienceService(
+            OrgStructureService orgStructureService, ClientService clientService, UserDAO userDAO) {
         this.orgStructureService = orgStructureService;
+        this.clientService = clientService;
         this.userDAO = userDAO;
     }
 
     public Mono<List<ULong>> resolve(RecordAudienceRequest request) {
 
-        if (request == null || request.getClientId() == null) return Mono.just(List.of());
+        if (request == null) return Mono.just(List.of());
 
-        ULong clientId = ULongUtil.valueOf(request.getClientId());
+        return this.clientIdOf(request)
+                .flatMap(clientId -> this.resolveFor(clientId, request))
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RecordAudienceService.resolve"));
+    }
+
+    /**
+     * The owning client, from whichever of the two identifiers the caller had.
+     *
+     * <p>Empty when neither is usable, which collapses to an empty audience upstream. That is the
+     * intended fail-closed behaviour, but it is also indistinguishable from a legitimately empty
+     * answer, which is precisely how the id-only version of this went unnoticed. Anything that
+     * cannot identify a client is worth a log line rather than a silent shrug.
+     */
+    private Mono<ULong> clientIdOf(RecordAudienceRequest request) {
+
+        if (request.getClientId() != null) return Mono.just(ULongUtil.valueOf(request.getClientId()));
+
+        if (StringUtil.safeIsBlank(request.getClientCode())) {
+            logger.warn("Audience asked for without a client id or code; telling nobody.");
+            return Mono.empty();
+        }
+
+        return this.clientService
+                .getClientId(request.getClientCode())
+                .switchIfEmpty(Mono.fromRunnable(() -> logger.warn(
+                        "No client for code {}; telling nobody about its records.", request.getClientCode())));
+    }
+
+    private Mono<List<ULong>> resolveFor(ULong clientId, RecordAudienceRequest request) {
+
         ULong assignedUserId = request.getAssignedUserId() == null
                 ? null
                 : ULongUtil.valueOf(request.getAssignedUserId());
@@ -97,8 +135,7 @@ public class RecordAudienceService {
                     Set<ULong> live = new LinkedHashSet<>();
                     for (ULong id : audience) if (tree.isActive(id) || !tree.contains(id)) live.add(id);
                     return List.copyOf(live);
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RecordAudienceService.resolve"));
+                });
     }
 
     /**

@@ -27,6 +27,16 @@ public class RecordAudienceRequest implements Serializable {
     /** The client that owns the record. Its reporting tree and hierarchy are what get walked. */
     private BigInteger clientId;
 
+    /**
+     * The same client, by code, for callers whose records only carry the code.
+     *
+     * <p>Not a convenience. Entity-processor's tickets populate {@code CLIENT_CODE} on every row and
+     * {@code CLIENT_ID} on fewer than one in five, so an id-only contract silently resolved an empty
+     * audience for most deals, and an empty audience is indistinguishable from "nobody is entitled".
+     * Either field identifies the client; {@code clientId} wins when both are set.
+     */
+    private String clientCode;
+
     /** The user the record is assigned to, if the owning service assigns records to people. */
     private BigInteger assignedUserId;
 

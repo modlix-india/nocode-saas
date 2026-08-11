@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import java.math.BigInteger;
@@ -62,10 +63,20 @@ public class TicketAudienceService {
 
     public Mono<List<BigInteger>> audienceFor(Ticket ticket) {
 
-        if (ticket == null || ticket.getClientId() == null) return Mono.just(List.of());
+        if (ticket == null) return Mono.just(List.of());
+
+        // Both identifiers, because only one of them is reliably there. CLIENT_CODE is populated on
+        // every ticket; CLIENT_ID on fewer than one in five, and the id-only version of this call
+        // resolved an empty audience for the rest. An empty audience publishes nothing at all, so
+        // the symptom was a stream that connected, heartbeat, and never delivered a single event.
+        if (ticket.getClientId() == null && StringUtil.safeIsBlank(ticket.getClientCode())) {
+            logger.error("Deal {} identifies no client; telling nobody about it.", ticket.getId());
+            return Mono.just(List.of());
+        }
 
         java.util.Map<String, Object> request = new java.util.HashMap<>();
-        request.put("clientId", ticket.getClientId().toBigInteger());
+        if (ticket.getClientId() != null) request.put("clientId", ticket.getClientId().toBigInteger());
+        if (!StringUtil.safeIsBlank(ticket.getClientCode())) request.put("clientCode", ticket.getClientCode());
         if (ticket.getAssignedUserId() != null)
             request.put("assignedUserId", ticket.getAssignedUserId().toBigInteger());
         if (ticket.getCreatedBy() != null) request.put("createdBy", ticket.getCreatedBy().toBigInteger());
