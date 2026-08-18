@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -133,6 +134,27 @@ public interface IFeignMessageService {
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @PathVariable("productId") BigInteger productId);
+
+    /**
+     * The session a code names, falling back to the tenant's default when it names nothing placeable.
+     *
+     * <p>Supersedes {@link #getWhatsappSessionByProduct}: the product now carries the code, so this
+     * service arrives knowing which number it wants instead of asking the message service to look it
+     * up. Placement and the fallback stay on the far side, which is why this is one call rather than
+     * a read followed by a decision here.
+     *
+     * <p>{@code sessionCode} may be null, meaning the product named no number.
+     */
+    @GetMapping(WHATSAPP_SESSION_PATH + "/resolve")
+    Mono<Map<String, Object>> resolveWhatsappSession(
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam(value = "sessionCode", required = false) String sessionCode);
+
+    /** Makes one number the tenant's fallback for products that name none. */
+    @PatchMapping(WHATSAPP_SESSION_PATH + "/{sessionId}/default")
+    Mono<Boolean> markWhatsappSessionDefault(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("sessionId") String sessionId);
 
     /** Live state, read from the holding instance rather than from a cached row. */
     @GetMapping(WHATSAPP_SESSION_PATH + "/{sessionId}")

@@ -153,6 +153,32 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
     }
 
     /**
+     * Takes the default flag off every session in a tenant.
+     *
+     * <p>Run immediately before setting it on one, so the pair leaves exactly one default. The
+     * column has carried a default since it was created and nothing had ever written it, so the
+     * effective default was whichever placed row happened to have the lowest id.
+     */
+    public Mono<Integer> clearDefault(String appCode, String clientCode) {
+        return Mono.from(this.dslContext
+                .update(this.table)
+                .set(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_DEFAULT, Boolean.FALSE)
+                .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
+                .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
+                .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_DEFAULT.isTrue()));
+    }
+
+    /** Marks one session the tenant's default. Scoped by tenant so a code cannot cross accounts. */
+    public Mono<Integer> markDefault(String appCode, String clientCode, String sessionCode) {
+        return Mono.from(this.dslContext
+                .update(this.table)
+                .set(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_DEFAULT, Boolean.TRUE)
+                .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
+                .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
+                .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CODE.eq(sessionCode)));
+    }
+
+    /**
      * A product's live session.
      *
      * <p>Placed sessions only. An unplaced row is either a Cloud API leftover or a link that was
@@ -173,6 +199,29 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                 .map(e -> e.into(this.pojoClass));
     }
 
+    /**
+     * One placed session by its code.
+     *
+     * <p>The lookup behind a product naming its own number. Empty when the code names nothing
+     * placeable, which the caller treats as "this product has no number" rather than as an error:
+     * the code lives in another schema with no foreign key behind it, so it can outlive the row it
+     * points at, and a product must not stop sending because somebody unlinked a handset.
+     */
+    public Mono<WhatsappPhoneNumber> getPlacedByCode(String appCode, String clientCode, String sessionCode) {
+
+        if (sessionCode == null || sessionCode.isBlank()) return Mono.empty();
+
+        return Mono.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CODE.eq(sessionCode))
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.BRIDGE_INSTANCE_ID.isNotNull())
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_ACTIVE.isTrue())
+                        .limit(1))
+                .map(e -> e.into(this.pojoClass));
+    }
+
     /** The tenant's default session, for products that have no number of their own. */
     public Mono<WhatsappPhoneNumber> getPlacedDefault(String appCode, String clientCode) {
         return Mono.from(this.dslContext
@@ -180,6 +229,9 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                         .where(MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE.eq(appCode))
                         .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE.eq(clientCode))
                         .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.BRIDGE_INSTANCE_ID.isNotNull())
+                        // Unlinking soft-deletes the row but leaves BRIDGE_INSTANCE_ID set, so
+                        // without this an unlinked number stays eligible to be everyone's fallback.
+                        .and(MESSAGE_WHATSAPP_PHONE_NUMBERS.IS_ACTIVE.isTrue())
                         // Prefer the marked default, but fall back to whichever placed session
                         // exists: a tenant with one number has usually never marked anything.
                         .orderBy(

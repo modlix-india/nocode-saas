@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.service.message.WhatsappPacingService.Decision;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
@@ -54,6 +55,15 @@ public class WhatsappSessionService {
     private final WhatsappInboundService inboundService;
 
     /**
+     * Where the product-to-number mapping lives.
+     *
+     * <p>{@link Lazy} for the same reason as {@code inboundService}: this service is reached from the
+     * ticket and product graph, and resolving a product at construction time would close a cycle that
+     * only exists at startup, never per message.
+     */
+    private final ProductService productService;
+
+    /**
      * {@code inboundService} is {@link Lazy} to break a genuine cycle rather than to paper over a
      * design problem.
      *
@@ -70,11 +80,13 @@ public class WhatsappSessionService {
             IFeignMessageService feignMessageService,
             WhatsappPacingService pacingService,
             WhatsappMessageDAO messageDao,
-            @Lazy WhatsappInboundService inboundService) {
+            @Lazy WhatsappInboundService inboundService,
+            @Lazy ProductService productService) {
         this.feignMessageService = feignMessageService;
         this.pacingService = pacingService;
         this.messageDao = messageDao;
         this.inboundService = inboundService;
+        this.productService = productService;
     }
 
     /**
@@ -97,10 +109,9 @@ public class WhatsappSessionService {
      */
     public Mono<Map<String, Object>> resolveForProduct(String appCode, String clientCode, ULong productId) {
 
-        if (productId == null) return Mono.just(Map.of());
-
-        return this.feignMessageService
-                .getWhatsappSessionByProduct(appCode, clientCode, productId.toBigInteger())
+        return this.sessionCodeOf(appCode, clientCode, productId)
+                .flatMap(sessionCode -> this.feignMessageService.resolveWhatsappSession(
+                        appCode, clientCode, sessionCode.isBlank() ? null : sessionCode))
                 .defaultIfEmpty(Map.of())
                 .onErrorResume(e -> {
                     logger.error(
@@ -110,6 +121,32 @@ public class WhatsappSessionService {
                     return Mono.just(Map.of());
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.resolveForProduct"));
+    }
+
+    /**
+     * The number a product names, as a code, or blank for "it names none".
+     *
+     * <p>Read here rather than passed in because both callers have a product id and neither has a
+     * reason to know the mapping is stored on the product. A missing product is blank rather than an
+     * error: it resolves to the tenant default, which is the same answer an unconfigured product
+     * gets, and a deal whose product was deleted should still be answerable.
+     */
+    private Mono<String> sessionCodeOf(String appCode, String clientCode, ULong productId) {
+
+        if (productId == null) return Mono.just("");
+
+        return this.productService
+                .read(productId)
+                // Scoped here rather than by the read, because the sweeper has no caller to scope
+                // by. The id always arrives from a ticket that was already tenant-checked, so this
+                // is a guard against a future caller rather than against today's.
+                .filter(product -> appCode.equals(product.getAppCode()) && clientCode.equals(product.getClientCode()))
+                .map(product -> product.getWhatsappSessionCode() == null ? "" : product.getWhatsappSessionCode())
+                .defaultIfEmpty("")
+                .onErrorResume(e -> {
+                    logger.warn("Could not read product {} for its WhatsApp number; using the default.", productId, e);
+                    return Mono.just("");
+                });
     }
 
     /**
@@ -250,22 +287,46 @@ public class WhatsappSessionService {
      * to an outbox row. Sharing one method with a nullable user and a boolean would make "automation
      * cannot override the gate" a property of how carefully each caller passes its arguments.
      */
+    /**
+     * Sends a queued message.
+     *
+     * <p>Takes the whole resolved session rather than its id. It used to take the id and rebuild a
+     * one-entry map for the recording step, which meant every automated message was stored with a
+     * null sending number: the stub had no {@code displayPhoneNumber} for {@code recordOutbound} to
+     * copy. The caller has always had the full session in hand, so there was nothing to gain by
+     * discarding it.
+     */
     public Mono<Map<String, Object>> sendQueued(
-            String appCode, String clientCode, String sessionId, String toPhone, String text) {
+            String appCode, String clientCode, Map<String, Object> session, String toPhone, String text) {
+
+        String sessionId = string(session, KEY_ID);
 
         if (sessionId == null || toPhone == null || text == null || text.isBlank())
             return Mono.error(new IllegalArgumentException("A session, a recipient and message text are required."));
 
         return this.feignMessageService
                 .sendWhatsappSessionMessage(appCode, clientCode, sessionId, Map.of("to", toPhone, "text", text))
-                .flatMap(response -> this.recordOutbound(appCode, clientCode, session(sessionId), toPhone, text, response)
+                .flatMap(response -> this.recordOutbound(appCode, clientCode, session, toPhone, text, response)
                         .thenReturn(response))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendQueued"));
     }
 
-    /** A minimal session map, for the record path when only the id is to hand. */
-    private static Map<String, Object> session(String sessionId) {
-        return Map.of(KEY_ID, sessionId);
+    /**
+     * The session one code names, for a caller that already knows which number it wants.
+     *
+     * <p>Used by the sweeper to honour the number a message was queued against. Falls back to the
+     * tenant default like any other resolution, so a number unlinked between queueing and sending
+     * delays nothing.
+     */
+    public Mono<Map<String, Object>> resolveByCode(String appCode, String clientCode, String sessionCode) {
+        return this.feignMessageService
+                .resolveWhatsappSession(appCode, clientCode, sessionCode)
+                .defaultIfEmpty(Map.of())
+                .onErrorResume(e -> {
+                    logger.error("Could not resolve WhatsApp session {}; treating it as unlinked.", sessionCode, e);
+                    return Mono.just(Map.of());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.resolveByCode"));
     }
 
     /**
@@ -311,6 +372,11 @@ public class WhatsappSessionService {
                 .setCustomerPhoneNumber(toPhone)
                 .setCustomerWaId(digitsOf(toPhone))
                 .setWhatsappPhoneNumber(string(session, KEY_PHONE))
+                // Which number carried it. The column has existed since the bridge pivot and nothing
+                // ever wrote it, so WhatsappMessageDAO.sessionWindow matched no rows and every
+                // number's recent-failure count was a constant zero - the one signal that is meant
+                // to back a number off when it starts getting rejected.
+                .setBridgeSessionId(string(session, KEY_ID))
                 .setTo(digitsOf(toPhone))
                 .setFrom(digitsOf(string(session, KEY_PHONE)))
                 .setOccurredAt(LocalDateTime.now(ZoneOffset.UTC));

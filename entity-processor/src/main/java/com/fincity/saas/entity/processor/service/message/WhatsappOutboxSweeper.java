@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.service.message;
 
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappOutboxDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.message.WhatsappOutbox;
@@ -136,8 +137,7 @@ public class WhatsappOutboxSweeper {
                     if (Boolean.TRUE.equals(earlierFailed))
                         return this.cancel(row, WhatsappHoldReason.PREVIOUS_FAILED);
 
-                    return this.sessionService
-                            .resolveForProduct(row.getAppCode(), row.getClientCode(), ticket.getProductId())
+                    return this.sessionFor(row, ticket)
                             .flatMap(session -> this.sessionService
                                     .evaluate(
                                             row.getAppCode(),
@@ -148,6 +148,26 @@ public class WhatsappOutboxSweeper {
                                             ticket)
                                     .flatMap(decision -> this.act(row, ticket, session, decision)));
                 });
+    }
+
+    /**
+     * The number this row should go out on.
+     *
+     * <p>The one it was queued against, when it has one. Enqueue resolves and stamps the session so
+     * the sending caps are computed against the number that will actually do the sending, and this
+     * used to re-resolve from the product instead and ignore the stamp. That was harmless only while
+     * the mapping could not change: now that a product can be pointed at a different number, a
+     * message queued an hour ago would jump to the new number and be counted against the wrong one's
+     * budget, over a cap the scheduler believed it was under.
+     *
+     * <p>Falls back to resolving from the product for rows queued before the stamp existed.
+     */
+    private Mono<Map<String, Object>> sessionFor(WhatsappOutbox row, Ticket ticket) {
+
+        if (StringUtil.safeIsBlank(row.getBridgeSessionId()))
+            return this.sessionService.resolveForProduct(row.getAppCode(), row.getClientCode(), ticket.getProductId());
+
+        return this.sessionService.resolveByCode(row.getAppCode(), row.getClientCode(), row.getBridgeSessionId());
     }
 
     private Mono<Void> act(WhatsappOutbox row, Ticket ticket, Map<String, Object> session, Decision decision) {
@@ -172,10 +192,8 @@ public class WhatsappOutboxSweeper {
                     .then();
         }
 
-        String sessionId = string(session, "code");
-
         return this.sessionService
-                .sendQueued(row.getAppCode(), row.getClientCode(), sessionId, row.getToPhone(), row.getBodyText())
+                .sendQueued(row.getAppCode(), row.getClientCode(), session, row.getToPhone(), row.getBodyText())
                 .flatMap(response -> this.outboxDao.markSent(
                         row.getId(),
                         string(response, "messageId"),

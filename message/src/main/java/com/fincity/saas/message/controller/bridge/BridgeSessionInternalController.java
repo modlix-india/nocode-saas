@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -116,6 +117,40 @@ public class BridgeSessionInternalController {
                 .getByProduct(MessageAccess.of(appCode, clientCode, Boolean.TRUE), ULong.valueOf(productId))
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.ok().build());
+    }
+
+    /**
+     * The session a caller's code resolves to, falling back to the tenant default.
+     *
+     * <p>The send path's entry point now that the product holds the mapping. Same empty-body-not-404
+     * contract as {@link #byProduct} and for the same reason.
+     *
+     * <p>{@code sessionCode} is optional: absent means the product named no number, which resolves
+     * to the default. Deliberately a query parameter rather than a path segment so that "no code" is
+     * expressible without a second route.
+     */
+    @GetMapping("/resolve")
+    public Mono<ResponseEntity<WhatsappPhoneNumber>> resolve(
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode,
+            @RequestParam(value = "sessionCode", required = false) String sessionCode) {
+
+        return this.sessionService
+                .resolve(MessageAccess.of(appCode, clientCode, Boolean.TRUE), sessionCode)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.ok().build());
+    }
+
+    /** Makes one number the tenant's fallback for products that name none. */
+    @PatchMapping("/{sessionId}/default")
+    public Mono<ResponseEntity<Boolean>> markDefault(
+            @PathVariable String sessionId,
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode) {
+
+        return this.sessionService
+                .markDefault(MessageAccess.of(appCode, clientCode, Boolean.TRUE), sessionId)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/{sessionId}")

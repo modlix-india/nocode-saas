@@ -139,6 +139,14 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.WHATSAPP_SESSION_CODE</code>.
+     * Matches message_whatsapp_phone_numbers.CODE in the message service. Null
+     * means this product uses the tenant default number.
+     */
+    public final TableField<EntityProcessorProductsRecord, String> WHATSAPP_SESSION_CODE = createField(DSL.name("WHATSAPP_SESSION_CODE"), SQLDataType.CHAR(22), this, "Matches message_whatsapp_phone_numbers.CODE in the message service. Null means this product uses the tenant default number.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
      * File Details if product has a logo file
      */
@@ -293,7 +301,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC, Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX1_PRODUCTS_AC_CC_WSC);
     }
 
     @Override

@@ -166,6 +166,7 @@ public class WhatsappInboundService {
                 .setWhatsappPhoneNumberId(ULongUtil.valueOf(request.getWhatsappPhoneNumberId()))
                 .setWhatsappBusinessAccountId(ULongUtil.valueOf(request.getWhatsappBusinessAccountId()))
                 .setWhatsappPhoneNumber(request.getWhatsappPhoneNumber())
+                .setBridgeSessionId(request.getBridgeSessionId())
                 .setCustomerWaId(request.getCustomerWaId())
                 .setCustomerDialCode(request.getCustomerDialCode())
                 .setCustomerPhoneNumber(request.getCustomerPhoneNumber())

@@ -45,6 +45,19 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private String whatsappPhoneNumber;
 
     /**
+     * The linked session that carried this message.
+     *
+     * <p>The column arrived with the bridge pivot and stayed unmapped, so nothing wrote it. That was
+     * not merely untidy: {@code WhatsappMessageDAO.sessionWindow} filters on it, so the query behind
+     * a number's recent-failure count matched nothing and always answered zero, and the pacing that
+     * is supposed to back a number off when it starts being rejected never saw a reason to.
+     *
+     * <p>Kept alongside {@link #whatsappPhoneNumber} rather than derived from it: a number can be
+     * unlinked and relinked under a new session, and pacing is a question about the session.
+     */
+    private String bridgeSessionId;
+
+    /**
      * The deal this message was filed against.
      *
      * <p>A label, not the access boundary. Reads resolve the set of deals the caller can see first

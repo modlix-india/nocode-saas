@@ -184,6 +184,50 @@ public class BridgeSessionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.getByProduct"));
     }
 
+    /**
+     * The session a caller's named code resolves to, or the tenant default if it resolves to
+     * nothing.
+     *
+     * <p>Replaces {@link #getByProduct} as the send path's entry point. The difference is who holds
+     * the mapping: the product now names its own number, so the caller arrives with a code rather
+     * than asking this service to look one up. Placement and the fallback stay here because they are
+     * this service's to know.
+     *
+     * <p>A code that resolves to nothing is treated exactly like no code at all. It crosses a schema
+     * boundary with no foreign key behind it, so it can name a row that has been unlinked or
+     * deactivated, and the alternative to falling back is a product that silently stops sending.
+     */
+    public Mono<WhatsappPhoneNumber> resolve(MessageAccess access, String sessionCode) {
+        return this.sessionDao
+                .getPlacedByCode(access.getAppCode(), access.getClientCode(), sessionCode)
+                .switchIfEmpty(Mono.defer(
+                        () -> this.sessionDao.getPlacedDefault(access.getAppCode(), access.getClientCode())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.resolve"));
+    }
+
+    /**
+     * Makes one number the tenant's default, and the only one.
+     *
+     * <p>Clears the flag across the tenant before setting it, so the two writes together leave
+     * exactly one default. They are not in a transaction: the window between them is sub-millisecond
+     * and the worst reachable state is no default at all, which {@code getPlacedDefault} already
+     * handles by falling back to the lowest-id placed session. A transaction here would buy
+     * consistency against a failure mode that degrades to the behaviour we had before this existed.
+     *
+     * <p>Refuses codes that name nothing placeable, rather than marking a number that cannot send.
+     */
+    public Mono<Boolean> markDefault(MessageAccess access, String sessionCode) {
+
+        return this.sessionDao
+                .getPlacedByCode(access.getAppCode(), access.getClientCode(), sessionCode)
+                .flatMap(row -> this.sessionDao
+                        .clearDefault(access.getAppCode(), access.getClientCode())
+                        .then(this.sessionDao.markDefault(access.getAppCode(), access.getClientCode(), sessionCode))
+                        .map(updated -> updated > 0))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.markDefault"));
+    }
+
     /** The current pairing code, polled by the link panel while the session is PAIRING. */
     public Mono<Map<String, Object>> getQr(MessageAccess access, String sessionId) {
         return this.withInstance(access, sessionId, (row, instance) ->

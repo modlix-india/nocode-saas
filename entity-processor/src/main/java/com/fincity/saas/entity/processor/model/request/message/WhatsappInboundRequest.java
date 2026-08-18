@@ -46,6 +46,14 @@ public class WhatsappInboundRequest implements Serializable {
     /** The business number as dialled, stored so history survives a later re-mapping. */
     private String whatsappPhoneNumber;
 
+    /**
+     * The linked session that carried the message.
+     *
+     * <p>Kept alongside the dialled number rather than derived from it, because a number can be
+     * unlinked and relinked and the pacing questions are asked of the session.
+     */
+    private String bridgeSessionId;
+
     private String customerWaId;
     private Integer customerDialCode;
     private String customerPhoneNumber;

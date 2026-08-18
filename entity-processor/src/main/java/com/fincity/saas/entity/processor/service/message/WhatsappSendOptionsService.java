@@ -3,13 +3,18 @@ package com.fincity.saas.entity.processor.service.message;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.math.BigInteger;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -36,20 +41,26 @@ import reactor.util.context.Context;
 @Service
 public class WhatsappSendOptionsService implements IProcessorAccessService {
 
+    /** The session's own identifier in the listing, which products point at. */
+    private static final String KEY_SESSION_CODE = "code";
+
     private final IFeignMessageService feignMessageService;
     private final ProcessorMessageResourceService msgService;
     private final IFeignSecurityService securityService;
     private final WhatsappSessionService sessionService;
+    private final ProductService productService;
 
     public WhatsappSendOptionsService(
             IFeignMessageService feignMessageService,
             ProcessorMessageResourceService msgService,
             IFeignSecurityService securityService,
-            WhatsappSessionService sessionService) {
+            WhatsappSessionService sessionService,
+            ProductService productService) {
         this.feignMessageService = feignMessageService;
         this.msgService = msgService;
         this.securityService = securityService;
         this.sessionService = sessionService;
+        this.productService = productService;
     }
 
     @Override
@@ -62,14 +73,47 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
         return this.securityService;
     }
 
-    /** Every linked number the tenant has, which is what the integration page lists. */
+    /**
+     * Every linked number the tenant has, which is what the integration page lists.
+     *
+     * <p>Each row is decorated with the products that send from it. Done here rather than on the
+     * page because the page cannot do it: the mapping is held per product, the list is per number,
+     * and the Modlix expression engine has no way to group one by the other. Without this the screen
+     * could show numbers or products but never which belongs to which.
+     *
+     * <p>One extra query for the whole list, not one per number.
+     */
     public Mono<List<Map<String, Object>>> readSessions() {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> this.feignMessageService
                                 .listWhatsappSessions(access.getAppCode(), access.getClientCode())
-                                .defaultIfEmpty(List.of()))
+                                .defaultIfEmpty(List.of()),
+                        (access, sessions) -> this.productService
+                                .getAllProducts(access, null)
+                                .defaultIfEmpty(List.of()),
+                        (access, sessions, products) -> Mono.just(this.withProducts(sessions, products)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.readSessions"));
+    }
+
+    private List<Map<String, Object>> withProducts(List<Map<String, Object>> sessions, List<Product> products) {
+
+        Map<String, List<Product>> byCode = products.stream()
+                .filter(product -> !StringUtil.safeIsBlank(product.getWhatsappSessionCode()))
+                .collect(Collectors.groupingBy(Product::getWhatsappSessionCode));
+
+        return sessions.stream()
+                .map(session -> {
+                    // Copied rather than mutated: what feign decoded is not ours to write into, and a
+                    // shared decoder cache would carry the additions to the next caller.
+                    Map<String, Object> row = new LinkedHashMap<>(session);
+                    List<Product> mapped = byCode.getOrDefault(String.valueOf(session.get(KEY_SESSION_CODE)), List.of());
+
+                    row.put("productIds", mapped.stream().map(p -> p.getId().toBigInteger()).toList());
+                    row.put("productNames", mapped.stream().map(Product::getName).collect(Collectors.joining(", ")));
+                    return row;
+                })
+                .toList();
     }
 
     /**
@@ -170,4 +214,25 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.unlinkSession"));
     }
 
+    /**
+     * Makes one number the tenant's fallback, for every product that names none.
+     *
+     * <p>Gated where assigning a number to a product is not, and the difference is deliberate.
+     * Pointing one product at one number affects that product, and whoever may edit the product may
+     * decide it. The default is what happens to everything nobody has configured, including products
+     * created later by people who never saw this screen, so it is an account-level decision and sits
+     * with linking and unlinking.
+     *
+     * <p>False when the code names nothing placeable, rather than an error: the caller's list can be
+     * a few seconds stale and a number retired in that window is not a fault worth a 500.
+     */
+    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
+    public Mono<Boolean> markDefaultSession(String sessionId) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> this.feignMessageService.markWhatsappSessionDefault(
+                                access.getAppCode(), access.getClientCode(), sessionId))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.markDefaultSession"));
+    }
 }
