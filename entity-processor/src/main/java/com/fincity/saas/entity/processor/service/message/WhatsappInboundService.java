@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -33,6 +34,17 @@ import reactor.util.context.Context;
 public class WhatsappInboundService {
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsappInboundService.class);
+
+    /**
+     * The day attachments began being stored with a lifetime.
+     *
+     * <p>A floor on what the expiry stamp may touch. Files uploaded before it carry no lifetime, so
+     * the cleanup will never remove them, so their messages must never be told the attachment is
+     * gone. Configurable rather than hard-coded because it is a fact about a deployment's history,
+     * and a fresh environment has a different one.
+     */
+    @Value("${processor.whatsapp.media.ttl-epoch:2026-08-19}")
+    private String ttlEpoch;
 
     private final WhatsappMessageDAO dao;
     private final TicketService ticketService;
@@ -56,9 +68,6 @@ public class WhatsappInboundService {
             return Mono.error(new IllegalArgumentException(
                     "A WhatsApp handoff needs Meta's message id: it is the idempotency key."));
 
-        // A media handoff is a patch, never an insert. It carries only the attachment, so letting it
-        // fall through to merge would blank the body and the status of the message it completes, and
-        // letting it insert would put an empty bubble in the thread beside the real one.
         // Before any of the message paths. A profile picture carries a synthetic message id so the
         // outbox upstream has an idempotency key, and letting that reach the insert would put an
         // empty bubble in the thread every time a customer changed their avatar.
@@ -66,9 +75,10 @@ public class WhatsappInboundService {
             return this.applyProfilePicture(appCode, clientCode, request)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptProfilePicture"));
 
-        // Announced like everything else. The attachment lands a moment after the bubble it belongs
-        // to, so without this the picture is written and nobody is told: the thread shows an empty
-        // frame until the agent reloads the page by hand, which is how this was found.
+        // A media handoff is a patch, never an insert: it carries only the attachment, so falling
+        // through to merge would blank the body and status of the message it completes. Announced
+        // like everything else, because the attachment lands a moment after its bubble and without
+        // that the picture is written and nobody is told.
         if (request.isMediaReady())
             return this.dao
                     .readByMessageId(appCode, clientCode, request.getMetaMessageId())
@@ -457,4 +467,27 @@ public class WhatsappInboundService {
         }
     }
 
+
+    /**
+     * Marks messages whose attachment the files service has already collected.
+     *
+     * <p>Deletion and this are deliberately separate. The bytes go on a lifetime stamped on each
+     * file at upload, which is what makes a file without one impossible to delete; this only changes
+     * what the thread says about a bubble whose file is gone. Nothing here removes anything.
+     *
+     * <p>The cutoff is pushed a day past the retention window so this can never claim an attachment
+     * has expired while it is still sitting in the bucket. Being a day late is invisible; being an
+     * hour early tells somebody a file is gone while they can still open it.
+     */
+    public Mono<Integer> stampExpiredMedia(int retentionDays, int limit) {
+
+        LocalDateTime cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(retentionDays + 1L);
+
+        return this.dao
+                .stampExpiredMedia(cutoff, LocalDateTime.parse(ttlEpoch + "T00:00:00"), limit)
+                .doOnNext(count -> {
+                    if (count > 0) logger.info("Marked {} WhatsApp attachment(s) as expired", count);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.stampExpiredMedia"));
+    }
 }

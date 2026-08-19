@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.enums.message.WhatsappMessageStatus;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorWhatsappMessagesRecord;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.jooq.Condition;
@@ -498,4 +499,57 @@ public class WhatsappMessageDAO
 
     /** Per-deal rollup for the conversation list. */
     public record ThreadSummary(LocalDateTime lastMessageAt, int unreadCount) {}
+
+    /**
+     * Marks messages whose attachment has been collected, so the thread can say so.
+     *
+     * <p>The files service deletes the bytes on its own schedule, driven by the lifetime stamped on
+     * each file at upload. Nothing tells this service when that happens, so without this a bubble
+     * keeps pointing at an object that is no longer there and renders as a broken frame. Saying "the
+     * attachment expired" is the honest version of the same fact.
+     *
+     * <p><b>Only files this conversation owns.</b> Two thirds of the media rows point at product
+     * brochures and other shared assets that are sent through threads but stored elsewhere, are
+     * never given a lifetime, and are therefore never deleted. Marking those expired would tell a
+     * reader an attachment is gone while it sits there perfectly intact. The prefix test mirrors
+     * exactly what {@code BridgeMediaService} and the outgoing upload write, so the two cannot
+     * disagree about which files are conversation attachments.
+     *
+     * <p>Note where the risk sits: getting this filter wrong shows a wrong message, where getting
+     * the deletion filter wrong destroys a file. That asymmetry is why deletion is decided per-file
+     * at upload and this is allowed to be a query.
+     *
+     * @param cutoff messages created before this are considered collected. Deliberately older than
+     *     the retention window, so this never claims a file is gone while it still exists.
+     * @param notBefore the earliest message this may touch: the day files began carrying lifetimes.
+     *     Anything older was stored without one, is never deleted, and must never be marked gone.
+     */
+    public Mono<Integer> stampExpiredMedia(LocalDateTime cutoff, LocalDateTime notBefore, int limit) {
+
+        Field<String> storedPath = DSL.field(
+                "json_unquote(json_extract({0}, '$.filePath'))",
+                String.class,
+                ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_FILE_DETAIL);
+
+        return Mono.from(this.dslContext
+                        .update(ENTITY_PROCESSOR_WHATSAPP_MESSAGES)
+                        .set(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_EXPIRED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                        // Cleared together with the stamp. They point at objects that no longer
+                        // exist, and leaving them is what makes the bubble render a broken image
+                        // instead of the sentence explaining why there is nothing to show.
+                        .setNull(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_FILE_DETAIL)
+                        .setNull(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_THUMBNAIL_FILE_DETAIL)
+                        .where(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_EXPIRED_AT.isNull())
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT.lt(cutoff))
+                        // Never older than the day files started carrying lifetimes. Anything
+                        // before it was stored without one and can therefore never be deleted, so
+                        // marking it expired would tell a reader an attachment is gone while it is
+                        // still there. Running this without the floor stamped fifteen legacy rows;
+                        // they happened to point at bytes that were already missing, which was luck
+                        // rather than the query being right.
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT.ge(notBefore))
+                        .and(storedPath.like("/whatsapp/%"))
+                        .limit(limit))
+                .defaultIfEmpty(0);
+    }
 }

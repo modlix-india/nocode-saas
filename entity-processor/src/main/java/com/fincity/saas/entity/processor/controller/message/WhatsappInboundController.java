@@ -40,4 +40,21 @@ public class WhatsappInboundController {
                 .accept(appCode, clientCode, request)
                 .thenReturn(ResponseEntity.noContent().<Void>build());
     }
+
+    /**
+     * Marks messages whose attachment has been collected by file retention.
+     *
+     * <p>Driven by the worker, not by a scheduler here. Several instances of this service run in
+     * production and a {@code @Scheduled} would fire on all of them at once; the worker's Quartz
+     * cluster is what makes it run once.
+     *
+     * <p>Changes only what the thread says. The bytes were removed by the files service on the
+     * lifetime they were given at upload, and nothing on this path deletes anything.
+     */
+    @PostMapping("/media/stampExpired")
+    public Mono<ResponseEntity<Integer>> stampExpiredMedia(
+            @RequestParam(value = "retentionDays", defaultValue = "30") int retentionDays,
+            @RequestParam(value = "limit", defaultValue = "1000") int limit) {
+        return this.service.stampExpiredMedia(retentionDays, limit).map(ResponseEntity::ok);
+    }
 }

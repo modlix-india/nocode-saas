@@ -1,6 +1,7 @@
 package com.modlix.saas.worker.service.execution;
 
 import com.modlix.saas.worker.dto.Task;
+import com.modlix.saas.worker.feign.IFeignEntityProcessorService;
 import com.modlix.saas.worker.feign.IFeignFilesService;
 import org.springframework.stereotype.Service;
 
@@ -30,10 +31,16 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
     private static final String JOB_DATA_LIMIT = "limit";
     private static final int DEFAULT_LIMIT = 500;
 
-    private final IFeignFilesService feignFilesService;
+    /** Matches the lifetime the WhatsApp uploads stamp on their files. */
+    private static final int WHATSAPP_RETENTION_DAYS = 30;
 
-    public FilesTtlCleanupService(IFeignFilesService feignFilesService) {
+    private final IFeignFilesService feignFilesService;
+    private final IFeignEntityProcessorService feignEntityProcessorService;
+
+    public FilesTtlCleanupService(
+            IFeignFilesService feignFilesService, IFeignEntityProcessorService feignEntityProcessorService) {
         this.feignFilesService = feignFilesService;
+        this.feignEntityProcessorService = feignEntityProcessorService;
     }
 
     @Override
@@ -49,7 +56,13 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
         int secured = cleanup("secured", limit, result);
         int statics = cleanup("static", limit, result);
 
-        logger.info("Expired-file cleanup complete — secured: {}, static: {}", secured, statics);
+        // After the deletes, so a message is never marked expired before its file has actually
+        // gone. The stamp uses a cutoff a day wider still, so the ordering here is belt and braces
+        // rather than the thing that makes it correct.
+        int stamped = stampWhatsappMedia(result);
+
+        logger.info("Expired-file cleanup complete — secured: {}, static: {}, messages marked: {}",
+                secured, statics, stamped);
 
         return truncateResult(result.toString());
     }
@@ -81,5 +94,26 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
             }
         }
         return DEFAULT_LIMIT;
+    }
+
+    /**
+     * Tells entity-processor which conversations now point at files that are gone.
+     *
+     * <p>Without it a bubble keeps its reference to a deleted object and renders as a broken frame
+     * rather than saying the attachment expired. Failures are logged and swallowed: this is what the
+     * thread says, and it must never stop files being collected.
+     */
+    private int stampWhatsappMedia(StringBuilder result) {
+        try {
+            Integer stamped = runWithTimeout(
+                    () -> feignEntityProcessorService.stampExpiredWhatsappMedia(WHATSAPP_RETENTION_DAYS, 1000));
+            int count = stamped == null ? 0 : stamped;
+            result.append("messages marked expired: ").append(count).append("; ");
+            return count;
+        } catch (Exception e) {
+            logger.error("Marking expired WhatsApp attachments failed: {}", e.getMessage());
+            result.append("message marking error: ").append(e.getMessage()).append("; ");
+            return 0;
+        }
     }
 }
