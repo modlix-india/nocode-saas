@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.message;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageStatus;
@@ -54,6 +55,19 @@ public class WhatsappInboundService {
             return Mono.error(new IllegalArgumentException(
                     "A WhatsApp handoff needs Meta's message id: it is the idempotency key."));
 
+        // A media handoff is a patch, never an insert. It carries only the attachment, so letting it
+        // fall through to merge would blank the body and the status of the message it completes, and
+        // letting it insert would put an empty bubble in the thread beside the real one.
+        // Announced like everything else. The attachment lands a moment after the bubble it belongs
+        // to, so without this the picture is written and nobody is told: the thread shows an empty
+        // frame until the agent reloads the page by hand, which is how this was found.
+        if (request.isMediaReady())
+            return this.dao
+                    .readByMessageId(appCode, clientCode, request.getMetaMessageId())
+                    .flatMap(existing -> this.applyMedia(existing, request))
+                    .flatMap(message -> this.announce(appCode, clientCode, request, message))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptMedia"));
+
         return this.dao
                 .readByMessageId(appCode, clientCode, request.getMetaMessageId())
                 .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
@@ -83,6 +97,9 @@ public class WhatsappInboundService {
 
         if (message.getTicketId() == null) return Mono.just(message);
 
+        // A patch completes a bubble that has already been announced, rather than adding one.
+        boolean patch = request.isStatusUpdate() || request.isMediaReady();
+
         // One indexed read plus one audience resolution per stored message. Both used to be free,
         // because the event carried only a deal id and every browser worked out for itself whether
         // it cared. That cost one authenticated ticket read per open browser per event; this costs
@@ -90,9 +107,11 @@ public class WhatsappInboundService {
         return this.ticketService
                 .findById(message.getTicketId())
                 .flatMap(ticket -> this.audienceService.audienceFor(ticket).map(recipients -> {
-                    // The body only rides along for a real message. A status receipt has none, and
-                    // an outbound mirror's text is already on the sender's screen.
-                    String body = request.isStatusUpdate() ? null : message.getBodyText();
+                    // The body only rides along for a real message. A status receipt has none, an
+                    // outbound mirror's text is already on the sender's screen, and a media patch
+                    // belongs to a bubble whose body was announced when it arrived - repeating it
+                    // would raise a second toast for one message.
+                    String body = patch ? null : message.getBodyText();
                     return new WhatsappEventService.TicketRouting(
                             ticket.getId(),
                             ticket.getProductId(),
@@ -101,7 +120,11 @@ public class WhatsappInboundService {
                             body,
                             recipients);
                 }))
-                .flatMap(routing -> request.isStatusUpdate()
+                // STATUS rather than MESSAGE for both kinds of patch, which is what narrows them to
+                // whoever is actually looking at the thread. A receipt and a late-arriving picture
+                // are both changes to a bubble already on screen; only someone watching that deal
+                // has anywhere to put them.
+                .flatMap(routing -> patch
                         ? this.eventService.publishStatus(appCode, clientCode, routing)
                         : this.eventService.publishMessage(appCode, clientCode, routing))
                 .onErrorResume(e -> {
@@ -284,13 +307,62 @@ public class WhatsappInboundService {
         if (message.getSentTime() == null) message.setSentTime(at);
     }
 
+    /**
+     * Fills in the attachment on a message that already exists.
+     *
+     * <p>Touches the media fields and nothing else. The message, its body, its ticket and its
+     * delivery status were settled when it arrived and may well have moved on since - a read receipt
+     * can easily overtake a download - so this must not carry any of them backwards.
+     *
+     * <p>Answers empty when the message is unknown, which is not an error worth failing the batch
+     * for: it means the attachment overtook the message it belongs to, and the bridge will redeliver.
+     */
+    private Mono<WhatsappMessage> applyMedia(WhatsappMessage message, WhatsappInboundRequest request) {
+
+        this.applyMediaFileDetail(message, request);
+
+        if (!StringUtil.safeIsBlank(request.getMediaError())) {
+            // Nothing to store and nothing more to wait for. Recorded on the row so the thread can
+            // say the attachment is not coming rather than showing a frame that never fills.
+            logger.warn(
+                    "Attachment for message {} will not arrive: {}",
+                    request.getMetaMessageId(),
+                    request.getMediaError());
+        }
+
+        return this.dao.update(message);
+    }
+
+    /**
+     * Copies the attachment's description across.
+     *
+     * <p>Reads more than the two keys it used to. name and url are where the bytes are; the mimetype
+     * decides which player the UI mounts, and the voice-note flag decides whether an audio message
+     * is drawn as a waveform or as a file - neither is recoverable later.
+     */
     private void applyMediaFileDetail(WhatsappMessage message, WhatsappInboundRequest request) {
+
+        if (request.getMediaMimeType() != null) message.setMediaMimeType(request.getMediaMimeType());
+        if (request.getMediaSize() != null) message.setMediaSize(request.getMediaSize());
+        if (request.getMediaDurationSeconds() != null)
+            message.setMediaDurationSeconds(request.getMediaDurationSeconds());
+        if (request.getMediaIsVoiceNote() != null) message.setMediaIsVoiceNote(request.getMediaIsVoiceNote());
+        if (request.getReactionToMessageId() != null)
+            message.setReactionToMessageId(request.getReactionToMessageId());
+
         if (request.getMediaFileDetail() == null || request.getMediaFileDetail().isEmpty()) return;
+
         FileDetail detail = new FileDetail();
         Object name = request.getMediaFileDetail().get("name");
         Object url = request.getMediaFileDetail().get("url");
+        Object filePath = request.getMediaFileDetail().get("filePath");
+        Object size = request.getMediaFileDetail().get("size");
         if (name instanceof String s) detail.setName(s);
         if (url instanceof String s) detail.setUrl(s);
+        // filePath is the real location and the only handle the retention sweep has once the keyed
+        // URL on the response has replaced url. Dropping it would leave files nothing can delete.
+        if (filePath instanceof String s) detail.setFilePath(s);
+        if (size instanceof Number n) detail.setSize(n.longValue());
         message.setMediaFileDetail(detail);
     }
 

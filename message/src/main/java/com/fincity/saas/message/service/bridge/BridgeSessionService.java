@@ -327,6 +327,36 @@ public class BridgeSessionService {
      * 5-15 second gap, the typing indicator and the hourly ceiling, which apply to every send
      * including one a person typed, and which are why this call can block for most of a minute.
      */
+    /**
+     * Sends an attachment, with an optional caption.
+     *
+     * <p>Same sendability gate as text. A session that cannot send text cannot send a photo either,
+     * and letting media through a gate text does not pass would put traffic on a number precisely
+     * when it is least able to take it.
+     */
+    public Mono<Map<String, Object>> sendMedia(
+            MessageAccess access,
+            String sessionId,
+            String to,
+            String filePath,
+            String kind,
+            String mimeType,
+            String fileName,
+            String caption,
+            boolean voiceNote) {
+
+        return this.withInstance(access, sessionId, (row, instance) -> {
+                    if (row.getSessionState() == null || !row.getSessionState().isSendable())
+                        return Mono.error(new IllegalStateException("Session " + sessionId + " is "
+                                + row.getSessionState() + " and cannot send: " + row.getSessionReason()));
+
+                    return this.bridgeClient.sendMedia(
+                            instance.getBaseUrl(), sessionId, to, filePath, kind, mimeType, fileName, caption,
+                            voiceNote);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.sendMedia"));
+    }
+
     public Mono<Map<String, Object>> sendText(MessageAccess access, String sessionId, String to, String text) {
         return this.withInstance(access, sessionId, (row, instance) -> {
                     if (row.getSessionState() == null || !row.getSessionState().isSendable())

@@ -5,6 +5,7 @@ import com.fincity.saas.message.enums.dispatch.DispatchEventType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -73,4 +74,35 @@ public class BridgeEvent implements Serializable {
     private Instant occurredAt;
 
     private String pushName;
+
+    /**
+     * Where the bridge stored an attachment. Present only on MEDIA_READY, which is the second half
+     * of a media message: the first half already arrived under this same message id.
+     */
+    private Map<String, Object> mediaFileDetail;
+
+    /** As WhatsApp reported it, not guessed from the extension. Decides which player the UI mounts. */
+    private String mediaMimeType;
+
+    private String mediaFileName;
+    private Long mediaSize;
+    private Integer mediaDurationSeconds;
+
+    /**
+     * A recorded voice note rather than an attached audio file. Both arrive as AudioMessage and only
+     * this flag separates them, and they render as completely different things.
+     */
+    private Boolean mediaIsVoiceNote;
+
+    /**
+     * Why an attachment will never arrive - too large, or out of retries. Set instead of the file
+     * details, so a bubble can say so rather than showing an empty frame indefinitely.
+     */
+    private String mediaError;
+
+    /**
+     * The message a reaction applies to. Without it a reaction is an orphan: the emoji arrives under
+     * the reaction's own id with nothing saying what it was aimed at.
+     */
+    private String reactionToMessageId;
 }

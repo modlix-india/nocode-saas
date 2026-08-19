@@ -1,5 +1,8 @@
 package com.fincity.saas.entity.processor.controller.message;
 
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.MediaType;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -95,6 +98,33 @@ public class TicketWhatsappConversationController {
      *
      * <p>The ticket comes from the path, not the body: the path is what gets access-checked.
      */
+    /**
+     * Sends an attachment on a conversation.
+     *
+     * <p>Multipart, so the file rides the same request that names the deal. The alternative - upload
+     * to storage from the browser, then send a reference - would need every agent to hold write
+     * access to the tenant's secured files, which is a far larger grant than sending a photo.
+     */
+    @PostMapping(value = "/{ticketId}/send-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> sendMedia(
+            @PathVariable("ticketId") Identity ticketId,
+            @RequestPart("file") FilePart file,
+            @RequestPart(value = "caption", required = false) String caption,
+            @RequestPart(value = "kind", required = false) String kind,
+            @RequestPart(value = "voiceNote", required = false) String voiceNote,
+            @RequestPart(value = "force", required = false) String force) {
+
+        return this.service
+                .sendMedia(
+                        ticketId,
+                        file,
+                        caption,
+                        kind,
+                        Boolean.parseBoolean(voiceNote),
+                        Boolean.parseBoolean(force))
+                .map(ResponseEntity::ok);
+    }
+
     @PostMapping("/{ticketId}/send")
     public Mono<ResponseEntity<Map<String, Object>>> sendMessage(
             @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {

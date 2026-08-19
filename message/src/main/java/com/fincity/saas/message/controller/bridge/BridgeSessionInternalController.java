@@ -199,17 +199,42 @@ public class BridgeSessionInternalController {
             @PathVariable String sessionId,
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, Object> request) {
 
-        String to = request.get("to");
-        String text = request.get("text");
+        // Object, not String. The map was typed Map<String,String> and any structured body - an
+        // attachment's file details, for instance - failed to bind before a line of this ran, with
+        // a 400 that said nothing about why.
+        String to = str(request.get("to"));
+        String text = str(request.get("text"));
+        String filePath = str(request.get("filePath"));
 
-        if (to == null || to.isBlank() || text == null || text.isBlank())
-            return Mono.just(ResponseEntity.badRequest().build());
+        if (to == null || to.isBlank()) return Mono.just(ResponseEntity.badRequest().build());
 
-        return this.sessionService
-                .sendText(MessageAccess.of(appCode, clientCode, Boolean.TRUE), sessionId, to, text)
-                .map(ResponseEntity::ok);
+        MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+
+        if (filePath != null && !filePath.isBlank())
+            return this.sessionService
+                    .sendMedia(
+                            access,
+                            sessionId,
+                            to,
+                            filePath,
+                            str(request.get("kind")),
+                            str(request.get("mimeType")),
+                            str(request.get("fileName")),
+                            text,
+                            Boolean.TRUE.equals(request.get("voiceNote")))
+                    .map(ResponseEntity::ok);
+
+        // Text with no attachment still needs a body; an empty message is not a thing WhatsApp
+        // accepts, and sending one would burn a paced slot on nothing.
+        if (text == null || text.isBlank()) return Mono.just(ResponseEntity.badRequest().build());
+
+        return this.sessionService.sendText(access, sessionId, to, text).map(ResponseEntity::ok);
+    }
+
+    private static String str(Object value) {
+        return value == null ? null : value.toString();
     }
 
     /** Called when a person opens a thread, never when a message arrives. */

@@ -60,4 +60,22 @@ public class WhatsappInboundDispatch implements Serializable {
     private Map<String, Object> inMessage;
     private Map<String, Object> messageResponse;
     private Map<String, Object> mediaFileDetail;
+
+    private String mediaMimeType;
+    private String mediaFileName;
+    private Long mediaSize;
+    private Integer mediaDurationSeconds;
+    private Boolean mediaIsVoiceNote;
+    private String mediaError;
+    private String reactionToMessageId;
+
+    /**
+     * Which linked number this belongs to.
+     *
+     * <p>Missing until now, and the omission was not cosmetic. The consumer stores it on every row
+     * and its pacing queries window on it, so with inbound rows carrying null the reply-rate count
+     * matched nothing and was structurally zero - the signal that decides whether a number is
+     * healthy enough to keep sending was reading empty for one whole direction.
+     */
+    private String bridgeSessionId;
 }

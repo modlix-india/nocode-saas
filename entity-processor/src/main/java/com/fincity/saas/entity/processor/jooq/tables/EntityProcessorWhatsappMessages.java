@@ -305,6 +305,54 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_MIME_TYPE</code>.
+     * As WhatsApp reported it, not as guessed from the extension. Decides which
+     * player the UI mounts.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> MEDIA_MIME_TYPE = createField(DSL.name("MEDIA_MIME_TYPE"), SQLDataType.VARCHAR(255), this, "As WhatsApp reported it, not as guessed from the extension. Decides which player the UI mounts.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_SIZE</code>.
+     * Bytes, as declared by the sender. Kept after the file expires so the
+     * thread can still say how large the attachment was.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> MEDIA_SIZE = createField(DSL.name("MEDIA_SIZE"), SQLDataType.BIGINTUNSIGNED, this, "Bytes, as declared by the sender. Kept after the file expires so the thread can still say how large the attachment was.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_DURATION_SECONDS</code>.
+     * Audio and video only. Lets the UI show a length before the media has
+     * loaded.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Integer> MEDIA_DURATION_SECONDS = createField(DSL.name("MEDIA_DURATION_SECONDS"), SQLDataType.INTEGER, this, "Audio and video only. Lets the UI show a length before the media has loaded.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_IS_VOICE_NOTE</code>.
+     * AudioMessage.PTT. True for a recorded voice note, false for an attached
+     * audio file.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Boolean> MEDIA_IS_VOICE_NOTE = createField(DSL.name("MEDIA_IS_VOICE_NOTE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "AudioMessage.PTT. True for a recorded voice note, false for an attached audio file.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_EXPIRED_AT</code>.
+     * When the retention sweep removed the bytes. Non-null means the file is
+     * gone on purpose, not missing by accident.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, LocalDateTime> MEDIA_EXPIRED_AT = createField(DSL.name("MEDIA_EXPIRED_AT"), SQLDataType.LOCALDATETIME(0), this, "When the retention sweep removed the bytes. Non-null means the file is gone on purpose, not missing by accident.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.REACTION_TO_MESSAGE_ID</code>.
+     * MESSAGE_ID of the message this reaction applies to. Set only on REACTION
+     * rows.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> REACTION_TO_MESSAGE_ID = createField(DSL.name("REACTION_TO_MESSAGE_ID"), SQLDataType.VARCHAR(255), this, "MESSAGE_ID of the message this reaction applies to. Set only on REACTION rows.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.IN_MESSAGE</code>.
      * Raw inbound message object.
      */
@@ -440,7 +488,7 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX6_WHATSAPP_MESSAGES_BRIDGE_SESSION);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX6_WHATSAPP_MESSAGES_BRIDGE_SESSION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX7_WA_MESSAGES_MEDIA_EXPIRY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX8_WA_MESSAGES_REACTION_TARGET);
     }
 
     @Override

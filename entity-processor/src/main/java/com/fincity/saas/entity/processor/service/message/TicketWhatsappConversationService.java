@@ -1,12 +1,19 @@
 package com.fincity.saas.entity.processor.service.message;
 
+import com.fincity.saas.entity.processor.feign.IFeignFilesService;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.DataBuffer;
+import java.nio.ByteBuffer;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.enums.message.WhatsappHoldReason;
+import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -20,6 +27,7 @@ import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,6 +61,7 @@ public class TicketWhatsappConversationService {
     private final WhatsappSessionService sessionService;
     private final IFeignMessageService feignMessageService;
     private final ProcessorMessageResourceService msgService;
+    private final IFeignFilesService filesService;
 
     public TicketWhatsappConversationService(
             TicketService ticketService,
@@ -60,13 +69,15 @@ public class TicketWhatsappConversationService {
             WhatsappMessageDAO whatsappMessageDAO,
             WhatsappSessionService sessionService,
             IFeignMessageService feignMessageService,
-            ProcessorMessageResourceService msgService) {
+            ProcessorMessageResourceService msgService,
+            IFeignFilesService filesService) {
         this.ticketService = ticketService;
         this.productService = productService;
         this.whatsappMessageDAO = whatsappMessageDAO;
         this.sessionService = sessionService;
         this.feignMessageService = feignMessageService;
         this.msgService = msgService;
+        this.filesService = filesService;
     }
 
     /**
@@ -91,10 +102,63 @@ public class TicketWhatsappConversationService {
                         // The gate. Everything after this is scoped by what it returns.
                         access -> this.ticketService.readByIdentity(access, ticketId),
                         (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
-                        (access, ticket, ticketIds) -> this.whatsappMessageDAO.readThread(
-                                access.getAppCode(), access.getClientCode(), ticketIds, search, pageable))
+                        (access, ticket, ticketIds) -> this.whatsappMessageDAO
+                                .readThread(
+                                        access.getAppCode(), access.getClientCode(), ticketIds, search, pageable)
+                                .map(TicketWhatsappConversationService::foldReactions))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.readTicketThread"));
+    }
+
+    /**
+     * Moves each reaction's emoji onto the message it applies to.
+     *
+     * <p>A reaction is stored as its own row, which is right for writing and wrong for reading. The
+     * thread renders through a repeater, one row per message, and a row cannot see its neighbours -
+     * so a reaction arriving as its own entry drew its own bubble, and since every content element
+     * hides for this type, that bubble contained nothing but a timestamp. That stray bubble is the
+     * visible half of the bug; the missing badge is the other half.
+     *
+     * <p>The reaction rows are left in the list rather than filtered out, and hidden by the page
+     * instead. Dropping them here would make a page of size N return fewer than N messages while the
+     * total still counted them, so the thread's growing window would quietly shrink by however many
+     * reactions it contained.
+     *
+     * <p>Scoped to the page in hand. A reaction whose target is outside the loaded window has nowhere
+     * to attach and is simply not shown, which is the same as today's behaviour and self-corrects as
+     * soon as the reader scrolls far enough back to load the message it belongs to.
+     */
+    private static Page<WhatsappMessage> foldReactions(Page<WhatsappMessage> page) {
+
+        List<WhatsappMessage> content = page.getContent();
+        if (content.isEmpty()) return page;
+
+        Map<String, WhatsappMessage> byMessageId = new HashMap<>();
+        for (WhatsappMessage message : content)
+            if (message.getMessageId() != null) byMessageId.put(message.getMessageId(), message);
+
+        for (WhatsappMessage message : content) {
+
+            if (message.getMessageType() != WhatsappMessageType.REACTION) continue;
+
+            String emoji = message.getBodyText();
+            WhatsappMessage target = message.getReactionToMessageId() == null
+                    ? null
+                    : byMessageId.get(message.getReactionToMessageId());
+
+            // An empty body is how WhatsApp says a reaction was withdrawn, so it must not become a
+            // blank badge on the message it was removed from.
+            if (target == null || StringUtil.safeIsBlank(emoji)) continue;
+
+            String existing = target.getReactionEmoji();
+
+            // Same emoji twice is one badge. It happens legitimately: a reaction that is changed and
+            // changed back arrives as separate rows, all of which survive in the thread.
+            if (existing == null) target.setReactionEmoji(emoji);
+            else if (!existing.contains(emoji)) target.setReactionEmoji(existing + emoji);
+        }
+
+        return page;
     }
 
     /**
@@ -138,6 +202,89 @@ public class TicketWhatsappConversationService {
      * our last outbound releases the hold outright, so the override panel only ever appears when
      * somebody is chasing a lead who has not answered, which is exactly when they should be told.
      */
+    /**
+     * Sends an attachment on a conversation.
+     *
+     * <p>The bytes arrive here rather than being uploaded from the browser. Letting the page write
+     * straight to the tenant's secured storage would mean granting every agent write access to that
+     * path, and the check that actually matters - may this person see this deal - lives here and
+     * nowhere else. So the file comes in on the same request that names the deal, and the upload
+     * happens after the access check rather than before it.
+     *
+     * <p>Runs the same pacing gate as text. An attachment is not a way around a hold.
+     */
+    public Mono<Map<String, Object>> sendMedia(
+            Identity ticketId, FilePart file, String caption, String kind, boolean voiceNote, boolean requestedForce) {
+
+        return FlatMapUtil.flatMapMono(
+                        this.ticketService::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, ticketId),
+                        (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
+                        (access, ticket, ticketIds) -> this.sessionService.resolveForTicket(access, ticket),
+                        (access, ticket, ticketIds, session) -> this.sessionService
+                                .evaluateForTicket(access, ticket, ticketIds, session)
+                                .flatMap(decision -> {
+                                    ULong userId = access.getUserId();
+                                    boolean force = requestedForce
+                                            && userId != null
+                                            && !BigInteger.ZERO.equals(userId.toBigInteger());
+
+                                    if (!decision.allowed() && (!force || !isForceable(decision.reason())))
+                                        return this.msgService.<Map<String, Object>>throwMessage(
+                                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                                ProcessorMessageResourceService.WHATSAPP_SEND_HELD,
+                                                WhatsappHoldReason.explain(decision.reason()));
+
+                                    // Read from the part before the body is consumed, because the
+                                    // stored FileDetail does not carry it: its "type" is the
+                                    // filename extension, and using that as a mimetype is what
+                                    // sent the first attachment out as "txt".
+                                    String declared = file.headers().getContentType() == null
+                                            ? null
+                                            : file.headers().getContentType().toString();
+
+                                    return this.storeOutgoing(access, ticket, file)
+                                            .flatMap(stored -> this.sessionService.sendMedia(
+                                                    access,
+                                                    ticket,
+                                                    session,
+                                                    stored,
+                                                    kind,
+                                                    caption,
+                                                    voiceNote,
+                                                    declared,
+                                                    userId));
+                                }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.sendMedia"));
+    }
+
+    /**
+     * Puts an outgoing attachment where inbound ones live.
+     *
+     * <p>Same tree and same naming as the inbound path, so one conversation's files sit together
+     * rather than being split by which way they went. Secured, like everything else here.
+     */
+    private Mono<FileDetail> storeOutgoing(ProcessorAccess access, Ticket ticket, FilePart file) {
+
+        String customer = ticket.getPhoneNumber() == null ? "unknown" : ticket.getPhoneNumber().replaceAll("\\D", "");
+        String directory = "/whatsapp/" + access.getAppCode() + "/outgoing/" + customer;
+
+        return DataBufferUtils.join(file.content())
+                .map(buffer -> {
+                    ByteBuffer bytes = ByteBuffer.wrap(toBytes(buffer));
+                    DataBufferUtils.release(buffer);
+                    return bytes;
+                })
+                .flatMap(bytes -> this.filesService.create(
+                        "secured", access.getClientCode(), Boolean.FALSE, directory, file.filename(), bytes));
+    }
+
+    private static byte[] toBytes(DataBuffer buffer) {
+        byte[] out = new byte[buffer.readableByteCount()];
+        buffer.read(out);
+        return out;
+    }
+
     public Mono<Map<String, Object>> sendMessage(Identity ticketId, Map<String, Object> request) {
 
         boolean requestedForce = isForced(request);

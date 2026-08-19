@@ -3,6 +3,8 @@ package com.fincity.saas.message.controller.bridge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.dto.bridge.BridgeInstance;
 import com.fincity.saas.message.model.request.bridge.BridgeEventsRequest;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
+import com.fincity.saas.message.service.bridge.BridgeMediaService;
 import com.fincity.saas.message.model.request.bridge.BridgeHeartbeatRequest;
 import com.fincity.saas.message.model.request.bridge.BridgeRegisterRequest;
 import com.fincity.saas.message.model.response.bridge.BridgeControlResponse;
@@ -11,11 +13,13 @@ import com.fincity.saas.message.service.bridge.BridgeNotRegisteredException;
 import com.fincity.saas.message.service.bridge.BridgeRegistryService;
 import com.fincity.saas.message.service.bridge.BridgeSignatureService;
 import java.util.List;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -47,16 +52,19 @@ public class BridgeController {
     private final BridgeRegistryService registryService;
     private final BridgeEventIngestService ingestService;
     private final BridgeSignatureService signatureService;
+    private final BridgeMediaService mediaService;
     private final ObjectMapper objectMapper;
 
     public BridgeController(
             BridgeRegistryService registryService,
             BridgeEventIngestService ingestService,
             BridgeSignatureService signatureService,
+            BridgeMediaService mediaService,
             ObjectMapper objectMapper) {
         this.registryService = registryService;
         this.ingestService = ingestService;
         this.signatureService = signatureService;
+        this.mediaService = mediaService;
         this.objectMapper = objectMapper;
     }
 
@@ -154,6 +162,70 @@ public class BridgeController {
         return this.ingestService
                 .ingest(request)
                 .map(accepted -> ResponseEntity.ok(Map.<String, Object>of("accepted", accepted)));
+    }
+
+    /**
+     * Stores an attachment the bridge pulled out of WhatsApp.
+     *
+     * <p>The bytes are the body and everything else is a query parameter, rather than the multipart
+     * form this started as. The signature covers the exact bytes received, and a multipart envelope
+     * would mean the digest running over boundary markers the framework then consumes - so the
+     * verified bytes and the stored bytes would be different things.
+     *
+     * <p>Answers the files service's own FileDetail unchanged. The bridge attaches it to the
+     * MEDIA_READY event without interpreting it, so neither end has to model the other's storage.
+     */
+    @PostMapping(value = "/{instanceId}/media", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public Mono<ResponseEntity<FileDetail>> media(
+            @PathVariable String instanceId,
+            @RequestParam String sessionId,
+            @RequestParam String messageId,
+            @RequestParam(required = false) String customerWaId,
+            @RequestParam(required = false) String mimeType,
+            @RequestParam(required = false) String fileName,
+            @RequestParam(required = false, defaultValue = "false") boolean outbound,
+            @RequestHeader HttpHeaders headers,
+            @RequestBody byte[] rawBody) {
+
+        if (!this.signatureService.isTrusted(headers, rawBody))
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+
+        if (rawBody.length == 0) {
+            logger.error("Bridge {} sent an empty attachment for message {}.", instanceId, messageId);
+            return Mono.just(ResponseEntity.badRequest().build());
+        }
+
+        return this.mediaService
+                .store(sessionId, messageId, customerWaId, mimeType, fileName, outbound, ByteBuffer.wrap(rawBody))
+                .map(ResponseEntity::ok)
+                // Unknown session, already logged. Not found rather than an error: the bridge must
+                // stop retrying an attachment for a session this service does not have.
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Streams back an attachment the agent is sending.
+     *
+     * <p>GET with an empty body, signed like everything else, so the same verification covers it.
+     * The bridge cannot reach the files service and should not be able to; this is the one door.
+     */
+    @GetMapping(value = "/{instanceId}/media", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public Mono<ResponseEntity<ByteBuffer>> fetchMedia(
+            @PathVariable String instanceId,
+            @RequestParam String sessionId,
+            @RequestParam String filePath,
+            @RequestHeader HttpHeaders headers) {
+
+        if (!this.signatureService.isTrusted(headers, new byte[0]))
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+
+        return this.mediaService
+                .fetch(sessionId, filePath)
+                .map(ResponseEntity::ok)
+                // Refused or missing, already logged with which path and which client. Not found
+                // rather than forbidden: the bridge cannot act on the difference, and saying which
+                // paths exist is not information it needs.
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     /**

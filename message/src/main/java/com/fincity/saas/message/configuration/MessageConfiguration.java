@@ -82,7 +82,12 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "/api/message/bridges/register",
                 "/api/message/bridges/release",
                 "/api/message/bridges/*/heartbeat",
-                "/api/message/bridges/*/events");
+                "/api/message/bridges/*/events",
+                // Attachments, in both directions. Named individually like every route above rather
+                // than wildcarded, because the fleet view under the same prefix must keep needing a
+                // real login.
+                "/api/message/bridges/*/media",
+                "/api/message/bridges/*/media/*");
     }
 
     @Bean

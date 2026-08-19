@@ -1,8 +1,11 @@
 package com.fincity.saas.entity.processor.service.message;
 
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.enums.message.WhatsappHoldReason;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -15,12 +18,14 @@ import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fincity.saas.entity.processor.model.request.message.WhatsappInboundRequest;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -353,6 +358,27 @@ public class WhatsappSessionService {
             String toPhone,
             String text,
             Map<String, Object> response) {
+        return this.recordOutbound(appCode, clientCode, session, toPhone, text, response, null, null, null);
+    }
+
+    /**
+     * The same, for a send that carried an attachment.
+     *
+     * <p>The type is a parameter rather than a constant because it was a constant, and that was
+     * wrong in a way nothing reported: every outbound message was filed as text, so an outbound
+     * photo reached the UI as a text bubble with an empty body and the picture nowhere - a bug that
+     * only appears once media can be sent at all.
+     */
+    private Mono<Void> recordOutbound(
+            String appCode,
+            String clientCode,
+            Map<String, Object> session,
+            String toPhone,
+            String text,
+            Map<String, Object> response,
+            WhatsappMessageType type,
+            FileDetail asset,
+            String mimeType) {
 
         String messageId = string(response, "messageId");
         if (messageId == null || messageId.isBlank()) {
@@ -365,10 +391,22 @@ public class WhatsappSessionService {
         WhatsappInboundRequest sent = new WhatsappInboundRequest()
                 .setMetaMessageId(messageId)
                 .setEventType("MESSAGE")
-                .setMessageType("text")
+                .setMessageType((type == null ? WhatsappMessageType.TEXT : type).getValue())
                 .setMessageStatus("sent")
                 .setOutbound(Boolean.TRUE)
                 .setBodyText(text)
+                .setMediaFileDetail(asset == null ? null : Map.of(
+                        "name", asset.getName() == null ? "" : asset.getName(),
+                        "url", asset.getUrl() == null ? "" : asset.getUrl(),
+                        "filePath", asset.getFilePath() == null ? "" : asset.getFilePath()))
+                // The resolved media type, passed in rather than taken from the FileDetail: that
+                // object carries the extension under a field called "type", and reading it here is
+                // what put "txt" in a mimetype column.
+                .setMediaMimeType(mimeType)
+                // Inbound attachments carry a size and outbound ones did not, which is only visible
+                // once both are in the same thread: the same picture read 815 KB one way and blank
+                // the other.
+                .setMediaSize(asset == null ? null : asset.getSize())
                 .setCustomerPhoneNumber(toPhone)
                 .setCustomerWaId(digitsOf(toPhone))
                 .setWhatsappPhoneNumber(string(session, KEY_PHONE))
@@ -411,6 +449,164 @@ public class WhatsappSessionService {
      * <p>The decision is recorded against the send. If a number is banned months later, who forced
      * what and what the number's state was at the time is the only account of it that exists.
      */
+    /**
+     * Sends an attachment on an interactive send.
+     *
+     * <p>Separate from {@link #sendInteractive} rather than a flag on it, because the two differ in
+     * what they require: text is mandatory there and optional here, where a photo with no caption is
+     * an ordinary thing to send.
+     *
+     * <p>The file is named, not carried. It already lives in the files service, and pushing bytes
+     * through two more hops to reach a bridge that has to fetch them anyway would buy nothing.
+     */
+    public Mono<Map<String, Object>> sendMedia(
+            ProcessorAccess access,
+            Ticket ticket,
+            Map<String, Object> session,
+            FileDetail asset,
+            String kind,
+            String caption,
+            boolean voiceNote,
+            String declaredMimeType,
+            ULong userId) {
+
+        String sessionId = string(session, KEY_ID);
+
+        if (sessionId == null || asset == null || StringUtil.safeIsBlank(asset.getFilePath()))
+            return Mono.error(new IllegalArgumentException("A session and a stored file are both required."));
+
+        String mimeType = mimeTypeOf(declaredMimeType, asset);
+
+        WhatsappMessageType type = typeFor(kind, mimeType);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("to", ticket.getPhoneNumber() == null ? "" : ticket.getPhoneNumber());
+        body.put("filePath", asset.getFilePath());
+        // The resolved kind, not the caller's. The bridge picks which WhatsApp message shape to
+        // build from this, so sending it the raw value would have the handset receive a photo as a
+        // file attachment whenever the caller said nothing.
+        body.put("kind", type.getValue());
+        body.put("mimeType", mimeType);
+        body.put("fileName", asset.getName() == null ? "" : asset.getName());
+        body.put("text", caption == null ? "" : caption);
+        body.put("voiceNote", voiceNote);
+
+        return this.feignMessageService
+                .sendWhatsappSessionMessage(access.getAppCode(), access.getClientCode(), sessionId, body)
+                .doOnNext(response -> logger.debug(
+                        "Sent a {} attachment on deal {}.", type.getValue(), ticket.getId()))
+                .flatMap(response -> this.recordOutbound(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                session,
+                                ticket.getPhoneNumber(),
+                                caption,
+                                response,
+                                type,
+                                asset,
+                                mimeType)
+                        .thenReturn(response))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendMedia"));
+    }
+
+    /**
+     * The attachment's media type, which is emphatically not {@code FileDetail.getType()}.
+     *
+     * <p>That field is the filename extension, lowercased, set by the files service when it parses
+     * the name. Reading it as a media type is a mistake that compiles, runs, and stores {@code
+     * "txt"} where {@code "text/plain"} belonged - which is exactly what the first working send did.
+     *
+     * <p>It matters in two places that both fail quietly. WhatsApp decides how a recipient's handset
+     * renders an attachment from the mimetype it is sent with, so an extension there delivers a
+     * photo that will not preview; and the inbox picks which player to mount from the stored value,
+     * so the same message comes back as a bubble with no picture in it.
+     *
+     * <p>The browser declares a real type on the multipart part, so that is preferred whenever it
+     * says anything specific. {@code application/octet-stream} is treated as saying nothing, because
+     * it is what arrives from a client that did not bother - curl sends no type at all - and it is
+     * never a better answer than the extension.
+     */
+    private static String mimeTypeOf(String declared, FileDetail asset) {
+
+        if (!StringUtil.safeIsBlank(declared) && !MediaType.APPLICATION_OCTET_STREAM_VALUE.equalsIgnoreCase(declared))
+            return declared;
+
+        String extension = asset == null || asset.getType() == null
+                ? null
+                : asset.getType().toLowerCase();
+
+        // Deliberately short. These are the types this product actually sends, and a guess dressed
+        // up as a long table would only hide how narrow the real coverage is.
+        String mapped =
+                switch (extension == null ? "" : extension) {
+                    case "jpg", "jpeg" -> "image/jpeg";
+                    case "png" -> "image/png";
+                    case "gif" -> "image/gif";
+                    case "webp" -> "image/webp";
+                    case "pdf" -> "application/pdf";
+                    case "mp4" -> "video/mp4";
+                    case "3gp" -> "video/3gpp";
+                    case "mp3" -> "audio/mpeg";
+                    case "ogg", "opus" -> "audio/ogg";
+                    case "m4a" -> "audio/mp4";
+                    case "txt" -> "text/plain";
+                    case "csv" -> "text/csv";
+                    case "doc" -> "application/msword";
+                    case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                    case "xls" -> "application/vnd.ms-excel";
+                    case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    default -> null;
+                };
+
+        // Unknown stays octet-stream rather than becoming the extension. It sends as a plain file,
+        // which is the honest outcome; the extension would be a value no client can interpret.
+        return mapped == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mapped;
+    }
+
+    /**
+     * How the message is filed, from the caller's stated shape or else from what the file actually
+     * is.
+     *
+     * <p>The mimetype fallback is the part that matters. The composer sends a file and a caption and
+     * says nothing about kind, so every attachment fell to the default and a sent photo was filed as
+     * a DOCUMENT: the row read {@code MESSAGE_TYPE=DOCUMENT, MEDIA_MIME_TYPE=image/jpeg}, and the
+     * inbox showed a filename where the picture should be, because its image element is shown only
+     * for {@code messageType = "image"}.
+     *
+     * <p>Deriving it here rather than making the client send it is deliberate. The bytes are the
+     * authority on what they are, the mimetype is now resolved from the upload rather than guessed
+     * from an extension, and a caller that says nothing should still get the right answer. A caller
+     * that states a kind is still believed, so an explicit choice can override the sniff.
+     */
+    private static WhatsappMessageType typeFor(String kind, String mimeType) {
+
+        if (kind != null)
+            switch (kind.toLowerCase()) {
+                case "image":
+                    return WhatsappMessageType.IMAGE;
+                case "video":
+                    return WhatsappMessageType.VIDEO;
+                case "audio":
+                    return WhatsappMessageType.AUDIO;
+                case "document":
+                    return WhatsappMessageType.DOCUMENT;
+                default:
+                    // Falls through to the mimetype rather than to DOCUMENT: an unrecognised kind is
+                    // a caller mistake, and the file itself still knows what it is.
+                    break;
+            }
+
+        String mime = mimeType == null ? "" : mimeType.toLowerCase();
+
+        if (mime.startsWith("image/")) return WhatsappMessageType.IMAGE;
+        if (mime.startsWith("video/")) return WhatsappMessageType.VIDEO;
+        if (mime.startsWith("audio/")) return WhatsappMessageType.AUDIO;
+
+        // Anything else is a document, which is the shape that loses no information: it keeps the
+        // filename and the bytes either way.
+        return WhatsappMessageType.DOCUMENT;
+    }
+
     public Mono<Map<String, Object>> sendInteractive(
             ProcessorAccess access,
             Ticket ticket,

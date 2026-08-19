@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.request.message;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -79,6 +80,35 @@ public class WhatsappInboundRequest implements Serializable {
     private Map<String, Object> inMessage;
     private Map<String, Object> messageResponse;
     private Map<String, Object> mediaFileDetail;
+
+    private String mediaMimeType;
+    private String mediaFileName;
+    private Long mediaSize;
+    private Integer mediaDurationSeconds;
+    private Boolean mediaIsVoiceNote;
+
+    /**
+     * Why an attachment will never arrive - too large, or out of retries.
+     *
+     * <p>Carried so the bubble can say so. An attachment that failed and one that is still on its
+     * way look identical from the row alone, and a thread showing an empty frame forever is worse
+     * than one that admits the file is not coming.
+     */
+    private String mediaError;
+
+    private String reactionToMessageId;
+
+    /**
+     * Whether this handoff carries only an attachment for a message already stored.
+     *
+     * <p>Matched on the string rather than an enum for the same reason the type and status are:
+     * this is a wire contract with a service that is not Java, and a value it sends which we do not
+     * recognise has to degrade rather than fail to deserialise.
+     */
+    @JsonIgnore
+    public boolean isMediaReady() {
+        return "MEDIA_READY".equalsIgnoreCase(this.eventType);
+    }
 
     public boolean isStatusUpdate() {
         return "MESSAGE_STATUS".equals(this.eventType);

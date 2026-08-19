@@ -22,7 +22,21 @@ public enum DispatchEventType {
      * reaches the owning service first: it answers the connect applet in order to decide whom to
      * ring, so by the time this service is involved the consumer already has its record.
      */
-    CALL_STATUS(DispatchChannel.CALL);
+    CALL_STATUS(DispatchChannel.CALL),
+
+    /**
+     * Where an attachment ended up, for a message that already arrived without it.
+     *
+     * <p>Deliberately not folded into {@code INBOUND_MESSAGE} with the file attached. A photo is two
+     * things arriving on different timescales - a message that must appear at once, and bytes that
+     * may be tens of megabytes - and holding the first for the second turns every attachment into a
+     * gap in the conversation. So the message goes immediately and this follows.
+     *
+     * <p>Carries the same message id as the event it completes, which is what lets the consumer
+     * patch rather than insert. That also makes it safe to redeliver and safe to arrive out of order
+     * against a status update, since neither touches the other's fields.
+     */
+    MEDIA_READY(DispatchChannel.WHATSAPP);
 
     private final DispatchChannel channel;
 

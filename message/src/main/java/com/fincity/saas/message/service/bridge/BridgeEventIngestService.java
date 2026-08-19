@@ -142,7 +142,19 @@ public class BridgeEventIngestService {
                 .setMessageStatus(event.getMessageStatus())
                 .setOccurredAt(toUtc(event.getOccurredAt()))
                 .setBodyText(event.getBodyText())
-                .setOutbound(event.getOutbound() != null && event.getOutbound());
+                .setOutbound(event.getOutbound() != null && event.getOutbound())
+                // The session this arrived on. Available here all along - it is the row we just
+                // looked the event up by - and simply never copied across, which left every inbound
+                // row with a null and the pacing layer's reply count reading zero.
+                .setBridgeSessionId(session.getCode())
+                .setMediaFileDetail(event.getMediaFileDetail())
+                .setMediaMimeType(event.getMediaMimeType())
+                .setMediaFileName(event.getMediaFileName())
+                .setMediaSize(event.getMediaSize())
+                .setMediaDurationSeconds(event.getMediaDurationSeconds())
+                .setMediaIsVoiceNote(event.getMediaIsVoiceNote())
+                .setMediaError(event.getMediaError())
+                .setReactionToMessageId(event.getReactionToMessageId());
 
         return this.eventDispatcher.enqueueAndDispatch(
                 access, session.getOwnerService(), eventType, event.getMessageId(), dispatch);

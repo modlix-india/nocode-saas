@@ -74,6 +74,18 @@ public class BridgeSignatureService {
      * caller: "absent means allowed" is how an authentication check becomes decorative.
      */
     public boolean isTrusted(HttpHeaders headers, String rawBody) {
+        return this.isTrusted(headers, rawBody == null ? new byte[0] : rawBody.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * The same check over raw bytes, for bodies that are not text.
+     *
+     * <p>An attachment cannot go through the String overload. Decoding arbitrary bytes as UTF-8 and
+     * re-encoding them does not round-trip - every invalid sequence collapses to the replacement
+     * character - so the digest would be computed over different bytes than the bridge signed, and
+     * every image would look like a forged signature.
+     */
+    public boolean isTrusted(HttpHeaders headers, byte[] rawBody) {
 
         if (this.hmacSecret == null || this.hmacSecret.isBlank()) {
             // Refusing rather than allowing. An unconfigured secret must not silently open the
@@ -113,7 +125,8 @@ public class BridgeSignatureService {
             return false;
         }
 
-        return matches(provided, rawTimestamp, rawBody == null ? "" : rawBody, this.hmacSecret, instanceOf(headers));
+        return matches(
+                provided, rawTimestamp, rawBody == null ? new byte[0] : rawBody, this.hmacSecret, instanceOf(headers));
     }
 
     /**
@@ -145,11 +158,25 @@ public class BridgeSignatureService {
 
     /** Signs an outgoing call to a bridge, so the same check can run in the other direction. */
     public String sign(long unixSeconds, String body) {
-        return SIGNATURE_PREFIX + HexFormat.of().formatHex(digest(unixSeconds, body, this.hmacSecret));
+        return SIGNATURE_PREFIX
+                + HexFormat.of()
+                        .formatHex(digest(
+                                unixSeconds,
+                                body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8),
+                                this.hmacSecret));
     }
 
     /** Package-private and static so the digest is testable without standing up the service. */
     static boolean matches(String provided, String rawTimestamp, String rawBody, String secret, String instance) {
+        return matches(
+                provided,
+                rawTimestamp,
+                rawBody == null ? new byte[0] : rawBody.getBytes(StandardCharsets.UTF_8),
+                secret,
+                instance);
+    }
+
+    static boolean matches(String provided, String rawTimestamp, byte[] rawBody, String secret, String instance) {
         try {
             byte[] expected = digest(Long.parseLong(rawTimestamp), rawBody, secret);
 
@@ -169,7 +196,7 @@ public class BridgeSignatureService {
         }
     }
 
-    private static byte[] digest(long unixSeconds, String rawBody, String secret) {
+    private static byte[] digest(long unixSeconds, byte[] rawBody, String secret) {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
@@ -178,7 +205,7 @@ public class BridgeSignatureService {
             // Go side byte for byte.
             mac.update(Long.toString(unixSeconds).getBytes(StandardCharsets.UTF_8));
             mac.update((byte) '.');
-            mac.update(rawBody.getBytes(StandardCharsets.UTF_8));
+            mac.update(rawBody);
 
             return mac.doFinal();
         } catch (Exception e) {

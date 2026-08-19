@@ -103,6 +103,61 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private Map<String, Object> inMessage;
     private Map<String, Object> messageResponse;
 
+    /**
+     * What the attachment is, beside where it lives.
+     *
+     * <p>Separate from {@link #mediaFileDetail} because that is the files service's own shape,
+     * returned verbatim by its upload API: it describes bytes on a disk, not a WhatsApp message.
+     * Whether something was a recorded voice note has no meaning to the files service, and the UI
+     * has to ask it for every audio bubble, so burying it inside a foreign payload would mean
+     * reaching into a JSON column to answer a question asked on every render.
+     */
+    private String mediaMimeType;
+
+    private Long mediaSize;
+    private Integer mediaDurationSeconds;
+    private boolean mediaIsVoiceNote;
+
+    /**
+     * When the retention sweep removed the bytes. Non-null means the file is gone deliberately,
+     * which is a different thing from an attachment that has not arrived yet, and the two have to
+     * read differently in the thread.
+     */
+    private LocalDateTime mediaExpiredAt;
+
+    /**
+     * The message a reaction applies to.
+     *
+     * <p>Provider id rather than our own row id: a reaction can arrive before the message it refers
+     * to has finished being written, and the provider id is the only identifier both sides agree on
+     * at that point.
+     */
+    private String reactionToMessageId;
+
+    /**
+     * Reactions other people put on this message, as emoji.
+     *
+     * <p>Not a column, and deliberately so. A reaction is stored as its own row pointing at its
+     * target through {@link #reactionToMessageId}, which is the right shape for writing: reactions
+     * arrive independently, can precede the message they refer to, and get replaced when somebody
+     * changes their mind.
+     *
+     * <p>It is the wrong shape for reading. The thread is rendered by a repeater over messages, and
+     * a repeater row cannot look sideways at another row, so a reaction delivered as its own entry
+     * can only ever draw its own bubble - which is what it did: an empty bubble containing nothing
+     * but a timestamp, because every content element hides for this type. Folding the emoji onto its
+     * target at read time is what lets the badge be drawn where a reader expects it.
+     *
+     * <p>One string rather than a list, because the only consumer is a badge and the expression
+     * engine has no way to join a list into text. Distinct emoji are concatenated in arrival order,
+     * so two people reacting reads as "👍❤️" exactly as it would on a handset.
+     *
+     * <p>Filled by {@code TicketWhatsappConversationService} on the way out and never persisted, so
+     * jOOQ leaves it alone in both directions: the record mapper matches by column name and finds
+     * nothing to write here.
+     */
+    private String reactionEmoji;
+
     public WhatsappMessage() {
         super();
     }
@@ -134,5 +189,12 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.mediaFileDetail = other.mediaFileDetail;
         this.inMessage = other.inMessage;
         this.messageResponse = other.messageResponse;
+        this.mediaMimeType = other.mediaMimeType;
+        this.mediaSize = other.mediaSize;
+        this.mediaDurationSeconds = other.mediaDurationSeconds;
+        this.mediaIsVoiceNote = other.mediaIsVoiceNote;
+        this.mediaExpiredAt = other.mediaExpiredAt;
+        this.reactionToMessageId = other.reactionToMessageId;
+        this.reactionEmoji = other.reactionEmoji;
     }
 }

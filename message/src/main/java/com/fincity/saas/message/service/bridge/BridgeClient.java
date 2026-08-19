@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.model.request.bridge.BridgeSessionSnapshot;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -119,6 +120,38 @@ public class BridgeClient {
                         "/sessions/" + sessionId + "/messages",
                         Map.of("to", to, "text", text),
                         this.callTimeoutSeconds)
+                .map(this::readMap);
+    }
+
+    /**
+     * Sends an attachment.
+     *
+     * <p>Names the file by path rather than carrying its bytes. The bridge fetches them back over
+     * its own channel, which keeps this request small: every signed route on the bridge caps the
+     * body at 8 MiB and a document can be several times that.
+     */
+    public Mono<Map<String, Object>> sendMedia(
+            String baseUrl,
+            String sessionId,
+            String to,
+            String filePath,
+            String kind,
+            String mimeType,
+            String fileName,
+            String caption,
+            boolean voiceNote) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("to", to);
+        // The bridge fetches by (sessionId, filePath); the session is already in the URL.
+        body.put("mediaToken", filePath);
+        body.put("kind", kind == null ? "" : kind);
+        body.put("mimeType", mimeType == null ? "" : mimeType);
+        body.put("fileName", fileName == null ? "" : fileName);
+        body.put("caption", caption == null ? "" : caption);
+        body.put("voiceNote", voiceNote);
+
+        return this.post(baseUrl, "/sessions/" + sessionId + "/media", body, this.callTimeoutSeconds)
                 .map(this::readMap);
     }
 
