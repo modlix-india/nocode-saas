@@ -31,6 +31,19 @@ public class BridgeMediaService {
 
     private static final Logger logger = LoggerFactory.getLogger(BridgeMediaService.class);
 
+    /**
+     * How long a conversation attachment is kept: thirty days, in minutes.
+     *
+     * <p>Carried on the file itself rather than enforced by a sweep that works out which files are
+     * old enough. That distinction is what keeps this safe. An age-based sweep over the media rows
+     * would have deleted product brochures shared across many messages, because a lead was sent one
+     * a month ago; a file that was never given a lifetime cannot be removed at all.
+     *
+     * <p>A constant for now. The per-client override goes where this is read, not where it is
+     * stored, so raising it later does not touch anything already written.
+     */
+    private static final int RETENTION_MINUTES = 30 * 24 * 60;
+
     /** Secured, never static. An attachment is a customer's conversation, not a public asset. */
     private static final String RESOURCE_TYPE = "secured";
 
@@ -68,6 +81,7 @@ public class BridgeMediaService {
                                 Boolean.FALSE,
                                 directoryFor(session.getAppCode(), customerWaId, outbound),
                                 storedNameFor(messageId, mimeType, fileName),
+                                RETENTION_MINUTES,
                                 body))
                 .switchIfEmpty(Mono.defer(() -> {
                     // Same reasoning as the event path: retrying will not conjure the session row,
@@ -107,6 +121,10 @@ public class BridgeMediaService {
                                 Boolean.TRUE,
                                 "/whatsapp/" + sanitise(session.getAppCode()) + "/avatars",
                                 sanitise(customerWaId) + ".jpg",
+                                // No lifetime. An avatar is not conversation history and must not
+                                // vanish on the media schedule: an expired photo in a thread reads
+                                // as expired, a deal losing its face reads as broken.
+                                null,
                                 body))
                 .switchIfEmpty(Mono.defer(() -> {
                     logger.error("Bridge sent an avatar for unknown session {}. Dropping it.", sessionId);

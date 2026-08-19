@@ -20,6 +20,10 @@ public interface IFeignFileService {
             @RequestParam boolean override,
             @RequestParam String filePath,
             @RequestParam String fileName,
+            // How long this file is worth keeping, in minutes from this write. Null means forever.
+            // Only conversation attachments set it; an avatar and anything shared must not, because
+            // a lifetime is the only thing that makes a file eligible for deletion at all.
+            @RequestParam(required = false) Integer expiresAfterMinutes,
             @RequestBody ByteBuffer file);
 
     /**

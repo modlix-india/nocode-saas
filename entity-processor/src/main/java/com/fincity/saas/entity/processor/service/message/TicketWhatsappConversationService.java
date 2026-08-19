@@ -58,6 +58,15 @@ public class TicketWhatsappConversationService {
     private static final org.slf4j.Logger logger =
             org.slf4j.LoggerFactory.getLogger(TicketWhatsappConversationService.class);
 
+    /**
+     * Thirty days, in minutes, matching what the message service stamps on inbound attachments.
+     *
+     * <p>Set on the file at upload rather than enforced by a sweep looking for old files. Only a
+     * file that was given a lifetime can ever be deleted, which is what stops retention reaching the
+     * product assets that are also sent through this thread.
+     */
+    private static final int OUTGOING_RETENTION_MINUTES = 30 * 24 * 60;
+
     private final TicketService ticketService;
     private final ProductService productService;
     private final WhatsappMessageDAO whatsappMessageDAO;
@@ -371,7 +380,15 @@ public class TicketWhatsappConversationService {
                     return bytes;
                 })
                 .flatMap(bytes -> this.filesService.create(
-                        "secured", access.getClientCode(), Boolean.FALSE, directory, file.filename(), bytes));
+                        "secured",
+                        access.getClientCode(),
+                        Boolean.FALSE,
+                        directory,
+                        file.filename(),
+                        // Same lifetime as an inbound attachment. What an agent sends is as much
+                        // conversation history as what arrives, and the two sit in one thread.
+                        OUTGOING_RETENTION_MINUTES,
+                        bytes));
     }
 
     private static byte[] toBytes(DataBuffer buffer) {

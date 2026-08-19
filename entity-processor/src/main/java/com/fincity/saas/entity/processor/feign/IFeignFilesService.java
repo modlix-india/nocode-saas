@@ -41,6 +41,8 @@ public interface IFeignFilesService {
             @RequestParam boolean override,
             @RequestParam String filePath,
             @RequestParam String fileName,
+            /* Minutes from this write after which the cleanup may remove it. Null means forever. */
+            @RequestParam(required = false) Integer expiresAfterMinutes,
             @RequestBody ByteBuffer file);
 
     /**

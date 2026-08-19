@@ -39,6 +39,7 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -94,6 +95,13 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
      * The column <code>files.files_file_system.SIZE</code>. Size of the file
      */
     public final TableField<FilesFileSystemRecord, ULong> SIZE = createField(DSL.name("SIZE"), SQLDataType.BIGINTUNSIGNED, this, "Size of the file");
+
+    /**
+     * The column <code>files.files_file_system.EXPIRES_AFTER_MINUTES</code>.
+     * Minutes after the last create/update this file may be deleted. NULL means
+     * keep forever.
+     */
+    public final TableField<FilesFileSystemRecord, UInteger> EXPIRES_AFTER_MINUTES = createField(DSL.name("EXPIRES_AFTER_MINUTES"), SQLDataType.INTEGERUNSIGNED, this, "Minutes after the last create/update this file may be deleted. NULL means keep forever.");
 
     /**
      * The column <code>files.files_file_system.PARENT_ID</code>. Parent ID of
@@ -194,7 +202,7 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_NAME, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID, Indexes.FILES_FILE_SYSTEM_PARENT_ID);
+        return Arrays.asList(Indexes.FILES_FILE_SYSTEM_IDX_FILES_FS_EXPIRY, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_NAME, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE, Indexes.FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID, Indexes.FILES_FILE_SYSTEM_PARENT_ID);
     }
 
     @Override
