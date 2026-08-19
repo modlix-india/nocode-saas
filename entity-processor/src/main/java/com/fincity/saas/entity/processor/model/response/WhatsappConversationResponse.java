@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.response;
 
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -46,6 +47,15 @@ public class WhatsappConversationResponse implements Serializable {
 
     private Integer unreadCount;
     private String lastMessagePreview;
+
+    /**
+     * The customer's WhatsApp avatar.
+     *
+     * <p>On the conversation rather than on each deal, because a conversation is a phone number and
+     * so is a profile picture. The deals behind it all carry the same value; lifting it here saves
+     * the client reaching into a list to find a face it is going to draw once.
+     */
+    private FileDetail profilePicFileDetail;
 
     /** The deals sharing this number, newest activity first. */
     @Data

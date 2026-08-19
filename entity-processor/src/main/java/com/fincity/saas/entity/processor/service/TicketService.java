@@ -82,6 +82,7 @@ import com.google.gson.Gson;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -1701,5 +1702,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
         return this.defaultSchemaRepositoryFor(Ticket.class, classSchema);
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar on every deal that shares their number.
+     *
+     * <p>No access check, and that is correct rather than an omission: the caller is the inbound
+     * handoff from the message service, which runs with no user at all. Nothing here is readable by
+     * a caller who could not already read the deal, and the write is confined to two columns that
+     * hold a picture.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+        return this.dao
+                .updateWhatsappProfilePicture(appCode, clientCode, phoneNumber, detail, pictureId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappProfilePicture"));
     }
 }

@@ -88,6 +88,26 @@ public class WhatsappInboundRequest implements Serializable {
     private Boolean mediaIsVoiceNote;
 
     /**
+     * Where the message's inline preview was stored, already a file by the time it reaches here.
+     *
+     * <p>Arrives on the message itself rather than on the later media handoff, because WhatsApp
+     * embeds it in the message: there is nothing to wait for.
+     */
+    private Map<String, Object> mediaThumbnailFileDetail;
+
+    private Integer mediaPageCount;
+
+    /**
+     * Where the customer's avatar was stored, on a PROFILE_PICTURE handoff.
+     *
+     * <p>Null with that event type means the customer removed their picture, which has to clear what
+     * is held rather than be treated as "nothing to do".
+     */
+    private Map<String, Object> profilePictureFileDetail;
+
+    private String profilePictureId;
+
+    /**
      * Why an attachment will never arrive - too large, or out of retries.
      *
      * <p>Carried so the bubble can say so. An attachment that failed and one that is still on its
@@ -108,6 +128,18 @@ public class WhatsappInboundRequest implements Serializable {
     @JsonIgnore
     public boolean isMediaReady() {
         return "MEDIA_READY".equalsIgnoreCase(this.eventType);
+    }
+
+    /**
+     * Whether this handoff is a customer's avatar rather than anything they said.
+     *
+     * <p>It has to be asked before the message paths run. This carries a synthetic message id so the
+     * outbox has an idempotency key, and left to fall through it would insert an empty bubble into
+     * the thread for every profile picture change.
+     */
+    @JsonIgnore
+    public boolean isProfilePicture() {
+        return "PROFILE_PICTURE".equalsIgnoreCase(this.eventType);
     }
 
     public boolean isStatusUpdate() {

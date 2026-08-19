@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.service.TicketAudienceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,13 @@ public class WhatsappInboundService {
         // A media handoff is a patch, never an insert. It carries only the attachment, so letting it
         // fall through to merge would blank the body and the status of the message it completes, and
         // letting it insert would put an empty bubble in the thread beside the real one.
+        // Before any of the message paths. A profile picture carries a synthetic message id so the
+        // outbox upstream has an idempotency key, and letting that reach the insert would put an
+        // empty bubble in the thread every time a customer changed their avatar.
+        if (request.isProfilePicture())
+            return this.applyProfilePicture(appCode, clientCode, request)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptProfilePicture"));
+
         // Announced like everything else. The attachment lands a moment after the bubble it belongs
         // to, so without this the picture is written and nobody is told: the thread shows an empty
         // frame until the agent reloads the page by hand, which is how this was found.
@@ -344,26 +352,84 @@ public class WhatsappInboundService {
 
         if (request.getMediaMimeType() != null) message.setMediaMimeType(request.getMediaMimeType());
         if (request.getMediaSize() != null) message.setMediaSize(request.getMediaSize());
+        if (request.getMediaPageCount() != null) message.setMediaPageCount(request.getMediaPageCount());
+
+        // The preview and the attachment are stored independently and arrive at different times, so
+        // each is applied on its own. Folding them together would mean a MEDIA_READY, which carries
+        // no preview, blanking the one that came with the message.
+        FileDetail thumbnail = toFileDetail(request.getMediaThumbnailFileDetail());
+        if (thumbnail != null) message.setMediaThumbnailFileDetail(thumbnail);
         if (request.getMediaDurationSeconds() != null)
             message.setMediaDurationSeconds(request.getMediaDurationSeconds());
         if (request.getMediaIsVoiceNote() != null) message.setMediaIsVoiceNote(request.getMediaIsVoiceNote());
         if (request.getReactionToMessageId() != null)
             message.setReactionToMessageId(request.getReactionToMessageId());
 
-        if (request.getMediaFileDetail() == null || request.getMediaFileDetail().isEmpty()) return;
+        FileDetail detail = toFileDetail(request.getMediaFileDetail());
+        if (detail != null) message.setMediaFileDetail(detail);
+    }
+
+    /**
+     * Puts a customer's avatar on every deal that shares their number.
+     *
+     * <p>Not on a message, because it is not one. The picture belongs to the person, so it goes on
+     * the records that stand for that person, and it goes on all of them: a customer holding several
+     * deals should not appear as several different people.
+     *
+     * <p>Returns empty. There is no message to hand back and nothing downstream expects one, which
+     * also keeps this off the announce path: an avatar changing is not worth waking every open
+     * browser for, and the next thread read picks it up.
+     */
+    private Mono<WhatsappMessage> applyProfilePicture(
+            String appCode, String clientCode, WhatsappInboundRequest request) {
+
+        String phone = request.getCustomerPhoneNumber() != null
+                ? request.getCustomerPhoneNumber()
+                : request.getCustomerWaId();
+
+        if (StringUtil.safeIsBlank(phone)) return Mono.empty();
+
+        // Null is the instruction to clear, which is what a customer removing their picture means.
+        FileDetail detail = toFileDetail(request.getProfilePictureFileDetail());
+
+        return this.ticketService
+                .updateWhatsappProfilePicture(
+                        appCode, clientCode, PhoneNumber.of(phone).getNumber(), detail, request.getProfilePictureId())
+                .doOnNext(updated -> {
+                    if (updated > 0)
+                        logger.debug("Stored a WhatsApp avatar against {} deal(s) on {}", updated, phone);
+                })
+                .onErrorResume(e -> {
+                    // A face is decoration. Losing one must not fail the handoff, because the bridge
+                    // would then retry the whole batch and hold real messages behind it.
+                    logger.warn("Could not store the WhatsApp avatar for {}", phone, e);
+                    return Mono.empty();
+                })
+                .then(Mono.empty());
+    }
+
+    /**
+     * Reads the files service's description of a stored file into our own shape.
+     *
+     * <p>Shared by the attachment and its preview, which are two files described identically and
+     * applied at different moments.
+     */
+    private static FileDetail toFileDetail(Map<String, Object> source) {
+
+        if (source == null || source.isEmpty()) return null;
 
         FileDetail detail = new FileDetail();
-        Object name = request.getMediaFileDetail().get("name");
-        Object url = request.getMediaFileDetail().get("url");
-        Object filePath = request.getMediaFileDetail().get("filePath");
-        Object size = request.getMediaFileDetail().get("size");
+        Object name = source.get("name");
+        Object url = source.get("url");
+        Object filePath = source.get("filePath");
+        Object size = source.get("size");
         if (name instanceof String s) detail.setName(s);
         if (url instanceof String s) detail.setUrl(s);
         // filePath is the real location and the only handle the retention sweep has once the keyed
         // URL on the response has replaced url. Dropping it would leave files nothing can delete.
         if (filePath instanceof String s) detail.setFilePath(s);
         if (size instanceof Number n) detail.setSize(n.longValue());
-        message.setMediaFileDetail(detail);
+        return detail;
     }
 
     private LocalDateTime occurredAt(WhatsappInboundRequest request) {

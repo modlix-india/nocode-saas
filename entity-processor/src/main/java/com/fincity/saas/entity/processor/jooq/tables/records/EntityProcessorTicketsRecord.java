@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -721,6 +722,46 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         return (String) get(36);
     }
 
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public EntityProcessorTicketsRecord setWhatsappProfilePicFileDetail(FileDetail value) {
+        set(37, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public FileDetail getWhatsappProfilePicFileDetail() {
+        return (FileDetail) get(37);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public EntityProcessorTicketsRecord setWhatsappProfilePicId(String value) {
+        set(38, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public String getWhatsappProfilePicId() {
+        return (String) get(38);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -744,7 +785,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean whatsappOptedOut, LocalDateTime whatsappOptedOutAt, String whatsappOptedOutText) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean whatsappOptedOut, LocalDateTime whatsappOptedOutAt, String whatsappOptedOutText, FileDetail whatsappProfilePicFileDetail, String whatsappProfilePicId) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -784,6 +825,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setWhatsappOptedOut(whatsappOptedOut);
         setWhatsappOptedOutAt(whatsappOptedOutAt);
         setWhatsappOptedOutText(whatsappOptedOutText);
+        setWhatsappProfilePicFileDetail(whatsappProfilePicFileDetail);
+        setWhatsappProfilePicId(whatsappProfilePicId);
         resetChangedOnNotNull();
     }
 }

@@ -19,6 +19,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.Entit
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages.EntityProcessorWhatsappMessagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -331,6 +332,21 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      */
     public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_OPTED_OUT_TEXT = createField(DSL.name("WHATSAPP_OPTED_OUT_TEXT"), SQLDataType.VARCHAR(512), this, "The message that triggered it, kept so a false positive can be recognised and reversed by a person.");
 
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public final TableField<EntityProcessorTicketsRecord, FileDetail> WHATSAPP_PROFILE_PIC_FILE_DETAIL = createField(DSL.name("WHATSAPP_PROFILE_PIC_FILE_DETAIL"), SQLDataType.JSON, this, "Stored WhatsApp avatar for this deal's phone number. Not subject to media retention.", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_PROFILE_PIC_ID = createField(DSL.name("WHATSAPP_PROFILE_PIC_ID"), SQLDataType.VARCHAR(255), this, "WhatsApp picture id, so an unchanged avatar is never re-fetched");
+
     private EntityProcessorTickets(Name alias, Table<EntityProcessorTicketsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -403,7 +419,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX9_TICKETS_APP_CLIENT_PHONE);
     }
 
     @Override

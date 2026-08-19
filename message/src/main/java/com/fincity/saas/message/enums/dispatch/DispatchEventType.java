@@ -36,7 +36,21 @@ public enum DispatchEventType {
      * patch rather than insert. That also makes it safe to redeliver and safe to arrive out of order
      * against a status update, since neither touches the other's fields.
      */
-    MEDIA_READY(DispatchChannel.WHATSAPP);
+    MEDIA_READY(DispatchChannel.WHATSAPP),
+
+    /**
+     * A customer's WhatsApp profile picture.
+     *
+     * <p>The one event here that belongs to a person rather than to a message, so it carries no
+     * message id and is keyed on the customer's number alone. The consumer applies it to whatever
+     * that number stands behind, which is more than one record: a customer can hold several deals
+     * and they should not show different faces.
+     *
+     * <p>Its stored file deliberately sits outside the conversation's media tree, because attachment
+     * retention must not reach it. An expired photo in a thread is honest history; a deal that
+     * silently loses its avatar after thirty days is a bug.
+     */
+    PROFILE_PICTURE(DispatchChannel.WHATSAPP);
 
     private final DispatchChannel channel;
 

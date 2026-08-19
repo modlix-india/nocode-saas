@@ -44,6 +44,7 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -305,6 +306,13 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_THUMBNAIL_FILE_DETAIL</code>.
+     * Stored inline preview of the attachment
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, FileDetail> MEDIA_THUMBNAIL_FILE_DETAIL = createField(DSL.name("MEDIA_THUMBNAIL_FILE_DETAIL"), SQLDataType.JSON, this, "Stored inline preview of the attachment", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_MIME_TYPE</code>.
      * As WhatsApp reported it, not as guessed from the extension. Decides which
      * player the UI mounts.
@@ -326,6 +334,13 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
      * loaded.
      */
     public final TableField<EntityProcessorWhatsappMessagesRecord, Integer> MEDIA_DURATION_SECONDS = createField(DSL.name("MEDIA_DURATION_SECONDS"), SQLDataType.INTEGER, this, "Audio and video only. Lets the UI show a length before the media has loaded.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_PAGE_COUNT</code>.
+     * Page count, documents only
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, UInteger> MEDIA_PAGE_COUNT = createField(DSL.name("MEDIA_PAGE_COUNT"), SQLDataType.INTEGERUNSIGNED, this, "Page count, documents only");
 
     /**
      * The column

@@ -18,6 +18,7 @@ import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappThreadWindow;
 import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -25,8 +26,10 @@ import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,20 +97,115 @@ public class TicketWhatsappConversationService {
      * second gate here would only add a way for the feature to be silently dead wherever the role
      * was never provisioned.
      */
-    public Mono<Page<WhatsappMessage>> readTicketThread(
-            Identity ticketId, String search, Pageable pageable) {
+    public Mono<WhatsappThreadWindow> readTicketThread(
+            Identity ticketId, String search, String before, String after, Pageable pageable) {
 
         return FlatMapUtil.flatMapMono(
                         this.ticketService::hasAccess,
                         // The gate. Everything after this is scoped by what it returns.
                         access -> this.ticketService.readByIdentity(access, ticketId),
                         (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
-                        (access, ticket, ticketIds) -> this.whatsappMessageDAO
-                                .readThread(
-                                        access.getAppCode(), access.getClientCode(), ticketIds, search, pageable)
-                                .map(TicketWhatsappConversationService::foldReactions))
+                        (access, ticket, ticketIds) -> this.window(access, ticketIds, search, before, after, pageable))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.readTicketThread"));
+    }
+
+    /**
+     * Reads one window, by cursor when given one and by page number otherwise.
+     *
+     * <p>The two paths exist because two screens read this. The inbox walks by cursor, which is the
+     * only thing that stays correct while messages are arriving; the deal profile still pages by
+     * number and must keep seeing what it always saw.
+     */
+    private Mono<WhatsappThreadWindow> window(
+            ProcessorAccess access, List<ULong> ticketIds, String search, String before, String after,
+            Pageable pageable) {
+
+        boolean byCursor = !StringUtil.safeIsBlank(before) || !StringUtil.safeIsBlank(after);
+
+        if (!byCursor && pageable.getPageNumber() > 0)
+            // A numbered page beyond the first can only come from the older caller, so answer it the
+            // way it expects rather than reinterpreting it as a cursor read.
+            return this.whatsappMessageDAO
+                    .readThread(access.getAppCode(), access.getClientCode(), ticketIds, search, pageable)
+                    .map(page -> toWindow(new ArrayList<>(page.getContent()), page.getTotalElements(), false));
+
+        int size = pageable.getPageSize();
+
+        // One more than asked for, purely to learn whether anything is behind it. Counting instead
+        // would be a second query whose answer is already stale by the time it is compared against
+        // what is on screen.
+        return this.whatsappMessageDAO
+                .readThreadWindow(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        ticketIds,
+                        search,
+                        size + 1,
+                        cursorOf(before),
+                        cursorOf(after))
+                .map(rows -> {
+                    boolean hasMore = rows.size() > size;
+                    List<WhatsappMessage> content = new ArrayList<>(hasMore ? rows.subList(0, size) : rows);
+                    // Total is only meaningful to the numbered-page caller, and this branch is not
+                    // it. Left at the window's own size rather than a fabricated figure.
+                    return toWindow(content, content.size(), hasMore);
+                });
+    }
+
+    private static WhatsappThreadWindow toWindow(List<WhatsappMessage> content, long total, boolean hasMore) {
+
+        foldReactions(content);
+
+        WhatsappThreadWindow window = new WhatsappThreadWindow()
+                .setContent(content)
+                .setTotalElements(total)
+                .setHasMore(hasMore);
+
+        if (content.isEmpty()) return window;
+
+        // Taken from the rows actually returned, at each end, so a caller can walk in either
+        // direction from exactly where it stopped.
+        return window.setNewerCursor(cursorFor(content.get(0)))
+                .setOlderCursor(cursorFor(content.get(content.size() - 1)));
+    }
+
+    /**
+     * The sort position of one message, as an opaque string.
+     *
+     * <p>Both halves matter: the timestamp is a coalesce of two columns and is not unique, so a
+     * cursor without the id loses every row that ties across a window boundary.
+     */
+    private static String cursorFor(WhatsappMessage message) {
+
+        LocalDateTime at = message.getSentTime() != null ? message.getSentTime() : message.getCreatedAt();
+        if (at == null || message.getId() == null) return null;
+
+        return at.toInstant(ZoneOffset.UTC).toEpochMilli() + "_" + message.getId();
+    }
+
+    /**
+     * Reads a cursor back, or answers null.
+     *
+     * <p>Null on anything unparseable rather than an error. A cursor is a position, and the worst a
+     * bad one should do is start the reader at the newest message again.
+     */
+    private static WhatsappMessageDAO.ThreadCursor cursorOf(String raw) {
+
+        if (StringUtil.safeIsBlank(raw)) return null;
+
+        int split = raw.indexOf('_');
+        if (split <= 0 || split == raw.length() - 1) return null;
+
+        try {
+            long millis = Long.parseLong(raw.substring(0, split));
+            ULong id = ULong.valueOf(raw.substring(split + 1));
+            return new WhatsappMessageDAO.ThreadCursor(
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC), id);
+        } catch (NumberFormatException e) {
+            logger.warn("Ignoring an unreadable thread cursor: {}", raw);
+            return null;
+        }
     }
 
     /**
@@ -128,10 +226,9 @@ public class TicketWhatsappConversationService {
      * to attach and is simply not shown, which is the same as today's behaviour and self-corrects as
      * soon as the reader scrolls far enough back to load the message it belongs to.
      */
-    private static Page<WhatsappMessage> foldReactions(Page<WhatsappMessage> page) {
+    private static void foldReactions(List<WhatsappMessage> content) {
 
-        List<WhatsappMessage> content = page.getContent();
-        if (content.isEmpty()) return page;
+        if (content.isEmpty()) return;
 
         Map<String, WhatsappMessage> byMessageId = new HashMap<>();
         for (WhatsappMessage message : content)
@@ -157,8 +254,6 @@ public class TicketWhatsappConversationService {
             if (existing == null) target.setReactionEmoji(emoji);
             else if (!existing.contains(emoji)) target.setReactionEmoji(existing + emoji);
         }
-
-        return page;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.fincity.saas.message.service.bridge;
 
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.dispatch.DispatchEventType;
@@ -8,12 +9,19 @@ import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.request.bridge.BridgeEvent;
 import com.fincity.saas.message.model.request.bridge.BridgeEventsRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappInboundDispatch;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.service.dispatch.EventDispatcher;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -42,8 +50,11 @@ public class BridgeEventIngestService {
 
     private final WhatsappPhoneNumberDAO sessionDao;
     private final EventDispatcher eventDispatcher;
+    private final BridgeMediaService mediaService;
 
-    public BridgeEventIngestService(WhatsappPhoneNumberDAO sessionDao, EventDispatcher eventDispatcher) {
+    public BridgeEventIngestService(
+            WhatsappPhoneNumberDAO sessionDao, EventDispatcher eventDispatcher, BridgeMediaService mediaService) {
+        this.mediaService = mediaService;
         this.sessionDao = sessionDao;
         this.eventDispatcher = eventDispatcher;
     }
@@ -119,6 +130,9 @@ public class BridgeEventIngestService {
         DispatchEventType eventType =
                 event.getEventType() == null ? DispatchEventType.INBOUND_MESSAGE : event.getEventType();
 
+        if (eventType == DispatchEventType.PROFILE_PICTURE)
+            return this.dispatchProfilePicture(access, event, session, eventType);
+
         WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
                 .setMetaMessageId(event.getMessageId())
                 .setEventType(eventType.name())
@@ -153,11 +167,127 @@ public class BridgeEventIngestService {
                 .setMediaSize(event.getMediaSize())
                 .setMediaDurationSeconds(event.getMediaDurationSeconds())
                 .setMediaIsVoiceNote(event.getMediaIsVoiceNote())
+                .setMediaPageCount(event.getMediaPageCount())
                 .setMediaError(event.getMediaError())
                 .setReactionToMessageId(event.getReactionToMessageId());
 
-        return this.eventDispatcher.enqueueAndDispatch(
-                access, session.getOwnerService(), eventType, event.getMessageId(), dispatch);
+        return this.storeThumbnail(event)
+                .doOnNext(dispatch::setMediaThumbnailFileDetail)
+                .then(Mono.defer(() -> this.eventDispatcher.enqueueAndDispatch(
+                        access, session.getOwnerService(), eventType, event.getMessageId(), dispatch)));
+    }
+
+    /**
+     * Stores a customer's avatar and passes on where it went.
+     *
+     * <p>Its own path because a profile picture is not a message. It has no body, no direction and
+     * no place in a thread; what it has is a customer number, and the consumer applies it to
+     * whatever that number stands behind.
+     *
+     * <p>An empty picture is meaningful and is passed through as such: the customer removed theirs,
+     * and whatever is held for them has to be cleared rather than left showing a face they have
+     * deliberately taken down.
+     */
+    private Mono<Void> dispatchProfilePicture(
+            MessageAccess access, BridgeEvent event, WhatsappPhoneNumber session, DispatchEventType eventType) {
+
+        Mono<Map<String, Object>> stored = StringUtil.safeIsBlank(event.getProfilePicture())
+                ? Mono.empty()
+                : this.storeAvatar(event);
+
+        return stored.map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(detail -> {
+                    WhatsappInboundDispatch dispatch = new WhatsappInboundDispatch()
+                            .setMetaMessageId(event.getMessageId())
+                            .setEventType(eventType.name())
+                            .setProductId(
+                                    session.getProductId() == null ? null : session.getProductId().toBigInteger())
+                            .setWhatsappPhoneNumber(session.getDisplayPhoneNumber())
+                            .setCustomerWaId(event.getCustomerWaId())
+                            .setCustomerPhoneNumber(event.getCustomerPhoneNumber())
+                            .setBridgeSessionId(session.getCode())
+                            .setProfilePictureId(event.getProfilePictureId())
+                            .setProfilePictureFileDetail(detail.orElse(null))
+                            .setOccurredAt(toUtc(event.getOccurredAt()));
+
+                    return this.eventDispatcher.enqueueAndDispatch(
+                            access, session.getOwnerService(), eventType, event.getMessageId(), dispatch);
+                });
+    }
+
+    private Mono<Map<String, Object>> storeAvatar(BridgeEvent event) {
+
+        byte[] bytes;
+        try {
+            bytes = Base64.getDecoder().decode(event.getProfilePicture());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Ignoring an unreadable profile picture for {}", event.getCustomerWaId(), e);
+            return Mono.empty();
+        }
+
+        if (bytes.length == 0) return Mono.empty();
+
+        return this.mediaService
+                .storeAvatar(event.getSessionId(), event.getCustomerWaId(), ByteBuffer.wrap(bytes))
+                .map(BridgeEventIngestService::asMap)
+                .onErrorResume(e -> {
+                    logger.warn("Could not store the profile picture for {}", event.getCustomerWaId(), e);
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Turns the inline preview the bridge sent into a stored file.
+     *
+     * <p>Done here rather than downstream because this service already owns every file this feature
+     * writes, and because the bytes should stop being bytes as early as possible: carried any
+     * further they would end up on a row, and from there into every thread refetch.
+     *
+     * <p>Empty when there is nothing to store, and empty again if storing fails. A preview is a
+     * convenience on top of an attachment that is still coming, so losing one must never cost the
+     * message it belongs to - which is exactly what returning an error here would do, since the
+     * bridge would then retry the whole event.
+     */
+    private Mono<Map<String, Object>> storeThumbnail(BridgeEvent event) {
+
+        if (StringUtil.safeIsBlank(event.getMediaThumbnail())) return Mono.empty();
+
+        byte[] bytes;
+        try {
+            bytes = Base64.getDecoder().decode(event.getMediaThumbnail());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Ignoring an unreadable thumbnail on message {}", event.getMessageId(), e);
+            return Mono.empty();
+        }
+
+        if (bytes.length == 0) return Mono.empty();
+
+        return this.mediaService
+                .store(
+                        event.getSessionId(),
+                        // Suffixed so the preview cannot collide with the attachment it previews:
+                        // both are named after the message and land in the same directory.
+                        event.getMessageId() + "-thumb",
+                        event.getCustomerWaId(),
+                        MediaType.IMAGE_JPEG_VALUE,
+                        null,
+                        Boolean.TRUE.equals(event.getOutbound()),
+                        ByteBuffer.wrap(bytes))
+                .map(BridgeEventIngestService::asMap)
+                .onErrorResume(e -> {
+                    logger.warn("Could not store the preview for message {}", event.getMessageId(), e);
+                    return Mono.empty();
+                });
+    }
+
+    private static Map<String, Object> asMap(FileDetail detail) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        if (detail.getName() != null) map.put("name", detail.getName());
+        if (detail.getUrl() != null) map.put("url", detail.getUrl());
+        if (detail.getFilePath() != null) map.put("filePath", detail.getFilePath());
+        if (detail.getSize() != null) map.put("size", detail.getSize());
+        return map;
     }
 
     /**

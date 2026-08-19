@@ -100,6 +100,21 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private Map<String, Object> message;
     private FileDetail mediaFileDetail;
+
+    /**
+     * The small preview WhatsApp embedded in the message, once stored.
+     *
+     * <p>A separate file from {@link #mediaFileDetail} rather than a variant of it, because the two
+     * arrive at different times and are used in different places. This one comes with the message
+     * and is what the thread draws; the full attachment follows later and is only fetched when
+     * somebody opens it.
+     *
+     * <p>For a document this is WhatsApp's render of the first page, which is the only real preview
+     * available: nothing on our side can rasterise a PDF, and asking the browser to do it means
+     * downloading the whole file to look at one page of it.
+     */
+    private FileDetail mediaThumbnailFileDetail;
+
     private Map<String, Object> inMessage;
     private Map<String, Object> messageResponse;
 
@@ -116,6 +131,10 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private Long mediaSize;
     private Integer mediaDurationSeconds;
+
+    /** Documents only. Says how much is behind the first page the preview shows. */
+    private Integer mediaPageCount;
+
     private boolean mediaIsVoiceNote;
 
     /**
@@ -192,6 +211,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.mediaMimeType = other.mediaMimeType;
         this.mediaSize = other.mediaSize;
         this.mediaDurationSeconds = other.mediaDurationSeconds;
+        this.mediaThumbnailFileDetail = other.mediaThumbnailFileDetail;
+        this.mediaPageCount = other.mediaPageCount;
         this.mediaIsVoiceNote = other.mediaIsVoiceNote;
         this.mediaExpiredAt = other.mediaExpiredAt;
         this.reactionToMessageId = other.reactionToMessageId;

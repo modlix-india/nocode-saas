@@ -66,8 +66,25 @@ public class WhatsappInboundDispatch implements Serializable {
     private Long mediaSize;
     private Integer mediaDurationSeconds;
     private Boolean mediaIsVoiceNote;
+
+    /**
+     * Where the inline preview was stored, once uploaded. Not the base64 the bridge sent: that is
+     * turned into a file on this hop, so the row downstream carries a URL rather than bytes.
+     */
+    private Map<String, Object> mediaThumbnailFileDetail;
+
+    private Integer mediaPageCount;
     private String mediaError;
     private String reactionToMessageId;
+
+    /**
+     * Where the customer's avatar was stored, on a PROFILE_PICTURE dispatch. Null means they removed
+     * it and whatever is held should be cleared.
+     */
+    private Map<String, Object> profilePictureFileDetail;
+
+    /** WhatsApp's id for that image, so the next fetch can be answered with "unchanged". */
+    private String profilePictureId;
 
     /**
      * Which linked number this belongs to.

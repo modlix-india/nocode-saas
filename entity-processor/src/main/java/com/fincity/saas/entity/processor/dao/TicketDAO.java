@@ -49,6 +49,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+import com.fincity.saas.commons.util.StringUtil;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -831,6 +833,16 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 .map(WhatsappConversationResponse.Deal::of)
                                 .toList());
                         if (!deals.isEmpty()) conversation.setPrimaryTicketId(deals.getFirst().getId());
+
+                        // The first deal that actually has one, rather than the first deal's value.
+                        // Every deal on a number is written the same avatar, but a deal created
+                        // before the customer's first message has never been written at all, and
+                        // taking the primary blindly would show a blank circle next to a face.
+                        deals.stream()
+                                .map(Ticket::getWhatsappProfilePicFileDetail)
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .ifPresent(conversation::setProfilePicFileDetail);
                     });
 
                     return conversations;
@@ -839,5 +851,33 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
 
     private String conversationKey(Integer dialCode, String phoneNumber) {
         return dialCode + "|" + phoneNumber;
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar against every deal on their number.
+     *
+     * <p>Every deal, not just the one that happened to receive the message. A customer can hold
+     * several, the conversation is already a union across them, and writing the picture to one would
+     * show the same person with a face on one deal and a blank circle on the next.
+     *
+     * <p>Matched on the plain phone number within the tenant, which is how the rest of this service
+     * identifies a customer, and covered by IDX9 added alongside these columns.
+     *
+     * <p>A null detail is a real instruction rather than a no-op: the customer removed their picture
+     * and what is held must be cleared.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+
+        if (StringUtil.safeIsBlank(phoneNumber)) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(ENTITY_PROCESSOR_TICKETS)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_FILE_DETAIL, detail)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_ID, pictureId)
+                .where(ENTITY_PROCESSOR_TICKETS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_TICKETS.CLIENT_CODE.eq(clientCode))
+                .and(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER.eq(phoneNumber)))
+                .defaultIfEmpty(0);
     }
 }

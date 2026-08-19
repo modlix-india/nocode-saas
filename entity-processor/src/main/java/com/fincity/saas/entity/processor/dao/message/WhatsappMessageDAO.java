@@ -77,6 +77,78 @@ public class WhatsappMessageDAO
     }
 
     /**
+     * One window of a thread, addressed by where the reader already is rather than by page number.
+     *
+     * <p>Offset paging is wrong for a live conversation and wrong in a way that only shows up in
+     * use. Every arriving message shifts every row down by one, so "give me the next twenty older"
+     * asked as an offset returns twenty rows measured against a list that has since moved: the
+     * reader sees a message twice, or never sees one at all. The bug is invisible on a quiet thread
+     * and constant on a busy one, which is the worst combination to debug.
+     *
+     * <p>The cursor is the pair {@code (orderKey, id)}, not the timestamp alone. {@code orderKey} is
+     * a coalesce of two DATETIME columns and is emphatically not unique - a message and its own
+     * status update routinely land in the same second, and a bulk send lands dozens together. Paging
+     * on a non-unique key silently drops whichever rows tie across the boundary.
+     *
+     * @param before rows strictly older than this cursor. What "load more" sends.
+     * @param after rows strictly newer than this cursor. What a live update sends, so an arriving
+     *     message costs one small query instead of refetching everything on screen.
+     */
+    public Mono<List<WhatsappMessage>> readThreadWindow(
+            String appCode,
+            String clientCode,
+            List<ULong> ticketIds,
+            String search,
+            int size,
+            ThreadCursor before,
+            ThreadCursor after) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.just(List.of());
+
+        Condition where = tenant(appCode, clientCode)
+                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                .and(this.isActiveTrue());
+
+        if (search != null && !search.isBlank()) where = where.and(bodyMatches(search));
+
+        if (before != null) where = where.and(olderThan(before));
+        if (after != null) where = where.and(newerThan(after));
+
+        return Flux.from(this.dslContext
+                        .selectFrom(this.table)
+                        // Newest first in both directions. An "after" window read ascending would
+                        // return the OLDEST of the new messages when there are more than fit, which
+                        // is the half a reader has least use for.
+                        .where(where)
+                        .orderBy(orderKey().desc(), ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.desc())
+                        .limit(size))
+                .map(rec -> rec.into(this.pojoClass))
+                .collectList();
+    }
+
+    /** Strictly older, with the id breaking ties on a timestamp shared by several rows. */
+    private Condition olderThan(ThreadCursor cursor) {
+        return orderKey()
+                .lt(cursor.at())
+                .or(orderKey().eq(cursor.at()).and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.lt(cursor.id())));
+    }
+
+    /** Strictly newer, mirroring {@link #olderThan} so the two windows cannot overlap or gap. */
+    private Condition newerThan(ThreadCursor cursor) {
+        return orderKey()
+                .gt(cursor.at())
+                .or(orderKey().eq(cursor.at()).and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.gt(cursor.id())));
+    }
+
+    /**
+     * A reader's position in a thread.
+     *
+     * <p>Both halves are needed. See {@link #readThreadWindow} for why the timestamp alone loses
+     * rows.
+     */
+    public record ThreadCursor(LocalDateTime at, ULong id) {}
+
+    /**
      * Latest message and unread count per deal, for the page of conversations on screen.
      *
      * <p>Deliberately not denormalised onto the ticket: a read receipt would change the count on

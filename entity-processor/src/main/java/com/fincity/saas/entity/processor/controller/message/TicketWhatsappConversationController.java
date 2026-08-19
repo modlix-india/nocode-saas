@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
 import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappThreadWindow;
 import com.fincity.saas.entity.processor.service.message.TicketWhatsappConversationService;
 import java.util.Map;
 import org.jooq.types.ULong;
@@ -47,14 +48,24 @@ public class TicketWhatsappConversationController {
      *
      * @param search optional, matches message content
      */
+    /**
+     * One window of the thread.
+     *
+     * <p>Two ways in, on purpose. {@code before}/{@code after} walk the conversation by cursor,
+     * which is what the inbox uses; {@code page}/{@code size} still work for callers that page by
+     * number, and behave exactly as before. A caller that sends neither cursor gets the newest
+     * {@code size} messages, which is what both want on first load.
+     */
     @GetMapping("/{ticketId}/messages")
-    public Mono<ResponseEntity<Page<WhatsappMessage>>> readTicketThread(
+    public Mono<ResponseEntity<WhatsappThreadWindow>> readTicketThread(
             @PathVariable("ticketId") Identity ticketId,
             @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "before", required = false) String before,
+            @RequestParam(value = "after", required = false) String after,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         return this.service
-                .readTicketThread(ticketId, search, PageRequest.of(page, size))
+                .readTicketThread(ticketId, search, before, after, PageRequest.of(page, size))
                 .map(ResponseEntity::ok);
     }
 

@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFie
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
@@ -95,6 +96,21 @@ public class Ticket extends BaseProcessorDto<Ticket> {
      */
     private String whatsappOptedOutText;
 
+    /**
+     * The customer's WhatsApp avatar.
+     *
+     * <p>On the deal rather than on a message, because it belongs to whoever is on the other end of
+     * the number and not to anything they said. Written to every deal sharing that number, so a
+     * customer holding several does not appear as several different people.
+     *
+     * <p>Outside attachment retention, deliberately. Media in a thread expires after thirty days and
+     * says so; an avatar vanishing on the same schedule would just look broken.
+     */
+    private FileDetail whatsappProfilePicFileDetail;
+
+    /** WhatsApp's id for that image, so an unchanged picture is never fetched twice. */
+    private String whatsappProfilePicId;
+
     @JsonIgnore
     private transient RuleResult assignmentRuleResult;
 
@@ -143,6 +159,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.whatsappOptedOut = ticket.whatsappOptedOut;
         this.whatsappOptedOutAt = ticket.whatsappOptedOutAt;
         this.whatsappOptedOutText = ticket.whatsappOptedOutText;
+        this.whatsappProfilePicFileDetail = ticket.whatsappProfilePicFileDetail;
+        this.whatsappProfilePicId = ticket.whatsappProfilePicId;
         this.assignmentRuleResult = ticket.assignmentRuleResult;
         this.evaluationTrace = ticket.evaluationTrace;
     }

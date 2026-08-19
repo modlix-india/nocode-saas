@@ -80,6 +80,42 @@ public class BridgeMediaService {
     }
 
     /**
+     * Stores a customer's profile picture.
+     *
+     * <p>Kept out of the conversation's media tree on purpose, under {@code /whatsapp/{app}/avatars}
+     * rather than under {@code incoming}. Attachment retention sweeps that tree, and an avatar must
+     * not be swept: a photo expiring out of a thread is honest history, whereas a deal quietly
+     * losing its face after thirty days is a bug that would look like a rendering fault.
+     *
+     * <p>Named after the customer's number rather than the event, and overwritten in place, so one
+     * file serves every deal that number stands behind and changing a picture does not accumulate
+     * copies of every face a person has ever had.
+     */
+    public Mono<FileDetail> storeAvatar(String sessionId, String customerWaId, ByteBuffer body) {
+
+        if (StringUtil.safeIsBlank(sessionId) || StringUtil.safeIsBlank(customerWaId))
+            return Mono.error(new IllegalArgumentException("sessionId and customerWaId are both required"));
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.sessionDao.getBySessionIdInternal(sessionId),
+                        session -> this.fileService.create(
+                                RESOURCE_TYPE,
+                                session.getClientCode(),
+                                // Overwrite. The alternative is a new file per change plus something
+                                // to delete the old ones, for no benefit: nobody wants a customer's
+                                // previous profile pictures.
+                                Boolean.TRUE,
+                                "/whatsapp/" + sanitise(session.getAppCode()) + "/avatars",
+                                sanitise(customerWaId) + ".jpg",
+                                body))
+                .switchIfEmpty(Mono.defer(() -> {
+                    logger.error("Bridge sent an avatar for unknown session {}. Dropping it.", sessionId);
+                    return Mono.empty();
+                }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeMediaService.storeAvatar"));
+    }
+
+    /**
      * Reads back an attachment the agent is sending out.
      *
      * <p>No token, and that is deliberate. A token would be a second credential layered on a caller

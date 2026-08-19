@@ -95,6 +95,23 @@ public class BridgeEvent implements Serializable {
     private Boolean mediaIsVoiceNote;
 
     /**
+     * The small JPEG WhatsApp embeds in the message itself, base64 encoded.
+     *
+     * <p>Arrives with the message rather than after it, because these bytes were already inside the
+     * message: no download stands between a customer sending a photo and the reader seeing what it
+     * is. For a PDF it is WhatsApp's own render of the first page, which nothing on our side can
+     * produce.
+     *
+     * <p>Stored as a file rather than kept on the row. The thread refetches its whole loaded window
+     * on every event, so an inline copy would be re-sent on each of those; a URL is fetched once and
+     * then served from browser cache.
+     */
+    private String mediaThumbnail;
+
+    /** DocumentMessage.PageCount, so a reader can tell a one-page letter from a long contract. */
+    private Integer mediaPageCount;
+
+    /**
      * Why an attachment will never arrive - too large, or out of retries. Set instead of the file
      * details, so a bubble can say so rather than showing an empty frame indefinitely.
      */
@@ -105,4 +122,15 @@ public class BridgeEvent implements Serializable {
      * the reaction's own id with nothing saying what it was aimed at.
      */
     private String reactionToMessageId;
+
+    /**
+     * The customer's WhatsApp avatar, base64 encoded, on a PROFILE_PICTURE event.
+     *
+     * <p>Blank is meaningful: the customer removed their picture, and whatever is held has to be
+     * cleared rather than left showing a face they took down deliberately.
+     */
+    private String profilePicture;
+
+    /** WhatsApp's id for that image, so a later fetch can be told we already have it. */
+    private String profilePictureId;
 }
