@@ -152,6 +152,21 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(15), this, "Phone number related to this owner.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_DIAL_CODE</code>.
+     * Calling code for WHATSAPP_NUMBER. Null when the deal has no separate
+     * WhatsApp number.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Short> WHATSAPP_DIAL_CODE = createField(DSL.name("WHATSAPP_DIAL_CODE"), SQLDataType.SMALLINT, this, "Calling code for WHATSAPP_NUMBER. Null when the deal has no separate WhatsApp number.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_NUMBER</code>.
+     * The number this deal is messaged on. Null means use PHONE_NUMBER.
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_NUMBER = createField(DSL.name("WHATSAPP_NUMBER"), SQLDataType.CHAR(15), this, "The number this deal is messaged on. Null means use PHONE_NUMBER.");
+
+    /**
      * The column <code>entity_processor.entity_processor_tickets.EMAIL</code>.
      * Email related to this ticket.
      */
@@ -419,7 +434,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX9_TICKETS_APP_CLIENT_PHONE);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX10_TICKETS_APP_CLIENT_WHATSAPP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX9_TICKETS_APP_CLIENT_PHONE);
     }
 
     @Override

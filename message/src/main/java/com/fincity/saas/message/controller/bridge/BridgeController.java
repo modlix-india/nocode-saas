@@ -214,13 +214,16 @@ public class BridgeController {
             @PathVariable String instanceId,
             @RequestParam String sessionId,
             @RequestParam String filePath,
+            // Which storage tree to read. Absent means secured, so a bridge that predates library
+            // sends keeps fetching conversation attachments exactly as before.
+            @RequestParam(required = false) String resourceType,
             @RequestHeader HttpHeaders headers) {
 
         if (!this.signatureService.isTrusted(headers, new byte[0]))
             return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
 
         return this.mediaService
-                .fetch(sessionId, filePath)
+                .fetch(sessionId, filePath, resourceType)
                 .map(ResponseEntity::ok)
                 // Refused or missing, already logged with which path and which client. Not found
                 // rather than forbidden: the bridge cannot act on the difference, and saying which

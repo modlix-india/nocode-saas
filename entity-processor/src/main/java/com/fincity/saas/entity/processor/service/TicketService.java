@@ -66,6 +66,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -1409,6 +1410,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     /**
+     * The same, for a WhatsApp thread, which matches either number a deal can be messaged on. See
+     * {@link com.fincity.saas.entity.processor.dao.TicketDAO#readAccessibleTicketIdsByWhatsappNumber}.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByWhatsappNumber(
+            ProcessorAccess access, String number, ULong productId) {
+        return this.dao.readAccessibleTicketIdsByWhatsappNumber(access, number, productId);
+    }
+
+    /**
      * The WhatsApp inbox. See {@link
      * com.fincity.saas.entity.processor.dao.TicketDAO#readConversations}.
      */
@@ -1590,6 +1600,48 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    /**
+     * Records the number this deal is messaged on.
+     *
+     * <p>Its own operation rather than part of the general ticket update, which replaces only the
+     * handful of fields it names and would either ignore this one or clear it on every save from a
+     * client that has not been taught about it.
+     *
+     * <p>A null or blank number clears the override and puts the deal back on its phone number.
+     * Logged as a field update either way, because this value comes from a phone call rather than
+     * from the lead's own submission, and when messages later go nowhere the first useful question is
+     * who typed it and when.
+     */
+    public Mono<Ticket> updateWhatsappNumber(Identity ticketId, TicketWhatsappNumberRequest request) {
+
+        if (request == null) return this.identityMissingError(Ticket.Fields.whatsappNumber);
+
+        PhoneNumber number = request.getWhatsappNumber();
+        boolean clearing = number == null || StringUtil.safeIsBlank(number.getNumber());
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> {
+                            String old = ticket.getWhatsappNumber();
+
+                            ticket.setWhatsappNumber(clearing ? null : number.getNumber());
+                            ticket.setWhatsappDialCode(clearing ? null : number.getCountryCode());
+
+                            return this.update(access, ticket).flatMap(updated -> this.activityService
+                                    .acFieldUpdate(
+                                            updated.getId(),
+                                            request.getComment(),
+                                            Ticket.Fields.whatsappNumber + ": "
+                                                    + (old == null ? "-" : old) + " -> "
+                                                    + (updated.getWhatsappNumber() == null
+                                                            ? "-"
+                                                            : updated.getWhatsappNumber()))
+                                    .thenReturn(updated));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappNumber"));
     }
 
     public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {

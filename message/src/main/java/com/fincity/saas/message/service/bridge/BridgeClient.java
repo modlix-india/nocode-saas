@@ -139,12 +139,17 @@ public class BridgeClient {
             String mimeType,
             String fileName,
             String caption,
-            boolean voiceNote) {
+            boolean voiceNote,
+            String resourceType) {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("to", to);
         // The bridge fetches by (sessionId, filePath); the session is already in the URL.
         body.put("mediaToken", filePath);
+        // Only for a library asset. Left out otherwise so the request stays byte-identical to what
+        // a bridge running the previous image expects, and that bridge defaults to secured.
+        if (resourceType != null && !resourceType.isBlank() && !"secured".equals(resourceType))
+            body.put("resourceType", resourceType);
         body.put("kind", kind == null ? "" : kind);
         body.put("mimeType", mimeType == null ? "" : mimeType);
         body.put("fileName", fileName == null ? "" : fileName);

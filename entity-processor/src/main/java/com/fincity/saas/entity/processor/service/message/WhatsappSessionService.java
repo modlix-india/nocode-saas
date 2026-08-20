@@ -216,7 +216,27 @@ public class WhatsappSessionService {
      * it and indistinguishable from a number that really is in that zone.
      */
     private static List<ZoneId> zonesOf(Ticket lead) {
-        return lead == null ? List.of() : PhoneUtil.zonesOf(lead.getDialCode(), lead.getPhoneNumber());
+        // The number we are about to message, not the one on file. Quiet hours are about where the
+        // handset that will buzz actually is, and a lead whose WhatsApp number is in another country
+        // would otherwise be paced against the wrong midnight.
+        return lead == null
+                ? List.of()
+                : PhoneUtil.zonesOf(lead.whatsappOrPhoneDialCode(), lead.whatsappOrPhoneNumber());
+    }
+
+    /**
+     * Where a message to this deal is addressed.
+     *
+     * <p>The single place the fallback is applied on the send path. Empty string rather than null
+     * because the bridge request body is a map that is serialised as-is, and a null {@code to} fails
+     * further away from here than it should.
+     */
+    /** The tenant's public asset tree, where product brochures and price lists live. */
+    static final String STATIC_RESOURCE = "static";
+
+    private static String destinationOf(Ticket ticket) {
+        String number = ticket == null ? null : ticket.whatsappOrPhoneNumber();
+        return number == null ? "" : number;
     }
 
     /** Session health for a deal, or for the tenant when no deal is in view. */
@@ -468,6 +488,13 @@ public class WhatsappSessionService {
             String caption,
             boolean voiceNote,
             String declaredMimeType,
+            /*
+             * Which storage tree the bridge should read this from. "secured" for something an agent
+             * uploaded, "static" for a product asset the tenant already holds. Carried rather than
+             * inferred from the path, because the two trees can hold the same-looking path and
+             * guessing wrong means the bridge fetches nothing and the send fails at the last hop.
+             */
+            String resourceType,
             ULong userId) {
 
         String sessionId = string(session, KEY_ID);
@@ -479,9 +506,14 @@ public class WhatsappSessionService {
 
         WhatsappMessageType type = typeFor(kind, mimeType);
 
+        String to = destinationOf(ticket);
+
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("to", ticket.getPhoneNumber() == null ? "" : ticket.getPhoneNumber());
+        body.put("to", to);
         body.put("filePath", asset.getFilePath());
+        // Omitted when secured, so a bridge that predates library sends sees exactly the body it
+        // has always seen and keeps defaulting to the conversation tree.
+        if (STATIC_RESOURCE.equals(resourceType)) body.put("resourceType", STATIC_RESOURCE);
         // The resolved kind, not the caller's. The bridge picks which WhatsApp message shape to
         // build from this, so sending it the raw value would have the handset receive a photo as a
         // file attachment whenever the caller said nothing.
@@ -499,7 +531,7 @@ public class WhatsappSessionService {
                                 access.getAppCode(),
                                 access.getClientCode(),
                                 session,
-                                ticket.getPhoneNumber(),
+                                to,
                                 caption,
                                 response,
                                 type,
@@ -622,9 +654,9 @@ public class WhatsappSessionService {
         if (sessionId == null || text == null || text.isBlank())
             return Mono.error(new IllegalArgumentException("A session and message text are both required."));
 
-        Map<String, Object> body = Map.of(
-                "to", ticket.getPhoneNumber() == null ? "" : ticket.getPhoneNumber(),
-                "text", text);
+        String to = destinationOf(ticket);
+
+        Map<String, Object> body = Map.of("to", to, "text", text);
 
         String outcome = forced && !decision.allowed() ? "FORCED" : "INTERACTIVE";
 
@@ -648,7 +680,7 @@ public class WhatsappSessionService {
                                 access.getAppCode(),
                                 access.getClientCode(),
                                 session,
-                                ticket.getPhoneNumber(),
+                                to,
                                 text,
                                 response)
                         .thenReturn(response))

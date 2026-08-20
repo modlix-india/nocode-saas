@@ -67,6 +67,17 @@ public class TicketWhatsappConversationService {
      */
     private static final int OUTGOING_RETENTION_MINUTES = 30 * 24 * 60;
 
+    /**
+     * Where a product's assets live in the tenant's static tree, matching what the product editor
+     * creates in {@code addProduct.createAndFetchFiles}.
+     *
+     * <p>Static rather than secured, and that is what makes referencing them work. Files there are
+     * permanent, shared and already public, so one brochure stays one object however many
+     * conversations send it - and because the path is not under {@code /whatsapp/}, the retention
+     * sweep never marks those messages as expired.
+     */
+    private static final String PRODUCT_ASSET_ROOT = "_withInSubClient/products/";
+
     private final TicketService ticketService;
     private final ProductService productService;
     private final WhatsappMessageDAO whatsappMessageDAO;
@@ -279,11 +290,12 @@ public class TicketWhatsappConversationService {
      */
     private Mono<List<ULong>> visibleDealsOnSameNumber(ProcessorAccess access, Ticket ticket) {
 
-        if (ticket.getPhoneNumber() == null || ticket.getPhoneNumber().isBlank())
-            return Mono.just(List.of(ticket.getId()));
+        String number = ticket.whatsappOrPhoneNumber();
+
+        if (number == null || number.isBlank()) return Mono.just(List.of(ticket.getId()));
 
         return this.ticketService
-                .readAccessibleTicketIdsByPhone(access, ticket.getPhoneNumber(), ticket.getProductId())
+                .readAccessibleTicketIdsByWhatsappNumber(access, number, ticket.getProductId())
                 .map(ids -> ids.isEmpty() ? List.of(ticket.getId()) : ids);
     }
 
@@ -357,6 +369,9 @@ public class TicketWhatsappConversationService {
                                                     caption,
                                                     voiceNote,
                                                     declared,
+                                                    // Uploaded just now, so it is in the
+                                                    // conversation tree, not the asset library.
+                                                    "secured",
                                                     userId));
                                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.sendMedia"));
@@ -370,7 +385,11 @@ public class TicketWhatsappConversationService {
      */
     private Mono<FileDetail> storeOutgoing(ProcessorAccess access, Ticket ticket, FilePart file) {
 
-        String customer = ticket.getPhoneNumber() == null ? "unknown" : ticket.getPhoneNumber().replaceAll("\\D", "");
+        // The number the thread runs on, so an outgoing attachment lands in the same customer folder
+        // the inbound ones do. Filing it under the phone number would split one conversation's files
+        // across two directories on exactly the deals someone corrected.
+        String number = ticket.whatsappOrPhoneNumber();
+        String customer = number == null ? "unknown" : number.replaceAll("\\D", "");
         String directory = "/whatsapp/" + access.getAppCode() + "/outgoing/" + customer;
 
         return DataBufferUtils.join(file.content())
@@ -395,6 +414,138 @@ public class TicketWhatsappConversationService {
         byte[] out = new byte[buffer.readableByteCount()];
         buffer.read(out);
         return out;
+    }
+
+    /**
+     * Sends a file the tenant already holds - a brochure, a price list - rather than one the agent
+     * just picked off their machine.
+     *
+     * <p>Copies the asset into the conversation instead of pointing at it, which is not an
+     * inefficiency but the only thing that works. Two independent reasons:
+     *
+     * <ul>
+     *   <li>The bridge refuses to fetch a path outside {@code whatsapp/{appCode}/}. A message
+     *       referencing {@code /products/brochure.pdf} would pass every check here and then be
+     *       rejected at the last hop, which is the worst place to discover it.
+     *   <li>Retention is per-file. A referenced brochure would be a file that many deals point at,
+     *       and any lifetime put on it would eventually delete it out from under all of them. The
+     *       copy carries the thirty-day conversation lifetime; the library original carries none and
+     *       stays outside the sweep entirely.
+     * </ul>
+     *
+     * <p>No declared mimetype, deliberately. Unlike an upload there is no request part to read one
+     * from, so this leans on the extension fallback in {@code WhatsappSessionService.mimeTypeOf} -
+     * which is precisely the case that fallback exists for.
+     */
+    public Mono<Map<String, Object>> sendAsset(
+            Identity ticketId, String assetPath, String caption, String kind, boolean requestedForce) {
+
+        if (StringUtil.safeIsBlank(assetPath))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.INVALID_PARAMETERS,
+                    "assetPath");
+
+        // Rejected rather than normalised, on the same reasoning as the bridge's own check:
+        // normalising invites an argument about encodings, and nothing legitimate produces a ".."
+        // here. Every path the asset browser offers was listed by the files service itself.
+        if (assetPath.contains(".."))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.INVALID_PARAMETERS,
+                    "assetPath");
+
+        return FlatMapUtil.flatMapMono(
+                        this.ticketService::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, ticketId),
+                        (access, ticket) -> this.visibleDealsOnSameNumber(access, ticket),
+                        (access, ticket, ticketIds) -> this.sessionService.resolveForTicket(access, ticket),
+                        (access, ticket, ticketIds, session) -> this.sessionService
+                                .evaluateForTicket(access, ticket, ticketIds, session)
+                                .flatMap(decision -> {
+                                    ULong userId = access.getUserId();
+                                    boolean force = requestedForce
+                                            && userId != null
+                                            && !BigInteger.ZERO.equals(userId.toBigInteger());
+
+                                    // The same gate as text and as an upload. An attachment from the
+                                    // library is not a way around a hold.
+                                    if (!decision.allowed() && (!force || !isForceable(decision.reason())))
+                                        return this.msgService.<Map<String, Object>>throwMessage(
+                                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                                ProcessorMessageResourceService.WHATSAPP_SEND_HELD,
+                                                WhatsappHoldReason.explain(decision.reason()));
+
+                                    if (!withinProduct(assetPath, ticket))
+                                        return this.msgService.<Map<String, Object>>throwMessage(
+                                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                                ProcessorMessageResourceService.INVALID_PARAMETERS,
+                                                "assetPath");
+
+                                    return this.sessionService.sendMedia(
+                                            access,
+                                            ticket,
+                                            session,
+                                            assetReference(assetPath, access.getClientCode()),
+                                            kind,
+                                            caption,
+                                            false,
+                                            null,
+                                            WhatsappSessionService.STATIC_RESOURCE,
+                                            userId);
+                                }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.sendAsset"));
+    }
+
+    /**
+     * Whether this asset belongs to the deal's own product.
+     *
+     * <p>The picker only ever shows one product's folder, but the picker is not the security
+     * boundary: the path arrives over HTTP and anyone can name a different one. A deal has exactly
+     * one product, and it has already been access-checked by the time this runs, so the folder that
+     * product owns is the whole permitted set.
+     *
+     * <p>Without this, an agent who can see one deal could send any file in the tenant's asset tree,
+     * including another product's price list.
+     */
+    private static boolean withinProduct(String assetPath, Ticket ticket) {
+
+        if (ticket.getProductId() == null) return false;
+
+        String relative = assetPath.startsWith("/") ? assetPath.substring(1) : assetPath;
+        // Trailing slash on the prefix so product 12 cannot be reached from a deal on product 123.
+        return relative.startsWith(PRODUCT_ASSET_ROOT + ticket.getProductId() + "/");
+    }
+
+    /**
+     * Points a message at an asset without moving it.
+     *
+     * <p>No size, and that is not a gap: it is not known without reading the object and nothing
+     * downstream needs it. The {@code type} is not optional though, whatever an earlier version of
+     * this comment claimed. {@code WhatsappSessionService.mimeTypeOf} derives the mimetype from
+     * {@code getType()} and from nothing else, so leaving it unset sent every library asset as
+     * {@code application/octet-stream}, which then filed a PNG as a DOCUMENT and reached the
+     * handset as a plain file.
+     *
+     * <p>The url is the public static one. Product assets live in the static tree, so the path is
+     * already world-readable and stable; there is no key to mint and nothing to expire. Without it
+     * the thread stores an empty url and every bubble renders "Attachment unavailable" even though
+     * the message itself went out fine.
+     */
+    private static FileDetail assetReference(String assetPath, String clientCode) {
+
+        String relative = assetPath.startsWith("/") ? assetPath.substring(1) : assetPath;
+        int slash = relative.lastIndexOf('/');
+        String fileName = slash < 0 || slash == relative.length() - 1 ? relative : relative.substring(slash + 1);
+
+        int dot = fileName.lastIndexOf('.');
+        String type = dot < 0 || dot == fileName.length() - 1 ? null : fileName.substring(dot + 1);
+
+        return new FileDetail()
+                .setFilePath(relative)
+                .setName(fileName)
+                .setType(type)
+                .setUrl("api/files/static/file/" + clientCode + "/" + relative);
     }
 
     public Mono<Map<String, Object>> sendMessage(Identity ticketId, Map<String, Object> request) {

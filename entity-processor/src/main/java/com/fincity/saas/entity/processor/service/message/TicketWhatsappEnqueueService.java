@@ -66,7 +66,9 @@ public class TicketWhatsappEnqueueService implements TicketChannelMessageService
     @Override
     public Mono<Void> enqueueForStage(ProcessorAccess access, Ticket ticket, ProductMessageConfig config) {
 
-        if (ticket.getPhoneNumber() == null || ticket.getPhoneNumber().isBlank()) return Mono.empty();
+        String to = ticket.whatsappOrPhoneNumber();
+
+        if (to == null || to.isBlank()) return Mono.empty();
 
         // Checked here rather than only at the gate. An opted-out lead should never acquire a queued
         // row at all: a row that exists and is cancelled on the next sweep still shows up in the
@@ -155,7 +157,12 @@ public class TicketWhatsappEnqueueService implements TicketChannelMessageService
                             // the sending. Deciding at send time would let a message queued under
                             // one number's warm-up allowance go out under another's.
                             .setBridgeSessionId(sessionId(session))
-                            .setToPhone(ticket.getPhoneNumber())
+                            // Resolved at enqueue, like the session above, so the row records the
+                            // number this message was actually addressed to. The sweeper sends to
+                            // whatever is stamped here, and a deal whose WhatsApp number changes
+                            // between queueing and sending should not silently redirect a message
+                            // that was already paced and approved against the old one.
+                            .setToPhone(ticket.whatsappOrPhoneNumber())
                             .setBodyText(body)
                             .setAssetFileDetail(config.getAssetFileDetail())
                             .setCaption(config.getCaption())

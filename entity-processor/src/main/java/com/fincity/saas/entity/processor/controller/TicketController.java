@@ -32,6 +32,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
@@ -61,6 +62,15 @@ public class TicketController
     public Mono<ResponseEntity<Ticket>> updateTag(
             @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody TicketTagRequest ticketTagRequest) {
         return this.service.updateTag(identity, ticketTagRequest).map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/whatsapp-number")
+    public Mono<ResponseEntity<Ticket>> updateWhatsappNumber(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity,
+            @RequestBody TicketWhatsappNumberRequest ticketWhatsappNumberRequest) {
+        return this.service
+                .updateWhatsappNumber(identity, ticketWhatsappNumberRequest)
+                .map(ResponseEntity::ok);
     }
 
     @PatchMapping(REQ_PATH_ID + "/reassign")

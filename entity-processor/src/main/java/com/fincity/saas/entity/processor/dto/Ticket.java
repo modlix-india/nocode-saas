@@ -49,6 +49,23 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong assignedUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
+
+    /**
+     * The number this deal is messaged on, when it differs from the one it is called on.
+     *
+     * <p>Null is the ordinary case, not missing data. Most leads are reachable on one number and
+     * copying it into a second column would only let the two drift. It fills in the other way round:
+     * a lead gives a number at intake, messaging it goes nowhere, someone rings them, and they name a
+     * different number to use on WhatsApp.
+     *
+     * <p>Read through {@link #whatsappOrPhoneNumber()} rather than directly, everywhere. A caller
+     * that reads this field raw sends nothing at all for the overwhelming majority of deals.
+     */
+    private String whatsappNumber;
+
+    /** Calling code for {@link #whatsappNumber}. Null exactly when that is. */
+    private Integer whatsappDialCode;
+
     private String email;
     private ULong productId;
     private ULong stage;
@@ -137,6 +154,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.assignedUserId = ticket.assignedUserId;
         this.dialCode = ticket.dialCode;
         this.phoneNumber = ticket.phoneNumber;
+        this.whatsappNumber = ticket.whatsappNumber;
+        this.whatsappDialCode = ticket.whatsappDialCode;
         this.email = ticket.email;
         this.productId = ticket.productId;
         this.stage = ticket.stage;
@@ -165,6 +184,35 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.evaluationTrace = ticket.evaluationTrace;
     }
 
+    /**
+     * The number to message this deal on.
+     *
+     * <p>Every WhatsApp path goes through this and none of them reads {@link #whatsappNumber}
+     * directly. The separate number is the exception rather than the rule, so a caller that reads the
+     * field raw works on the handful of deals someone has corrected and silently sends nothing on all
+     * the rest - a failure that looks like the message never being written.
+     *
+     * <p>Blank counts as absent, not as a number. An empty string reaches here from a form that
+     * submitted a cleared field, and treating it as set would send to nowhere while looking correct
+     * in the database.
+     *
+     * <p>Deliberately not named {@code getX}: Jackson would serialise it, the client would post it
+     * back, and a derived value would start being stored as if someone had typed it.
+     */
+    public String whatsappOrPhoneNumber() {
+        return StringUtil.safeIsBlank(this.whatsappNumber) ? this.phoneNumber : this.whatsappNumber;
+    }
+
+    /** The calling code that goes with {@link #whatsappOrPhoneNumber()}, from the same source. */
+    public Integer whatsappOrPhoneDialCode() {
+        return StringUtil.safeIsBlank(this.whatsappNumber) ? this.dialCode : this.whatsappDialCode;
+    }
+
+    /** Whether someone has recorded a WhatsApp number that differs from the number on file. */
+    public boolean hasSeparateWhatsappNumber() {
+        return !StringUtil.safeIsBlank(this.whatsappNumber);
+    }
+
     public static Ticket of(TicketRequest ticketRequest) {
         return new Ticket()
                 .setDialCode(
@@ -174,6 +222,14 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                 .setPhoneNumber(
                         ticketRequest.getPhoneNumber() != null
                                 ? ticketRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setWhatsappDialCode(
+                        ticketRequest.getWhatsappNumber() != null
+                                ? ticketRequest.getWhatsappNumber().getCountryCode()
+                                : null)
+                .setWhatsappNumber(
+                        ticketRequest.getWhatsappNumber() != null
+                                ? ticketRequest.getWhatsappNumber().getNumber()
                                 : null)
                 .setEmail(
                         ticketRequest.getEmail() != null
@@ -199,6 +255,24 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                                 ? campaignTicketRequest
                                         .getLeadDetails()
                                         .getPhone()
+                                        .getNumber()
+                                : null)
+                // Meta lead forms have had a WhatsApp-number field all along and the collector has
+                // always parsed it. Until this column existed the value could only be folded into the
+                // formData blob below, which nothing queries and no screen reads, so a lead who
+                // volunteered their WhatsApp number at intake was messaged on the other one anyway.
+                .setWhatsappDialCode(
+                        campaignTicketRequest.getLeadDetails().getWhatsappNumber() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getWhatsappNumber()
+                                        .getCountryCode()
+                                : null)
+                .setWhatsappNumber(
+                        campaignTicketRequest.getLeadDetails().getWhatsappNumber() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getWhatsappNumber()
                                         .getNumber()
                                 : null)
                 .setEmail(

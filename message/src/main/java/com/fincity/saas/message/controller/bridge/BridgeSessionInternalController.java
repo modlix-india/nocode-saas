@@ -223,7 +223,8 @@ public class BridgeSessionInternalController {
                             str(request.get("mimeType")),
                             str(request.get("fileName")),
                             text,
-                            Boolean.TRUE.equals(request.get("voiceNote")))
+                            Boolean.TRUE.equals(request.get("voiceNote")),
+                            str(request.get("resourceType")))
                     .map(ResponseEntity::ok);
 
         // Text with no attachment still needs a body; an empty message is not a thing WhatsApp

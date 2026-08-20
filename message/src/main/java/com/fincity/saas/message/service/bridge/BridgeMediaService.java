@@ -47,6 +47,14 @@ public class BridgeMediaService {
     /** Secured, never static. An attachment is a customer's conversation, not a public asset. */
     private static final String RESOURCE_TYPE = "secured";
 
+    /**
+     * The tenant's public asset tree, readable for sending but never written to from here.
+     *
+     * <p>Only ever a source. Nothing on the bridge path stores into it: a customer's photo must not
+     * land somewhere the whole internet can fetch it.
+     */
+    private static final String STATIC_RESOURCE_TYPE = "static";
+
     private final WhatsappPhoneNumberDAO sessionDao;
     private final IFeignFileService fileService;
 
@@ -147,18 +155,45 @@ public class BridgeMediaService {
      * session decides the client, and the path has to sit under that client's WhatsApp tree.
      */
     public Mono<ByteBuffer> fetch(String sessionId, String filePath) {
+        return this.fetch(sessionId, filePath, RESOURCE_TYPE);
+    }
+
+    /**
+     * Reads back an attachment, from either storage tree.
+     *
+     * <p>The second tree is for sending something the tenant already holds - a product brochure, a
+     * price list - rather than something an agent just uploaded. Those live in {@code static}, and
+     * the alternative to reading them here was copying every one into the conversation on every
+     * send, which for a brochure sent to a thousand leads means a thousand identical objects.
+     *
+     * <p>The two trees get different path rules, and the difference is the point:
+     *
+     * <ul>
+     *   <li>{@code secured} stays confined to {@code whatsapp/{appCode}/}. That tree holds
+     *       customers' conversation attachments, so a bridge must not be able to name its way into
+     *       the rest of it.
+     *   <li>{@code static} is the tenant's public asset tree. Every file in it is already served to
+     *       anyone with the URL and no credential, so restricting the bridge to a sub-path would be
+     *       ceremony rather than security. It is still qualified with the session's own client, so a
+     *       compromised bridge cannot read across tenants.
+     * </ul>
+     */
+    public Mono<ByteBuffer> fetch(String sessionId, String filePath, String resourceType) {
 
         if (StringUtil.safeIsBlank(sessionId) || StringUtil.safeIsBlank(filePath))
             return Mono.error(new IllegalArgumentException("sessionId and filePath are both required"));
 
+        String type = STATIC_RESOURCE_TYPE.equalsIgnoreCase(resourceType) ? STATIC_RESOURCE_TYPE : RESOURCE_TYPE;
+
         return FlatMapUtil.flatMapMono(
                         () -> this.sessionDao.getBySessionIdInternal(sessionId),
                         session -> {
-                            if (!ownedBy(filePath, session.getClientCode(), session.getAppCode())) {
+                            if (!readable(type, filePath, session.getAppCode())) {
                                 logger.error(
-                                        "Bridge asked for {} on session {}, which is outside client {}'s WhatsApp"
-                                                + " files. Refusing.",
+                                        "Bridge asked for {} ({}) on session {}, which is outside client {}'s"
+                                                + " readable files. Refusing.",
                                         filePath,
+                                        type,
                                         sessionId,
                                         session.getClientCode());
                                 return Mono.empty();
@@ -168,10 +203,18 @@ public class BridgeMediaService {
                             // from the path itself - so handing back exactly what was stored asks
                             // for a file that, as far as the files service is concerned, is in
                             // nobody's directory.
-                            return this.fileService.downloadFile(
-                                    RESOURCE_TYPE, qualify(session.getClientCode(), filePath));
+                            return this.fileService.downloadFile(type, qualify(session.getClientCode(), filePath));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeMediaService.fetch"));
+    }
+
+    /** Whether this tree lets the bridge read this path at all. */
+    private static boolean readable(String resourceType, String filePath, String appCode) {
+        // Traversal is refused in both trees, for the reason given on ownedBy.
+        if (filePath.contains("..")) return false;
+        // The public tree needs no sub-path rule; the client qualification is the whole check.
+        if (STATIC_RESOURCE_TYPE.equals(resourceType)) return true;
+        return ownedBy(filePath, appCode);
     }
 
     /**
@@ -181,7 +224,7 @@ public class BridgeMediaService {
      * over encodings, and nothing legitimate produces a ".." here: every path this service hands out
      * was built by storedNameFor from a sanitised message id.
      */
-    private static boolean ownedBy(String filePath, String clientCode, String appCode) {
+    private static boolean ownedBy(String filePath, String appCode) {
         if (filePath.contains("..")) return false;
         // Compared against the unqualified form, because that is the shape create() hands back and
         // therefore the shape the caller has. The client is enforced separately, by qualifying with

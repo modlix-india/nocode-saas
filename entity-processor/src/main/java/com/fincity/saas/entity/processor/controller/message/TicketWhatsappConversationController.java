@@ -136,6 +136,30 @@ public class TicketWhatsappConversationController {
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * Sends a file the tenant already holds, named by its stored path.
+     *
+     * <p>A plain JSON body rather than multipart, because there is nothing to upload: the bytes are
+     * already in storage and the browser only knows which one was picked. The path is taken as
+     * relative to the caller's own client root and qualified server-side, so naming another tenant's
+     * file reaches nothing.
+     */
+    @PostMapping("/{ticketId}/send-asset")
+    public Mono<ResponseEntity<Map<String, Object>>> sendAsset(
+            @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {
+
+        return this.service
+                .sendAsset(
+                        ticketId,
+                        request.get("assetPath") == null
+                                ? null
+                                : String.valueOf(request.get("assetPath")),
+                        request.get("caption") == null ? null : String.valueOf(request.get("caption")),
+                        request.get("kind") == null ? null : String.valueOf(request.get("kind")),
+                        Boolean.parseBoolean(String.valueOf(request.get("force"))))
+                .map(ResponseEntity::ok);
+    }
+
     @PostMapping("/{ticketId}/send")
     public Mono<ResponseEntity<Map<String, Object>>> sendMessage(
             @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {

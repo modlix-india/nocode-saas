@@ -343,7 +343,8 @@ public class BridgeSessionService {
             String mimeType,
             String fileName,
             String caption,
-            boolean voiceNote) {
+            boolean voiceNote,
+            String resourceType) {
 
         return this.withInstance(access, sessionId, (row, instance) -> {
                     if (row.getSessionState() == null || !row.getSessionState().isSendable())
@@ -352,7 +353,7 @@ public class BridgeSessionService {
 
                     return this.bridgeClient.sendMedia(
                             instance.getBaseUrl(), sessionId, to, filePath, kind, mimeType, fileName, caption,
-                            voiceNote);
+                            voiceNote, resourceType);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.sendMedia"));
     }
