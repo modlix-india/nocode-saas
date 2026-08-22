@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.service.TicketAudienceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,7 +220,7 @@ public class WhatsappInboundService {
                 .setOutbound(Boolean.TRUE.equals(request.getOutbound()))
                 .setFailureReason(request.getFailureReason())
                 .setMessage(request.getMessage())
-                .setInMessage(request.getInMessage())
+                .setInMessage(inMessageWithButtons(request))
                 .setMessageResponse(request.getMessageResponse());
 
         message.setAppCode(appCode);
@@ -256,7 +257,8 @@ public class WhatsappInboundService {
         if (!request.isStatusUpdate()) {
             if (request.getBodyText() != null) existing.setBodyText(request.getBodyText());
             if (request.getMessage() != null) existing.setMessage(request.getMessage());
-            if (request.getInMessage() != null) existing.setInMessage(request.getInMessage());
+            if (request.getInMessage() != null || request.getButtons() != null)
+                existing.setInMessage(inMessageWithButtons(request));
             if (request.getMessageResponse() != null) existing.setMessageResponse(request.getMessageResponse());
             if (request.getMessageType() != null) existing.setMessageType(parseType(request.getMessageType()));
             applyMediaFileDetail(existing, request);
@@ -490,4 +492,22 @@ public class WhatsappInboundService {
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.stampExpiredMedia"));
     }
+
+    /**
+     * Folds the bridge's flattened buttons into the inbound payload map.
+     *
+     * <p>They ride inside {@code inMessage} rather than in a column of their own. That column is
+     * already the "what actually arrived" bag, it is empty for every bridge-sourced row, and a
+     * dedicated column would cost a migration plus a jOOQ regeneration for a field only the chat
+     * pane ever reads.
+     */
+    private Map<String, Object> inMessageWithButtons(WhatsappInboundRequest request) {
+        if (request.getButtons() == null || request.getButtons().isEmpty()) return request.getInMessage();
+
+        Map<String, Object> merged =
+                request.getInMessage() == null ? new HashMap<>() : new HashMap<>(request.getInMessage());
+        merged.put("buttons", request.getButtons());
+        return merged;
+    }
+
 }

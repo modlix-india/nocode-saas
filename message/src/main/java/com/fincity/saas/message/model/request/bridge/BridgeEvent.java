@@ -5,6 +5,7 @@ import com.fincity.saas.message.enums.dispatch.DispatchEventType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -133,4 +134,13 @@ public class BridgeEvent implements Serializable {
 
     /** WhatsApp's id for that image, so a later fetch can be told we already have it. */
     private String profilePictureId;
+
+    /**
+     * Tappable actions the sender attached: a "Pay Now" URL, a call button, a quick reply.
+     *
+     * <p>Flat maps rather than a typed model on purpose. This service only forwards them, and the
+     * page that draws them reads fields off each entry directly, so a shared shape here would buy
+     * nothing and cost a class in every service on the path.
+     */
+    private List<Map<String, Object>> buttons;
 }

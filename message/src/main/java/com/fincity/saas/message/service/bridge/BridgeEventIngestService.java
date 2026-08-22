@@ -169,7 +169,8 @@ public class BridgeEventIngestService {
                 .setMediaIsVoiceNote(event.getMediaIsVoiceNote())
                 .setMediaPageCount(event.getMediaPageCount())
                 .setMediaError(event.getMediaError())
-                .setReactionToMessageId(event.getReactionToMessageId());
+                .setReactionToMessageId(event.getReactionToMessageId())
+                .setButtons(event.getButtons());
 
         return this.storeThumbnail(event)
                 .doOnNext(dispatch::setMediaThumbnailFileDetail)

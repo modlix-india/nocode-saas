@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -78,6 +79,12 @@ public class WhatsappInboundRequest implements Serializable {
     private Map<String, Object> message;
 
     private Map<String, Object> inMessage;
+
+    /**
+     * Tappable actions the sender attached, flattened by the bridge from whichever provider shape
+     * carried them. Folded into {@code inMessage} on write rather than given a column of its own.
+     */
+    private List<Map<String, Object>> buttons;
     private Map<String, Object> messageResponse;
     private Map<String, Object> mediaFileDetail;
 
