@@ -4,15 +4,13 @@
 package com.fincity.saas.message.jooq;
 
 
+import com.fincity.saas.message.jooq.tables.MessageBridgeInstances;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
 
 /**
@@ -20,6 +18,12 @@ import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * Registry of WhatsApp bridge instances. Fleet infrastructure, not tenant
+     * data.
+     */
+    public static final MessageBridgeInstances MESSAGE_BRIDGE_INSTANCES = MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES;
 
     /**
      * The table <code>message.message_calls</code>.
@@ -47,22 +51,7 @@ public class Tables {
     public static final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
 
     /**
-     * The table <code>message.message_whatsapp_business_accounts</code>.
-     */
-    public static final MessageWhatsappBusinessAccounts MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS = MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS;
-
-    /**
-     * The table <code>message.message_whatsapp_messages</code>.
-     */
-    public static final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
-
-    /**
      * WhatsApp Business phone numbers
      */
     public static final MessageWhatsappPhoneNumbers MESSAGE_WHATSAPP_PHONE_NUMBERS = MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS;
-
-    /**
-     * WhatsApp message templates
-     */
-    public static final MessageWhatsappTemplates MESSAGE_WHATSAPP_TEMPLATES = MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES;
 }

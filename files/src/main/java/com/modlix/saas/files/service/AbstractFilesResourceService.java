@@ -71,6 +71,8 @@ import com.modlix.saas.files.util.ImageTransformUtil;
 import com.modlix.saas.files.util.RangeDownloadUtil;
 
 import jakarta.annotation.PreDestroy;
+import org.jooq.types.UInteger;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -876,10 +878,22 @@ public abstract class AbstractFilesResourceService {
 
     public FileDetail createInternal(String clientCode, boolean override, String filePath,
             String fileName, HttpServletRequest request) {
+        return this.createInternal(clientCode, override, filePath, fileName, null, request);
+    }
+
+    /**
+     * The same, with a lifetime after which the cleanup may remove the file.
+     *
+     * <p>Only callers that know their file is disposable pass one. Everything else stays permanent,
+     * which is what stops a retention job from reaching shared assets it was never meant to touch.
+     */
+    public FileDetail createInternal(String clientCode, boolean override, String filePath,
+            String fileName, UInteger expiresAfterMinutes, HttpServletRequest request) {
 
         try (InputStream inputStream = request.getInputStream()) {
             FileDetail fileDetail = this.getFSService().createFileFromInputStream(
-                    clientCode, filePath, fileName, inputStream, request.getContentLengthLong(), override, "inline");
+                    clientCode, filePath, fileName, inputStream, request.getContentLengthLong(), override, "inline",
+                    expiresAfterMinutes);
 
             return this.convertToFileDetailWhileCreation(filePath, clientCode, fileDetail);
         } catch (IOException e) {
@@ -1102,4 +1116,9 @@ public abstract class AbstractFilesResourceService {
     public abstract FileSystemService getFSService();
 
     public abstract String getResourceType();
+
+    /** Removes files whose declared lifetime has passed. Driven by the worker, never by a user. */
+    public int deleteExpired(int limit) {
+        return this.getFSService().deleteExpired(limit);
+    }
 }

@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -60,4 +61,48 @@ public class WhatsappInboundDispatch implements Serializable {
     private Map<String, Object> inMessage;
     private Map<String, Object> messageResponse;
     private Map<String, Object> mediaFileDetail;
+
+    private String mediaMimeType;
+    private String mediaFileName;
+    private Long mediaSize;
+    private Integer mediaDurationSeconds;
+    private Boolean mediaIsVoiceNote;
+
+    /**
+     * Where the inline preview was stored, once uploaded. Not the base64 the bridge sent: that is
+     * turned into a file on this hop, so the row downstream carries a URL rather than bytes.
+     */
+    private Map<String, Object> mediaThumbnailFileDetail;
+
+    private Integer mediaPageCount;
+    private String mediaError;
+    private String reactionToMessageId;
+
+    /**
+     * Where the customer's avatar was stored, on a PROFILE_PICTURE dispatch. Null means they removed
+     * it and whatever is held should be cleared.
+     */
+    private Map<String, Object> profilePictureFileDetail;
+
+    /** WhatsApp's id for that image, so the next fetch can be answered with "unchanged". */
+    private String profilePictureId;
+
+    /**
+     * Which linked number this belongs to.
+     *
+     * <p>Missing until now, and the omission was not cosmetic. The consumer stores it on every row
+     * and its pacing queries window on it, so with inbound rows carrying null the reply-rate count
+     * matched nothing and was structurally zero - the signal that decides whether a number is
+     * healthy enough to keep sending was reading empty for one whole direction.
+     */
+    private String bridgeSessionId;
+
+    /**
+     * Tappable actions the sender attached: a "Pay Now" URL, a call button, a quick reply.
+     *
+     * <p>Flat maps rather than a typed model on purpose. This service only forwards them, and the
+     * page that draws them reads fields off each entry directly, so a shared shape here would buy
+     * nothing and cost a class in every service on the path.
+     */
+    private List<Map<String, Object>> buttons;
 }

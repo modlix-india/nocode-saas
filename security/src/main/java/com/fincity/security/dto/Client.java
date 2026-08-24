@@ -29,6 +29,15 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String typeCode;
     private int tokenValidityMinutes;
     private String localeCode;
+
+    /**
+     * The IANA time zone this tenant operates on, e.g. {@code Asia/Kolkata}.
+     *
+     * <p>Distinct from {@code BILLING_TIMEZONE}, which V62 added for invoice periods and which
+     * nothing reads. A company can bill in one place and work in another.
+     */
+    private String timeZone;
+
     private SecurityClientStatusCode statusCode;
     private String businessType;
     private String businessSize;

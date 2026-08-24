@@ -246,6 +246,12 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      */
     public final TableField<SecurityUserRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_user.TIME_ZONE</code>. IANA time zone
+     * overriding the client default; NULL means inherit
+     */
+    public final TableField<SecurityUserRecord, String> TIME_ZONE = createField(DSL.name("TIME_ZONE"), SQLDataType.VARCHAR(64), this, "IANA time zone overriding the client default; NULL means inherit");
+
     private SecurityUser(Name alias, Table<SecurityUserRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

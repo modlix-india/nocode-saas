@@ -70,7 +70,16 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String PRODUCT_NOT_ACTIVE = "product_not_active";
     public static final String TICKET_EXPIRED = "ticket_expired";
     public static final String DUPLICATE_PRODUCT_MESSAGE_CONFIG = "duplicate_product_message_config";
-    public static final String WHATSAPP_WINDOW_CLOSED = "whatsapp_window_closed";
+    /**
+     * A pacing gate is holding this send, and the caller may override it.
+     *
+     * <p>Takes the gate's own explanation as its parameter rather than wording each one here, so the
+     * override panel and this error cannot describe the same hold differently. Replaces
+     * {@code whatsapp_window_closed}, which was Meta's rule and had no override.
+     */
+    public static final String WHATSAPP_SEND_HELD = "whatsapp_send_held";
+
+    public static final String WHATSAPP_SESSION_NOT_READY = "whatsapp_session_not_ready";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

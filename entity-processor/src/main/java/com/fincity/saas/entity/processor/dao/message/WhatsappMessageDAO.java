@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.enums.message.WhatsappMessageStatus;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorWhatsappMessagesRecord;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.jooq.Condition;
@@ -75,6 +76,78 @@ public class WhatsappMessageDAO
                                 .collectList())
                 .map(tuple -> new PageImpl<>(tuple.getT2(), pageable, tuple.getT1()));
     }
+
+    /**
+     * One window of a thread, addressed by where the reader already is rather than by page number.
+     *
+     * <p>Offset paging is wrong for a live conversation and wrong in a way that only shows up in
+     * use. Every arriving message shifts every row down by one, so "give me the next twenty older"
+     * asked as an offset returns twenty rows measured against a list that has since moved: the
+     * reader sees a message twice, or never sees one at all. The bug is invisible on a quiet thread
+     * and constant on a busy one, which is the worst combination to debug.
+     *
+     * <p>The cursor is the pair {@code (orderKey, id)}, not the timestamp alone. {@code orderKey} is
+     * a coalesce of two DATETIME columns and is emphatically not unique - a message and its own
+     * status update routinely land in the same second, and a bulk send lands dozens together. Paging
+     * on a non-unique key silently drops whichever rows tie across the boundary.
+     *
+     * @param before rows strictly older than this cursor. What "load more" sends.
+     * @param after rows strictly newer than this cursor. What a live update sends, so an arriving
+     *     message costs one small query instead of refetching everything on screen.
+     */
+    public Mono<List<WhatsappMessage>> readThreadWindow(
+            String appCode,
+            String clientCode,
+            List<ULong> ticketIds,
+            String search,
+            int size,
+            ThreadCursor before,
+            ThreadCursor after) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.just(List.of());
+
+        Condition where = tenant(appCode, clientCode)
+                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                .and(this.isActiveTrue());
+
+        if (search != null && !search.isBlank()) where = where.and(bodyMatches(search));
+
+        if (before != null) where = where.and(olderThan(before));
+        if (after != null) where = where.and(newerThan(after));
+
+        return Flux.from(this.dslContext
+                        .selectFrom(this.table)
+                        // Newest first in both directions. An "after" window read ascending would
+                        // return the OLDEST of the new messages when there are more than fit, which
+                        // is the half a reader has least use for.
+                        .where(where)
+                        .orderBy(orderKey().desc(), ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.desc())
+                        .limit(size))
+                .map(rec -> rec.into(this.pojoClass))
+                .collectList();
+    }
+
+    /** Strictly older, with the id breaking ties on a timestamp shared by several rows. */
+    private Condition olderThan(ThreadCursor cursor) {
+        return orderKey()
+                .lt(cursor.at())
+                .or(orderKey().eq(cursor.at()).and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.lt(cursor.id())));
+    }
+
+    /** Strictly newer, mirroring {@link #olderThan} so the two windows cannot overlap or gap. */
+    private Condition newerThan(ThreadCursor cursor) {
+        return orderKey()
+                .gt(cursor.at())
+                .or(orderKey().eq(cursor.at()).and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID.gt(cursor.id())));
+    }
+
+    /**
+     * A reader's position in a thread.
+     *
+     * <p>Both halves are needed. See {@link #readThreadWindow} for why the timestamp alone loses
+     * rows.
+     */
+    public record ThreadCursor(LocalDateTime at, ULong id) {}
 
     /**
      * Latest message and unread count per deal, for the page of conversations on screen.
@@ -228,6 +301,157 @@ public class WhatsappMessageDAO
                 .collectList();
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Pacing.
+    //
+    // Every figure the Layer-2 gate decides on is computed here rather than stored, because this
+    // table is the only honest record of what was actually sent. A counter kept alongside it would
+    // drift the first time a send failed halfway, and it would drift silently in the direction that
+    // lets more messages out.
+    // ---------------------------------------------------------------------------------------------
+
+    /** The last time we wrote to this deal. Half of the 24-hour comparison. */
+    public Mono<LocalDateTime> lastOutboundAt(String appCode, String clientCode, List<ULong> ticketIds) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.empty();
+
+        return Mono.from(this.dslContext
+                        .select(DSL.max(orderKey()))
+                        .from(this.table)
+                        .where(tenant(appCode, clientCode))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                        .and(this.isActiveTrue()))
+                .mapNotNull(Record1::value1);
+    }
+
+    /**
+     * Replies divided by sends for one session over a window.
+     *
+     * <p>Counted per deal rather than per message, and that is the meaningful denominator: a lead
+     * who received four messages and answered once has replied, and scoring that as 25% would
+     * penalise a number for following up properly. What the metric is really detecting is a number
+     * writing to people who never write back at all.
+     */
+    public Mono<Double> replyRate(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(1.0d);
+
+        Field<ULong> ticket = ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID;
+
+        Mono<Integer> contacted = Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ticket))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+
+        Mono<Integer> replied = Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ticket))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isFalse()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+
+        return Mono.zip(contacted, replied)
+                // A number that has written to nobody is not failing; it is new. Reporting 0% would
+                // suspend a freshly linked session before it ever sent anything.
+                .map(t -> t.getT1() == 0 ? 1.0d : (double) t.getT2() / (double) t.getT1());
+    }
+
+    /**
+     * Deals this session opened a conversation with since a given time.
+     *
+     * <p>First contact means the first outbound to a deal that had no prior message either way, which
+     * is the thing the daily cap is actually about. Replying to an existing thread is not opening a
+     * conversation and must not count against it, or a busy support day would exhaust the allowance
+     * for genuine outreach.
+     */
+    public Mono<Integer> firstContactsSince(
+            String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        Table<?> earlier = this.table.as("earlier");
+        Field<ULong> earlierTicket = earlier.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID);
+        Field<LocalDateTime> earlierAt = orderKeyOf(earlier);
+
+        return Mono.from(this.dslContext
+                        .select(DSL.countDistinct(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                        .andNotExists(this.dslContext
+                                .selectOne()
+                                .from(earlier)
+                                .where(earlierTicket.eq(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
+                                .and(earlierAt.lt(since))))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    /** Messages this session has sent in the last hour, so a pointless call to a capped session is avoided. */
+    public Mono<Integer> sentSince(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    /**
+     * Consecutive outbound messages to a deal with no reply after them.
+     *
+     * <p>Counts back from the most recent inbound, so a lead who answers resets it. Two or three of
+     * these is where a sequence should stop and a person should look, both because continuing is
+     * useless and because unanswered messages are themselves part of what throttles the number.
+     */
+    public Mono<Integer> consecutiveUnanswered(String appCode, String clientCode, List<ULong> ticketIds) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.just(0);
+
+        return this.lastInboundAt(appCode, clientCode, ticketIds)
+                .defaultIfEmpty(LocalDateTime.of(1970, 1, 1, 0, 0))
+                .flatMap(lastInbound -> Mono.from(this.dslContext
+                                .selectCount()
+                                .from(this.table)
+                                .where(tenant(appCode, clientCode))
+                                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
+                                .and(orderKey().gt(lastInbound))
+                                .and(this.isActiveTrue()))
+                        .map(Record1::value1)
+                        .defaultIfEmpty(0));
+    }
+
+    /** Failed sends on this session recently, because repeated failures usually mean something is already wrong. */
+    public Mono<Integer> recentFailures(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+
+        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(this.table)
+                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_STATUS.eq(WhatsappMessageStatus.FAILED)))
+                .map(Record1::value1)
+                .defaultIfEmpty(0);
+    }
+
+    private Condition sessionWindow(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+        return tenant(appCode, clientCode)
+                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.BRIDGE_SESSION_ID.eq(sessionId))
+                .and(orderKey().ge(since))
+                .and(this.isActiveTrue());
+    }
+
     private Condition tenant(String appCode, String clientCode) {
         return ENTITY_PROCESSOR_WHATSAPP_MESSAGES
                 .APP_CODE
@@ -240,8 +464,22 @@ public class WhatsappMessageDAO
      * than letting those sort to the bottom of a thread regardless of when they happened.
      */
     private Field<LocalDateTime> orderKey() {
+        return orderKeyOf(this.table);
+    }
+
+    /**
+     * The same ordering key, resolved against a specific table instance.
+     *
+     * <p>Needed because {@link #orderKey()} is a {@code coalesce} expression rather than a column, so
+     * it has no name to look up on an alias. Asking an aliased table for a field by that expression's
+     * generated name returns null, and the null only surfaces when jOOQ tries to build the
+     * comparison: every send and every health read failed with a NullPointerException out of the
+     * first-contact subquery, nowhere near the line at fault.
+     */
+    private static Field<LocalDateTime> orderKeyOf(Table<?> t) {
         return DSL.coalesce(
-                ENTITY_PROCESSOR_WHATSAPP_MESSAGES.SENT_TIME, ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT);
+                t.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.SENT_TIME),
+                t.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT));
     }
 
     /**
@@ -261,4 +499,57 @@ public class WhatsappMessageDAO
 
     /** Per-deal rollup for the conversation list. */
     public record ThreadSummary(LocalDateTime lastMessageAt, int unreadCount) {}
+
+    /**
+     * Marks messages whose attachment has been collected, so the thread can say so.
+     *
+     * <p>The files service deletes the bytes on its own schedule, driven by the lifetime stamped on
+     * each file at upload. Nothing tells this service when that happens, so without this a bubble
+     * keeps pointing at an object that is no longer there and renders as a broken frame. Saying "the
+     * attachment expired" is the honest version of the same fact.
+     *
+     * <p><b>Only files this conversation owns.</b> Two thirds of the media rows point at product
+     * brochures and other shared assets that are sent through threads but stored elsewhere, are
+     * never given a lifetime, and are therefore never deleted. Marking those expired would tell a
+     * reader an attachment is gone while it sits there perfectly intact. The prefix test mirrors
+     * exactly what {@code BridgeMediaService} and the outgoing upload write, so the two cannot
+     * disagree about which files are conversation attachments.
+     *
+     * <p>Note where the risk sits: getting this filter wrong shows a wrong message, where getting
+     * the deletion filter wrong destroys a file. That asymmetry is why deletion is decided per-file
+     * at upload and this is allowed to be a query.
+     *
+     * @param cutoff messages created before this are considered collected. Deliberately older than
+     *     the retention window, so this never claims a file is gone while it still exists.
+     * @param notBefore the earliest message this may touch: the day files began carrying lifetimes.
+     *     Anything older was stored without one, is never deleted, and must never be marked gone.
+     */
+    public Mono<Integer> stampExpiredMedia(LocalDateTime cutoff, LocalDateTime notBefore, int limit) {
+
+        Field<String> storedPath = DSL.field(
+                "json_unquote(json_extract({0}, '$.filePath'))",
+                String.class,
+                ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_FILE_DETAIL);
+
+        return Mono.from(this.dslContext
+                        .update(ENTITY_PROCESSOR_WHATSAPP_MESSAGES)
+                        .set(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_EXPIRED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                        // Cleared together with the stamp. They point at objects that no longer
+                        // exist, and leaving them is what makes the bubble render a broken image
+                        // instead of the sentence explaining why there is nothing to show.
+                        .setNull(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_FILE_DETAIL)
+                        .setNull(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_THUMBNAIL_FILE_DETAIL)
+                        .where(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_EXPIRED_AT.isNull())
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT.lt(cutoff))
+                        // Never older than the day files started carrying lifetimes. Anything
+                        // before it was stored without one and can therefore never be deleted, so
+                        // marking it expired would tell a reader an attachment is gone while it is
+                        // still there. Running this without the floor stamped fifteen legacy rows;
+                        // they happened to point at bytes that were already missing, which was luck
+                        // rather than the query being right.
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CREATED_AT.ge(notBefore))
+                        .and(storedPath.like("/whatsapp/%"))
+                        .limit(limit))
+                .defaultIfEmpty(0);
+    }
 }

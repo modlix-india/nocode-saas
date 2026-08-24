@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.response;
 
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -47,6 +48,15 @@ public class WhatsappConversationResponse implements Serializable {
     private Integer unreadCount;
     private String lastMessagePreview;
 
+    /**
+     * The customer's WhatsApp avatar.
+     *
+     * <p>On the conversation rather than on each deal, because a conversation is a phone number and
+     * so is a profile picture. The deals behind it all carry the same value; lifting it here saves
+     * the client reaching into a list to find a face it is going to draw once.
+     */
+    private FileDetail profilePicFileDetail;
+
     /** The deals sharing this number, newest activity first. */
     @Data
     @Accessors(chain = true)
@@ -60,6 +70,17 @@ public class WhatsappConversationResponse implements Serializable {
         private String code;
         private String name;
         private ULong productId;
+
+        /**
+         * The product's name, resolved for display.
+         *
+         * <p>Here because the deals sharing a number are frequently the <i>same lead</i> registered
+         * against different products, so their {@code name} is identical on every one of them. A
+         * picker showing three chips all reading "G&amp;SS1" tells the user nothing about which
+         * deal a reply will be filed against, which is the single decision that picker exists to
+         * support. The product is what distinguishes them.
+         */
+        private String productName;
         private ULong stage;
         private ULong status;
         private ULong assignedUserId;

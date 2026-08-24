@@ -1,10 +1,15 @@
 package com.fincity.saas.entity.processor.controller.message;
 
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.MediaType;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappSessionHealth;
+import com.fincity.saas.entity.processor.model.response.message.WhatsappThreadWindow;
 import com.fincity.saas.entity.processor.service.message.TicketWhatsappConversationService;
-import com.fincity.saas.entity.processor.service.message.WhatsappCswService;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -43,14 +48,24 @@ public class TicketWhatsappConversationController {
      *
      * @param search optional, matches message content
      */
+    /**
+     * One window of the thread.
+     *
+     * <p>Two ways in, on purpose. {@code before}/{@code after} walk the conversation by cursor,
+     * which is what the inbox uses; {@code page}/{@code size} still work for callers that page by
+     * number, and behave exactly as before. A caller that sends neither cursor gets the newest
+     * {@code size} messages, which is what both want on first load.
+     */
     @GetMapping("/{ticketId}/messages")
-    public Mono<ResponseEntity<Page<WhatsappMessage>>> readTicketThread(
+    public Mono<ResponseEntity<WhatsappThreadWindow>> readTicketThread(
             @PathVariable("ticketId") Identity ticketId,
             @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "before", required = false) String before,
+            @RequestParam(value = "after", required = false) String after,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         return this.service
-                .readTicketThread(ticketId, search, PageRequest.of(page, size))
+                .readTicketThread(ticketId, search, before, after, PageRequest.of(page, size))
                 .map(ResponseEntity::ok);
     }
 
@@ -61,22 +76,90 @@ public class TicketWhatsappConversationController {
     }
 
     /**
-     * Whether Meta's 24-hour window is open, so the UI knows whether to offer a free-text composer
-     * or force a template.
+     * How the number this deal sends from is placed against every limit, plus whether anything is
+     * currently holding a send.
+     *
+     * <p>What the composer calls before offering the override, and what fills the override panel.
+     * Same figures as the standing panel on the settings page, from the same computation, so the two
+     * cannot tell a person different things about the same number.
      */
-    @GetMapping("/{ticketId}/csw")
-    public Mono<ResponseEntity<WhatsappCswService.CswStatus>> readCswStatus(
-            @PathVariable("ticketId") Identity ticketId) {
-        return this.service.readCswStatus(ticketId).map(ResponseEntity::ok);
+    @GetMapping("/{ticketId}/health")
+    public Mono<ResponseEntity<WhatsappSessionHealth>> readHealth(@PathVariable("ticketId") Identity ticketId) {
+        return this.service.readHealth(ticketId).map(ResponseEntity::ok);
     }
 
     /**
-     * Sends a free-form message. 409 when the 24-hour window has closed, which is a real state the
-     * UI has to handle by offering a template rather than an error toast.
+     * Lets a person undo an opt-out that was detected in error.
      *
-     * <p>The ticket comes from the path, not the body: the path is what gets access-checked, so any
-     * ticket id in the payload is overwritten before the send.
+     * <p>Separate from the send on purpose. Opt-out is the one hold a {@code force} flag will not
+     * override, because a checkbox on the send button is how "they asked us to stop" turns into a
+     * report. Reversing it is a deliberate act on the deal instead.
      */
+    @PostMapping("/{ticketId}/opt-out/clear")
+    public Mono<ResponseEntity<Ticket>> clearOptOut(@PathVariable("ticketId") Identity ticketId) {
+        return this.service.clearOptOut(ticketId).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Sends a message the agent typed.
+     *
+     * <p>409 when a pacing gate is holding it, which is a real state the UI handles by showing the
+     * override panel rather than an error toast. Retrying the same call with {@code force: true}
+     * sends anyway, for every hold except opt-out and "no number connected".
+     *
+     * <p>The ticket comes from the path, not the body: the path is what gets access-checked.
+     */
+    /**
+     * Sends an attachment on a conversation.
+     *
+     * <p>Multipart, so the file rides the same request that names the deal. The alternative - upload
+     * to storage from the browser, then send a reference - would need every agent to hold write
+     * access to the tenant's secured files, which is a far larger grant than sending a photo.
+     */
+    @PostMapping(value = "/{ticketId}/send-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> sendMedia(
+            @PathVariable("ticketId") Identity ticketId,
+            @RequestPart("file") FilePart file,
+            @RequestPart(value = "caption", required = false) String caption,
+            @RequestPart(value = "kind", required = false) String kind,
+            @RequestPart(value = "voiceNote", required = false) String voiceNote,
+            @RequestPart(value = "force", required = false) String force) {
+
+        return this.service
+                .sendMedia(
+                        ticketId,
+                        file,
+                        caption,
+                        kind,
+                        Boolean.parseBoolean(voiceNote),
+                        Boolean.parseBoolean(force))
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Sends a file the tenant already holds, named by its stored path.
+     *
+     * <p>A plain JSON body rather than multipart, because there is nothing to upload: the bytes are
+     * already in storage and the browser only knows which one was picked. The path is taken as
+     * relative to the caller's own client root and qualified server-side, so naming another tenant's
+     * file reaches nothing.
+     */
+    @PostMapping("/{ticketId}/send-asset")
+    public Mono<ResponseEntity<Map<String, Object>>> sendAsset(
+            @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {
+
+        return this.service
+                .sendAsset(
+                        ticketId,
+                        request.get("assetPath") == null
+                                ? null
+                                : String.valueOf(request.get("assetPath")),
+                        request.get("caption") == null ? null : String.valueOf(request.get("caption")),
+                        request.get("kind") == null ? null : String.valueOf(request.get("kind")),
+                        Boolean.parseBoolean(String.valueOf(request.get("force"))))
+                .map(ResponseEntity::ok);
+    }
+
     @PostMapping("/{ticketId}/send")
     public Mono<ResponseEntity<Map<String, Object>>> sendMessage(
             @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {
@@ -97,13 +180,6 @@ public class TicketWhatsappConversationController {
             @PathVariable("messageId") ULong messageId,
             @RequestParam(value = "connectionName", required = false) String connectionName) {
         return this.service.downloadMedia(ticketId, messageId, connectionName).map(ResponseEntity::ok);
-    }
-
-    /** Sends an approved template, which is the only thing permitted outside the window. */
-    @PostMapping("/{ticketId}/send/template")
-    public Mono<ResponseEntity<Map<String, Object>>> sendTemplate(
-            @PathVariable("ticketId") Identity ticketId, @RequestBody Map<String, Object> request) {
-        return this.service.sendTemplate(ticketId, request).map(ResponseEntity::ok);
     }
 
     /**

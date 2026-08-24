@@ -66,6 +66,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -82,6 +83,7 @@ import com.google.gson.Gson;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -176,6 +178,29 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<Ticket> findById(ULong id) {
         return this.dao.readById(id)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.findById"));
+    }
+
+    /**
+     * Records that a lead asked not to be contacted on WhatsApp.
+     *
+     * <p>No {@code hasAccess()}, like {@link #findById} above it and for the same reason: this is
+     * driven by an inbound message arriving from the bridge, where there is no user and never will
+     * be. Nothing here is caller-supplied except the message text we just stored ourselves.
+     *
+     * <p>Idempotent. A lead who writes "stop" three times should not have the original timestamp
+     * overwritten, because when they first asked is the fact that matters if this is ever questioned.
+     */
+    public Mono<Ticket> markWhatsappOptedOut(ULong ticketId, String triggeringText) {
+
+        return this.findById(ticketId)
+                .filter(ticket -> !Boolean.TRUE.equals(ticket.getWhatsappOptedOut()))
+                .flatMap(ticket -> this.dao.update(ticket.setWhatsappOptedOut(Boolean.TRUE)
+                        .setWhatsappOptedOutAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                        .setWhatsappOptedOutText(
+                                triggeringText == null
+                                        ? null
+                                        : triggeringText.substring(0, Math.min(triggeringText.length(), 512)))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.markWhatsappOptedOut"));
     }
 
     @PostConstruct
@@ -554,7 +579,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(created)
-                                .then(this.ticketMessageService.sendOnTicketCreate(access, created))
+                                .then(this.ticketMessageService.enqueueForStage(access, created))
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
@@ -1036,8 +1061,40 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 : Mono.just(fTicket),
                         (uTicket, cTask, fTicket, rTicket) -> this.enqueueConversionEventsForStageTransition(
                                         access, rTicket, oldStage, oldStatus)
+                                .then(this.enqueueStageMessages(access, rTicket, oldStage, oldStatus))
                                 .thenReturn(rTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+    }
+
+    /**
+     * Queues whatever the new stage's rules say this deal is owed.
+     *
+     * <p>The stage-change half of the messaging trigger. Creation was already wired; a move was not,
+     * which meant every rule beyond the first stage was configurable and dead. A deal reaching "Site
+     * visit booked" is exactly when its confirmation should go out.
+     *
+     * <p>Skipped when neither stage nor status actually changed, so re-saving a deal does not re-run
+     * the rules. Even if it did, the per-rule check in the channel service would refuse the duplicate;
+     * this is the cheaper of the two guards, not the load-bearing one.
+     *
+     * <p>Best-effort, like the conversion hook above it. Failing a person's stage update because a
+     * message could not be queued would be the wrong trade, and the queue row is not the message: the
+     * sweeper decides whether anything is sent at all.
+     */
+    private Mono<Void> enqueueStageMessages(
+            ProcessorAccess access, Ticket ticket, ULong oldStage, ULong oldStatus) {
+
+        if (java.util.Objects.equals(oldStage, ticket.getStage())
+                && java.util.Objects.equals(oldStatus, ticket.getStatus())) return Mono.empty();
+
+        return this.ticketMessageService.enqueueForStage(access, ticket).onErrorResume(e -> {
+            logger.error(
+                    "Could not queue stage messages for ticket {} moving to stage {}.",
+                    ticket.getId(),
+                    ticket.getStage(),
+                    e);
+            return Mono.empty();
+        });
     }
 
     /**
@@ -1353,6 +1410,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     /**
+     * The same, for a WhatsApp thread, which matches either number a deal can be messaged on. See
+     * {@link com.fincity.saas.entity.processor.dao.TicketDAO#readAccessibleTicketIdsByWhatsappNumber}.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByWhatsappNumber(
+            ProcessorAccess access, String number, ULong productId) {
+        return this.dao.readAccessibleTicketIdsByWhatsappNumber(access, number, productId);
+    }
+
+    /**
      * The WhatsApp inbox. See {@link
      * com.fincity.saas.entity.processor.dao.TicketDAO#readConversations}.
      */
@@ -1536,6 +1602,48 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
     }
 
+    /**
+     * Records the number this deal is messaged on.
+     *
+     * <p>Its own operation rather than part of the general ticket update, which replaces only the
+     * handful of fields it names and would either ignore this one or clear it on every save from a
+     * client that has not been taught about it.
+     *
+     * <p>A null or blank number clears the override and puts the deal back on its phone number.
+     * Logged as a field update either way, because this value comes from a phone call rather than
+     * from the lead's own submission, and when messages later go nowhere the first useful question is
+     * who typed it and when.
+     */
+    public Mono<Ticket> updateWhatsappNumber(Identity ticketId, TicketWhatsappNumberRequest request) {
+
+        if (request == null) return this.identityMissingError(Ticket.Fields.whatsappNumber);
+
+        PhoneNumber number = request.getWhatsappNumber();
+        boolean clearing = number == null || StringUtil.safeIsBlank(number.getNumber());
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> {
+                            String old = ticket.getWhatsappNumber();
+
+                            ticket.setWhatsappNumber(clearing ? null : number.getNumber());
+                            ticket.setWhatsappDialCode(clearing ? null : number.getCountryCode());
+
+                            return this.update(access, ticket).flatMap(updated -> this.activityService
+                                    .acFieldUpdate(
+                                            updated.getId(),
+                                            request.getComment(),
+                                            Ticket.Fields.whatsappNumber + ": "
+                                                    + (old == null ? "-" : old) + " -> "
+                                                    + (updated.getWhatsappNumber() == null
+                                                            ? "-"
+                                                            : updated.getWhatsappNumber()))
+                                    .thenReturn(updated));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappNumber"));
+    }
+
     public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
 
         if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
@@ -1646,5 +1754,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
         return this.defaultSchemaRepositoryFor(Ticket.class, classSchema);
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar on every deal that shares their number.
+     *
+     * <p>No access check, and that is correct rather than an omission: the caller is the inbound
+     * handoff from the message service, which runs with no user at all. Nothing here is readable by
+     * a caller who could not already read the deal, and the write is confined to two columns that
+     * hold a picture.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+        return this.dao
+                .updateWhatsappProfilePicture(appCode, clientCode, phoneNumber, detail, pictureId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappProfilePicture"));
     }
 }

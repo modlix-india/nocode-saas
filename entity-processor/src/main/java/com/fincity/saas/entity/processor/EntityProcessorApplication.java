@@ -8,6 +8,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.Ordered;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
 import reactivefeign.spring.config.EnableReactiveFeignClients;
@@ -18,6 +19,9 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
 @EnableWebFlux
 @EnableWebFluxSecurity
+// Required by the WhatsApp outbox sweeper. Layer 2 of the pacing design holds a message for up to a
+// day, which no request-scoped path can do: something has to come back and look at it later.
+@EnableScheduling
 @EnableReactiveMethodSecurity(order = Ordered.HIGHEST_PRECEDENCE)
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages = "com.fincity")

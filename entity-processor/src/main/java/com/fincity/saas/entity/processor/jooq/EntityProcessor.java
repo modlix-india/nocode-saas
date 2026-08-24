@@ -17,6 +17,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionAc
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorMessageTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -40,6 +41,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDupl
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappOutbox;
 
 import java.util.Arrays;
 import java.util.List;
@@ -131,6 +133,12 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_integrations</code>.
      */
     public final EntityProcessorIntegrations ENTITY_PROCESSOR_INTEGRATIONS = EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS;
+
+    /**
+     * Reusable message bodies with variants. Replaces Meta-approved templates,
+     * which do not exist on the linked-device protocol.
+     */
+    public final EntityProcessorMessageTemplates ENTITY_PROCESSOR_MESSAGE_TEMPLATES = EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -260,6 +268,12 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorWhatsappMessages ENTITY_PROCESSOR_WHATSAPP_MESSAGES = EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES;
 
     /**
+     * Queued automated WhatsApp messages and the pacing decision for each. Not
+     * cleared on success: this is the audit trail.
+     */
+    public final EntityProcessorWhatsappOutbox ENTITY_PROCESSOR_WHATSAPP_OUTBOX = EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX;
+
+    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -288,6 +302,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorConversionEvents.ENTITY_PROCESSOR_CONVERSION_EVENTS,
             EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS,
             EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS,
+            EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
@@ -310,7 +325,8 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorTicketPeDuplicationRules.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES,
             EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS,
             EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS,
-            EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES
+            EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES,
+            EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX
         );
     }
 }

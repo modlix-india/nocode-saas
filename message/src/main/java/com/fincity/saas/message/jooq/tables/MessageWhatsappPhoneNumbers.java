@@ -4,21 +4,11 @@
 package com.fincity.saas.message.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.MessagingLimitTier;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.Status;
+import com.fincity.saas.message.enums.bridge.WhatsappSessionState;
 import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
-import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
-import com.fincity.saas.message.model.message.whatsapp.phone.QualityScore;
-import com.fincity.saas.message.model.message.whatsapp.phone.Throughput;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -27,16 +17,11 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
-import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -114,6 +99,56 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     public final TableField<MessageWhatsappPhoneNumbersRecord, String> OWNER_SERVICE = createField(DSL.name("OWNER_SERVICE"), SQLDataType.VARCHAR(64), this, "Eureka service id owning conversations on this number, e.g. entity-processor.");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.BRIDGE_INSTANCE_ID</code>.
+     * Instance holding this session. Authoritative: routing is a table lookup,
+     * never a hash and never a balance. Null means unplaced, which for a Cloud
+     * API era row is its permanent state.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> BRIDGE_INSTANCE_ID = createField(DSL.name("BRIDGE_INSTANCE_ID"), SQLDataType.VARCHAR(64), this, "Instance holding this session. Authoritative: routing is a table lookup, never a hash and never a balance. Null means unplaced, which for a Cloud API era row is its permanent state.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.SESSION_STATE</code>.
+     * Lifecycle state as the bridge reports it, surfaced verbatim to the UI.
+     * COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only
+     * failure here a customer can fix themselves in seconds, and only if told
+     * what it is.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, WhatsappSessionState> SESSION_STATE = createField(DSL.name("SESSION_STATE"), SQLDataType.VARCHAR(16), this, "Lifecycle state as the bridge reports it, surfaced verbatim to the UI. COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only failure here a customer can fix themselves in seconds, and only if told what it is.", new EnumConverter<String, WhatsappSessionState>(String.class, WhatsappSessionState.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.SESSION_REASON</code>. Why
+     * the session is in this state. A BANNED row with no reason is
+     * unexplainable three months later.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> SESSION_REASON = createField(DSL.name("SESSION_REASON"), SQLDataType.VARCHAR(512), this, "Why the session is in this state. A BANNED row with no reason is unexplainable three months later.");
+
+    /**
+     * The column <code>message.message_whatsapp_phone_numbers.COUNTRY</code>.
+     * ISO country of the linked number, established authoritatively at
+     * PairSuccess from the linked JID rather than from what the caller
+     * declared. Placement and re-verification both read this.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> COUNTRY = createField(DSL.name("COUNTRY"), SQLDataType.CHAR(2), this, "ISO country of the linked number, established authoritatively at PairSuccess from the linked JID rather than from what the caller declared. Placement and re-verification both read this.");
+
+    /**
+     * The column <code>message.message_whatsapp_phone_numbers.LINKED_AT</code>.
+     * When the number was linked, UTC. Drives the warm-up ramp, which is
+     * derived from this and must not be an editable field.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> LINKED_AT = createField(DSL.name("LINKED_AT"), SQLDataType.LOCALDATETIME(0), this, "When the number was linked, UTC. Drives the warm-up ramp, which is derived from this and must not be an editable field.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.STATE_SINCE</code>. When
+     * SESSION_STATE last changed, UTC. Distinct from UPDATED_AT so a dead
+     * session cannot reset its own retirement clock by being touched.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> STATE_SINCE = createField(DSL.name("STATE_SINCE"), SQLDataType.LOCALDATETIME(0), this, "When SESSION_STATE last changed, UTC. Distinct from UPDATED_AT so a dead session cannot reset its own retirement clock by being touched.");
+
+    /**
      * The column <code>message.message_whatsapp_phone_numbers.CODE</code>.
      * Unique Code to identify this row.
      */
@@ -122,9 +157,10 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
     /**
      * The column
      * <code>message.message_whatsapp_phone_numbers.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
-     * WhatsApp Business Account ID.
+     * Meta business account. Null for every bridge session; retained until the
+     * Graph API layer is retired.
      */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "WhatsApp Business Account ID.");
+    public final TableField<MessageWhatsappPhoneNumbersRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Meta business account. Null for every bridge session; retained until the Graph API layer is retired.");
 
     /**
      * The column
@@ -132,20 +168,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      * Display phone number for WhatsApp Business.
      */
     public final TableField<MessageWhatsappPhoneNumbersRecord, String> DISPLAY_PHONE_NUMBER = createField(DSL.name("DISPLAY_PHONE_NUMBER"), SQLDataType.CHAR(20), this, "Display phone number for WhatsApp Business.");
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.QUALITY_RATING</code>.
-     * Quality rating of the phone number.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, QualityRatingType> QUALITY_RATING = createField(DSL.name("QUALITY_RATING"), SQLDataType.VARCHAR(7), this, "Quality rating of the phone number.", new EnumConverter<String, QualityRatingType>(String.class, QualityRatingType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.QUALITY_SCORE</code>.
-     * Quality Score of Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, QualityScore> QUALITY_SCORE = createField(DSL.name("QUALITY_SCORE"), SQLDataType.JSON, this, "Quality Score of Whatsapp Phone Number", new JSONtoClassConverter<JSON, QualityScore>(JSON.class, QualityScore.class));
 
     /**
      * The column
@@ -160,54 +182,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      * WhatsApp phone number ID from Meta.
      */
     public final TableField<MessageWhatsappPhoneNumbersRecord, String> PHONE_NUMBER_ID = createField(DSL.name("PHONE_NUMBER_ID"), SQLDataType.VARCHAR(255), this, "WhatsApp phone number ID from Meta.");
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.CODE_VERIFICATION_STATUS</code>.
-     * Status of code verification.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, CodeVerificationStatus> CODE_VERIFICATION_STATUS = createField(DSL.name("CODE_VERIFICATION_STATUS"), SQLDataType.VARCHAR(12), this, "Status of code verification.", new EnumConverter<String, CodeVerificationStatus>(String.class, CodeVerificationStatus.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.NAME_STATUS</code>. Status
-     * of the verified name.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, NameStatusType> NAME_STATUS = createField(DSL.name("NAME_STATUS"), SQLDataType.VARCHAR(24).nullable(false).defaultValue(DSL.inline("NONE", SQLDataType.VARCHAR)), this, "Status of the verified name.", new EnumConverter<String, NameStatusType>(String.class, NameStatusType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.PLATFORM_TYPE</code>.
-     * Platform type for WhatsApp Business.
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, PlatformType> PLATFORM_TYPE = createField(DSL.name("PLATFORM_TYPE"), SQLDataType.VARCHAR(14), this, "Platform type for WhatsApp Business.", new EnumConverter<String, PlatformType>(String.class, PlatformType.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.THROUGHPUT</code>.
-     * Throughput of Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, Throughput> THROUGHPUT = createField(DSL.name("THROUGHPUT"), SQLDataType.JSON, this, "Throughput of Whatsapp Phone Number", new JSONtoClassConverter<JSON, Throughput>(JSON.class, Throughput.class));
-
-    /**
-     * The column <code>message.message_whatsapp_phone_numbers.STATUS</code>.
-     * Status of the Whatsapp Phone Number
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, Status> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(12).nullable(false).defaultValue(DSL.inline("UNKNOWN", SQLDataType.VARCHAR)), this, "Status of the Whatsapp Phone Number", new EnumConverter<String, Status>(String.class, Status.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.MESSAGING_LIMIT_TIER</code>.
-     * Messaging Limit Tier
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, MessagingLimitTier> MESSAGING_LIMIT_TIER = createField(DSL.name("MESSAGING_LIMIT_TIER"), SQLDataType.VARCHAR(14), this, "Messaging Limit Tier", new EnumConverter<String, MessagingLimitTier>(String.class, MessagingLimitTier.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_phone_numbers.WEBHOOK_CONFIG</code>. Phone
-     * Number webhook config
-     */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, WebhookConfig> WEBHOOK_CONFIG = createField(DSL.name("WEBHOOK_CONFIG"), SQLDataType.JSON, this, "Phone Number webhook config", new JSONtoClassConverter<JSON, WebhookConfig>(JSON.class, WebhookConfig.class));
 
     /**
      * The column
@@ -250,6 +224,14 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      */
     public final TableField<MessageWhatsappPhoneNumbersRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this record was last updated.");
 
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_numbers.LINKED_NUMBER_KEY</code>.
+     * DISPLAY_PHONE_NUMBER for placed sessions only, NULL otherwise. Exists
+     * purely to carry the unique key below.
+     */
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> LINKED_NUMBER_KEY = createField(DSL.name("LINKED_NUMBER_KEY"), SQLDataType.CHAR(20), this, "DISPLAY_PHONE_NUMBER for placed sessions only, NULL otherwise. Exists purely to carry the unique key below.");
+
     private MessageWhatsappPhoneNumbers(Name alias, Table<MessageWhatsappPhoneNumbersRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -282,39 +264,6 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
         this(DSL.name("message_whatsapp_phone_numbers"), null);
     }
 
-    public <O extends Record> MessageWhatsappPhoneNumbers(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumbersRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumbersRecord> parentPath) {
-        super(path, childPath, parentPath, MESSAGE_WHATSAPP_PHONE_NUMBERS);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class MessageWhatsappPhoneNumbersPath extends MessageWhatsappPhoneNumbers implements Path<MessageWhatsappPhoneNumbersRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> MessageWhatsappPhoneNumbersPath(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumbersRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumbersRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private MessageWhatsappPhoneNumbersPath(Name alias, Table<MessageWhatsappPhoneNumbersRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(String alias) {
-            return new MessageWhatsappPhoneNumbersPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(Name alias) {
-            return new MessageWhatsappPhoneNumbersPath(alias, this);
-        }
-
-        @Override
-        public MessageWhatsappPhoneNumbersPath as(Table<?> alias) {
-            return new MessageWhatsappPhoneNumbersPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
@@ -322,7 +271,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT);
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX4_WHATSAPP_PHONE_NUMBERS_SESSION, Indexes.MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX5_WHATSAPP_PHONE_NUMBERS_COUNTRY);
     }
 
     @Override
@@ -337,25 +286,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
 
     @Override
     public List<UniqueKey<MessageWhatsappPhoneNumbersRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID);
-    }
-
-    @Override
-    public List<ForeignKey<MessageWhatsappPhoneNumbersRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID);
-    }
-
-    private transient MessageWhatsappBusinessAccountsPath _messageWhatsappBusinessAccounts;
-
-    /**
-     * Get the implicit join path to the
-     * <code>message.message_whatsapp_business_accounts</code> table.
-     */
-    public MessageWhatsappBusinessAccountsPath messageWhatsappBusinessAccounts() {
-        if (_messageWhatsappBusinessAccounts == null)
-            _messageWhatsappBusinessAccounts = new MessageWhatsappBusinessAccountsPath(this, Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
-
-        return _messageWhatsappBusinessAccounts;
+        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK3_WHATSAPP_PHONE_NUMBERS_LINKED_NUMBER);
     }
 
     @Override

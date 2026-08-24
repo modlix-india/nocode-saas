@@ -49,6 +49,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+import com.fincity.saas.commons.util.StringUtil;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -203,7 +205,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             return Mono.just(List.of());
 
         List<AbstractCondition> conditions = new ArrayList<>();
-        conditions.add(FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber.getNumber()));
+        conditions.add(onEitherNumber(phoneNumber.getNumber()));
 
         if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
 
@@ -217,6 +219,25 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 .orderBy(ENTITY_PROCESSOR_TICKETS.UPDATED_AT.desc()))
                         .map(e -> e.into(this.pojoClass))
                         .collectList());
+    }
+
+    /**
+     * Matches a customer's number against either number a deal can be reached on.
+     *
+     * <p>The reason every WhatsApp lookup has to search both columns rather than just
+     * {@code PHONE_NUMBER}. Once someone records a separate WhatsApp number on a deal, the customer's
+     * replies arrive from that number, and a phone-only match finds nothing. On the inbound path that
+     * is not a missing row but a wrong one: the message resolves to no deal, so it creates a fresh one
+     * for a customer who already has a deal - the exact duplicate the second column exists to avoid,
+     * produced by the act of recording the number correctly.
+     *
+     * <p>An OR rather than a coalesce so both columns stay indexable;
+     * {@code IDX10_TICKETS_APP_CLIENT_WHATSAPP} covers the second half.
+     */
+    private static AbstractCondition onEitherNumber(String number) {
+        return ComplexCondition.or(
+                FilterCondition.make(Ticket.Fields.phoneNumber, number),
+                FilterCondition.make(Ticket.Fields.whatsappNumber, number));
     }
 
     /**
@@ -706,11 +727,33 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
      */
     public Mono<List<ULong>> readAccessibleTicketIdsByPhone(
             ProcessorAccess access, String phoneNumber, ULong productId) {
+        return readAccessibleTicketIds(access, FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber), phoneNumber, productId);
+    }
 
-        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(List.of());
+    /**
+     * The same gate, for a WhatsApp thread rather than a call history.
+     *
+     * <p>Split from the phone version rather than widening it, because the two channels do not share
+     * a number any more. A call goes to {@code PHONE_NUMBER} and its history groups on that alone; a
+     * thread runs on whichever number the deal is messaged on, so it has to match either column or a
+     * deal with a corrected WhatsApp number would show an empty conversation next to the messages it
+     * actually holds.
+     *
+     * <p>Widening the shared method instead would have quietly pulled deals into call histories on
+     * the strength of a number nobody ever dialled.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByWhatsappNumber(
+            ProcessorAccess access, String number, ULong productId) {
+        return readAccessibleTicketIds(access, onEitherNumber(number), number, productId);
+    }
+
+    private Mono<List<ULong>> readAccessibleTicketIds(
+            ProcessorAccess access, AbstractCondition numberCondition, String number, ULong productId) {
+
+        if (number == null || number.isBlank()) return Mono.just(List.of());
 
         List<AbstractCondition> conditions = new ArrayList<>();
-        conditions.add(FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber));
+        conditions.add(numberCondition);
         if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
 
         return FlatMapUtil.flatMapMono(
@@ -735,6 +778,11 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                     FilterCondition.make(BaseUpdatableDto.Fields.name, search)
                             .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL),
                     FilterCondition.make(Ticket.Fields.phoneNumber, search)
+                            .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL),
+                    // The number an agent has in front of them is the one the customer messaged
+                    // from, so searching the inbox for it has to find the deal even when that is the
+                    // WhatsApp number rather than the number on file.
+                    FilterCondition.make(Ticket.Fields.whatsappNumber, search)
                             .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL)));
 
         if (conditions.isEmpty()) return null;
@@ -831,6 +879,16 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 .map(WhatsappConversationResponse.Deal::of)
                                 .toList());
                         if (!deals.isEmpty()) conversation.setPrimaryTicketId(deals.getFirst().getId());
+
+                        // The first deal that actually has one, rather than the first deal's value.
+                        // Every deal on a number is written the same avatar, but a deal created
+                        // before the customer's first message has never been written at all, and
+                        // taking the primary blindly would show a blank circle next to a face.
+                        deals.stream()
+                                .map(Ticket::getWhatsappProfilePicFileDetail)
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .ifPresent(conversation::setProfilePicFileDetail);
                     });
 
                     return conversations;
@@ -839,5 +897,40 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
 
     private String conversationKey(Integer dialCode, String phoneNumber) {
         return dialCode + "|" + phoneNumber;
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar against every deal on their number.
+     *
+     * <p>Every deal, not just the one that happened to receive the message. A customer can hold
+     * several, the conversation is already a union across them, and writing the picture to one would
+     * show the same person with a face on one deal and a blank circle on the next.
+     *
+     * <p>Matched on the plain phone number within the tenant, which is how the rest of this service
+     * identifies a customer, and covered by IDX9 added alongside these columns.
+     *
+     * <p>A null detail is a real instruction rather than a no-op: the customer removed their picture
+     * and what is held must be cleared.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+
+        if (StringUtil.safeIsBlank(phoneNumber)) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(ENTITY_PROCESSOR_TICKETS)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_FILE_DETAIL, detail)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_ID, pictureId)
+                .where(ENTITY_PROCESSOR_TICKETS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_TICKETS.CLIENT_CODE.eq(clientCode))
+                // Either number, for the same reason the inbound match uses both: the avatar arrives
+                // keyed on the number the customer messages from, which is the WhatsApp number
+                // whenever someone has recorded one. Matching on the phone alone would leave exactly
+                // the corrected deals without a face.
+                .and(ENTITY_PROCESSOR_TICKETS
+                        .PHONE_NUMBER
+                        .eq(phoneNumber)
+                        .or(ENTITY_PROCESSOR_TICKETS.WHATSAPP_NUMBER.eq(phoneNumber))))
+                .defaultIfEmpty(0);
     }
 }

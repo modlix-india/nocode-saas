@@ -56,6 +56,31 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
     }
 
     /**
+     * Every product currently sending from one linked number.
+     *
+     * <p>The reverse of the mapping, which is the direction the numbers screen asks in: it lists
+     * numbers and wants to show, and edit, the products on each. It is also what makes saving that
+     * screen correct, since deselecting a product has to clear its code and the client has no way to
+     * work out which products those were.
+     *
+     * <p>Not filtered on active. A deactivated product still holds its number, and clearing it here
+     * because it happens to be inactive would silently drop the mapping the moment anybody edited an
+     * unrelated number.
+     */
+    public Mono<List<Product>> readByWhatsappSessionCode(ProcessorAccess access, String sessionCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        FilterCondition.make(Product.Fields.whatsappSessionCode, sessionCode)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(Product.class))
+                        .collectList());
+    }
+
+    /**
      * The tenant's oldest active product.
      *
      * <p>Used when an inbound WhatsApp message arrives from a number with no deal and the business

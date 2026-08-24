@@ -17,6 +17,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionAc
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorMessageTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -40,6 +41,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDupl
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappOutbox;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorAdsetsRecord;
@@ -53,6 +55,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorConv
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorConversionEventsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorDiagnosticsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorIntegrationsRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorMessageTemplatesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
@@ -76,6 +79,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketRuUserDistributionsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorWhatsappMessagesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorWhatsappOutboxRecord;
 
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
@@ -126,6 +130,9 @@ public class Keys {
     public static final UniqueKey<EntityProcessorIntegrationsRecord> KEY_ENTITY_PROCESSOR_INTEGRATIONS_PRIMARY = Internal.createUniqueKey(EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS, DSL.name("KEY_entity_processor_integrations_PRIMARY"), new TableField[] { EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS.ID }, true);
     public static final UniqueKey<EntityProcessorIntegrationsRecord> KEY_ENTITY_PROCESSOR_INTEGRATIONS_UK1_INTEGRATIONS_CODE = Internal.createUniqueKey(EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS, DSL.name("KEY_entity_processor_integrations_UK1_INTEGRATIONS_CODE"), new TableField[] { EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS.CODE }, true);
     public static final UniqueKey<EntityProcessorIntegrationsRecord> KEY_ENTITY_PROCESSOR_INTEGRATIONS_UK2_INTEGRATIONS_CC_SOURCE = Internal.createUniqueKey(EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS, DSL.name("KEY_entity_processor_integrations_UK2_INTEGRATIONS_CC_SOURCE"), new TableField[] { EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS.CLIENT_CODE, EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS.IN_SOURCE }, true);
+    public static final UniqueKey<EntityProcessorMessageTemplatesRecord> KEY_ENTITY_PROCESSOR_MESSAGE_TEMPLATES_PRIMARY = Internal.createUniqueKey(EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES, DSL.name("KEY_entity_processor_message_templates_PRIMARY"), new TableField[] { EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES.ID }, true);
+    public static final UniqueKey<EntityProcessorMessageTemplatesRecord> KEY_ENTITY_PROCESSOR_MESSAGE_TEMPLATES_UK1_MESSAGE_TEMPLATES_CODE = Internal.createUniqueKey(EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES, DSL.name("KEY_entity_processor_message_templates_UK1_MESSAGE_TEMPLATES_CODE"), new TableField[] { EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES.CODE }, true);
+    public static final UniqueKey<EntityProcessorMessageTemplatesRecord> KEY_ENTITY_PROCESSOR_MESSAGE_TEMPLATES_UK2_MESSAGE_TEMPLATES_NAME = Internal.createUniqueKey(EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES, DSL.name("KEY_entity_processor_message_templates_UK2_MESSAGE_TEMPLATES_NAME"), new TableField[] { EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES.APP_CODE, EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES.CLIENT_CODE, EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES.NAME }, true);
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_PRIMARY = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_PRIMARY"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.ID }, true);
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_UK1_NOTES_CODE = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_UK1_NOTES_CODE"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.CODE }, true);
     public static final UniqueKey<EntityProcessorOwnersRecord> KEY_ENTITY_PROCESSOR_OWNERS_PRIMARY = Internal.createUniqueKey(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS, DSL.name("KEY_entity_processor_owners_PRIMARY"), new TableField[] { EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS.ID }, true);
@@ -199,6 +206,8 @@ public class Keys {
     public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_PRIMARY = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_PRIMARY"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.ID }, true);
     public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_UK1_WA_MESSAGES_CODE = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_UK1_WA_MESSAGES_CODE"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CODE }, true);
     public static final UniqueKey<EntityProcessorWhatsappMessagesRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_MESSAGES_UK2_WA_MESSAGES_AC_CC_MESSAGE_ID = Internal.createUniqueKey(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES, DSL.name("KEY_entity_processor_whatsapp_messages_UK2_WA_MESSAGES_AC_CC_MESSAGE_ID"), new TableField[] { EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.APP_CODE, EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.CLIENT_CODE, EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_ID }, true);
+    public static final UniqueKey<EntityProcessorWhatsappOutboxRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_OUTBOX_PRIMARY = Internal.createUniqueKey(EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX, DSL.name("KEY_entity_processor_whatsapp_outbox_PRIMARY"), new TableField[] { EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX.ID }, true);
+    public static final UniqueKey<EntityProcessorWhatsappOutboxRecord> KEY_ENTITY_PROCESSOR_WHATSAPP_OUTBOX_UK1_WHATSAPP_OUTBOX_CODE = Internal.createUniqueKey(EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX, DSL.name("KEY_entity_processor_whatsapp_outbox_UK1_WHATSAPP_OUTBOX_CODE"), new TableField[] { EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX.CODE }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions

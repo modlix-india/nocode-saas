@@ -41,6 +41,20 @@ public class ContextUser implements Serializable {
     private String lastName;
     private String middleName;
     private String localeCode;
+
+    /**
+     * The IANA zone this person is actually on, already resolved.
+     *
+     * <p>Their own override when they have one, the client's otherwise. Resolved before it gets here
+     * rather than after, because this is read by every service and a fallback rule reimplemented in
+     * each of them is how two screens end up disagreeing about what time something happened.
+     *
+     * <p>Not a JWT claim, deliberately. The token is an identity envelope; this is an attribute, and
+     * the filter already re-reads the user (cached) on every request, so putting it on the token
+     * would buy nothing and would go stale until the next refresh.
+     */
+    private String timeZone;
+
     private String password;
     private boolean passwordHashed;
     private String pin;

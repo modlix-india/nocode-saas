@@ -1,47 +1,25 @@
 package com.fincity.saas.message.configuration;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.configuration.interceptor.ReactiveAuthenticationInterceptor;
 import com.fincity.saas.message.configuration.interceptor.ReactiveAuthenticationScheme;
-import com.fincity.saas.message.configuration.message.whatsapp.WhatsappApiConfig;
 import com.fincity.saas.message.oserver.core.document.Connection;
-import com.fincity.saas.message.service.RestConnectionService;
 import java.util.Base64;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+/**
+ * WebClient builders for the outbound providers this service talks to.
+ *
+ * <p>The WhatsApp builder went with the Cloud API. Nothing here reaches Meta any more: WhatsApp
+ * leaves this service through the bridge client, over HMAC-signed HTTP to a private address, and the
+ * bridge holds the WhatsApp connection itself.
+ */
 // TODO: Move to new WebClient in new spring boot 4.0
 @Component
 public class WebClientConfig {
-
-    private RestConnectionService restConnectionService;
-
-    @Autowired
-    private void setRestConnectionService(RestConnectionService restConnectionService) {
-        this.restConnectionService = restConnectionService;
-    }
-
-    public Mono<WebClient> createWhatsappWebClient(Connection connection) {
-        String tokenConnection = (String) connection.getConnectionDetails().getOrDefault("tokenConnection", null);
-
-        if (tokenConnection == null)
-            return Mono.error(new IllegalArgumentException("Token connection is required to connect to Whatsapp"));
-
-        String baseUrl =
-                (String) connection.getConnectionDetails().getOrDefault("baseUrl", WhatsappApiConfig.BASE_DOMAIN);
-
-        return FlatMapUtil.flatMapMono(
-                () -> this.restConnectionService.getConnectionOAuth2Token(
-                        connection.getAppCode(), connection.getClientCode(), tokenConnection),
-                token -> Mono.just(WebClient.builder()
-                        .baseUrl(baseUrl)
-                        .filter(new ReactiveAuthenticationInterceptor(token, ReactiveAuthenticationScheme.BEARER))
-                        .build()));
-    }
 
     public Mono<WebClient> createExotelWebClient(Connection connection) {
         Map<String, Object> details = connection.getConnectionDetails();

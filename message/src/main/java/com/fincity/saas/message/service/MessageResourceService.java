@@ -20,17 +20,14 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String UKNOWN_ERROR = "unknown_error";
     public static final String FORBIDDEN_CREATE = "forbidden_create";
     public static final String FORBIDDEN_UPDATE = "forbidden_update";
-    public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
     public static final String CONNECTION_NOT_FOUND = "connection_not_found";
     public static final String CONNECTION_TOKEN_NOT_FOUND = "connection_token_not_found";
     public static final String MAIL_SEND_ERROR = "mail_send_error";
     public static final String PHONE_NUMBER_REQUIRED = "phone_number_required";
 
     public static final String INVALID_CONNECTION_TYPE = "invalid_connection_type";
-    public static final String META_APP_NOT_CONNECTED = "meta_app_not_connected";
     public static final String URL_CREATION_ERROR = "url_creation_error";
     public static final String MISSING_CALL_PARAMETERS = "missing_call_parameters";
-    public static final String MISSING_MESSAGE_PARAMETERS = "missing_message_parameters";
     public static final String MISSING_CONNECTION_DETAILS = "missing_connection_details";
     public static final String DUPLICATE_CALL_SID = "duplicate_call_sid";
     public static final String CALL_NOT_FOUND = "call_not_found";
@@ -51,17 +48,6 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String UNABLE_TO_FETCH_EXTERNAL_RESOURCE = "unable_to_fetch_external_resource";
 
     // WhatsApp Template validation messages
-    public static final String TEMPLATE_NOT_EDITABLE_STATUS = "template_not_editable_status";
-    public static final String TEMPLATE_DAILY_EDIT_LIMIT_EXCEEDED = "template_daily_edit_limit_exceeded";
-    public static final String TEMPLATE_MONTHLY_EDIT_LIMIT_EXCEEDED = "template_monthly_edit_limit_exceeded";
-    public static final String TEMPLATE_NAME_LENGTH_EXCEEDED = "template_name_length_exceeded";
-    public static final String TEMPLATE_NOT_FOUND_IN_WHATSAPP = "template_not_found_in_whatsapp";
-    public static final String INVALID_MESSAGE_TYPE_MEDIA = "invalid_message_type_media";
-    public static final String WEBHOOK_CONFIG_NOT_DONE = "webhook_config_not_done";
-    public static final String WEBHOOK_SIGNATURE_INVALID = "webhook_signature_invalid";
-    public static final String PRODUCT_TO_DEFAULT = "product_to_default";
-    public static final String PRODUCT_ALREADY_ASSIGNED = "product_already_assigned";
-    public static final String PHONE_NUMBER_VERIFICATION_FAILED = "phone_number_verification_failed";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

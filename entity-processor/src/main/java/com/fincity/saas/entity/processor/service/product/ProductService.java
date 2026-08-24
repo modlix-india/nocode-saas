@@ -10,6 +10,7 @@ import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductDAO;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
@@ -21,6 +22,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.product.ProductPartnerUpdateRequest;
 import com.fincity.saas.entity.processor.model.request.product.ProductRequest;
+import com.fincity.saas.entity.processor.model.request.product.ProductWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
@@ -154,6 +156,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     existing.setProductWalkInFormId(entity.getProductWalkInFormId());
                     existing.setLogoFileDetail(entity.getLogoFileDetail());
                     existing.setBannerFileDetail(entity.getBannerFileDetail());
+                    // Listed here or a PUT silently drops it, while PATCH - which never reaches this
+                    // method - would keep it. The two paths disagreeing is worse than either.
+                    existing.setWhatsappSessionCode(entity.getWhatsappSessionCode());
 
                     return Mono.just(existing);
                 })
@@ -217,8 +222,64 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
     }
 
+    /**
+     * Points a set of products at one linked WhatsApp number, and only that set.
+     *
+     * <p>Deliberately not guarded by an authority of its own. Which number a product sends from is a
+     * property of the product, so it is governed by whatever governs editing the product: every row
+     * here is fetched through {@link #readByIdentity}, which applies the tenant and outside-user
+     * checks, and a product the caller cannot reach fails the call rather than being skipped.
+     * Marking a number the tenant-wide <i>default</i> is a different question and stays owner-gated,
+     * because it decides what happens to products nobody has configured.
+     *
+     * <p>The clearing pass runs first and covers products that hold this code but are not in the
+     * request. Without it, deselecting a product on the screen would appear to work and change
+     * nothing.
+     */
+    public Mono<Long> assignWhatsappNumber(ProductWhatsappNumberRequest request) {
+
+        if (request == null || StringUtil.safeIsBlank(request.getWhatsappSessionCode()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    Product.Fields.whatsappSessionCode);
+
+        String sessionCode = request.getWhatsappSessionCode();
+        List<Identity> wanted = request.getProducts() == null ? List.of() : request.getProducts();
+
+        return this.hasAccess()
+                .flatMap(access -> Flux.fromIterable(wanted)
+                        .flatMap(identity -> this.readByIdentity(access, identity))
+                        .collectList()
+                        .flatMap(keep -> this.clearStaleAssignments(access, sessionCode, keep)
+                                .thenReturn(keep))
+                        .flatMapMany(keep -> Flux.fromIterable(keep)
+                                .filter(product -> !sessionCode.equals(product.getWhatsappSessionCode()))
+                                .flatMap(product -> super.updateInternal(
+                                        access, product.setWhatsappSessionCode(sessionCode))))
+                        .count())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.assignWhatsappNumber"));
+    }
+
+    private Mono<Long> clearStaleAssignments(ProcessorAccess access, String sessionCode, List<Product> keep) {
+
+        List<ULong> keepIds = keep.stream().map(Product::getId).toList();
+
+        return this.dao
+                .readByWhatsappSessionCode(access, sessionCode)
+                .flatMapMany(Flux::fromIterable)
+                .filter(product -> !keepIds.contains(product.getId()))
+                .flatMap(product -> super.updateInternal(access, product.setWhatsappSessionCode(null)))
+                .count();
+    }
+
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
         return this.dao.getAllProducts(access, productIds);
+    }
+
+    /** Every product sending from one linked number. See the DAO method for why it is not filtered on active. */
+    public Mono<List<Product>> getByWhatsappSessionCode(ProcessorAccess access, String sessionCode) {
+        return this.dao.readByWhatsappSessionCode(access, sessionCode);
     }
 
     /** See {@link com.fincity.saas.entity.processor.dao.product.ProductDAO#readFirstActive}. */

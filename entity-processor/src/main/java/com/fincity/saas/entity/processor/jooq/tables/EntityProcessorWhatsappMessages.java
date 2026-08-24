@@ -44,6 +44,7 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -122,9 +123,19 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
     /**
      * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
-     * message.message_whatsapp_phone_numbers ID. Not an FK, same reason.
+     * Cloud API phone-number row. Null for every bridge-era message; retained
+     * so pre-pivot history still resolves.
      */
-    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "message.message_whatsapp_phone_numbers ID. Not an FK, same reason.");
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Cloud API phone-number row. Null for every bridge-era message; retained so pre-pivot history still resolves.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.BRIDGE_SESSION_ID</code>.
+     * The linked-device session this message belongs to. Matches
+     * message_whatsapp_phone_numbers.CODE in the message service. Null on rows
+     * that predate the pivot.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> BRIDGE_SESSION_ID = createField(DSL.name("BRIDGE_SESSION_ID"), SQLDataType.CHAR(22), this, "The linked-device session this message belongs to. Matches message_whatsapp_phone_numbers.CODE in the message service. Null on rows that predate the pivot.");
 
     /**
      * The column
@@ -207,6 +218,31 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.SEND_DECISION</code>.
+     * How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY,
+     * RELEASED_BY_TIMER or FORCED.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> SEND_DECISION = createField(DSL.name("SEND_DECISION"), SQLDataType.VARCHAR(64), this, "How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY, RELEASED_BY_TIMER or FORCED.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCED_BY</code>.
+     * User who overrode a hold. Set only on a forced send, and the only
+     * evidence of what happened if the number is later banned.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> FORCED_BY = createField(DSL.name("FORCED_BY"), SQLDataType.BIGINTUNSIGNED, this, "User who overrode a hold. Set only on a forced send, and the only evidence of what happened if the number is later banned.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCE_STATE</code>.
+     * Session health at the moment of the override: caps used, warm-up day,
+     * reply rate. Captured because it is what tells you afterwards whether
+     * forcing was reasonable.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Map> FORCE_STATE = createField(DSL.name("FORCE_STATE"), SQLDataType.JSON, this, "Session health at the moment of the override: caps used, warm-up day, reply rate. Captured because it is what tells you afterwards whether forcing was reasonable.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.SENT_TIME</code>.
      * When the message was sent.
      */
@@ -267,6 +303,68 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
      * File details when the message carries media.
      */
     public final TableField<EntityProcessorWhatsappMessagesRecord, FileDetail> MEDIA_FILE_DETAIL = createField(DSL.name("MEDIA_FILE_DETAIL"), SQLDataType.JSON, this, "File details when the message carries media.", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_THUMBNAIL_FILE_DETAIL</code>.
+     * Stored inline preview of the attachment
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, FileDetail> MEDIA_THUMBNAIL_FILE_DETAIL = createField(DSL.name("MEDIA_THUMBNAIL_FILE_DETAIL"), SQLDataType.JSON, this, "Stored inline preview of the attachment", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_MIME_TYPE</code>.
+     * As WhatsApp reported it, not as guessed from the extension. Decides which
+     * player the UI mounts.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> MEDIA_MIME_TYPE = createField(DSL.name("MEDIA_MIME_TYPE"), SQLDataType.VARCHAR(255), this, "As WhatsApp reported it, not as guessed from the extension. Decides which player the UI mounts.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_SIZE</code>.
+     * Bytes, as declared by the sender. Kept after the file expires so the
+     * thread can still say how large the attachment was.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, ULong> MEDIA_SIZE = createField(DSL.name("MEDIA_SIZE"), SQLDataType.BIGINTUNSIGNED, this, "Bytes, as declared by the sender. Kept after the file expires so the thread can still say how large the attachment was.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_DURATION_SECONDS</code>.
+     * Audio and video only. Lets the UI show a length before the media has
+     * loaded.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Integer> MEDIA_DURATION_SECONDS = createField(DSL.name("MEDIA_DURATION_SECONDS"), SQLDataType.INTEGER, this, "Audio and video only. Lets the UI show a length before the media has loaded.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_PAGE_COUNT</code>.
+     * Page count, documents only
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, UInteger> MEDIA_PAGE_COUNT = createField(DSL.name("MEDIA_PAGE_COUNT"), SQLDataType.INTEGERUNSIGNED, this, "Page count, documents only");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_IS_VOICE_NOTE</code>.
+     * AudioMessage.PTT. True for a recorded voice note, false for an attached
+     * audio file.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Boolean> MEDIA_IS_VOICE_NOTE = createField(DSL.name("MEDIA_IS_VOICE_NOTE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "AudioMessage.PTT. True for a recorded voice note, false for an attached audio file.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_EXPIRED_AT</code>.
+     * When the retention sweep removed the bytes. Non-null means the file is
+     * gone on purpose, not missing by accident.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, LocalDateTime> MEDIA_EXPIRED_AT = createField(DSL.name("MEDIA_EXPIRED_AT"), SQLDataType.LOCALDATETIME(0), this, "When the retention sweep removed the bytes. Non-null means the file is gone on purpose, not missing by accident.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.REACTION_TO_MESSAGE_ID</code>.
+     * MESSAGE_ID of the message this reaction applies to. Set only on REACTION
+     * rows.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> REACTION_TO_MESSAGE_ID = createField(DSL.name("REACTION_TO_MESSAGE_ID"), SQLDataType.VARCHAR(255), this, "MESSAGE_ID of the message this reaction applies to. Set only on REACTION rows.");
 
     /**
      * The column
@@ -405,7 +503,7 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_FT1_WA_MESSAGES_BODY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX0_WA_MESSAGES_AC_CC, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX1_WA_MESSAGES_TICKET, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX2_WA_MESSAGES_CONVERSATION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX3_WA_MESSAGES_UNREAD, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX6_WHATSAPP_MESSAGES_BRIDGE_SESSION, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX7_WA_MESSAGES_MEDIA_EXPIRY, Indexes.ENTITY_PROCESSOR_WHATSAPP_MESSAGES_IDX8_WA_MESSAGES_REACTION_TARGET);
     }
 
     @Override

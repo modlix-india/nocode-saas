@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -163,7 +164,8 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
     /**
      * Setter for
      * <code>entity_processor.entity_processor_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
-     * message.message_whatsapp_phone_numbers ID. Not an FK, same reason.
+     * Cloud API phone-number row. Null for every bridge-era message; retained
+     * so pre-pivot history still resolves.
      */
     public EntityProcessorWhatsappMessagesRecord setWhatsappPhoneNumberId(ULong value) {
         set(7, value);
@@ -173,10 +175,34 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
     /**
      * Getter for
      * <code>entity_processor.entity_processor_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
-     * message.message_whatsapp_phone_numbers ID. Not an FK, same reason.
+     * Cloud API phone-number row. Null for every bridge-era message; retained
+     * so pre-pivot history still resolves.
      */
     public ULong getWhatsappPhoneNumberId() {
         return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.BRIDGE_SESSION_ID</code>.
+     * The linked-device session this message belongs to. Matches
+     * message_whatsapp_phone_numbers.CODE in the message service. Null on rows
+     * that predate the pivot.
+     */
+    public EntityProcessorWhatsappMessagesRecord setBridgeSessionId(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.BRIDGE_SESSION_ID</code>.
+     * The linked-device session this message belongs to. Matches
+     * message_whatsapp_phone_numbers.CODE in the message service. Null on rows
+     * that predate the pivot.
+     */
+    public String getBridgeSessionId() {
+        return (String) get(8);
     }
 
     /**
@@ -186,7 +212,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * re-mapping cannot rewrite history.
      */
     public EntityProcessorWhatsappMessagesRecord setWhatsappPhoneNumber(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -197,7 +223,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * re-mapping cannot rewrite history.
      */
     public String getWhatsappPhoneNumber() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -207,7 +233,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * reads resolve the visible deal set first and match against this.
      */
     public EntityProcessorWhatsappMessagesRecord setTicketId(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -218,7 +244,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * reads resolve the visible deal set first and match against this.
      */
     public ULong getTicketId() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -227,7 +253,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the sender.
      */
     public EntityProcessorWhatsappMessagesRecord setFromDialCode(Short value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -237,7 +263,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the sender.
      */
     public Short getFromDialCode() {
-        return (Short) get(10);
+        return (Short) get(11);
     }
 
     /**
@@ -246,7 +272,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the sender.
      */
     public EntityProcessorWhatsappMessagesRecord setFrom(String value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -256,7 +282,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the sender.
      */
     public String getFrom() {
-        return (String) get(11);
+        return (String) get(12);
     }
 
     /**
@@ -265,7 +291,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the recipient.
      */
     public EntityProcessorWhatsappMessagesRecord setToDialCode(Short value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -275,7 +301,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the recipient.
      */
     public Short getToDialCode() {
-        return (Short) get(12);
+        return (Short) get(13);
     }
 
     /**
@@ -284,7 +310,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the recipient.
      */
     public EntityProcessorWhatsappMessagesRecord setTo(String value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -294,7 +320,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the recipient.
      */
     public String getTo() {
-        return (String) get(13);
+        return (String) get(14);
     }
 
     /**
@@ -303,7 +329,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Customer WhatsApp ID.
      */
     public EntityProcessorWhatsappMessagesRecord setCustomerWaId(String value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -313,7 +339,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Customer WhatsApp ID.
      */
     public String getCustomerWaId() {
-        return (String) get(14);
+        return (String) get(15);
     }
 
     /**
@@ -322,7 +348,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the customer.
      */
     public EntityProcessorWhatsappMessagesRecord setCustomerDialCode(Short value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -332,7 +358,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Dial code of the customer.
      */
     public Short getCustomerDialCode() {
-        return (Short) get(15);
+        return (Short) get(16);
     }
 
     /**
@@ -341,7 +367,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the customer.
      */
     public EntityProcessorWhatsappMessagesRecord setCustomerPhoneNumber(String value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -351,7 +377,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Phone number of the customer.
      */
     public String getCustomerPhoneNumber() {
-        return (String) get(16);
+        return (String) get(17);
     }
 
     /**
@@ -360,7 +386,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Type of the message.
      */
     public EntityProcessorWhatsappMessagesRecord setMessageType(WhatsappMessageType value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -370,7 +396,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Type of the message.
      */
     public WhatsappMessageType getMessageType() {
-        return (WhatsappMessageType) get(17);
+        return (WhatsappMessageType) get(18);
     }
 
     /**
@@ -379,7 +405,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Delivery status.
      */
     public EntityProcessorWhatsappMessagesRecord setMessageStatus(WhatsappMessageStatus value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -389,7 +415,72 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Delivery status.
      */
     public WhatsappMessageStatus getMessageStatus() {
-        return (WhatsappMessageStatus) get(18);
+        return (WhatsappMessageStatus) get(19);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.SEND_DECISION</code>.
+     * How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY,
+     * RELEASED_BY_TIMER or FORCED.
+     */
+    public EntityProcessorWhatsappMessagesRecord setSendDecision(String value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.SEND_DECISION</code>.
+     * How this send was allowed: INTERACTIVE, RELEASED_BY_REPLY,
+     * RELEASED_BY_TIMER or FORCED.
+     */
+    public String getSendDecision() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCED_BY</code>.
+     * User who overrode a hold. Set only on a forced send, and the only
+     * evidence of what happened if the number is later banned.
+     */
+    public EntityProcessorWhatsappMessagesRecord setForcedBy(ULong value) {
+        set(21, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCED_BY</code>.
+     * User who overrode a hold. Set only on a forced send, and the only
+     * evidence of what happened if the number is later banned.
+     */
+    public ULong getForcedBy() {
+        return (ULong) get(21);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCE_STATE</code>.
+     * Session health at the moment of the override: caps used, warm-up day,
+     * reply rate. Captured because it is what tells you afterwards whether
+     * forcing was reasonable.
+     */
+    public EntityProcessorWhatsappMessagesRecord setForceState(Map value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.FORCE_STATE</code>.
+     * Session health at the moment of the override: caps used, warm-up day,
+     * reply rate. Captured because it is what tells you afterwards whether
+     * forcing was reasonable.
+     */
+    public Map getForceState() {
+        return (Map) get(22);
     }
 
     /**
@@ -398,7 +489,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was sent.
      */
     public EntityProcessorWhatsappMessagesRecord setSentTime(LocalDateTime value) {
-        set(19, value);
+        set(23, value);
         return this;
     }
 
@@ -408,7 +499,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was sent.
      */
     public LocalDateTime getSentTime() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(23);
     }
 
     /**
@@ -417,7 +508,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was delivered.
      */
     public EntityProcessorWhatsappMessagesRecord setDeliveredTime(LocalDateTime value) {
-        set(20, value);
+        set(24, value);
         return this;
     }
 
@@ -427,7 +518,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was delivered.
      */
     public LocalDateTime getDeliveredTime() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(24);
     }
 
     /**
@@ -436,7 +527,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was read.
      */
     public EntityProcessorWhatsappMessagesRecord setReadTime(LocalDateTime value) {
-        set(21, value);
+        set(25, value);
         return this;
     }
 
@@ -446,7 +537,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message was read.
      */
     public LocalDateTime getReadTime() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(25);
     }
 
     /**
@@ -455,7 +546,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message failed.
      */
     public EntityProcessorWhatsappMessagesRecord setFailedTime(LocalDateTime value) {
-        set(22, value);
+        set(26, value);
         return this;
     }
 
@@ -465,7 +556,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * When the message failed.
      */
     public LocalDateTime getFailedTime() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(26);
     }
 
     /**
@@ -474,7 +565,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Reason for failure.
      */
     public EntityProcessorWhatsappMessagesRecord setFailureReason(String value) {
-        set(23, value);
+        set(27, value);
         return this;
     }
 
@@ -484,7 +575,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Reason for failure.
      */
     public String getFailureReason() {
-        return (String) get(23);
+        return (String) get(27);
     }
 
     /**
@@ -493,7 +584,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Whether we sent it.
      */
     public EntityProcessorWhatsappMessagesRecord setIsOutbound(Boolean value) {
-        set(24, value);
+        set(28, value);
         return this;
     }
 
@@ -503,7 +594,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Whether we sent it.
      */
     public Boolean getIsOutbound() {
-        return (Boolean) get(24);
+        return (Boolean) get(28);
     }
 
     /**
@@ -512,7 +603,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Plain text of the message, extracted for search.
      */
     public EntityProcessorWhatsappMessagesRecord setBodyText(String value) {
-        set(25, value);
+        set(29, value);
         return this;
     }
 
@@ -522,7 +613,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Plain text of the message, extracted for search.
      */
     public String getBodyText() {
-        return (String) get(25);
+        return (String) get(29);
     }
 
     /**
@@ -531,7 +622,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Outbound message object sent to WhatsApp.
      */
     public EntityProcessorWhatsappMessagesRecord setMessage(Map value) {
-        set(26, value);
+        set(30, value);
         return this;
     }
 
@@ -541,7 +632,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Outbound message object sent to WhatsApp.
      */
     public Map getMessage() {
-        return (Map) get(26);
+        return (Map) get(30);
     }
 
     /**
@@ -550,7 +641,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * File details when the message carries media.
      */
     public EntityProcessorWhatsappMessagesRecord setMediaFileDetail(FileDetail value) {
-        set(27, value);
+        set(31, value);
         return this;
     }
 
@@ -560,7 +651,171 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * File details when the message carries media.
      */
     public FileDetail getMediaFileDetail() {
-        return (FileDetail) get(27);
+        return (FileDetail) get(31);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_THUMBNAIL_FILE_DETAIL</code>.
+     * Stored inline preview of the attachment
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaThumbnailFileDetail(FileDetail value) {
+        set(32, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_THUMBNAIL_FILE_DETAIL</code>.
+     * Stored inline preview of the attachment
+     */
+    public FileDetail getMediaThumbnailFileDetail() {
+        return (FileDetail) get(32);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_MIME_TYPE</code>.
+     * As WhatsApp reported it, not as guessed from the extension. Decides which
+     * player the UI mounts.
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaMimeType(String value) {
+        set(33, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_MIME_TYPE</code>.
+     * As WhatsApp reported it, not as guessed from the extension. Decides which
+     * player the UI mounts.
+     */
+    public String getMediaMimeType() {
+        return (String) get(33);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_SIZE</code>.
+     * Bytes, as declared by the sender. Kept after the file expires so the
+     * thread can still say how large the attachment was.
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaSize(ULong value) {
+        set(34, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_SIZE</code>.
+     * Bytes, as declared by the sender. Kept after the file expires so the
+     * thread can still say how large the attachment was.
+     */
+    public ULong getMediaSize() {
+        return (ULong) get(34);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_DURATION_SECONDS</code>.
+     * Audio and video only. Lets the UI show a length before the media has
+     * loaded.
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaDurationSeconds(Integer value) {
+        set(35, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_DURATION_SECONDS</code>.
+     * Audio and video only. Lets the UI show a length before the media has
+     * loaded.
+     */
+    public Integer getMediaDurationSeconds() {
+        return (Integer) get(35);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_PAGE_COUNT</code>.
+     * Page count, documents only
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaPageCount(UInteger value) {
+        set(36, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_PAGE_COUNT</code>.
+     * Page count, documents only
+     */
+    public UInteger getMediaPageCount() {
+        return (UInteger) get(36);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_IS_VOICE_NOTE</code>.
+     * AudioMessage.PTT. True for a recorded voice note, false for an attached
+     * audio file.
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaIsVoiceNote(Boolean value) {
+        set(37, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_IS_VOICE_NOTE</code>.
+     * AudioMessage.PTT. True for a recorded voice note, false for an attached
+     * audio file.
+     */
+    public Boolean getMediaIsVoiceNote() {
+        return (Boolean) get(37);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_EXPIRED_AT</code>.
+     * When the retention sweep removed the bytes. Non-null means the file is
+     * gone on purpose, not missing by accident.
+     */
+    public EntityProcessorWhatsappMessagesRecord setMediaExpiredAt(LocalDateTime value) {
+        set(38, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_EXPIRED_AT</code>.
+     * When the retention sweep removed the bytes. Non-null means the file is
+     * gone on purpose, not missing by accident.
+     */
+    public LocalDateTime getMediaExpiredAt() {
+        return (LocalDateTime) get(38);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.REACTION_TO_MESSAGE_ID</code>.
+     * MESSAGE_ID of the message this reaction applies to. Set only on REACTION
+     * rows.
+     */
+    public EntityProcessorWhatsappMessagesRecord setReactionToMessageId(String value) {
+        set(39, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_whatsapp_messages.REACTION_TO_MESSAGE_ID</code>.
+     * MESSAGE_ID of the message this reaction applies to. Set only on REACTION
+     * rows.
+     */
+    public String getReactionToMessageId() {
+        return (String) get(39);
     }
 
     /**
@@ -569,7 +824,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Raw inbound message object.
      */
     public EntityProcessorWhatsappMessagesRecord setInMessage(Map value) {
-        set(28, value);
+        set(40, value);
         return this;
     }
 
@@ -579,7 +834,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Raw inbound message object.
      */
     public Map getInMessage() {
-        return (Map) get(28);
+        return (Map) get(40);
     }
 
     /**
@@ -588,7 +843,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Raw response object from WhatsApp.
      */
     public EntityProcessorWhatsappMessagesRecord setMessageResponse(Map value) {
-        set(29, value);
+        set(41, value);
         return this;
     }
 
@@ -598,7 +853,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Raw response object from WhatsApp.
      */
     public Map getMessageResponse() {
-        return (Map) get(29);
+        return (Map) get(41);
     }
 
     /**
@@ -607,7 +862,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Unused. Present only because the shared DAO base expects the column.
      */
     public EntityProcessorWhatsappMessagesRecord setName(String value) {
-        set(30, value);
+        set(42, value);
         return this;
     }
 
@@ -617,7 +872,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Unused. Present only because the shared DAO base expects the column.
      */
     public String getName() {
-        return (String) get(30);
+        return (String) get(42);
     }
 
     /**
@@ -626,7 +881,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Unused. Present only because the shared DAO base expects the column.
      */
     public EntityProcessorWhatsappMessagesRecord setTempActive(Boolean value) {
-        set(31, value);
+        set(43, value);
         return this;
     }
 
@@ -636,7 +891,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Unused. Present only because the shared DAO base expects the column.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(31);
+        return (Boolean) get(43);
     }
 
     /**
@@ -645,7 +900,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Flag to check if this message is active or not.
      */
     public EntityProcessorWhatsappMessagesRecord setIsActive(Boolean value) {
-        set(32, value);
+        set(44, value);
         return this;
     }
 
@@ -655,7 +910,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Flag to check if this message is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(32);
+        return (Boolean) get(44);
     }
 
     /**
@@ -664,7 +919,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public EntityProcessorWhatsappMessagesRecord setCreatedBy(ULong value) {
-        set(33, value);
+        set(45, value);
         return this;
     }
 
@@ -674,7 +929,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(33);
+        return (ULong) get(45);
     }
 
     /**
@@ -683,7 +938,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public EntityProcessorWhatsappMessagesRecord setCreatedAt(LocalDateTime value) {
-        set(34, value);
+        set(46, value);
         return this;
     }
 
@@ -693,7 +948,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(34);
+        return (LocalDateTime) get(46);
     }
 
     /**
@@ -702,7 +957,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public EntityProcessorWhatsappMessagesRecord setUpdatedBy(ULong value) {
-        set(35, value);
+        set(47, value);
         return this;
     }
 
@@ -712,7 +967,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(35);
+        return (ULong) get(47);
     }
 
     /**
@@ -721,7 +976,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public EntityProcessorWhatsappMessagesRecord setUpdatedAt(LocalDateTime value) {
-        set(36, value);
+        set(48, value);
         return this;
     }
 
@@ -731,7 +986,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(36);
+        return (LocalDateTime) get(48);
     }
 
     // -------------------------------------------------------------------------
@@ -757,7 +1012,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorWhatsappMessagesRecord
      */
-    public EntityProcessorWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappBusinessAccountId, ULong whatsappPhoneNumberId, String whatsappPhoneNumber, ULong ticketId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, WhatsappMessageType messageType, WhatsappMessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Boolean isOutbound, String bodyText, Map message, FileDetail mediaFileDetail, Map inMessage, Map messageResponse, String name, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappBusinessAccountId, ULong whatsappPhoneNumberId, String bridgeSessionId, String whatsappPhoneNumber, ULong ticketId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, WhatsappMessageType messageType, WhatsappMessageStatus messageStatus, String sendDecision, ULong forcedBy, Map forceState, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Boolean isOutbound, String bodyText, Map message, FileDetail mediaFileDetail, FileDetail mediaThumbnailFileDetail, String mediaMimeType, ULong mediaSize, Integer mediaDurationSeconds, UInteger mediaPageCount, Boolean mediaIsVoiceNote, LocalDateTime mediaExpiredAt, String reactionToMessageId, Map inMessage, Map messageResponse, String name, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES);
 
         setId(id);
@@ -768,6 +1023,7 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
         setMessageId(messageId);
         setWhatsappBusinessAccountId(whatsappBusinessAccountId);
         setWhatsappPhoneNumberId(whatsappPhoneNumberId);
+        setBridgeSessionId(bridgeSessionId);
         setWhatsappPhoneNumber(whatsappPhoneNumber);
         setTicketId(ticketId);
         setFromDialCode(fromDialCode);
@@ -779,6 +1035,9 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
         setCustomerPhoneNumber(customerPhoneNumber);
         setMessageType(messageType);
         setMessageStatus(messageStatus);
+        setSendDecision(sendDecision);
+        setForcedBy(forcedBy);
+        setForceState(forceState);
         setSentTime(sentTime);
         setDeliveredTime(deliveredTime);
         setReadTime(readTime);
@@ -788,6 +1047,14 @@ public class EntityProcessorWhatsappMessagesRecord extends UpdatableRecordImpl<E
         setBodyText(bodyText);
         setMessage(message);
         setMediaFileDetail(mediaFileDetail);
+        setMediaThumbnailFileDetail(mediaThumbnailFileDetail);
+        setMediaMimeType(mediaMimeType);
+        setMediaSize(mediaSize);
+        setMediaDurationSeconds(mediaDurationSeconds);
+        setMediaPageCount(mediaPageCount);
+        setMediaIsVoiceNote(mediaIsVoiceNote);
+        setMediaExpiredAt(mediaExpiredAt);
+        setReactionToMessageId(reactionToMessageId);
         setInMessage(inMessage);
         setMessageResponse(messageResponse);
         setName(name);

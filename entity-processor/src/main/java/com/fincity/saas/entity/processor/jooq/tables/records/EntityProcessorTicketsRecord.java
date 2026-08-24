@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -230,11 +231,51 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     }
 
     /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_DIAL_CODE</code>.
+     * Calling code for WHATSAPP_NUMBER. Null when the deal has no separate
+     * WhatsApp number.
+     */
+    public EntityProcessorTicketsRecord setWhatsappDialCode(Short value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_DIAL_CODE</code>.
+     * Calling code for WHATSAPP_NUMBER. Null when the deal has no separate
+     * WhatsApp number.
+     */
+    public Short getWhatsappDialCode() {
+        return (Short) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_NUMBER</code>.
+     * The number this deal is messaged on. Null means use PHONE_NUMBER.
+     */
+    public EntityProcessorTicketsRecord setWhatsappNumber(String value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_NUMBER</code>.
+     * The number this deal is messaged on. Null means use PHONE_NUMBER.
+     */
+    public String getWhatsappNumber() {
+        return (String) get(12);
+    }
+
+    /**
      * Setter for <code>entity_processor.entity_processor_tickets.EMAIL</code>.
      * Email related to this ticket.
      */
     public EntityProcessorTicketsRecord setEmail(String value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -243,7 +284,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Email related to this ticket.
      */
     public String getEmail() {
-        return (String) get(11);
+        return (String) get(13);
     }
 
     /**
@@ -252,7 +293,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Product related to this ticket.
      */
     public EntityProcessorTicketsRecord setProductId(ULong value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -262,7 +303,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Product related to this ticket.
      */
     public ULong getProductId() {
-        return (ULong) get(12);
+        return (ULong) get(14);
     }
 
     /**
@@ -270,7 +311,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Status for this ticket.
      */
     public EntityProcessorTicketsRecord setStage(ULong value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -279,7 +320,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Status for this ticket.
      */
     public ULong getStage() {
-        return (ULong) get(13);
+        return (ULong) get(15);
     }
 
     /**
@@ -287,7 +328,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Sub Status for this ticket.
      */
     public EntityProcessorTicketsRecord setStatus(ULong value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -296,7 +337,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Sub Status for this ticket.
      */
     public ULong getStatus() {
-        return (ULong) get(14);
+        return (ULong) get(16);
     }
 
     /**
@@ -304,7 +345,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Name of source form where we get this ticket.
      */
     public EntityProcessorTicketsRecord setSource(String value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -313,7 +354,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Name of source form where we get this ticket.
      */
     public String getSource() {
-        return (String) get(15);
+        return (String) get(17);
     }
 
     /**
@@ -322,7 +363,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * of sub source of source form where we get this ticket.
      */
     public EntityProcessorTicketsRecord setSubSource(String value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -332,7 +373,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * of sub source of source form where we get this ticket.
      */
     public String getSubSource() {
-        return (String) get(16);
+        return (String) get(18);
     }
 
     /**
@@ -341,7 +382,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Campaign Id related to this ticket.
      */
     public EntityProcessorTicketsRecord setCampaignId(ULong value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -351,7 +392,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Campaign Id related to this ticket.
      */
     public ULong getCampaignId() {
-        return (ULong) get(17);
+        return (ULong) get(19);
     }
 
     /**
@@ -360,7 +401,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * related to this ticket.
      */
     public EntityProcessorTicketsRecord setAdsetId(ULong value) {
-        set(18, value);
+        set(20, value);
         return this;
     }
 
@@ -370,7 +411,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * related to this ticket.
      */
     public ULong getAdsetId() {
-        return (ULong) get(18);
+        return (ULong) get(20);
     }
 
     /**
@@ -378,7 +419,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Ad Id related to this ticket.
      */
     public EntityProcessorTicketsRecord setAdId(ULong value) {
-        set(19, value);
+        set(21, value);
         return this;
     }
 
@@ -387,7 +428,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Ad Id related to this ticket.
      */
     public ULong getAdId() {
-        return (ULong) get(19);
+        return (ULong) get(21);
     }
 
     /**
@@ -396,7 +437,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * expiration datetime. Expired when EXPIRES_ON &lt; NOW().
      */
     public EntityProcessorTicketsRecord setExpiresOn(LocalDateTime value) {
-        set(20, value);
+        set(22, value);
         return this;
     }
 
@@ -406,7 +447,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * expiration datetime. Expired when EXPIRES_ON &lt; NOW().
      */
     public LocalDateTime getExpiresOn() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(22);
     }
 
     /**
@@ -414,7 +455,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Ticket Tag
      */
     public EntityProcessorTicketsRecord setTag(String value) {
-        set(21, value);
+        set(23, value);
         return this;
     }
 
@@ -423,7 +464,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Ticket Tag
      */
     public String getTag() {
-        return (String) get(21);
+        return (String) get(23);
     }
 
     /**
@@ -431,7 +472,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Not Call flag for this ticket.
      */
     public EntityProcessorTicketsRecord setDnc(Boolean value) {
-        set(22, value);
+        set(24, value);
         return this;
     }
 
@@ -440,7 +481,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Not Call flag for this ticket.
      */
     public Boolean getDnc() {
-        return (Boolean) get(22);
+        return (Boolean) get(24);
     }
 
     /**
@@ -449,7 +490,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public EntityProcessorTicketsRecord setTempActive(Boolean value) {
-        set(23, value);
+        set(25, value);
         return this;
     }
 
@@ -459,7 +500,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(23);
+        return (Boolean) get(25);
     }
 
     /**
@@ -468,7 +509,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public EntityProcessorTicketsRecord setIsActive(Boolean value) {
-        set(24, value);
+        set(26, value);
         return this;
     }
 
@@ -478,7 +519,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(24);
+        return (Boolean) get(26);
     }
 
     /**
@@ -487,7 +528,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public EntityProcessorTicketsRecord setClientId(ULong value) {
-        set(25, value);
+        set(27, value);
         return this;
     }
 
@@ -497,7 +538,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public ULong getClientId() {
-        return (ULong) get(25);
+        return (ULong) get(27);
     }
 
     /**
@@ -506,7 +547,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public EntityProcessorTicketsRecord setMetaData(Map value) {
-        set(26, value);
+        set(28, value);
         return this;
     }
 
@@ -516,7 +557,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Metadata information related to ticket
      */
     public Map getMetaData() {
-        return (Map) get(26);
+        return (Map) get(28);
     }
 
     /**
@@ -526,7 +567,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * etc.) captured at lead intake
      */
     public EntityProcessorTicketsRecord setAdData(Map value) {
-        set(27, value);
+        set(29, value);
         return this;
     }
 
@@ -537,7 +578,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * etc.) captured at lead intake
      */
     public Map getAdData() {
-        return (Map) get(27);
+        return (Map) get(29);
     }
 
     /**
@@ -547,7 +588,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * answers, plus raw provider snapshot
      */
     public EntityProcessorTicketsRecord setFormData(Map value) {
-        set(28, value);
+        set(30, value);
         return this;
     }
 
@@ -558,7 +599,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * answers, plus raw provider snapshot
      */
     public Map getFormData() {
-        return (Map) get(28);
+        return (Map) get(30);
     }
 
     /**
@@ -569,7 +610,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * message.
      */
     public EntityProcessorTicketsRecord setLastMessageAt(LocalDateTime value) {
-        set(29, value);
+        set(31, value);
         return this;
     }
 
@@ -581,7 +622,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * message.
      */
     public LocalDateTime getLastMessageAt() {
-        return (LocalDateTime) get(29);
+        return (LocalDateTime) get(31);
     }
 
     /**
@@ -590,7 +631,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(30, value);
+        set(32, value);
         return this;
     }
 
@@ -600,7 +641,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(30);
+        return (ULong) get(32);
     }
 
     /**
@@ -609,7 +650,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(31, value);
+        set(33, value);
         return this;
     }
 
@@ -619,7 +660,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(31);
+        return (LocalDateTime) get(33);
     }
 
     /**
@@ -628,7 +669,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(32, value);
+        set(34, value);
         return this;
     }
 
@@ -638,7 +679,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(32);
+        return (ULong) get(34);
     }
 
     /**
@@ -647,7 +688,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(33, value);
+        set(35, value);
         return this;
     }
 
@@ -657,7 +698,108 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(33);
+        return (LocalDateTime) get(35);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOut(Boolean value) {
+        set(36, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public Boolean getWhatsappOptedOut() {
+        return (Boolean) get(36);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOutAt(LocalDateTime value) {
+        set(37, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public LocalDateTime getWhatsappOptedOutAt() {
+        return (LocalDateTime) get(37);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public EntityProcessorTicketsRecord setWhatsappOptedOutText(String value) {
+        set(38, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public String getWhatsappOptedOutText() {
+        return (String) get(38);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public EntityProcessorTicketsRecord setWhatsappProfilePicFileDetail(FileDetail value) {
+        set(39, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public FileDetail getWhatsappProfilePicFileDetail() {
+        return (FileDetail) get(39);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public EntityProcessorTicketsRecord setWhatsappProfilePicId(String value) {
+        set(40, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public String getWhatsappProfilePicId() {
+        return (String) get(40);
     }
 
     // -------------------------------------------------------------------------
@@ -683,7 +825,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, Short whatsappDialCode, String whatsappNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, ULong adsetId, ULong adId, LocalDateTime expiresOn, String tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, Map adData, Map formData, LocalDateTime lastMessageAt, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean whatsappOptedOut, LocalDateTime whatsappOptedOutAt, String whatsappOptedOutText, FileDetail whatsappProfilePicFileDetail, String whatsappProfilePicId) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -697,6 +839,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setAssignedUserId(assignedUserId);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
+        setWhatsappDialCode(whatsappDialCode);
+        setWhatsappNumber(whatsappNumber);
         setEmail(email);
         setProductId(productId);
         setStage(stage);
@@ -720,6 +864,11 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setWhatsappOptedOut(whatsappOptedOut);
+        setWhatsappOptedOutAt(whatsappOptedOutAt);
+        setWhatsappOptedOutText(whatsappOptedOutText);
+        setWhatsappProfilePicFileDetail(whatsappProfilePicFileDetail);
+        setWhatsappProfilePicId(whatsappProfilePicId);
         resetChangedOnNotNull();
     }
 }

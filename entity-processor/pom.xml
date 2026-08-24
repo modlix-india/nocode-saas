@@ -49,6 +49,12 @@
         <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <!-- open source -->
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
+        <!--
+            Kept in step with libphonenumber above: geocoder 3.N is published against
+            libphonenumber 9.0.N, so bumping one without the other silently pulls a second,
+            newer libphonenumber onto the classpath.
+        -->
+        <package.o.com.googlecode.libphonenumber.geocoder.version>3.9</package.o.com.googlecode.libphonenumber.geocoder.version>
         <package.o.jakarta.mail.version>2.0.2</package.o.jakarta.mail.version>
         <package.o.jooq.version>3.20.5</package.o.jooq.version>
         <package.o.palantir-java.format.version>2.70.0</package.o.palantir-java.format.version>
@@ -96,6 +102,17 @@
             <groupId>com.googlecode.libphonenumber</groupId>
             <artifactId>libphonenumber</artifactId>
             <version>${package.o.com.googlecode.libphonenumber.version}</version>
+        </dependency>
+        <!--
+            Carries PhoneNumberToTimeZonesMapper, which is what decides the local clock a lead is
+            judged on for quiet hours. The dial code alone cannot do it: +1 spans six zones and +7
+            eleven, so a New Jersey and a California number would otherwise share one answer and one
+            of them gets messaged three hours off.
+        -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>geocoder</artifactId>
+            <version>${package.o.com.googlecode.libphonenumber.geocoder.version}</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -303,6 +320,38 @@
                                             <includeExpression>.*entity_processor_whatsapp_messages\.MESSAGE_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <!--
+                                          WhatsApp pacing: the Layer-2 outbox and the message library that replaced
+                                          Meta templates. HOLD_REASON is deliberately NOT an enum: the set of reasons
+                                          a message can be held will grow as caps are tuned, and a new reason must not
+                                          require a schema change and a redeploy to record.
+                                        -->
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.message.WhatsappOutboxStatus</userType>
+                                            <includeExpression>.*entity_processor_whatsapp_outbox\.STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.message.MessageTemplateChannel</userType>
+                                            <includeExpression>.*entity_processor_message_templates\.CHANNEL</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>java.util.List</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*entity_processor_message_templates\.(BODY_VARIANTS|VARIABLES)|.*entity_processor_product_message_configs\.BODY_VARIANTS</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*entity_processor_whatsapp_messages\.FORCE_STATE</includeExpression>
                                         </forcedType>
                                         <!--
                                           Calls. The three raw provider payloads stay untyped Maps rather than porting

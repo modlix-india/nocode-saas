@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessa
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -236,7 +237,9 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_message_configs.MESSAGE_TEMPLATE_ID</code>.
-     * ID of the message/template in message service.
+     * Row in entity_processor_message_templates. Was a message-service Cloud
+     * API template before the pivot; existing values are dead and are migrated
+     * by hand.
      */
     public EntityProcessorProductMessageConfigsRecord setMessageTemplateId(ULong value) {
         set(11, value);
@@ -246,10 +249,33 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_message_configs.MESSAGE_TEMPLATE_ID</code>.
-     * ID of the message/template in message service.
+     * Row in entity_processor_message_templates. Was a message-service Cloud
+     * API template before the pivot; existing values are dead and are migrated
+     * by hand.
      */
     public ULong getMessageTemplateId() {
         return (ULong) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_message_configs.BODY_VARIANTS</code>.
+     * Interchangeable message bodies, rotated per recipient so one rule does
+     * not send identical text to every lead.
+     */
+    public EntityProcessorProductMessageConfigsRecord setBodyVariants(List value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_message_configs.BODY_VARIANTS</code>.
+     * Interchangeable message bodies, rotated per recipient so one rule does
+     * not send identical text to every lead.
+     */
+    public List getBodyVariants() {
+        return (List) get(12);
     }
 
     /**
@@ -259,7 +285,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * text-only config.
      */
     public EntityProcessorProductMessageConfigsRecord setAssetFileDetail(FileDetail value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -270,7 +296,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * text-only config.
      */
     public FileDetail getAssetFileDetail() {
-        return (FileDetail) get(12);
+        return (FileDetail) get(13);
     }
 
     /**
@@ -279,7 +305,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Body variable sent alongside the asset.
      */
     public EntityProcessorProductMessageConfigsRecord setCaption(String value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -289,7 +315,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Body variable sent alongside the asset.
      */
     public String getCaption() {
-        return (String) get(13);
+        return (String) get(14);
     }
 
     /**
@@ -298,7 +324,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Temporary active flag for this config.
      */
     public EntityProcessorProductMessageConfigsRecord setTempActive(Boolean value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -308,7 +334,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Temporary active flag for this config.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(14);
+        return (Boolean) get(15);
     }
 
     /**
@@ -317,7 +343,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Flag to check if this config is active or not.
      */
     public EntityProcessorProductMessageConfigsRecord setIsActive(Boolean value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -327,7 +353,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Flag to check if this config is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(15);
+        return (Boolean) get(16);
     }
 
     /**
@@ -336,7 +362,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who created this row.
      */
     public EntityProcessorProductMessageConfigsRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -346,7 +372,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(17);
     }
 
     /**
@@ -355,7 +381,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is created.
      */
     public EntityProcessorProductMessageConfigsRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -365,7 +391,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -374,7 +400,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who updated this row.
      */
     public EntityProcessorProductMessageConfigsRecord setUpdatedBy(ULong value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -384,7 +410,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(19);
     }
 
     /**
@@ -393,7 +419,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is updated.
      */
     public EntityProcessorProductMessageConfigsRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -403,7 +429,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -429,7 +455,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
     /**
      * Create a detached, initialised EntityProcessorProductMessageConfigsRecord
      */
-    public EntityProcessorProductMessageConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, ULong statusId, UInteger order, MessageChannelType messageChannelType, ULong messageTemplateId, FileDetail assetFileDetail, String caption, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductMessageConfigsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, ULong statusId, UInteger order, MessageChannelType messageChannelType, ULong messageTemplateId, List bodyVariants, FileDetail assetFileDetail, String caption, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS);
 
         setId(id);
@@ -444,6 +470,7 @@ public class EntityProcessorProductMessageConfigsRecord extends UpdatableRecordI
         setOrder(order);
         setMessageChannelType(messageChannelType);
         setMessageTemplateId(messageTemplateId);
+        setBodyVariants(bodyVariants);
         setAssetFileDetail(assetFileDetail);
         setCaption(caption);
         setTempActive(tempActive);
