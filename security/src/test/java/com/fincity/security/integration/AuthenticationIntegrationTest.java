@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +67,29 @@ class AuthenticationIntegrationTest extends AbstractIntegrationTest {
 	@BeforeEach
 	void setUp() {
 		setupMockBeans();
+	}
+
+	/**
+	 * Undo what {@link #setupTestData()} inserted.
+	 *
+	 * <p>The suite shares one reused Testcontainer database, so a class-level fixture that is never
+	 * removed is not private to this class: it stays visible to everything that runs afterwards.
+	 * TESTBUS1 is inserted with MANAGE_CLIENT_LEVEL_0 = SYSTEM, so leaving it behind made
+	 * ClientHierarchyDAOIntegrationTest.systemClient_ManagesAllSubClients count four managed
+	 * clients where it seeded three. That failure only appeared when this class happened to run
+	 * first, which is what made it look intermittent.
+	 */
+	@AfterAll
+	void cleanupTestDataAfterAll() {
+		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
+				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_user_token WHERE USER_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_app WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
+				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then())
+				.block();
 	}
 
 	// --- Helper to authenticate and return a valid token ---
