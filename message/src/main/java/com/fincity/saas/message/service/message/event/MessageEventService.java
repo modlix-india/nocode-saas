@@ -12,12 +12,12 @@ import reactor.util.context.Context;
 @Service
 public class MessageEventService extends AbstractServerSentEventService {
 
-    private static final String MESSAGE_EVENT_TYPE = "MESSAGE";
-    private static final String MESSAGE_STATUS_EVENT_TYPE = "MESSAGE_STATUS";
-    private static final String INCOMING_MESSAGE_EVENT_TYPE = "INCOMING_MESSAGE";
+    public static final String EVENT_TYPE_MESSAGE = "message";
+    public static final String EVENT_TYPE_MESSAGE_STATUS = "messageStatus";
+    public static final String EVENT_TYPE_INCOMING_MESSAGE = "incomingMessage";
 
     public Mono<Void> sendMessageEvent(MessageAccess access, WhatsappMessage message) {
-        MessageServerEvent event = MessageServerEvent.of(MESSAGE_EVENT_TYPE, message.toMap())
+        MessageServerEvent event = MessageServerEvent.of(EVENT_TYPE_MESSAGE, message.toMap())
                 .setAppCode(access.getAppCode())
                 .setClientCode(access.getClientCode())
                 .setUserId(access.getUserId() != null ? access.getUserId().toBigInteger() : null);
@@ -27,7 +27,7 @@ public class MessageEventService extends AbstractServerSentEventService {
     }
 
     public Mono<Void> sendMessageStatusEvent(MessageAccess access, WhatsappMessage message) {
-        MessageServerEvent event = MessageServerEvent.of(MESSAGE_STATUS_EVENT_TYPE, message.toMap())
+        MessageServerEvent event = MessageServerEvent.of(EVENT_TYPE_MESSAGE_STATUS, message.toMap())
                 .setAppCode(access.getAppCode())
                 .setClientCode(access.getClientCode())
                 .setUserId(access.getUserId() != null ? access.getUserId().toBigInteger() : null);
@@ -37,7 +37,7 @@ public class MessageEventService extends AbstractServerSentEventService {
     }
 
     public Mono<Void> sendIncomingMessageEvent(MessageAccess access, WhatsappMessage message) {
-        MessageServerEvent event = MessageServerEvent.of(INCOMING_MESSAGE_EVENT_TYPE, message.toMap())
+        MessageServerEvent event = MessageServerEvent.of(EVENT_TYPE_INCOMING_MESSAGE, message.toMap())
                 .setAppCode(access.getAppCode())
                 .setClientCode(access.getClientCode())
                 .setUserId(access.getUserId() != null ? access.getUserId().toBigInteger() : null);
