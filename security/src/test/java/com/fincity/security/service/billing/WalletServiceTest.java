@@ -407,7 +407,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
 
             when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
             when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
-            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(BUILDER_APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
             Wallet w = new Wallet().setClientId(M_CLIENT).setAppId(BUILDER_APP_ID)
                     .setBalance(BigDecimal.valueOf(5000)).setStatus(SecurityWalletStatus.ACTIVE)
@@ -491,7 +491,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             when(appService.getAppByCode("leadzump")).thenReturn(Mono.just(app));
             when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
             when(walletDAO.findByClientAndApp(M_CLIENT, BUILDER_APP_ID)).thenReturn(Mono.just(builderWallet));
-            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(BUILDER_APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
 
             StepVerifier.create(service.resolveHosting("leadzump", "MMMM"))
@@ -651,7 +651,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             stubCodes();
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
                     .thenReturn(Mono.just(wallet(BigDecimal.valueOf(100), SecurityWalletStatus.ACTIVE, (byte) 0)));
-            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
                     .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
 
@@ -668,7 +668,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             stubCodes();
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
                     .thenReturn(Mono.just(wallet(BigDecimal.valueOf(1000), SecurityWalletStatus.ACTIVE, (byte) 0)));
-            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT))
                     .thenReturn(Mono.just(config().setLowBalanceThreshold(BigDecimal.valueOf(400))));
 
@@ -683,7 +683,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             stubCodes();
             when(walletDAO.findByClientAndApp(M_CLIENT, APP_ID))
                     .thenReturn(Mono.just(wallet(BigDecimal.valueOf(5), SecurityWalletStatus.ACTIVE, (byte) 0)));
-            when(clientHierarchyService.getManagingClientIds(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
             when(configService.readByAppAndClientId(APP_ID, C_CLIENT)).thenReturn(Mono.empty());
 
             StepVerifier.create(service.getDisplayStatus(APP_CODE))
