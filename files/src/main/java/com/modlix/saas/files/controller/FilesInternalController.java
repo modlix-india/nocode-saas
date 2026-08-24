@@ -1,5 +1,6 @@
 package com.modlix.saas.files.controller;
 
+import org.jooq.types.UInteger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,10 +39,35 @@ public class FilesInternalController {
             @RequestParam String clientCode,
             @RequestParam(required = false, name = "override", defaultValue = "false") boolean override,
             @RequestParam(required = false, defaultValue = "/") String filePath,
-            @RequestParam String fileName, HttpServletRequest request) {
+            @RequestParam String fileName,
+            // How long this file is worth keeping, in minutes from this write. Absent means forever,
+            // which is what every existing caller gets and what shared assets must keep getting.
+            @RequestParam(required = false) Integer expiresAfterMinutes,
+            HttpServletRequest request) {
 
         return ResponseEntity.ok(("secured".equals(resourceType) ? this.securedService : this.staticService)
-                .createInternal(clientCode, override, filePath, fileName, request));
+                .createInternal(clientCode, override, filePath, fileName,
+                        expiresAfterMinutes == null ? null : UInteger.valueOf(expiresAfterMinutes), request));
+    }
+
+    /**
+     * Removes files whose declared lifetime has passed.
+     *
+     * <p>Driven by the worker, which is the only thing in this platform that can run a job once
+     * across several instances. A {@code @Scheduled} here would fire on every replica at the same
+     * moment, and several of them racing to delete the same objects is how a cleanup turns into an
+     * outage.
+     *
+     * <p>Bounded per call and returns what it did, so the worker can decide whether to come back
+     * sooner rather than this method deciding how much of the bucket to churn in one go.
+     */
+    @PostMapping(value = "/{resourceType}/cleanupExpired")
+    public ResponseEntity<Integer> cleanupExpired(
+            @PathVariable String resourceType,
+            @RequestParam(required = false, defaultValue = "500") int limit) {
+
+        return ResponseEntity.ok(("secured".equals(resourceType) ? this.securedService : this.staticService)
+                .deleteExpired(limit));
     }
 
     @GetMapping(value = "/{resourceType}/file")

@@ -56,11 +56,13 @@ public class UserInviteService
     private final AppService appService;
     private final ClientHierarchyService clientHierarchyService;
     private final ClientActivityService clientActivityService;
+    private final OrgStructureService orgStructureService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
             ProfileService profileService, AppService appService, ClientHierarchyService clientHierarchyService,
-            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService) {
+            @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService,
+            OrgStructureService orgStructureService) {
 
         this.msgService = msgService;
         this.clientService = clientService;
@@ -71,6 +73,7 @@ public class UserInviteService
         this.appService = appService;
         this.clientHierarchyService = clientHierarchyService;
         this.clientActivityService = clientActivityService;
+        this.orgStructureService = orgStructureService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
@@ -288,13 +291,21 @@ public class UserInviteService
                         : Mono.just(Boolean.FALSE),
 
                 (userExists, userCheckValid, createdUser, passSet, hasAddableProfile) -> {
-                    if (!BooleanUtil.safeValueOf(hasAddableProfile))
-                        return Mono.just(createdUser);
 
-                    return this.userDao
+                    // This path creates a user with a client and a reporting line and, until now,
+                    // evicted nothing at all. The new joiner's manager kept a cached sub-org that
+                    // did not include them, so the manager could not see their deals until
+                    // something unrelated happened to evict it. Every other user-creating path
+                    // already evicted; this one was simply missed.
+                    Mono<Boolean> evicted = this.orgStructureService.evict(createdUser.getClientId());
+
+                    if (!BooleanUtil.safeValueOf(hasAddableProfile))
+                        return evicted.thenReturn(createdUser);
+
+                    return evicted.then(this.userDao
                             .addProfileToUser(createdUser.getId(),
                                     userInvite.getProfileId())
-                            .map(e -> createdUser);
+                            .map(e -> createdUser));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "UserInviteService.createWithInvitationInternal"))

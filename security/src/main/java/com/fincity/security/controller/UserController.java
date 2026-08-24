@@ -44,6 +44,8 @@ import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.model.RecordAudienceRequest;
+import com.fincity.security.service.RecordAudienceService;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
@@ -59,14 +61,17 @@ public class UserController
     private final UserInviteService inviteService;
     private final UserSubOrganizationService userSubOrgService;
     private final UserRequestService requestService;
+    private final RecordAudienceService recordAudienceService;
 
     public UserController(
             UserInviteService inviteService,
             UserSubOrganizationService userSubOrgService,
-            UserRequestService requestService) {
+            UserRequestService requestService,
+            RecordAudienceService recordAudienceService) {
         this.inviteService = inviteService;
         this.userSubOrgService = userSubOrgService;
         this.requestService = requestService;
+        this.recordAudienceService = recordAudienceService;
     }
 
     @GetMapping("{userId}/removeProfile/{profileId}")
@@ -248,6 +253,22 @@ public class UserController
                 .getUserSubOrgInternal(appCode, clientId, userId)
                 .collectList()
                 .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Who may see a record owned by a client and assigned to a person.
+     *
+     * <p>The inverse of the sub-organisation question above. That one expands downward from a
+     * caller and is answered on every read; this one collapses upward around a record and is
+     * answered when something needs to know who to tell. At eight or ten levels of hierarchy the
+     * difference is between a walk over the whole organisation and a walk up one chain.
+     *
+     * <p>Internal, like its neighbours: it takes a client id and user ids with no security context
+     * of its own, so it must never be reachable from outside the mesh.
+     */
+    @PostMapping("/internal/recordAudience")
+    public Mono<ResponseEntity<List<ULong>>> getRecordAudience(@RequestBody RecordAudienceRequest request) {
+        return this.recordAudienceService.resolve(request).map(ResponseEntity::ok);
     }
 
     @PutMapping("/{userId}/reportingManager/{managerId}")

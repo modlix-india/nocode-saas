@@ -228,6 +228,20 @@ public interface IFeignSecurityService {
     Mono<List<BigInteger>> getUserSubOrgInternal(
             @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
 
+    /**
+     * Who may see a record owned by a client and assigned to a person: the inverse of
+     * {@link #getUserSubOrgInternal}.
+     *
+     * <p>Answers from the reporting tree, the client hierarchy and the Owner role, all of which are
+     * security's own data. A caller that needs to know who to notify about a record asks this once
+     * instead of asking every connected user to try reading it.
+     *
+     * <p>An owning service that grants access by rules of its own, as entity-processor does per
+     * product, must union those on top of this result.
+     */
+    @PostMapping(value = "${security.feign.recordAudience:/api/security/users/internal/recordAudience}")
+    Mono<List<BigInteger>> getRecordAudience(@RequestBody Map<String, Object> request);
+
     @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
     Mono<Map<String, Object>> getUserAdminEmailsInternal(
             @RequestHeader(name = "clientCode") String clientCode,

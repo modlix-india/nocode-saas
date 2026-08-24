@@ -20,6 +20,8 @@ import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.SortField;
 import org.jooq.impl.DSL;
+import org.jooq.DatePart;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -320,6 +322,20 @@ public class FileSystemDao {
 
     public FileDetail createOrUpdateFile(FilesFileSystemType fileSystemType, String clientCode, String path,
                                          String fileName, ULong fileLength, boolean exists) {
+        return this.createOrUpdateFile(fileSystemType, clientCode, path, fileName, fileLength, exists, null);
+    }
+
+    /**
+     * The same, with a lifetime.
+     *
+     * <p>{@code expiresAfterMinutes} is minutes from this write, not an absolute moment, so
+     * re-uploading the same path renews it. A null means the file is permanent and the cleanup will
+     * never consider it, which is the correct default for everything that is not deliberately
+     * temporary.
+     */
+    public FileDetail createOrUpdateFile(FilesFileSystemType fileSystemType, String clientCode, String path,
+                                         String fileName, ULong fileLength, boolean exists,
+                                         UInteger expiresAfterMinutes) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -338,6 +354,9 @@ public class FileSystemDao {
         if (exists) {
             updatedCreated = this.context.update(FILES_FILE_SYSTEM)
                     .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                    // Rewritten on every update, so a file that stops being temporary stops
+                    // expiring, and one that starts being temporary starts.
+                    .set(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES, expiresAfterMinutes)
                     .where(parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq)
                             .orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull).and(FILES_FILE_SYSTEM.NAME.eq(name)))
                     .execute() > 0;
@@ -349,6 +368,7 @@ public class FileSystemDao {
                     .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
                     .set(FILES_FILE_SYSTEM.NAME, name)
                     .set(FILES_FILE_SYSTEM.SIZE, fileLength)
+                    .set(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES, expiresAfterMinutes)
                     .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)
                     .execute() > 0;
         }
@@ -528,4 +548,73 @@ public class FileSystemDao {
     public int[] batchInsert(List<FilesFileSystemRecord> records) {
         return this.context.batchInsert(records).execute();
     }
+
+    /**
+     * Files whose lifetime has run out.
+     *
+     * <p>Only files that were given one. A null {@code EXPIRES_AFTER_MINUTES} is not "expires
+     * immediately" or "expires by default", it is "never", and the condition below is what makes
+     * that true rather than a comment claiming it.
+     *
+     * <p>Returns the client code and the full path, because deleting needs both: the object key is
+     * the client code joined to the path, and the two live in different columns of different rows.
+     *
+     * <p>Bounded by {@code limit}. A cleanup that tries to remove everything in one pass is one bad
+     * day away from holding a transaction open across a hundred thousand S3 deletes.
+     */
+    public List<ExpiredFile> readExpired(int limit) {
+
+        return this.context
+                .select(FILES_FILE_SYSTEM.ID, FILES_FILE_SYSTEM.CODE, FILES_FILE_SYSTEM.TYPE, FILES_FILE_SYSTEM.NAME,
+                        FILES_FILE_SYSTEM.PARENT_ID)
+                .from(FILES_FILE_SYSTEM)
+                .where(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES.isNotNull())
+                .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE))
+                // The expiry is relative, so it is computed here rather than stored. Comparing in
+                // SQL keeps it one indexed pass instead of reading every file with a lifetime.
+                .and(DSL.currentLocalDateTime().gt(DSL.localDateTimeAdd(
+                        FILES_FILE_SYSTEM.UPDATED_AT, FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES.cast(Integer.class),
+                        DatePart.MINUTE)))
+                .orderBy(FILES_FILE_SYSTEM.UPDATED_AT.asc())
+                .limit(limit)
+                .fetch()
+                .map(rec -> new ExpiredFile(
+                        rec.get(FILES_FILE_SYSTEM.ID),
+                        rec.get(FILES_FILE_SYSTEM.CODE),
+                        rec.get(FILES_FILE_SYSTEM.TYPE),
+                        this.fullPath(rec.get(FILES_FILE_SYSTEM.PARENT_ID), rec.get(FILES_FILE_SYSTEM.NAME))));
+    }
+
+    /** Removes the metadata row once its object is gone. */
+    public boolean deleteById(ULong id) {
+        return this.context.deleteFrom(FILES_FILE_SYSTEM).where(FILES_FILE_SYSTEM.ID.eq(id)).execute() > 0;
+    }
+
+    /**
+     * Walks a file's parents back up to build its path.
+     *
+     * <p>The tree stores one name per row, so the path only exists as the chain to the root. Capped,
+     * because a cycle introduced by a bad move would otherwise loop here forever.
+     */
+    private String fullPath(ULong parentId, String name) {
+
+        StringBuilder path = new StringBuilder(name);
+        ULong current = parentId;
+
+        for (int depth = 0; current != null && depth < 64; depth++) {
+            var rec = this.context
+                    .select(FILES_FILE_SYSTEM.NAME, FILES_FILE_SYSTEM.PARENT_ID)
+                    .from(FILES_FILE_SYSTEM)
+                    .where(FILES_FILE_SYSTEM.ID.eq(current))
+                    .fetchOne();
+            if (rec == null) break;
+            path.insert(0, rec.get(FILES_FILE_SYSTEM.NAME) + R2_FILE_SEPARATOR_STRING);
+            current = rec.get(FILES_FILE_SYSTEM.PARENT_ID);
+        }
+
+        return R2_FILE_SEPARATOR_STRING + path;
+    }
+
+    /** One file the cleanup may remove: where it is, and who it belongs to. */
+    public record ExpiredFile(ULong id, String clientCode, FilesFileSystemType type, String path) {}
 }

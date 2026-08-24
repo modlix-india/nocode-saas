@@ -207,12 +207,26 @@ public abstract class BaseUpdatableService<
                 .flatMapMany(super::readAllFilter);
     }
 
+    /**
+     * Loads the row a PUT is about to overwrite.
+     *
+     * <p>{@code readById} here is the unscoped read, by primary key alone, and that is not an
+     * oversight that can simply be swapped for the access-scoped one: provider callbacks reach this
+     * with no user and legitimately update rows for whichever tenant the event belongs to. What was
+     * missing is the check on the other side. Without it a logged-in user of one client could PUT a
+     * row id belonging to another and change its WhatsApp or Exotel settings, because nothing
+     * between the controller and the DAO ever compared the row's client to theirs. The read path
+     * does compare (it goes through {@code messageAccessCondition}); this one never did.
+     */
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
-            existing.setActive(entity.isActive());
-            return Mono.just(existing);
-        });
+        return FlatMapUtil.flatMapMono(
+                () -> this.readById(entity.getId()),
+                existing -> this.withManagingClient(existing.getClientCode(), existing),
+                (existing, permitted) -> {
+                    permitted.setActive(entity.isActive());
+                    return Mono.just(permitted);
+                });
     }
 
     protected <T> Mono<T> identityMissingError() {

@@ -42,6 +42,7 @@ import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.service.RecordAudienceService;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
@@ -71,6 +72,9 @@ class UserControllerTest {
 
     @MockBean
     private UserRequestService requestService;
+
+    @MockBean
+    private RecordAudienceService recordAudienceService;
 
     private User sampleUser;
     private Profile sampleProfile;

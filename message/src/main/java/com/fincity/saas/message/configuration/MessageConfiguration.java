@@ -57,8 +57,37 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "/api/message/call/callback",
                 "/api/message/call/callback/**",
                 "/api/message/call/exotel/connect",
-                "/api/message/webhooks",
-                "/api/message/webhooks/**");
+                // Meta's webhook, the Graph-backed message and template routes and the phone-number
+                // sync all went with the Cloud API, and their permit-all entries went with them. A
+                // permitAll for a path no controller serves is not harmless: it is a standing
+                // invitation for something later to be mounted there and be public by accident.
+                //
+                // Service-to-service routes are listed explicitly because the generic
+                // "(.*internal.*)" entry in ISecurityConfiguration goes to pathMatchers, which takes
+                // a PathPattern rather than a regex and so matches nothing. nginx is what actually
+                // keeps these off the public internet.
+                //
+                // Session control that entity-processor fronts for the UI. Both forms listed,
+                // because create is a POST to the bare "/internal" and everything else hangs below
+                // it; relying on "/internal/**" to also cover the bare segment is the assumption
+                // that fails silently as a 401.
+                "/api/message/whatsapp/sessions/internal",
+                "/api/message/whatsapp/sessions/internal/**",
+                "/api/message/call/exotel/internal/**",
+                // Bridge control plane. Named one route at a time rather than as
+                // "/api/message/bridges/**", because these carry their own credentials (an HMAC over
+                // the raw body, plus a bootstrap secret on the two that need it) while the fleet
+                // view at GET /api/message/bridges does not, and must keep going through normal
+                // authentication: it exposes instance ids and internal base URLs.
+                "/api/message/bridges/register",
+                "/api/message/bridges/release",
+                "/api/message/bridges/*/heartbeat",
+                "/api/message/bridges/*/events",
+                // Attachments, in both directions. Named individually like every route above rather
+                // than wildcarded, because the fleet view under the same prefix must keep needing a
+                // real login.
+                "/api/message/bridges/*/media",
+                "/api/message/bridges/*/media/*");
     }
 
     @Bean
