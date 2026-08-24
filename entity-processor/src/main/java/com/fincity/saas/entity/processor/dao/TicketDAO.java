@@ -13,21 +13,25 @@ import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -40,10 +44,13 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+import com.fincity.saas.commons.util.StringUtil;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -167,6 +174,93 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 this.dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
                         .map(e -> e.into(this.pojoClass))
                         .collectList());
+    }
+
+    /**
+     * Resolves which deal an inbound WhatsApp message belongs to: the most recently updated active
+     * ticket on that product for that customer number.
+     *
+     * <p>Deliberately a plain phone match rather than reusing {@code readTicketByNumberAndEmail},
+     * whose matching is driven by the per-app duplicate-detection rule. That rule can require an
+     * email, which an inbound message never carries, so it is the wrong instrument here.
+     *
+     * <p>Both sides store E164 with the leading {@code +} ({@code PhoneUtil.parse} on this side,
+     * {@code PhoneNumber.ofWhatsapp} on the message side), so this compares like with like.
+     */
+    /**
+     * Every active deal a WhatsApp message on this number belongs to, most recently updated first.
+     *
+     * <p>Returns all matches rather than one because a customer can hold several deals on the same
+     * product, and the thread is shared across them: they all move to the top of the inbox together
+     * when a message arrives. The caller stamps the message's {@code TICKET_ID} with the first.
+     *
+     * <p>{@code productId} narrows to a single product when the business number is mapped to one. A
+     * null means the number is the tenant default, which serves every product, so the match is on
+     * the customer's number alone.
+     */
+    public Mono<List<Ticket>> readActiveByProductAndPhone(
+            ProcessorAccess access, ULong productId, PhoneNumber phoneNumber) {
+
+        if (phoneNumber == null || phoneNumber.getNumber() == null || phoneNumber.getNumber().isBlank())
+            return Mono.just(List.of());
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+        conditions.add(onEitherNumber(phoneNumber.getNumber()));
+
+        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+
+        AbstractCondition condition = super.addAppCodeAndClientCode(ComplexCondition.and(conditions), access);
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.filter(condition),
+                jCondition -> Flux.from(this.dslContext
+                                .selectFrom(this.table)
+                                .where(jCondition.and(super.isActiveTrue()))
+                                .orderBy(ENTITY_PROCESSOR_TICKETS.UPDATED_AT.desc()))
+                        .map(e -> e.into(this.pojoClass))
+                        .collectList());
+    }
+
+    /**
+     * Matches a customer's number against either number a deal can be reached on.
+     *
+     * <p>The reason every WhatsApp lookup has to search both columns rather than just
+     * {@code PHONE_NUMBER}. Once someone records a separate WhatsApp number on a deal, the customer's
+     * replies arrive from that number, and a phone-only match finds nothing. On the inbound path that
+     * is not a missing row but a wrong one: the message resolves to no deal, so it creates a fresh one
+     * for a customer who already has a deal - the exact duplicate the second column exists to avoid,
+     * produced by the act of recording the number correctly.
+     *
+     * <p>An OR rather than a coalesce so both columns stay indexable;
+     * {@code IDX10_TICKETS_APP_CLIENT_WHATSAPP} covers the second half.
+     */
+    private static AbstractCondition onEitherNumber(String number) {
+        return ComplexCondition.or(
+                FilterCondition.make(Ticket.Fields.phoneNumber, number),
+                FilterCondition.make(Ticket.Fields.whatsappNumber, number));
+    }
+
+    /**
+     * Moves deals to the top of the conversation list.
+     *
+     * <p>Deliberately a direct {@code UPDATE} of {@code LAST_MESSAGE_AT} alone, not a read-modify-
+     * write through the DTO. A message arrives with no user attached, so going through the normal
+     * update path would stamp {@code UPDATED_BY} null and {@code UPDATED_AT} now, turning every
+     * inbound message into a phantom edit in the deal's audit trail.
+     */
+    public Mono<Integer> touchLastMessageAt(List<ULong> ticketIds, LocalDateTime occurredAt) {
+
+        if (ticketIds == null || ticketIds.isEmpty()) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(ENTITY_PROCESSOR_TICKETS)
+                .set(ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT, occurredAt)
+                .where(ENTITY_PROCESSOR_TICKETS.ID.in(ticketIds))
+                // A late webhook must not drag the conversation backwards past a newer message.
+                .and(ENTITY_PROCESSOR_TICKETS
+                        .LAST_MESSAGE_AT
+                        .isNull()
+                        .or(ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT.lt(occurredAt))));
     }
 
     private Mono<AbstractCondition> getOwnerIdentifierConditions(
@@ -579,5 +673,264 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .collectMap(
                         rec -> rec.get(sub.field(ENTITY_PROCESSOR_TASKS.TICKET_ID)),
                         rec -> rec.get(sub.field(ENTITY_PROCESSOR_TASKS.DUE_DATE)));
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // WhatsApp inbox
+    // -------------------------------------------------------------------------------------------
+
+    private static final String CONVERSATION_ORDERED_AT = "orderedAt";
+    private static final String CONVERSATION_LAST_MESSAGE_AT = "lastMessageAt";
+
+    /**
+     * The WhatsApp inbox: one row per customer number, over the deals the caller can see.
+     *
+     * <p>Runs on {@link #processorAccessCondition}, the same rule the Deals screen uses, so there is
+     * no second definition of who can see a conversation. Grouped by number rather than by deal
+     * because the customer holds a single thread on their handset regardless of how many deals we
+     * have against them.
+     *
+     * <p>Lists every accessible deal, not only those with messages. A deal with no conversation
+     * sorts on its {@code UPDATED_AT}, so the inbox doubles as an address book to start one from,
+     * and a tenant that has just switched WhatsApp on sees a useful list rather than an empty one.
+     */
+    public Mono<Page<WhatsappConversationResponse>> readConversations(
+            ProcessorAccess access, ULong productId, String search, Pageable pageable) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(conversationFilter(productId, search), access),
+                super::filter,
+                (condition, jCondition) -> {
+                    Condition where = jCondition
+                            .and(super.isActiveTrue())
+                            .and(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER.isNotNull())
+                            .and(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER.ne(DSL.inline("")));
+
+                    return Mono.zip(countConversations(where), pageConversationKeys(where, pageable))
+                            .flatMap(tuple -> attachDeals(where, tuple.getT2())
+                                    .map(rows -> (Page<WhatsappConversationResponse>)
+                                            new PageImpl<>(rows, pageable, tuple.getT1())));
+                });
+    }
+
+    /**
+     * The deals on a customer's number that this caller may see.
+     *
+     * <p>This is the gate for a conversation thread, and the reason the thread is a union rather
+     * than a single ticket. A customer's history can span several deals, and a business number
+     * change splits it further, so reading one ticket would show a fragment. Resolving the visible
+     * set first and reading every message filed against it keeps the thread whole without ever
+     * widening past what {@link #processorAccessCondition} allows.
+     *
+     * <p>Runs on the same condition the Deals screen uses, so conversation visibility cannot drift
+     * from deal visibility.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByPhone(
+            ProcessorAccess access, String phoneNumber, ULong productId) {
+        return readAccessibleTicketIds(access, FilterCondition.make(Ticket.Fields.phoneNumber, phoneNumber), phoneNumber, productId);
+    }
+
+    /**
+     * The same gate, for a WhatsApp thread rather than a call history.
+     *
+     * <p>Split from the phone version rather than widening it, because the two channels do not share
+     * a number any more. A call goes to {@code PHONE_NUMBER} and its history groups on that alone; a
+     * thread runs on whichever number the deal is messaged on, so it has to match either column or a
+     * deal with a corrected WhatsApp number would show an empty conversation next to the messages it
+     * actually holds.
+     *
+     * <p>Widening the shared method instead would have quietly pulled deals into call histories on
+     * the strength of a number nobody ever dialled.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByWhatsappNumber(
+            ProcessorAccess access, String number, ULong productId) {
+        return readAccessibleTicketIds(access, onEitherNumber(number), number, productId);
+    }
+
+    private Mono<List<ULong>> readAccessibleTicketIds(
+            ProcessorAccess access, AbstractCondition numberCondition, String number, ULong productId) {
+
+        if (number == null || number.isBlank()) return Mono.just(List.of());
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+        conditions.add(numberCondition);
+        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(ComplexCondition.and(conditions), access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(this.dslContext
+                                .select(ENTITY_PROCESSOR_TICKETS.ID)
+                                .from(this.table)
+                                .where(jCondition.and(super.isActiveTrue())))
+                        .map(Record1::value1)
+                        .collectList());
+    }
+
+    private AbstractCondition conversationFilter(ULong productId, String search) {
+
+        List<AbstractCondition> conditions = new ArrayList<>();
+
+        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+
+        if (search != null && !search.isBlank())
+            conditions.add(ComplexCondition.or(
+                    FilterCondition.make(BaseUpdatableDto.Fields.name, search)
+                            .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL),
+                    FilterCondition.make(Ticket.Fields.phoneNumber, search)
+                            .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL),
+                    // The number an agent has in front of them is the one the customer messaged
+                    // from, so searching the inbox for it has to find the deal even when that is the
+                    // WhatsApp number rather than the number on file.
+                    FilterCondition.make(Ticket.Fields.whatsappNumber, search)
+                            .setOperator(FilterConditionOperator.STRING_LOOSE_EQUAL)));
+
+        if (conditions.isEmpty()) return null;
+
+        return conditions.size() == 1 ? conditions.getFirst() : ComplexCondition.and(conditions);
+    }
+
+    private Mono<Long> countConversations(Condition where) {
+        return Mono.from(this.dslContext
+                        .select(DSL.countDistinct(
+                                ENTITY_PROCESSOR_TICKETS.DIAL_CODE, ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER))
+                        .from(this.table)
+                        .where(where))
+                .map(Record1::value1)
+                .map(Integer::longValue)
+                .defaultIfEmpty(0L);
+    }
+
+    /**
+     * The page of customer numbers, with their sort keys. Deliberately separate from loading the
+     * deals: aggregating and paging in SQL then hydrating only the page's numbers keeps the second
+     * query bounded, and avoids GROUP_CONCAT, whose default length cap would silently truncate a
+     * number held by many deals.
+     */
+    private Mono<List<WhatsappConversationResponse>> pageConversationKeys(Condition where, Pageable pageable) {
+
+        Field<LocalDateTime> orderedAt = DSL.max(
+                        DSL.coalesce(ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT, ENTITY_PROCESSOR_TICKETS.UPDATED_AT))
+                .as(CONVERSATION_ORDERED_AT);
+        Field<LocalDateTime> lastMessageAt =
+                DSL.max(ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT).as(CONVERSATION_LAST_MESSAGE_AT);
+
+        return Flux.from(this.dslContext
+                        .select(
+                                ENTITY_PROCESSOR_TICKETS.DIAL_CODE,
+                                ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER,
+                                orderedAt,
+                                lastMessageAt)
+                        .from(this.table)
+                        .where(where)
+                        .groupBy(ENTITY_PROCESSOR_TICKETS.DIAL_CODE, ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER)
+                        .orderBy(DSL.field(DSL.name(CONVERSATION_ORDERED_AT)).desc())
+                        .limit(pageable.getPageSize())
+                        .offset((int) pageable.getOffset()))
+                .map(rec -> {
+                    // DIAL_CODE is SMALLINT, so jOOQ hands back a Short while the DTO carries an
+                    // Integer.
+                    Short dialCode = rec.get(ENTITY_PROCESSOR_TICKETS.DIAL_CODE);
+                    return new WhatsappConversationResponse()
+                            .setDialCode(dialCode != null ? dialCode.intValue() : null)
+                            .setPhoneNumber(rec.get(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER))
+                            .setOrderedAt(rec.get(orderedAt))
+                            .setLastMessageAt(rec.get(lastMessageAt));
+                })
+                .collectList();
+    }
+
+    /** Hydrates the page's numbers with the deals behind them, still under the access condition. */
+    private Mono<List<WhatsappConversationResponse>> attachDeals(
+            Condition where, List<WhatsappConversationResponse> conversations) {
+
+        if (conversations.isEmpty()) return Mono.just(conversations);
+
+        // Matched on number alone, not (dialCode, number). A row-value IN would be exact, but the
+        // dial code is nullable and jOOQ types it Short against an Integer on the DTO, so the pair
+        // comparison costs more than it buys. The Java grouping below still keys on both, so an
+        // over-fetched row from a different dial code simply matches no conversation.
+        List<String> numbers = conversations.stream()
+                .map(WhatsappConversationResponse::getPhoneNumber)
+                .toList();
+
+        return Flux.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(where)
+                        .and(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER.in(numbers))
+                        .orderBy(DSL.coalesce(
+                                        ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT,
+                                        ENTITY_PROCESSOR_TICKETS.UPDATED_AT)
+                                .desc()))
+                .map(rec -> rec.into(this.pojoClass))
+                .collectList()
+                .map(tickets -> {
+                    Map<String, List<Ticket>> byNumber = tickets.stream()
+                            .collect(Collectors.groupingBy(
+                                    t -> conversationKey(t.getDialCode(), t.getPhoneNumber()),
+                                    LinkedHashMap::new,
+                                    Collectors.toList()));
+
+                    conversations.forEach(conversation -> {
+                        List<Ticket> deals = byNumber.getOrDefault(
+                                conversationKey(conversation.getDialCode(), conversation.getPhoneNumber()),
+                                List.of());
+                        conversation.setDeals(deals.stream()
+                                .map(WhatsappConversationResponse.Deal::of)
+                                .toList());
+                        if (!deals.isEmpty()) conversation.setPrimaryTicketId(deals.getFirst().getId());
+
+                        // The first deal that actually has one, rather than the first deal's value.
+                        // Every deal on a number is written the same avatar, but a deal created
+                        // before the customer's first message has never been written at all, and
+                        // taking the primary blindly would show a blank circle next to a face.
+                        deals.stream()
+                                .map(Ticket::getWhatsappProfilePicFileDetail)
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .ifPresent(conversation::setProfilePicFileDetail);
+                    });
+
+                    return conversations;
+                });
+    }
+
+    private String conversationKey(Integer dialCode, String phoneNumber) {
+        return dialCode + "|" + phoneNumber;
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar against every deal on their number.
+     *
+     * <p>Every deal, not just the one that happened to receive the message. A customer can hold
+     * several, the conversation is already a union across them, and writing the picture to one would
+     * show the same person with a face on one deal and a blank circle on the next.
+     *
+     * <p>Matched on the plain phone number within the tenant, which is how the rest of this service
+     * identifies a customer, and covered by IDX9 added alongside these columns.
+     *
+     * <p>A null detail is a real instruction rather than a no-op: the customer removed their picture
+     * and what is held must be cleared.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+
+        if (StringUtil.safeIsBlank(phoneNumber)) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(ENTITY_PROCESSOR_TICKETS)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_FILE_DETAIL, detail)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_PROFILE_PIC_ID, pictureId)
+                .where(ENTITY_PROCESSOR_TICKETS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_TICKETS.CLIENT_CODE.eq(clientCode))
+                // Either number, for the same reason the inbound match uses both: the avatar arrives
+                // keyed on the number the customer messages from, which is the WhatsApp number
+                // whenever someone has recorded one. Matching on the phone alone would leave exactly
+                // the corrected deals without a face.
+                .and(ENTITY_PROCESSOR_TICKETS
+                        .PHONE_NUMBER
+                        .eq(phoneNumber)
+                        .or(ENTITY_PROCESSOR_TICKETS.WHATSAPP_NUMBER.eq(phoneNumber))))
+                .defaultIfEmpty(0);
     }
 }

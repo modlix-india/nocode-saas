@@ -20,6 +20,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.OrgStructure;
 import com.fincity.security.dto.User;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -51,15 +52,28 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private SoxLogService soxLogService;
 
+	@Mock
+	private OrgStructureService orgStructureService;
+
 	private UserSubOrganizationService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
 	private static final ULong USER_ID = ULong.valueOf(10);
 	private static final ULong MANAGER_ID = ULong.valueOf(20);
 
+	/** Map.of rejects null values, and "reports to nobody" is exactly a null value. */
+	private static java.util.Map<ULong, ULong> treeOf(Object... pairs) {
+		java.util.Map<ULong, ULong> tree = new java.util.HashMap<>();
+		for (int i = 0; i < pairs.length; i += 2)
+			tree.put((ULong) pairs[i], (ULong) pairs[i + 1]);
+		return tree;
+	}
+
 	@BeforeEach
 	void setUp() {
-		service = new UserSubOrganizationService(msgService, cacheService, tokenService);
+		service = new UserSubOrganizationService(msgService, cacheService, tokenService, orgStructureService);
+		// Every eviction path now drops the client's reporting tree as well as the old per-edge keys.
+		lenient().when(orgStructureService.evict(any())).thenReturn(Mono.just(Boolean.TRUE));
 
 		// Inject dao via reflection
 		var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
@@ -277,15 +291,14 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 					List.of("Authorities.User_READ", "Authorities.Logged_IN"));
 			setupSecurityContext(ca);
 
-			// Non-owner: should use expandDeep to find sub-org
-			List<ULong> level1 = List.of(ULong.valueOf(11), ULong.valueOf(12));
-
-			when(dao.getLevel1SubOrg(eq(ULong.valueOf(5)), eq(ULong.valueOf(10))))
-					.thenReturn(Flux.fromIterable(level1));
-			when(dao.getLevel1SubOrg(eq(ULong.valueOf(5)), eq(ULong.valueOf(11))))
-					.thenReturn(Flux.empty());
-			when(dao.getLevel1SubOrg(eq(ULong.valueOf(5)), eq(ULong.valueOf(12))))
-					.thenReturn(Flux.empty());
+			// Non-owner: reads the client's cached reporting tree. 11 and 12 report to 10.
+			when(orgStructureService.getOrgStructure(eq(ULong.valueOf(5))))
+					.thenReturn(Mono.just(new OrgStructure(
+							treeOf(
+									ULong.valueOf(10), null,
+									ULong.valueOf(11), ULong.valueOf(10),
+									ULong.valueOf(12), ULong.valueOf(10)),
+							java.util.Set.of())));
 
 			StepVerifier.create(service.getCurrentUserSubOrg().collectList())
 					.assertNext(result -> {
@@ -323,8 +336,8 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 		void getUserSubOrgInternal_NonOwner_ReturnsSubOrg() {
 			when(userService.getUserAuthorities("testApp", SYSTEM_CLIENT_ID, USER_ID))
 					.thenReturn(Mono.just(List.of("Authorities.User_READ", "Authorities.Logged_IN")));
-			when(dao.getLevel1SubOrg(SYSTEM_CLIENT_ID, USER_ID))
-					.thenReturn(Flux.empty());
+			when(orgStructureService.getOrgStructure(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(new OrgStructure(treeOf(USER_ID, null), java.util.Set.of())));
 
 			StepVerifier.create(service.getUserSubOrgInternal("testApp", SYSTEM_CLIENT_ID, USER_ID).collectList())
 					.assertNext(result -> {

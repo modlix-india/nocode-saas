@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,15 +51,21 @@ public class UserSubOrganizationService
 
     private final TokenService tokenService;
 
+    private final OrgStructureService orgStructureService;
+
     private ClientService clientService;
 
     private UserService userService;
 
     public UserSubOrganizationService(
-            SecurityMessageResourceService msgService, CacheService cacheService, TokenService tokenService) {
+            SecurityMessageResourceService msgService,
+            CacheService cacheService,
+            TokenService tokenService,
+            OrgStructureService orgStructureService) {
         this.msgService = msgService;
         this.cacheService = cacheService;
         this.tokenService = tokenService;
+        this.orgStructureService = orgStructureService;
     }
 
     private static boolean isOwner(List<String> authorities) {
@@ -106,15 +111,25 @@ public class UserSubOrganizationService
                         .toArray(String[]::new));
     }
 
+    /**
+     * Drops the owner list and the client's whole reporting tree.
+     *
+     * <p>The tree eviction is unconditional and comes first, because every caller of this has
+     * changed something about a user: created them, changed their reporting line, or changed their
+     * status. Any of those changes the tree, and a stale tree is what sends a notification to
+     * somebody who has left.
+     */
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
 
-        if (userId == null)
-            return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER));
+        Mono<Boolean> tree = this.orgStructureService.evict(clientId);
 
-        return Mono.zip(
+        if (userId == null)
+            return tree.then(this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)));
+
+        return tree.then(Mono.zip(
                 this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
                 this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
-                .map(evicted -> evicted.getT1() && evicted.getT2());
+                .map(evicted -> evicted.getT1() && evicted.getT2()));
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -199,10 +214,14 @@ public class UserSubOrganizationService
 
     public Mono<Boolean> evictManagerCaches(ULong clientId, ULong oldManagerId, ULong newManagerId) {
 
-        if (oldManagerId == null && newManagerId == null)
-            return Mono.just(Boolean.TRUE);
+        // Ahead of the guard below: a user moving to or from "reports to nobody" leaves both ids
+        // null on one side, and the tree still changed.
+        Mono<Boolean> tree = this.orgStructureService.evict(clientId);
 
-        return Flux.fromIterable(Stream.of(oldManagerId, newManagerId).filter(Objects::nonNull).toList())
+        if (oldManagerId == null && newManagerId == null)
+            return tree;
+
+        return tree.thenMany(Flux.fromIterable(Stream.of(oldManagerId, newManagerId).filter(Objects::nonNull).toList()))
                 .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
                 .then(Mono.just(Boolean.TRUE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictManagerCaches"));
@@ -210,10 +229,13 @@ public class UserSubOrganizationService
 
     private Mono<User> evictHierarchyCaches(User updatedUser, ULong oldReportingTo, ULong newReportingTo) {
 
-        if (oldReportingTo == null && newReportingTo == null)
-            return Mono.just(updatedUser);
+        Mono<Boolean> tree = this.orgStructureService.evict(updatedUser.getClientId());
 
-        return Flux.fromIterable(Stream.of(oldReportingTo, newReportingTo).filter(Objects::nonNull).toList())
+        if (oldReportingTo == null && newReportingTo == null)
+            return tree.thenReturn(updatedUser);
+
+        return tree.thenMany(
+                Flux.fromIterable(Stream.of(oldReportingTo, newReportingTo).filter(Objects::nonNull).toList()))
                 .flatMap(managerId -> this.cacheService.evict(getCacheName(),
                         getCacheKey(updatedUser.getClientId(), managerId)))
                 .then(Mono.just(updatedUser))
@@ -289,22 +311,30 @@ public class UserSubOrganizationService
                     .flatMapMany(Flux::fromIterable)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
 
-        Set<ULong> visited = ConcurrentHashMap.newKeySet();
-
-        return Flux.just(userId)
-                .expandDeep(id -> !visited.add(id)
-                        ? Flux.empty()
-                        : this.getLevel1SubOrg(clientId, id).flatMapMany(Flux::fromIterable))
-                .filter(id -> includeSelf || !id.equals(userId))
+        // One cached tree, walked in memory. This used to expandDeep over getLevel1SubOrg, which
+        // issued a cache lookup per person in the sub-tree: fine for one flat client, hundreds of
+        // round trips per deal read once an organisation is eight or ten levels deep. The result is
+        // the same set, including deactivated people, because the query behind it never filtered on
+        // status and reads depend on that.
+        return this.orgStructureService
+                .getOrgStructure(clientId)
+                .flatMapMany(tree -> Flux.fromIterable(tree.subOrg(userId, includeSelf)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
     }
 
-    private Mono<List<ULong>> getLevel1SubOrg(ULong clientId, ULong userId) {
+    /**
+     * This person and everyone they report to, transitively.
+     *
+     * <p>The inverse of {@link #getSubOrgUserIds}: the people whose sub-org contains this user, and
+     * therefore the people entitled to their records. Bounded by the depth of the tree rather than
+     * its size, which is why it is worth asking this way round.
+     */
+    public Flux<ULong> getSelfAndManagers(ULong clientId, ULong userId) {
 
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getLevel1SubOrg(clientId, userId).collectList(),
-                this.getCacheKey(clientId, userId));
+        return this.orgStructureService
+                .getOrgStructure(clientId)
+                .flatMapMany(tree -> Flux.fromIterable(tree.selfAndManagers(userId)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSelfAndManagers"));
     }
 
     private Mono<List<ULong>> getAllUserIds(ULong clientId) {

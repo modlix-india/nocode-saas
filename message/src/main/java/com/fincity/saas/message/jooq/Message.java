@@ -4,14 +4,13 @@
 package com.fincity.saas.message.jooq;
 
 
+import com.fincity.saas.message.jooq.tables.MessageBridgeInstances;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
+import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,9 +34,20 @@ public class Message extends SchemaImpl {
     public static final Message MESSAGE = new Message();
 
     /**
+     * Registry of WhatsApp bridge instances. Fleet infrastructure, not tenant
+     * data.
+     */
+    public final MessageBridgeInstances MESSAGE_BRIDGE_INSTANCES = MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES;
+
+    /**
      * The table <code>message.message_calls</code>.
      */
     public final MessageCalls MESSAGE_CALLS = MessageCalls.MESSAGE_CALLS;
+
+    /**
+     * The table <code>message.message_dispatch_outbox</code>.
+     */
+    public final MessageDispatchOutbox MESSAGE_DISPATCH_OUTBOX = MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX;
 
     /**
      * The table <code>message.message_exotel_calls</code>.
@@ -55,24 +65,9 @@ public class Message extends SchemaImpl {
     public final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
 
     /**
-     * The table <code>message.message_whatsapp_business_accounts</code>.
-     */
-    public final MessageWhatsappBusinessAccounts MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS = MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS;
-
-    /**
-     * The table <code>message.message_whatsapp_messages</code>.
-     */
-    public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
-
-    /**
      * WhatsApp Business phone numbers
      */
     public final MessageWhatsappPhoneNumbers MESSAGE_WHATSAPP_PHONE_NUMBERS = MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS;
-
-    /**
-     * WhatsApp message templates
-     */
-    public final MessageWhatsappTemplates MESSAGE_WHATSAPP_TEMPLATES = MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES;
 
     /**
      * No further instances allowed
@@ -90,14 +85,13 @@ public class Message extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES,
             MessageCalls.MESSAGE_CALLS,
+            MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX,
             MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
             MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS,
             MessageMessages.MESSAGE_MESSAGES,
-            MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS,
-            MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
-            MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS,
-            MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES
+            MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS
         );
     }
 }

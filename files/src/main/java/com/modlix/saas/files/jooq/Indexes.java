@@ -22,6 +22,7 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
+    public static final Index FILES_FILE_SYSTEM_IDX_FILES_FS_EXPIRY = Internal.createIndex(DSL.name("IDX_FILES_FS_EXPIRY"), FilesFileSystem.FILES_FILE_SYSTEM, new OrderField[] { FilesFileSystem.FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES, FilesFileSystem.FILES_FILE_SYSTEM.UPDATED_AT }, false);
     public static final Index FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_NAME = Internal.createIndex(DSL.name("KEY_FILE_SYSTEM_CODE_NAME"), FilesFileSystem.FILES_FILE_SYSTEM, new OrderField[] { FilesFileSystem.FILES_FILE_SYSTEM.CODE, FilesFileSystem.FILES_FILE_SYSTEM.NAME }, false);
     public static final Index FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE = Internal.createIndex(DSL.name("KEY_FILE_SYSTEM_CODE_TYPE_FILE_TYPE"), FilesFileSystem.FILES_FILE_SYSTEM, new OrderField[] { FilesFileSystem.FILES_FILE_SYSTEM.CODE, FilesFileSystem.FILES_FILE_SYSTEM.TYPE, FilesFileSystem.FILES_FILE_SYSTEM.FILE_TYPE }, false);
     public static final Index FILES_FILE_SYSTEM_KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID = Internal.createIndex(DSL.name("KEY_FILE_SYSTEM_TYPE_FILE_TYPE_PARENT_ID"), FilesFileSystem.FILES_FILE_SYSTEM, new OrderField[] { FilesFileSystem.FILES_FILE_SYSTEM.TYPE, FilesFileSystem.FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystem.FILES_FILE_SYSTEM.PARENT_ID }, false);

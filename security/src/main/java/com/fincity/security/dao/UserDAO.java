@@ -26,6 +26,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.Record3;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectLimitPercentStep;
@@ -703,6 +704,28 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .from(SECURITY_USER)
                 .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
+    }
+
+    /**
+     * Every reporting edge in a client, in one query.
+     *
+     * <p>Feeds {@link com.fincity.security.service.OrgStructureService}, which caches the result and
+     * answers both "who reports to me, transitively" and "who do I report to, transitively" from it.
+     *
+     * <p>This replaces walking {@link #getLevel1SubOrg} once per node. That walk costs one round
+     * trip per person in the sub-tree, so a manager near the top of a ten-level organisation paid
+     * hundreds of them on every deal read. One scan of a client's users is cheaper than that at any
+     * size worth caching, and it is the only shape that can answer the upward question at all.
+     *
+     * <p>No status filter, deliberately: {@code getLevel1SubOrg} has none either, so a sub-org today
+     * includes deactivated people and a manager keeps seeing a departed report's deals. Status is
+     * carried on each row so callers that <i>do</i> care can filter, without changing what reads do.
+     */
+    public Flux<Record3<ULong, ULong, SecurityUserStatusCode>> getOrgEdges(ULong clientId) {
+        return Flux.from(this.dslContext
+                .select(SECURITY_USER.ID, SECURITY_USER.REPORTING_TO, SECURITY_USER.STATUS_CODE)
+                .from(SECURITY_USER)
+                .where(SECURITY_USER.CLIENT_ID.eq(clientId)));
     }
 
     /**

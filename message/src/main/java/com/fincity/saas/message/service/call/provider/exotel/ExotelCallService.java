@@ -9,6 +9,7 @@ import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.enums.MessageSeries;
+import com.fincity.saas.message.enums.dispatch.DispatchEventType;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirection;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
@@ -18,6 +19,7 @@ import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallReq
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnectAppletRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
+import com.fincity.saas.message.model.request.dispatch.CallEventDispatch;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnectAppletResponse;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelErrorResponse;
@@ -25,10 +27,13 @@ import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
+import com.fincity.saas.message.service.dispatch.EventDispatcher;
 import com.fincity.saas.message.util.PhoneUtil;
 import com.fincity.saas.message.util.SetterUtil;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,78 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
+
+    private EventDispatcher eventDispatcher;
+
+    /**
+     * Who owns a call this service did not have an explicit owner for.
+     *
+     * <p>Configured rather than derived because, unlike WhatsApp, Exotel numbers are held in the
+     * CRM's product configuration and this service has no table of them to read an owner from. One
+     * consumer exists, so a default is honest; the moment there are two, calls need their own number
+     * table and this should go.
+     */
+    @Value("${message.call.default-owner-service:entity-processor}")
+    private String defaultCallOwnerService;
+
+    @Autowired
+    public void setEventDispatcher(EventDispatcher eventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
+    }
+
+    /**
+     * Hands a call update to the service that owns the call.
+     *
+     * <p>Through the outbox, so Exotel gets its 200 as soon as the row is durable rather than after
+     * the consumer has accepted it. A consumer outage therefore delays a call log, it does not lose
+     * one and it does not make us look unavailable to Exotel.
+     *
+     * <p>Never fails the callback. A lost status update leaves a call stuck at its last known state,
+     * which the sweeper then corrects; failing here would make Exotel retry the whole callback and
+     * change nothing.
+     */
+    private Mono<Void> handOverToOwner(ExotelCall call) {
+
+        CallEventDispatch dispatch = new CallEventDispatch()
+                .setProviderCallId(call.getSid())
+                .setParentCallSid(call.getParentCallSid())
+                .setAccountSid(call.getAccountSid())
+                .setEventType(DispatchEventType.CALL_STATUS.name())
+                .setCallProvider(this.getConnectionSubType().getProvider())
+                .setOutbound(ExotelDirection.getByName(call.getDirection()).isOutbound())
+                .setFromDialCode(call.getFromDialCode())
+                .setFrom(call.getFrom())
+                .setToDialCode(call.getToDialCode())
+                .setTo(call.getTo())
+                .setCustomerDialCode(call.getCustomerDialCode())
+                .setCustomerPhoneNumber(call.getCustomerPhoneNumber())
+                .setCallerId(call.getCallerId())
+                .setCallStatus(call.getExotelCallStatus() == null ? null : call.getExotelCallStatus().getDisplayName())
+                .setLeg1Status(call.getLeg1Status() == null ? null : call.getLeg1Status().getDisplayName())
+                .setLeg2Status(call.getLeg2Status() == null ? null : call.getLeg2Status().getDisplayName())
+                .setDirection(call.getDirection())
+                .setAnsweredBy(call.getAnsweredBy())
+                .setStartTime(call.getStartTime())
+                .setEndTime(call.getEndTime())
+                .setDuration(call.getDuration())
+                .setConversationDuration(call.getConversationDuration())
+                .setPrice(call.getPrice() == null ? null : call.getPrice().toString())
+                .setRecordingUrl(call.getRecordingUrl());
+
+        String owner = call.getOwnerService() == null ? this.defaultCallOwnerService : call.getOwnerService();
+
+        return this.eventDispatcher
+                .enqueueAndDispatch(
+                        MessageAccess.of(call.getAppCode(), call.getClientCode(), Boolean.TRUE),
+                        owner,
+                        DispatchEventType.CALL_STATUS,
+                        call.getSid(),
+                        dispatch)
+                .onErrorResume(e -> {
+                    logger.error("Could not hand the status of call {} to its owner.", call.getSid(), e);
+                    return Mono.empty();
+                });
+    }
 
     @Override
     public MessageSeries getMessageSeries() {
@@ -122,6 +199,47 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
                                 .thenReturn(cCall))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCall"));
+    }
+
+    /**
+     * Places a call on behalf of another service, and records who to route its callbacks to.
+     *
+     * <p>Returns the provider-shaped call rather than the thin {@code Call} wrapper, because the
+     * caller needs the provider's Sid to key its own record on and nothing else here can give it to
+     * them.
+     *
+     * <p>No deal check, and none is possible: this service cannot evaluate one. The caller has
+     * already done it, and the number dialled is theirs to justify. That is exactly why the public
+     * {@code /make} endpoint should not be reachable from a browser.
+     */
+    public Mono<ExotelCall> makeCallInternal(String appCode, String clientCode, CallRequest callRequest, String ownerService) {
+
+        MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> super.callConnectionService.getCoreDocument(
+                                appCode, clientCode, callRequest.getConnectionName()),
+                        connection -> super.isValidConnection(connection),
+                        (connection, vConn) -> this.makeExotelCall(access, this.toExotelRequest(callRequest, connection), connection),
+                        (connection, vConn, eCreated) -> super.updateInternalWithoutUser(
+                                access, eCreated.setOwnerService(ownerService)),
+                        (connection, vConn, eCreated, stamped) -> this.toCall(stamped)
+                                .map(call -> call.setConnectionName(connection.getName()))
+                                .flatMap(call -> super.callService.createInternal(access, call))
+                                .thenReturn(stamped))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCallInternal"));
+    }
+
+    private ExotelCallRequest toExotelRequest(CallRequest callRequest, Connection connection) {
+
+        String to = callRequest.getToNumber().getNumber();
+        String callerId = callRequest.getCallerId() == null
+                ? (String) connection.getConnectionDetails().get(ExotelCallRequest.Fields.callerId)
+                : callRequest.getCallerId().getLandlineNumber();
+
+        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(to, callerId, Boolean.TRUE);
+        this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
+        return exotelCallRequest;
     }
 
     public Mono<Call> makeCall(CallRequest callRequest) {
@@ -254,9 +372,12 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         notExists -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
                         (notExists, connection) -> super.getUserIdAndPhone(request.getUserId()),
-                        (notExists, connection, user) ->
-                                Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
-                                        connection.getConnectionDetails().getOrDefault("accountSid", ""))),
+                        (notExists, connection, user) -> Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
+                                        connection.getConnectionDetails().getOrDefault("accountSid", ""))
+                                // The connect applet is always answered by the owning service, which
+                                // is what reached us here, so the owner is known at creation time
+                                // and a later status callback never has to guess.
+                                .setOwnerService(this.defaultCallOwnerService)),
                         (notExists, connection, user, exotelCall) -> {
                             Mono<ExotelCall> exotelCreated = this.createInternal(access, user.getId(), exotelCall);
 
@@ -340,6 +461,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         (exotelCall, updated) -> super.callEventService
                                 .sendCallStatusEvent(
                                         updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
+                                .then(this.handOverToOwner(updated))
                                 .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processCallStatusCallback"));
     }
@@ -367,6 +489,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         (exotelCall, updated) -> super.callEventService
                                 .sendPassthruCallbackEvent(
                                         updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
+                                .then(this.handOverToOwner(updated))
                                 .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processPassThruCallback"));
     }

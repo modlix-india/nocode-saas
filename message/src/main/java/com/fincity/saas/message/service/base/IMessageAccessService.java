@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -48,34 +47,51 @@ public interface IMessageAccessService {
         if (ca.isAuthenticated())
             return Mono.just(MessageAccess.of(ca));
 
-        return FlatMapUtil.flatMapMono(
-                () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
-                acTup -> this.getSecurityService()
-                        .appInheritance(acTup.getT1(), ca.getUrlClientCode(), acTup.getT2())
-                        .map(clientCodes -> clientCodes.contains(acTup.getT2()))
-                        .flatMap(BooleanUtil::safeValueOfWithEmpty)
-                        .switchIfEmpty(this.getMsgService()
-                                .throwMessage(
-                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                        MessageResourceService.FORBIDDEN_APP_ACCESS,
-                                        acTup.getT2())),
-                (acTup, hasAppAccess) -> this.getSecurityService().getClientByCode(acTup.getT2()).map(Client::getId)
-                        .flatMap(clientId -> this.getSecurityService()
-                                .isUserClientManageClient(ca.getUrlAppCode(), ca.getUser().getId(),
-                                        ca.getUser().getClientId(),
-                                        clientId))
-                        .flatMap(BooleanUtil::safeValueOfWithEmpty)
-                        .switchIfEmpty(this.getMsgService()
-                                .throwMessage(
-                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                        MessageResourceService.INVALID_USER_FOR_CLIENT,
-                                        ca.getUser().getId(),
-                                        acTup.getT2())),
-                (acTup, hasAppAccess, isUserManaged) -> Mono.just(MessageAccess.of(
+        return SecurityContextUtil.resolveAppAndClientCode(null, null)
+                .map(acTup -> MessageAccess.of(
                         acTup.getT1(),
                         acTup.getT2(),
                         ULongUtil.valueOf(ca.getUser().getId()),
-                        hasAppAccess && isUserManaged,
-                        ca.getUser())));
+                        Boolean.TRUE,
+                        ca.getUser()));
+    }
+
+    /**
+     * Gate on the client that owns the row being touched, letting it through or failing with 403.
+     *
+     * <p>The question is pure hierarchy: is this the caller's own client, or one beneath it.
+     * Deliberately <b>not</b> {@code isUserClientManageClient}, which additionally demands the caller
+     * be a registered client manager. That role exists for administering the channel partners
+     * sitting under a tenant, so requiring it here would answer a question nobody asked and lock an
+     * ordinary owner out of their own settings.
+     *
+     * <p>Only user traffic is checked. Webhooks and provider callbacks run with no authenticated
+     * user and legitimately write rows belonging to whichever tenant the event is for, so gating
+     * them on a caller's client would stop message delivery rather than protect anything. Their
+     * protection is upstream: signature verification on the way in and nginx on {@code /internal}.
+     *
+     * <p>Same-client is the overwhelming majority of calls and is answered without leaving the
+     * process, so this costs a round trip only when a row genuinely belongs to someone else.
+     */
+    default <T> Mono<T> withManagingClient(String targetClientCode, T entity) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    if (!ca.isAuthenticated()
+                            || targetClientCode == null
+                            || targetClientCode.equals(ca.getClientCode())) return Mono.just(entity);
+
+                    return this.getSecurityService()
+                            .doesClientManageClientCode(ca.getClientCode(), targetClientCode)
+                            .flatMap(BooleanUtil::safeValueOfWithEmpty)
+                            .map(canManage -> entity)
+                            .switchIfEmpty(this.getMsgService()
+                                    .throwMessage(
+                                            msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                            MessageResourceService.INVALID_USER_FOR_CLIENT,
+                                            ca.getUser().getId(),
+                                            targetClientCode));
+                })
+                .defaultIfEmpty(entity);
     }
 }

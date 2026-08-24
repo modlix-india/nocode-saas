@@ -4,9 +4,9 @@
 package com.fincity.saas.message.jooq.tables;
 
 
+import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages.MessageWhatsappMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 
 import java.time.LocalDateTime;
@@ -16,14 +16,11 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.InverseForeignKey;
+import org.jooq.Index;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -171,42 +168,14 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
         this(DSL.name("message_messages"), null);
     }
 
-    public <O extends Record> MessageMessages(Table<O> path, ForeignKey<O, MessageMessagesRecord> childPath, InverseForeignKey<O, MessageMessagesRecord> parentPath) {
-        super(path, childPath, parentPath, MESSAGE_MESSAGES);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class MessageMessagesPath extends MessageMessages implements Path<MessageMessagesRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> MessageMessagesPath(Table<O> path, ForeignKey<O, MessageMessagesRecord> childPath, InverseForeignKey<O, MessageMessagesRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private MessageMessagesPath(Name alias, Table<MessageMessagesRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public MessageMessagesPath as(String alias) {
-            return new MessageMessagesPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public MessageMessagesPath as(Name alias) {
-            return new MessageMessagesPath(alias, this);
-        }
-
-        @Override
-        public MessageMessagesPath as(Table<?> alias) {
-            return new MessageMessagesPath(alias.getQualifiedName(), this);
-        }
-    }
-
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX0_MESSAGES_AC_CC);
     }
 
     @Override
@@ -222,24 +191,6 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     @Override
     public List<UniqueKey<MessageMessagesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_MESSAGE_MESSAGES_UK1_MESSAGES_CODE);
-    }
-
-    @Override
-    public List<ForeignKey<MessageMessagesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID);
-    }
-
-    private transient MessageWhatsappMessagesPath _messageWhatsappMessages;
-
-    /**
-     * Get the implicit join path to the
-     * <code>message.message_whatsapp_messages</code> table.
-     */
-    public MessageWhatsappMessagesPath messageWhatsappMessages() {
-        if (_messageWhatsappMessages == null)
-            _messageWhatsappMessages = new MessageWhatsappMessagesPath(this, Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID, null);
-
-        return _messageWhatsappMessages;
     }
 
     @Override

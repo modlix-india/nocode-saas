@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts.EntityProcessorCampaignProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs.EntityProcessorProductMessageConfigsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketExRules.EntityProcessorProductTicketExRulesPath;
@@ -135,6 +136,14 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Walk in form related to this product.
      */
     public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_WALK_IN_FORM_ID = createField(DSL.name("PRODUCT_WALK_IN_FORM_ID"), SQLDataType.BIGINTUNSIGNED, this, "Walk in form related to this product.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.WHATSAPP_SESSION_CODE</code>.
+     * Matches message_whatsapp_phone_numbers.CODE in the message service. Null
+     * means this product uses the tenant default number.
+     */
+    public final TableField<EntityProcessorProductsRecord, String> WHATSAPP_SESSION_CODE = createField(DSL.name("WHATSAPP_SESSION_CODE"), SQLDataType.CHAR(22), this, "Matches message_whatsapp_phone_numbers.CODE in the message service. Null means this product uses the tenant default number.");
 
     /**
      * The column
@@ -292,7 +301,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC, Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX1_PRODUCTS_AC_CC_WSC);
     }
 
     @Override
@@ -340,6 +349,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorProductWalkInForms = new EntityProcessorProductWalkInFormsPath(this, Keys.FK2_PRODUCTS_PWIF_ID, null);
 
         return _entityProcessorProductWalkInForms;
+    }
+
+    private transient EntityProcessorProductMessageConfigsPath _entityProcessorProductMessageConfigs;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_message_configs</code>
+     * table
+     */
+    public EntityProcessorProductMessageConfigsPath entityProcessorProductMessageConfigs() {
+        if (_entityProcessorProductMessageConfigs == null)
+            _entityProcessorProductMessageConfigs = new EntityProcessorProductMessageConfigsPath(this, null, Keys.FK1_PMC_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorProductMessageConfigs;
     }
 
     private transient EntityProcessorProductCommsPath _entityProcessorProductComms;

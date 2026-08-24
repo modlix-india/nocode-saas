@@ -10,6 +10,7 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
@@ -20,6 +21,8 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketRuUserDistributionService;
 import com.google.gson.Gson;
+import java.math.BigInteger;
+import java.util.Objects;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,6 +82,46 @@ public class ProductTicketRuRuleService
 
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return this.getUserReadConditionInternal(access);
+    }
+
+    /**
+     * Users a product read rule grants this deal to, regardless of who it is assigned to.
+     *
+     * <p>The inverse of {@link #getUserReadConditions}. That one takes a caller and produces the
+     * conditions their rules allow; this takes a deal and produces the people whose rules allow it.
+     * Both read the same two tables, from opposite ends.
+     *
+     * <p>The expansion from a rule to its people is {@code getUsersByRuleId}, which already exists
+     * for the forward path and already resolves user, role, profile, designation and department and
+     * drops anyone inactive. Reusing it is the point: a second expansion here would be a second
+     * thing to keep in step.
+     *
+     * <p>Empty for the common case of a tenant with no rules, and the check that establishes that is
+     * one indexed query.
+     */
+    public Mono<List<BigInteger>> getReadAudience(Ticket ticket) {
+
+        if (ticket == null || ticket.getProductId() == null && ticket.getProductTemplateId() == null)
+            return Mono.just(List.of());
+
+        ProcessorAccess access = ProcessorAccess.ofNull()
+                .setAppCode(ticket.getAppCode())
+                .setClientCode(ticket.getClientCode());
+
+        return this.dao
+                .getReadDistributions(
+                        ticket.getAppCode(),
+                        ticket.getClientCode(),
+                        ticket.getProductId(),
+                        ticket.getProductTemplateId())
+                .map(TicketRuUserDistribution::getRuleId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .flatMap(ruleId -> this.userDistributionService.getUsersByRuleId(access, ruleId))
+                .flatMapIterable(userIds -> userIds)
+                .map(ULong::toBigInteger)
+                .distinct()
+                .collectList();
     }
 
     private Mono<AbstractCondition> getUserReadConditionInternal(ProcessorAccess access) {

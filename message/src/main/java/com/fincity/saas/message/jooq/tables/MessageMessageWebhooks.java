@@ -174,7 +174,7 @@ public class MessageMessageWebhooks extends TableImpl<MessageMessageWebhooksReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_MESSAGE_WEBHOOKS_IDX1_MESSAGE_WEBHOOKS_PROVIDER);
+        return Arrays.asList(Indexes.MESSAGE_MESSAGE_WEBHOOKS_IDX0_MESSAGE_WEBHOOKS_AC_CC, Indexes.MESSAGE_MESSAGE_WEBHOOKS_IDX1_MESSAGE_WEBHOOKS_PROVIDER);
     }
 
     @Override

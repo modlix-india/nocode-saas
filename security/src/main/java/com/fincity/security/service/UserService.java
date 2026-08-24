@@ -52,6 +52,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.TimeZoneUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 
@@ -974,6 +975,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             e.setLastName(entity.getLastName());
             e.setMiddleName(entity.getMiddleName());
             e.setLocaleCode(entity.getLocaleCode());
+            // Sanitised rather than copied, so clearing it back to null is a supported thing to do:
+            // null means "use the client's zone", and somebody who moved once has to be able to stop
+            // overriding. An unreadable value would otherwise stick and be impossible to remove.
+            e.setTimeZone(TimeZoneUtil.sanitize(entity.getTimeZone()));
             e.setStatusCode(entity.getStatusCode());
             e.setDesignationId(entity.getDesignationId());
             e.setReportingTo(entity.getReportingTo());

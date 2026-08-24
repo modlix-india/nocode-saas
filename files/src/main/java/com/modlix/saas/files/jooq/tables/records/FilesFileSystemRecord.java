@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -118,11 +119,30 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
     }
 
     /**
+     * Setter for <code>files.files_file_system.EXPIRES_AFTER_MINUTES</code>.
+     * Minutes after the last create/update this file may be deleted. NULL means
+     * keep forever.
+     */
+    public FilesFileSystemRecord setExpiresAfterMinutes(UInteger value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>files.files_file_system.EXPIRES_AFTER_MINUTES</code>.
+     * Minutes after the last create/update this file may be deleted. NULL means
+     * keep forever.
+     */
+    public UInteger getExpiresAfterMinutes() {
+        return (UInteger) get(6);
+    }
+
+    /**
      * Setter for <code>files.files_file_system.PARENT_ID</code>. Parent ID of
      * the file
      */
     public FilesFileSystemRecord setParentId(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -131,7 +151,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * the file
      */
     public ULong getParentId() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -139,7 +159,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * user who created this row
      */
     public FilesFileSystemRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -148,7 +168,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -156,7 +176,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * this row is created
      */
     public FilesFileSystemRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -165,7 +185,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -173,7 +193,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * user who updated this row
      */
     public FilesFileSystemRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -182,7 +202,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -190,7 +210,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * this row is updated
      */
     public FilesFileSystemRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -199,7 +219,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -225,7 +245,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
     /**
      * Create a detached, initialised FilesFileSystemRecord
      */
-    public FilesFileSystemRecord(ULong id, FilesFileSystemType type, String code, String name, FilesFileSystemFileType fileType, ULong size, ULong parentId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public FilesFileSystemRecord(ULong id, FilesFileSystemType type, String code, String name, FilesFileSystemFileType fileType, ULong size, UInteger expiresAfterMinutes, ULong parentId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(FilesFileSystem.FILES_FILE_SYSTEM);
 
         setId(id);
@@ -234,6 +254,7 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
         setName(name);
         setFileType(fileType);
         setSize(size);
+        setExpiresAfterMinutes(expiresAfterMinutes);
         setParentId(parentId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);

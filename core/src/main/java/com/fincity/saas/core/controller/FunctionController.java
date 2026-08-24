@@ -50,6 +50,7 @@ public class FunctionController
         extends AbstractOverridableDataController<CoreFunction, CoreFunctionDocumentRepository, CoreFunctionService> {
 
     private final CoreFunctionRepository coreFunRepo;
+    private final KIRunReactiveFunctionRepository kiRunFunRepo = new KIRunReactiveFunctionRepository();
     private final Gson gson;
     private final RemoteRepositoryService remoteRepositoryService;
 
@@ -103,7 +104,7 @@ public class FunctionController
                 (ca, appFunctionRepo, remoteRepositories) -> {
                     ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
                             ? new ReactiveHybridRepository<ReactiveFunction>(
-                                    new KIRunReactiveFunctionRepository(),
+                                    this.kiRunFunRepo,
                                     this.coreFunRepo,
                                     appFunctionRepo)
                             : new ReactiveHybridRepository<ReactiveFunction>(
@@ -141,7 +142,7 @@ public class FunctionController
                 (ca, appFunctionRepo, remoteRepositories) -> {
                     ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
                             ? new ReactiveHybridRepository<ReactiveFunction>(
-                                    new KIRunReactiveFunctionRepository(),
+                                    this.kiRunFunRepo,
                                     this.coreFunRepo,
                                     appFunctionRepo)
                             : new ReactiveHybridRepository<ReactiveFunction>(
