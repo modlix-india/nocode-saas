@@ -933,7 +933,7 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
             return Mono.just(List.of());
 
         var query = this.dslContext
-                .select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
+                .selectDistinct(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
                 .from(SECURITY_USER)
                 .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER)
                 .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
