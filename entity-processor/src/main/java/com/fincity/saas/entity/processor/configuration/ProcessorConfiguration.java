@@ -6,7 +6,6 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
-import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -33,8 +32,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
-public class ProcessorConfiguration extends AbstractJooqBaseConfiguration
-        implements ISecurityConfiguration, IMQConfiguration {
+public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
 
     protected ProcessorMessageResourceService processorMessageResourceService;
 
