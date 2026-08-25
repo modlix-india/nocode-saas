@@ -81,10 +81,13 @@ class AuthenticationIntegrationTest extends AbstractIntegrationTest {
 	 */
 	@AfterAll
 	void cleanupTestDataAfterAll() {
+		// security_app is scoped by CLIENT_ID, not ID. Flyway seeds two SYSTEM-owned apps, 'nothing'
+		// and 'appbuilder' (ID 2), and appbuilder is what most of the suite resolves against.
+		// Deleting by ID > 1 removes it and 44 unrelated tests start returning empty.
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_user_token WHERE USER_ID > 1").then())
-				.then(databaseClient.sql("DELETE FROM security_app WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_app WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client_activity WHERE CLIENT_ID > 1").then())
 				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then())
