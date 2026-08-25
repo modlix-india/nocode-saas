@@ -36,7 +36,6 @@ jobs:
           mvn -q clean install -f commons/pom.xml
           mvn -q clean install -f commons-jooq/pom.xml
           mvn -q clean install -f commons-security/pom.xml
-          mvn -q clean install -f commons-mq/pom.xml
 
       - working-directory: entity-processor
         run: mvn -q clean package
