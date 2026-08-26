@@ -47,6 +47,7 @@ import reactor.util.function.Tuple2;
 public abstract class AbstractTransportService extends AbstractOverridableDataService<Transport, TransportRepository> {
 
     private static final String TRANSPORT = "Transport";
+    private static final String SLASH_ESCAPE = "__slash__";
 
     private final IFeignSecurityService feignSecurityService;
 
@@ -397,7 +398,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .readForTransport(request.getAppCode(), request.getClientCode(), list)
                 .map(e -> {
                     try {
-                        Files.write(dirPath.resolve(e.getTransportName() + ".json"), this.objectMapper
+                        Files.write(dirPath.resolve(toFileName(e.getTransportName())), this.objectMapper
                                 .writeValueAsBytes(e));
                     } catch (Exception ex) {
                         throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -406,6 +407,22 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
                     return true;
                 });
+    }
+
+    /**
+     * Turns an object's name into a file name for the transport zip.
+     * <p>
+     * Some names are routes: a URIPath is named things like
+     * {@code /api/exotel/call}. Handed to {@code dirPath.resolve()} that reads
+     * as an absolute path, which drops the type folder and tries to write
+     * outside it onto parents that do not exist. Escaping the separator keeps
+     * the file name derived from the name, so it stays reversible, it is the
+     * same in every environment, and it can be handed straight back to an
+     * objectList. Same idea as the {@code __d-o-t__} replacement already used
+     * for Mongo map keys.
+     */
+    private static String toFileName(String transportName) {
+        return StringUtil.safeValueOf(transportName, "").replace("/", SLASH_ESCAPE) + ".json";
     }
 
     private Mono<Transport> makeJSONTransport(boolean isInternal, TransportRequest request) {
