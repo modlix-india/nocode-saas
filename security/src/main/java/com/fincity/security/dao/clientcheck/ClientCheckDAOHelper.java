@@ -87,6 +87,55 @@ public class ClientCheckDAOHelper {
 
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
+    private static final String MANAGING_ROLES = "Authorities.ROLE_Owner or Authorities.ROLE_ClientManager";
+
+    /**
+     * SQL mirror of {@code ClientService.isUserClientManageClient(ca, clientId)}:
+     * a row is visible when it belongs to the caller's own client, or to a client
+     * below it in the hierarchy that this caller actually manages - either by
+     * holding a managing role or by being registered as a manager of that client.
+     * <p>
+     * This differs from {@link #applyClientFilter(Mono)} in one way that matters:
+     * the caller's own client is always visible. {@code applyClientFilter} also
+     * demands a {@code SECURITY_CLIENT_MANAGER} row for a non-owner, which no one
+     * has for their own client, so it hides an administrator's own organisation
+     * from them. Use this variant for anything an administrator raises and acts on
+     * inside their own client.
+     * <p>
+     * The client id is taken from the signed-in user's context authentication -
+     * never from a caller supplied header. With no authentication at all nothing
+     * is visible.
+     * <p>
+     * The joins this needs are added by
+     * {@link #getSelectJointStep(DSLContext, Table, Field)}, which leaves them out
+     * for a SYSTEM client - so this returns the condition untouched for SYSTEM.
+     *
+     * @param clientIdField the client id column of the table being filtered
+     */
+    public static Mono<Condition> applyOwnAndManagedClientFilter(
+            Mono<Condition> condition, Field<ULong> clientIdField) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+
+                    if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
+                        return condition;
+
+                    ULong userClientId = ULong.valueOf(ca.getUser().getClientId());
+                    ULong userId = ULong.valueOf(ca.getUser().getId());
+
+                    Condition managedClient = DSL.and(
+                            ClientHierarchyDAO.getManageClientCondition(userClientId),
+                            SecurityContextUtil.hasAuthority(MANAGING_ROLES, ca.getAuthorities())
+                                    ? DSL.trueCondition()
+                                    : SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(userId));
+
+                    return condition.map(c -> DSL.and(c,
+                            DSL.or(clientIdField.eq(userClientId), managedClient)));
+                })
+                .switchIfEmpty(Mono.just(DSL.falseCondition()));
+    }
+
     public static Mono<Condition> applyClientFilter(Mono<Condition> condition) {
         return SecurityContextUtil.getUsersContextAuthentication()
                 .flatMap(ca -> {

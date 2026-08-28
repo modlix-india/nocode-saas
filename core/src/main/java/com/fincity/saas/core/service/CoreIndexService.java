@@ -112,6 +112,9 @@ public class CoreIndexService {
         for (AbstractOverridableDTO<?> entity : page.getContent()) {
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("name", entity.getName());
+            // The builder tree labels objects by title and falls back to name;
+            // name is identity and is not editable, so the index must carry both.
+            summary.put("title", entity.getTitle());
             summary.put("id", entity.getId());
             summary.put("version", entity.getVersion());
             summary.put("clientCode", entity.getClientCode());

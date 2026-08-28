@@ -49,6 +49,8 @@ public class ObjectIndexService {
      * a new object type must be named deliberately, or it silently appears in
      * everyone's tree the day it ships.
      */
+    private static final String TITLE = "title";
+
     private static final Map<String, String> UI_TYPES = Map.of(
             "pages", "page",
             "styles", "style",
@@ -115,6 +117,10 @@ public class ObjectIndexService {
                     result.put("clientCode", clientCode);
                     result.put("count", filtered.size());
                     result.put("counts", countByType(filtered));
+                    // The builder's tree splits ui and core into separate groups
+                    // (a ui function and a core function are different things to
+                    // edit), so counts by type alone cannot label those groups.
+                    result.put("countsByServiceType", countByServiceType(filtered));
                     // Which halves answered. A degraded tree must not look like
                     // an app that simply has no storages.
                     result.put("services", Map.of(
@@ -169,6 +175,9 @@ public class ObjectIndexService {
                 row.put("service", service);
                 row.put("type", entry.getValue());
                 row.put("name", map.get("name"));
+                // Label for the tree and the tab strip; name stays the identity.
+                row.put(TITLE, map.get(TITLE));
+                row.put("label", label(map));
                 row.put("id", map.get("id"));
                 row.put("version", map.get("version"));
                 row.put("clientCode", map.get("clientCode"));
@@ -198,9 +207,31 @@ public class ObjectIndexService {
         return out;
     }
 
+    /**
+     * What the builder shows for an object: its title when it has one, its name
+     * otherwise. Resolved here rather than in the client because the UI
+     * expression language's nullish operator re-evaluates a result that looks
+     * like a path, and object names such as {@code Leads.assignOwner} do.
+     */
+    private String label(Map<?, ?> map) {
+        Object title = map.get(TITLE);
+        String titleStr = title == null ? "" : title.toString().trim();
+        if (!titleStr.isEmpty())
+            return titleStr;
+        Object name = map.get("name");
+        return name == null ? "" : name.toString();
+    }
+
     private Map<String, Long> countByType(List<Map<String, Object>> objects) {
         return objects.stream().collect(Collectors.groupingBy(
                 row -> str(row, "type"), java.util.TreeMap::new, Collectors.counting()));
+    }
+
+    /** Keyed {@code <service>_<type>}, the grouping the builder's tree uses. */
+    private Map<String, Long> countByServiceType(List<Map<String, Object>> objects) {
+        return objects.stream().collect(Collectors.groupingBy(
+                row -> str(row, "service") + "_" + str(row, "type"),
+                java.util.TreeMap::new, Collectors.counting()));
     }
 
     private String str(Map<String, Object> row, String key) {

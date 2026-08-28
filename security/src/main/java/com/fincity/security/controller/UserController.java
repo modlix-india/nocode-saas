@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
@@ -186,9 +185,19 @@ public class UserController
     }
 
     @GetMapping("/invites")
-    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(
-            Pageable pageable, @RequestParam(required = false) AbstractCondition condition) {
-        return this.inviteService.getAllInvitedUsers(pageable, condition).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, "createdAt") : pageable);
+        return this.inviteService
+                .getAllInvitedUsers(pageable,
+                        ConditionUtil.parameterMapToMap(request.getQueryParams(), "page", "size", "sort"))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/invites/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(@RequestBody Query query) {
+        return this.inviteService
+                .getAllInvitedUsers(query.getPageable(), query.getCondition())
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal" + PATH_ID)
@@ -311,6 +320,22 @@ public class UserController
     @GetMapping("/requestUser/{requestId}")
     public Mono<ResponseEntity<User>> getUserFromRequestId(@PathVariable String requestId) {
         return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/requests")
+    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, "updatedAt") : pageable);
+        return this.requestService
+                .readPageFilter(pageable,
+                        ConditionUtil.parameterMapToMap(request.getQueryParams(), "page", "size", "sort"))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/requests/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(@RequestBody Query query) {
+        return this.requestService
+                .readPageFilter(query.getPageable(), query.getCondition())
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/noMapping")

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserRequestDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserRequest;
 import com.fincity.security.jooq.enums.SecurityUserRequestStatus;
@@ -69,6 +71,21 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 		org.springframework.util.ReflectionUtils.setField(daoField, service, dao);
 
 		setupMessageResourceService(msgService);
+	}
+
+	private static UserRequest pendingRequest() {
+		UserRequest req = new UserRequest();
+		req.setId(ULong.valueOf(1));
+		return req.setUserId(USER_ID)
+				.setClientId(SYSTEM_CLIENT_ID)
+				.setAppId(APP_ID)
+				.setStatus(SecurityUserRequestStatus.PENDING);
+	}
+
+	private static Profile profileOfApp(ULong appId) {
+		Profile profile = new Profile();
+		profile.setId(PROFILE_ID);
+		return profile.setAppId(appId).setClientId(SYSTEM_CLIENT_ID);
 	}
 
 	// =========================================================================
@@ -200,18 +217,18 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			UserRequest userRequest = new UserRequest();
-			userRequest.setId(ULong.valueOf(1));
-			userRequest.setUserId(USER_ID);
-			userRequest.setClientId(SYSTEM_CLIENT_ID);
-			userRequest.setAppId(APP_ID);
-			userRequest.setStatus(SecurityUserRequestStatus.PENDING);
+			UserRequest userRequest = pendingRequest();
 
 			UserAppAccessRequest request = new UserAppAccessRequest();
 			request.setRequestId("REQ-123");
 			request.setProfileId(PROFILE_ID);
 
 			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(userRequest));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(profileOfApp(APP_ID)));
+			when(profileService.hasAccessToProfiles(SYSTEM_CLIENT_ID, Set.of(PROFILE_ID)))
+					.thenReturn(Mono.just(true));
 			when(userDao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
 			when(dao.update(any(UserRequest.class))).thenReturn(Mono.just(userRequest));
 
@@ -227,20 +244,89 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			UserRequest userRequest = new UserRequest();
-			userRequest.setId(ULong.valueOf(1));
-			userRequest.setStatus(SecurityUserRequestStatus.APPROVED);
+			UserRequest userRequest = pendingRequest().setStatus(SecurityUserRequestStatus.APPROVED);
 
 			UserAppAccessRequest request = new UserAppAccessRequest();
 			request.setRequestId("REQ-123");
 			request.setProfileId(PROFILE_ID);
 
 			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(userRequest));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.acceptRequest(request, null, null))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
 					.verify();
+		}
+
+		@Test
+		void acceptRequest_CallerDoesNotManageRequestClient_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(2), "BUS",
+					List.of("Authorities.User_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			UserAppAccessRequest request = new UserAppAccessRequest();
+			request.setRequestId("REQ-123");
+			request.setProfileId(PROFILE_ID);
+
+			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(pendingRequest()));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.acceptRequest(request, null, null))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(userDao, never()).addProfileToUser(any(), any());
+		}
+
+		@Test
+		void acceptRequest_ProfileOfAnotherApp_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserAppAccessRequest request = new UserAppAccessRequest();
+			request.setRequestId("REQ-123");
+			request.setProfileId(PROFILE_ID);
+
+			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(pendingRequest()));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(profileService.readInternal(PROFILE_ID))
+					.thenReturn(Mono.just(profileOfApp(ULong.valueOf(999))));
+
+			StepVerifier.create(service.acceptRequest(request, null, null))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(userDao, never()).addProfileToUser(any(), any());
+		}
+
+		@Test
+		void acceptRequest_ProfileNotAccessibleToRequestClient_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserAppAccessRequest request = new UserAppAccessRequest();
+			request.setRequestId("REQ-123");
+			request.setProfileId(PROFILE_ID);
+
+			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(pendingRequest()));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(profileOfApp(APP_ID)));
+			when(profileService.hasAccessToProfiles(SYSTEM_CLIENT_ID, Set.of(PROFILE_ID)))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.acceptRequest(request, null, null))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(userDao, never()).addProfileToUser(any(), any());
 		}
 	}
 
@@ -265,11 +351,11 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			UserRequest userRequest = new UserRequest();
-			userRequest.setId(ULong.valueOf(1));
-			userRequest.setStatus(SecurityUserRequestStatus.PENDING);
+			UserRequest userRequest = pendingRequest();
 
 			when(dao.readByRequestId("REQ-123")).thenReturn(Mono.just(userRequest));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
 			when(dao.update(any(UserRequest.class))).thenReturn(Mono.just(userRequest));
 
 			StepVerifier.create(service.rejectRequest("REQ-123"))
@@ -282,16 +368,34 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			UserRequest userRequest = new UserRequest();
-			userRequest.setId(ULong.valueOf(1));
-			userRequest.setStatus(SecurityUserRequestStatus.REJECTED);
+			UserRequest userRequest = pendingRequest().setStatus(SecurityUserRequestStatus.REJECTED);
 
 			when(dao.readByRequestId("REQ-456")).thenReturn(Mono.just(userRequest));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.rejectRequest("REQ-456"))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
 					.verify();
+		}
+
+		@Test
+		void rejectRequest_CallerDoesNotManageRequestClient_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(2), "BUS",
+					List.of("Authorities.User_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			when(dao.readByRequestId("REQ-456")).thenReturn(Mono.just(pendingRequest()));
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.rejectRequest("REQ-456"))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(dao, never()).update(any(UserRequest.class));
 		}
 	}
 
@@ -339,22 +443,34 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
-		void getRequestUser_NotManaged_ReturnsEmpty() {
+		void getRequestUser_NotManaged_ThrowsForbidden() {
 			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(2), "BUS",
 					List.of("Authorities.User_READ", "Authorities.Logged_IN"));
 			setupSecurityContext(ca);
 
-			UserRequest userRequest = new UserRequest();
-			userRequest.setId(ULong.valueOf(1));
-			userRequest.setUserId(USER_ID);
-			userRequest.setClientId(SYSTEM_CLIENT_ID);
-
-			when(dao.readByRequestId("REQ-789")).thenReturn(Mono.just(userRequest));
+			when(dao.readByRequestId("REQ-789")).thenReturn(Mono.just(pendingRequest()));
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
 					.thenReturn(Mono.just(false));
 
 			StepVerifier.create(service.getRequestUser("REQ-789"))
-					.verifyComplete();
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(userDao, never()).readById(any());
+		}
+
+		@Test
+		void getRequestUser_UnknownRequestId_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readByRequestId("REQ-000")).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getRequestUser("REQ-000"))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
 		}
 	}
 }

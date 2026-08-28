@@ -447,8 +447,25 @@ public class UserInviteService
                                 Boolean.TRUE))));
     }
 
+    /**
+     * Paged, filtered list of pending invites.
+     * <p>
+     * A {@code UserInvite} carries a live {@code inviteCode}, and
+     * {@code POST /api/security/users/acceptInvite} is a permitted route - so
+     * anyone holding an invite code can create the invited account with the
+     * profile attached to it. Listing invites therefore hands out capabilities,
+     * not just contact details, and needs the same authority that creating an
+     * invite needs to be worth having.
+     * <p>
+     * Tenant scoping is enforced in {@code UserInviteDAO.filter(...)}, which ANDs
+     * the caller's own client and the clients they manage into the WHERE clause of
+     * both the row query and the count query. The client id comes from the signed
+     * in user's context authentication, never from a caller supplied header.
+     */
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
     public Mono<Page<UserInvite>> getAllInvitedUsers(Pageable pageable, AbstractCondition condition) {
-        return this.readPageFilter(pageable, condition);
+        return this.readPageFilter(pageable, condition)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.getAllInvitedUsers"));
     }
 
 }
