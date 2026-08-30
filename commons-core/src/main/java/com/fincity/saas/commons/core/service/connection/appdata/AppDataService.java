@@ -1583,8 +1583,14 @@ public class AppDataService {
             if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
                 return Mono.just(e);
 
+            // ContextView.get(key) THROWS NoSuchElementException when the key is
+            // absent, which is the normal case for a non-KIRun caller. That made
+            // the intended "return empty and let the caller 404" path unreachable:
+            // a page hitting an onlyThruKIRun storage got an unhandled exception
+            // surfaced as a generic 500 with a 27KB stack trace instead of a
+            // meaningful denial. getOrDefault keeps the deny path intact.
             return Mono.deferContextual(cv -> {
-                if ("true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
+                if ("true".equals(cv.getOrDefault(DefinitionFunction.CONTEXT_KEY, null)))
                     return Mono.just(e);
                 return Mono.empty();
             });

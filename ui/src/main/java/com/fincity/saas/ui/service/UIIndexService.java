@@ -52,6 +52,30 @@ public class UIIndexService {
 
     @SuppressWarnings("java:S1172") // clientCode reserved for future use
     public Mono<Map<String, Object>> buildIndex(String appCode, String clientCode) {
+        return this.buildIndex(appCode, clientCode, true);
+    }
+
+    /**
+     * @param includeComponentVersions when false, omit the per-component and
+     *                                 per-event version maps from pages.
+     *
+     *                                 Those maps carry one entry per component
+     *                                 per page, and they dominate the response:
+     *                                 for the `appbuilder` app the full index is
+     *                                 ~273KB, of which roughly 99% is these two
+     *                                 maps. Callers that want an inventory (an
+     *                                 object tree, a search box, the `multi`
+     *                                 cross-service index) never read them, and
+     *                                 paying 273KB to learn 99 names made this
+     *                                 endpoint more expensive than the
+     *                                 per-type list calls it exists to replace.
+     *
+     *                                 The page editor, which does need them,
+     *                                 gets them from the page read.
+     */
+    @SuppressWarnings("java:S1172") // clientCode reserved for future use
+    public Mono<Map<String, Object>> buildIndex(String appCode, String clientCode,
+            boolean includeComponentVersions) {
 
         FilterCondition appFilter = new FilterCondition()
                 .setField("appCode")
@@ -69,26 +93,30 @@ public class UIIndexService {
         ).map(tuple -> {
             Map<String, Object> result = new HashMap<>();
             result.put("appCode", appCode);
-            result.put("applications", summarizeList(tuple.getT1()));
-            result.put("pages", summarizeList(tuple.getT2()));
-            result.put("functions", summarizeList(tuple.getT3()));
-            result.put("schemas", summarizeList(tuple.getT4()));
-            result.put("themes", summarizeList(tuple.getT5()));
-            result.put("styles", summarizeList(tuple.getT6()));
-            result.put("uripaths", summarizeList(tuple.getT7()));
+            result.put("applications", summarizeList(tuple.getT1(), includeComponentVersions));
+            result.put("pages", summarizeList(tuple.getT2(), includeComponentVersions));
+            result.put("functions", summarizeList(tuple.getT3(), includeComponentVersions));
+            result.put("schemas", summarizeList(tuple.getT4(), includeComponentVersions));
+            result.put("themes", summarizeList(tuple.getT5(), includeComponentVersions));
+            result.put("styles", summarizeList(tuple.getT6(), includeComponentVersions));
+            result.put("uripaths", summarizeList(tuple.getT7(), includeComponentVersions));
             return result;
         });
     }
 
-    private List<Map<String, Object>> summarizeList(Page<? extends AbstractOverridableDTO<?>> page) {
+    private List<Map<String, Object>> summarizeList(Page<? extends AbstractOverridableDTO<?>> page,
+            boolean includeComponentVersions) {
         List<Map<String, Object>> items = new ArrayList<>();
         for (AbstractOverridableDTO<?> entity : page.getContent()) {
             Map<String, Object> summary = new HashMap<>();
             summary.put("name", entity.getName());
+            // The builder tree labels objects by title and falls back to name;
+            // name is identity and is not editable, so the index must carry both.
+            summary.put("title", entity.getTitle());
             summary.put("id", entity.getId());
             summary.put("version", entity.getVersion());
-            // Include per-component versions for pages
-            if (entity instanceof com.fincity.saas.ui.document.Page pg) {
+            summary.put("clientCode", entity.getClientCode());
+            if (includeComponentVersions && entity instanceof com.fincity.saas.ui.document.Page pg) {
                 if (pg.getComponentVersions() != null)
                     summary.put("componentVersions", pg.getComponentVersions());
                 if (pg.getEventFunctionVersions() != null)

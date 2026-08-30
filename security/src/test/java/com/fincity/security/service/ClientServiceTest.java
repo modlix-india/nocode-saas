@@ -393,12 +393,27 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 	// create
 	// =========================================================================
 
+	/**
+	 * create resolves the parent client and takes the new client's level from
+	 * ITS level, so every create test has to stub that read. With no
+	 * parentClientId in the payload the parent is the caller's own client.
+	 */
+	private void stubParentClient(ULong clientId, SecurityClientLevelType level) {
+
+		Client parent = TestDataFactory.createBusinessClient(clientId, "PARENT" + clientId);
+		parent.setLevelType(level);
+
+		when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(clientId)))
+				.thenReturn(Mono.just(parent));
+	}
+
 	@Nested
 	@DisplayName("create")
 	class CreateTests {
 
 		@Test
-		void systemClient_SkipsHierarchy() {
+		@DisplayName("a SYSTEM caller's new client still gets a hierarchy row")
+		void systemClient_CreatesHierarchy() {
 
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			ca.setClientLevelType("SYSTEM");
@@ -414,6 +429,12 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
+
+			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
 			StepVerifier.create(service.create(input))
 					.assertNext(result -> {
 						assertEquals("NEWCLIENT", result.getCode());
@@ -421,7 +442,9 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					})
 					.verifyComplete();
 
-			verifyNoInteractions(clientHierarchyService);
+			// Skipping this left the client with no recorded parent, invisible to
+			// every hierarchy walk and able to 500 a ?fetchManagingClient listing.
+			verify(clientHierarchyService).create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID);
 		}
 
 		@Test
@@ -441,6 +464,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
+
+			stubParentClient(BUS_CLIENT_ID, SecurityClientLevelType.CLIENT);
 
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
@@ -480,8 +505,48 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
+
+			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
 			StepVerifier.create(service.create(input))
 					.assertNext(result -> assertEquals(SecurityClientLevelType.CLIENT, result.getLevelType()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a client created without a status is stored ACTIVE, not null")
+		void defaultsStatusToActive() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setClientLevelType("SYSTEM");
+			setupSecurityContext(ca);
+
+			Client input = new Client();
+			input.setCode("NOSTATUS").setName("No Status").setTypeCode("BUS");
+
+			Client created = TestDataFactory.createBusinessClient(TARGET_CLIENT_ID, "NOSTATUS");
+
+			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+			when(dao.create(any(Client.class))).thenAnswer(invocation -> {
+				Client sent = invocation.getArgument(0);
+				assertEquals(SecurityClientStatusCode.ACTIVE, sent.getStatusCode());
+				return Mono.just(created);
+			});
+
+			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.empty());
+
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
+
+			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			StepVerifier.create(service.create(input))
+					.assertNext(result -> assertEquals("NOSTATUS", result.getCode()))
 					.verifyComplete();
 		}
 	}
@@ -505,6 +570,10 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
 			when(dao.update(any(Client.class))).thenReturn(Mono.just(entity));
 
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(entity));
+
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
@@ -514,6 +583,36 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evict("clientCodeId", BUS_CLIENT_ID);
 			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
+		}
+
+		@Test
+		@DisplayName("level and type are restored from the stored client, never taken from the request")
+		void levelAndTypeAreNotUpdatable() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "FIXED");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CUSTOMER);
+
+			Client incoming = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "FIXED");
+			incoming.setName("Renamed").setTypeCode("SYS").setLevelType(SecurityClientLevelType.SYSTEM);
+
+			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
+			when(dao.update(any(Client.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.empty());
+
+			StepVerifier.create(service.update(incoming))
+					.assertNext(result -> {
+						assertEquals("BUS", result.getTypeCode());
+						assertEquals(SecurityClientLevelType.CUSTOMER, result.getLevelType());
+						assertEquals("Renamed", result.getName());
+					})
+					.verifyComplete();
 		}
 	}
 
@@ -538,6 +637,10 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			when(dao.readById(BUS_CLIENT_ID)).thenReturn(Mono.just(existing));
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
 			when(dao.update(any(Client.class))).thenReturn(Mono.just(updated));
+
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(existing));
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
@@ -582,6 +685,11 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			// read calls dao.readById
 			when(dao.readById(BUS_CLIENT_ID)).thenReturn(Mono.just(existing));
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(existing));
+
 			when(dao.update(any(Client.class))).thenAnswer(invocation -> {
 				Client c = invocation.getArgument(0);
 				assertEquals(SecurityClientStatusCode.DELETED, c.getStatusCode());
@@ -1882,6 +1990,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(BUS_CLIENT_ID, SecurityClientLevelType.CLIENT);
+
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
@@ -1917,6 +2027,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(customerClientId, SecurityClientLevelType.CUSTOMER);
+
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, customerClientId);
 			when(clientHierarchyService.create(customerClientId, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
@@ -1938,9 +2050,16 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 	class UpdatableEntityTests {
 
 		@Test
+		@DisplayName("returns the entity, with level and type taken from the stored client")
 		void returnsEntityAsIs() {
 
 			Client entity = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "UPDATABLE");
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "UPDATABLE");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CUSTOMER);
+
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
 
 			// updatableEntity is protected, test via reflection
 			try {

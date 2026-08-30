@@ -615,7 +615,7 @@ class UserControllerTest {
         @DisplayName("Should return 200 with true when invite is rejected/deleted")
         void rejectInvite_Success_Returns200() {
 
-            when(inviteService.deleteUserInvitation(eq("abc123")))
+            when(inviteService.revokeInvitation(eq("abc123")))
                     .thenReturn(Mono.just(Boolean.TRUE));
 
             webTestClient.delete()
@@ -624,7 +624,10 @@ class UserControllerTest {
                     .expectStatus().isOk()
                     .expectBody(Boolean.class).isEqualTo(true);
 
-            verify(inviteService).deleteUserInvitation(eq("abc123"));
+            // The exposed route must go through the guarded revoke, never the
+            // unchecked delete that the accept flow uses internally.
+            verify(inviteService).revokeInvitation(eq("abc123"));
+            verify(inviteService, never()).deleteUserInvitation(any());
         }
 
         @Test
