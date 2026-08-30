@@ -39,7 +39,10 @@ public class Workflow extends AbstractOverridableDTO<Workflow> {
         this.isTemplate = workflow.isTemplate;
         this.startAuth = workflow.startAuth;
         this.steps = CloneUtil.cloneMapObject(workflow.steps);
-        this.trigger = new TriggerWorkflowStep(trigger);
+        // Was `new TriggerWorkflowStep(trigger)`, which reads this object's own
+        // still-null field rather than the one being copied, so every clone lost
+        // its trigger.
+        this.trigger = workflow.trigger == null ? null : new TriggerWorkflowStep(workflow.trigger);
     }
 
     @Override

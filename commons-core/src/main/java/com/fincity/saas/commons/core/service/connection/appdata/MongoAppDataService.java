@@ -61,6 +61,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -445,10 +446,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
         BsonObjectId objectId = new BsonObjectId(new ObjectId(versionId));
 
-        return FlatMapUtil.flatMapMono(() -> this.getCollection(clientCode, conn, storage), collection -> Mono.from(
-                                collection.find(Filters.eq(ID, objectId)).first())
+        // A version id identifies a document in the *_version collection, not in the data
+        // collection, so reading it from the data collection could only ever 404.
+        return FlatMapUtil.flatMapMono(() -> this.getVersionCollection(clientCode, conn, storage), collection -> Mono
+                        .from(collection.find(Filters.eq(ID, objectId)).first())
                         .map(doc -> convertBisonIds(storage, doc, Boolean.TRUE)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.read"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readVersion"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
@@ -460,9 +463,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     public Mono<Page<Map<String, Object>>> readPageVersion(String clientCode, Connection conn, Storage storage, String objectId, Query query) {
         Pageable page = query.getPageable();
 
+        // addVersion stores objectId as the hex STRING, and filterConditionFilter only coerces
+        // _id and relation fields to ObjectId, so an ObjectId here never matches anything.
         FilterCondition objectIdFilterCondition = new FilterCondition()
                 .setField(OBJECT_ID)
-                .setValue(new ObjectId(objectId))
+                .setValue(objectId)
                 .setOperator(FilterConditionOperator.EQUALS);
 
         AbstractCondition condition = query.getCondition() == null
@@ -478,7 +483,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         vCollection -> this.filter(storage, condition),
                         (vCollection, bsonCondition) -> this.applyQueryOnElements(
                                         vCollection, query, bsonCondition, page)
-                                .map(doc -> this.convertBisonIds(storage, doc, Boolean.FALSE))
+                                .map(doc -> this.convertBisonIds(storage, doc, Boolean.TRUE))
                                 .collectList(),
                         (vCollection, bsonCondition, list) -> BooleanUtil.safeValueOf(count)
                                 ? Mono.from(vCollection.countDocuments(bsonCondition))
@@ -546,6 +551,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Bson sort(Sort sort) {
         if (sort == null) return null;
+
+        // An unsorted Sort would produce an empty $sort stage, which the aggregation
+        // pipeline rejects with "must have at least one sort key". The find() path
+        // tolerates it, so this only surfaces once a query projects fields.
+        if (!sort.isSorted()) return null;
 
         if (sort.equals(Query.DEFAULT_SORT)) return null;
 
@@ -801,7 +811,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {
         this.convertBisonId(document, ID);
 
-        if (isVersion) this.convertBisonId(document, OBJECT_ID);
+        if (isVersion) {
+            this.convertBisonId(document, OBJECT_ID);
+            this.convertVersionCreatedAt(document);
+        }
 
         return storage.getRelations() != null ? this.updateDocWithIds(storage, document) : document;
     }
@@ -809,9 +822,24 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private void convertBisonId(Document document, String key) {
         if (!document.containsKey(key)) return;
 
-        String id = document.getObjectId(key).toHexString();
+        // addVersion already writes objectId as a hex string, so this runs against values that
+        // need no conversion. getObjectId would throw on those.
+        if (!(document.get(key) instanceof ObjectId objectId)) return;
+
         this.removeKey(document, key);
-        document.append(key, id);
+        document.append(key, objectId.toHexString());
+    }
+
+    /**
+     * Version rows carry a BSON date, but every other timestamp the client receives is epoch
+     * SECONDS and its date formatter reads nothing else. Normalising here lets a version list be
+     * formatted with the same binding as any other date, instead of each caller special-casing it.
+     */
+    private void convertVersionCreatedAt(Document document) {
+        if (!(document.get(CREATED_AT) instanceof Date createdAt)) return;
+
+        this.removeKey(document, CREATED_AT);
+        document.append(CREATED_AT, createdAt.getTime() / 1000L);
     }
 
     private Document removeKey(Document document, String key) {
