@@ -4,9 +4,12 @@ import static com.fincity.saas.commons.util.StringUtil.*;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -21,14 +24,23 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserInviteDAO;
+import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
+import com.fincity.security.dto.Designation;
+import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.enums.ClientLevelType;
@@ -40,8 +52,11 @@ import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.UserRegistrationRequest;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class UserInviteService
@@ -57,12 +72,13 @@ public class UserInviteService
     private final ClientHierarchyService clientHierarchyService;
     private final ClientActivityService clientActivityService;
     private final OrgStructureService orgStructureService;
+    private final DesignationService designationService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
             ProfileService profileService, AppService appService, ClientHierarchyService clientHierarchyService,
             @org.springframework.context.annotation.Lazy ClientActivityService clientActivityService,
-            OrgStructureService orgStructureService) {
+            OrgStructureService orgStructureService, DesignationService designationService) {
 
         this.msgService = msgService;
         this.clientService = clientService;
@@ -74,6 +90,7 @@ public class UserInviteService
         this.clientHierarchyService = clientHierarchyService;
         this.clientActivityService = clientActivityService;
         this.orgStructureService = orgStructureService;
+        this.designationService = designationService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
@@ -152,6 +169,19 @@ public class UserInviteService
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE,
                         "User Invite"));
+    }
+
+    /**
+     * {@code SECURITY_USER_INVITE} has a {@code CREATED_BY} column and every row in
+     * it was null, so an invite could never say who sent it.
+     * {@code AbstractJOOQDataService.create} clears {@code createdBy} and refills it
+     * from this hook, which defaults to empty - this service simply never overrode
+     * it. Setting the field on the entity beforehand does not work; the base clears
+     * it first.
+     */
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
+        return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
     }
 
     public Mono<UserInvite> getUserInvitation(String code) {
@@ -464,8 +494,189 @@ public class UserInviteService
      */
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
     public Mono<Page<UserInvite>> getAllInvitedUsers(Pageable pageable, AbstractCondition condition) {
-        return this.readPageFilter(pageable, condition)
+        return this.getAllInvitedUsers(pageable, condition, null);
+    }
+
+    /**
+     * @param appId optional: keep only invites whose profile belongs to this app.
+     *              An invite has no app column of its own, so this is resolved
+     *              here rather than expressed as a caller-supplied condition.
+     */
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
+    public Mono<Page<UserInvite>> getAllInvitedUsers(Pageable pageable, AbstractCondition condition, ULong appId) {
+        return this.withAppFilter(condition, appId)
+                .flatMap(finalCondition -> this.readPageFilter(pageable, finalCondition))
+                .flatMap(page -> this.fillDetails(page.getContent()).thenReturn(page))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.getAllInvitedUsers"));
+    }
+
+    private Mono<AbstractCondition> withAppFilter(AbstractCondition condition, ULong appId) {
+
+        if (appId == null || appId.longValue() == 0L)
+            return condition == null ? Mono.just(new ComplexCondition().setConditions(List.of())
+                    .setOperator(ComplexConditionOperator.AND)) : Mono.just(condition);
+
+        return this.dao.profileIdsOfApp(appId).map(profileIds -> {
+
+            // An app with no profiles matches no invites. Saying so with an id that
+            // cannot exist is clearer than an empty IN list, which different
+            // databases treat differently.
+            AbstractCondition appCondition = new FilterCondition()
+                    .setField("profileId")
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(profileIds.isEmpty() ? List.of(ULong.valueOf(0)) : profileIds);
+
+            return condition == null ? appCondition : ComplexCondition.and(condition, appCondition);
+        });
+    }
+
+    /**
+     * Resolves the display names an invite row is made of. Every field on
+     * {@code security_user_invite} except the person's own name and contact
+     * details is a foreign key, so a listing that shows the stored values shows
+     * the reader a column of numbers.
+     * <p>
+     * Each lookup is a cached {@code readInternal} keyed by id, and the ids are
+     * de-duplicated first - a page of ten invites from one client costs one
+     * client read, not ten.
+     * <p>
+     * None of this can drop an invite. The only {@code filter} is inside
+     * {@link #resolveNames}, where it discards a map ENTRY whose name did not
+     * resolve; the invites themselves are mutated in place and returned whole.
+     * That is deliberate: {@code UserService.fillDetails} filters the row flux
+     * instead, so its {@code fetchCreatedBy}, {@code fetchDesignation} and
+     * {@code fetchReportingTo} options silently delete every user that lacks the
+     * id being fetched.
+     */
+    private Mono<List<UserInvite>> fillDetails(List<UserInvite> invites) {
+
+        if (invites == null || invites.isEmpty())
+            return Mono.just(invites == null ? List.of() : invites);
+
+        return Mono.zip(
+                this.resolveNames(invites, UserInvite::getClientId,
+                        id -> this.clientService.getClientInfoById(id).map(Client::getName)),
+
+                this.resolveNames(invites, UserInvite::getProfileId,
+                        id -> this.profileService.readInternal(id).map(Profile::getName)),
+
+                this.resolveNames(invites, UserInvite::getProfileId,
+                        id -> this.profileService.readInternal(id)
+                                .flatMap(profile -> this.appService.getAppByIdInternal(profile.getAppId()))
+                                .map(App::getAppCode)),
+
+                this.resolveNames(invites, UserInvite::getDesignationId,
+                        id -> this.designationService.readInternal(id).map(Designation::getName)),
+
+                this.resolveNames(invites, UserInvite::getReportingTo, this::userDisplayName),
+
+                this.resolveNames(invites, UserInvite::getCreatedBy, this::userDisplayName))
+
+                .map(names -> {
+
+                    invites.forEach(invite -> invite
+                            .setClientName(nameOf(names.getT1(), invite.getClientId()))
+                            .setProfileName(nameOf(names.getT2(), invite.getProfileId()))
+                            .setAppCode(nameOf(names.getT3(), invite.getProfileId()))
+                            .setDesignationName(nameOf(names.getT4(), invite.getDesignationId()))
+                            .setReportingToName(nameOf(names.getT5(), invite.getReportingTo()))
+                            .setCreatedByName(nameOf(names.getT6(), invite.getCreatedBy())));
+
+                    return invites;
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.fillDetails"));
+    }
+
+    /**
+     * Most invites carry no designation and no reporting line, so most of these
+     * ids are null - and a null key is exactly what {@code Map.of().get(...)}
+     * throws on.
+     */
+    private static String nameOf(Map<ULong, String> names, ULong id) {
+        return id == null ? null : names.get(id);
+    }
+
+    private Mono<Map<ULong, String>> resolveNames(List<UserInvite> invites,
+            Function<UserInvite, ULong> idOf, Function<ULong, Mono<String>> nameOf) {
+
+        Set<ULong> ids = invites.stream()
+                .map(idOf)
+                .filter(id -> id != null && id.longValue() != 0L)
+                .collect(Collectors.toSet());
+
+        if (ids.isEmpty())
+            return Mono.just(Map.of());
+
+        return Flux.fromIterable(ids)
+                .flatMap(id -> nameOf.apply(id)
+                        .filter(name -> !StringUtil.safeIsBlank(name))
+                        .map(name -> Tuples.of(id, name)))
+                .collectMap(Tuple2::getT1, Tuple2::getT2);
+    }
+
+    /**
+     * A person's name for display. Falls back to the user name and then the email
+     * so a row never reads as blank, and never returns the {@link User} itself -
+     * the record carries password and pin hashes.
+     */
+    private Mono<String> userDisplayName(ULong userId) {
+
+        return this.userDao.readInternal(userId).map(user -> {
+
+            String name = ((safeIsBlank(user.getFirstName()) ? "" : user.getFirstName())
+                    + " "
+                    + (safeIsBlank(user.getLastName()) ? "" : user.getLastName())).trim();
+
+            if (!name.isEmpty())
+                return name;
+
+            if (!safeIsBlank(user.getUserName()))
+                return user.getUserName();
+
+            return safeIsBlank(user.getEmailId()) ? "" : user.getEmailId();
+        });
+    }
+
+    /**
+     * Revokes a pending invite on behalf of an administrator.
+     * <p>
+     * {@link #deleteUserInvitation(String)} deliberately has no checks - it is the
+     * step that consumes an invite once {@code acceptInvite} has already proved the
+     * caller holds the code. Reached from the outside it is a different thing
+     * entirely: an invite code is a capability, and deleting someone else's invite
+     * destroys their pending access. So the exposed route needs the authority that
+     * creating an invite needs, and the same tenant gate
+     * ({@code isUserClientManageClient}) that {@link #createInvite} applies - a
+     * caller may only revoke inside their own client or a client they manage.
+     * <p>
+     * An unknown code is refused the same way an unauthorised one is, so the route
+     * cannot be used to test whether a code exists.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.User_CREATE', 'Authorities.User_DELETE')")
+    public Mono<Boolean> revokeInvitation(String code) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.dao.getUserInvitation(code),
+
+                (ca, invite) -> this.clientService.isUserClientManageClient(ca, invite.getClientId())
+                        .filter(BooleanUtil::safeValueOf),
+
+                (ca, invite, hasAccess) -> this.dao.deleteUserInvitation(code)
+                        .map(deleted -> {
+                            if (Boolean.TRUE.equals(deleted))
+                                this.clientActivityService.createLog(invite.getClientId(),
+                                        "User Invite Revoked",
+                                        "User invite revoked for " + invite.getEmailId());
+                            return deleted;
+                        }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.revokeInvitation"))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_DELETE,
+                        "User Invite"));
     }
 
 }

@@ -433,9 +433,36 @@ public class ClientService
                 .map(e -> 1);
     }
 
+    /**
+     * A client's level and type are set when it is created and are not editable
+     * afterwards.
+     * <p>
+     * Neither is really the caller's to choose even at creation: {@link #create}
+     * derives {@code levelType} from the parent's level and overwrites whatever was
+     * sent, and {@code typeCode} is decided by the registration flow. Changing
+     * either later re-parents a tenant in the hierarchy and changes which duplicate
+     * and access rules apply to it, with nothing rebuilding the hierarchy to match.
+     * <p>
+     * This is the single hook both update paths pass through -
+     * {@code update(Client)} directly, and {@code update(key, Map)} because
+     * {@code AbstractJOOQUpdatableDataService} rebuilds the entity and then calls
+     * {@code update(D)} - so a PUT and a PATCH are both covered here.
+     * <p>
+     * The stored values are restored rather than the request refused, so a caller
+     * that round-trips the whole object still succeeds; the fields are simply not
+     * writable. {@code AbstractUpdatableDAO} treats {@code CREATED_BY} the same way.
+     */
     @Override
     protected Mono<Client> updatableEntity(Client entity) {
-        return Mono.just(entity);
+
+        if (entity == null || entity.getId() == null)
+            return Mono.justOrEmpty(entity);
+
+        return this.readInternal(entity.getId())
+                .map(existing -> entity
+                        .setLevelType(existing.getLevelType())
+                        .setTypeCode(existing.getTypeCode()))
+                .defaultIfEmpty(entity);
     }
 
     @Override
@@ -645,19 +672,38 @@ public class ClientService
 
         Mono<List<Client>> clientsMono = Mono.just(clients);
 
+        // Both of these enrich in place and must return the client either way. The
+        // previous shape - filter(), then flatMap() over a Mono that can be empty -
+        // silently removed a client from the returned list whenever there was
+        // nothing to attach: SYSTEM has no CREATED_BY, and a top-level client has no
+        // level-0 managing client. The page routes hide it because they
+        // .thenReturn(page) and discard this list, but readById and readByIds return
+        // it, so an internal caller was losing whole clients.
         if (fetchCreatedByUser)
             clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
-                    .filter(c -> c.getCreatedBy() != null)
-                    .flatMap(c -> this.userService.readInternal(c.getCreatedBy()).map(c::setCreatedByUser))
+                    .flatMap(c -> c.getCreatedBy() == null ? Mono.just(c)
+                            : this.userService.readInternal(c.getCreatedBy())
+                                    .map(c::setCreatedByUser)
+                                    .defaultIfEmpty(c))
                     .collectList();
 
         if (fetchApps)
             clientsMono = clientsMono.flatMap(c -> this.appService.fillApps(map));
 
+        // A client with no row in SECURITY_CLIENT_HIERARCHY makes
+        // getClientHierarchy THROW "No client hierarchy found", and because the
+        // controller chains .thenReturn(page) off this, that error took out the
+        // whole listing - one unparented client anywhere on the page turned
+        // ?fetchManagingClient=true into a 500. A missing parent is a data
+        // condition, not a reason to refuse the list, so it now leaves the field
+        // unset.
         if (fetchManagingClient)
             clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
                     .flatMap(c -> this.clientHierarchyService.getManagingClient(c.getId(), ClientHierarchy.Level.ZERO)
-                            .flatMap(this::getClientInfoById).map(c::setManagagingClient))
+                            .flatMap(this::getClientInfoById)
+                            .map(c::setManagagingClient)
+                            .onErrorResume(e -> Mono.just(c))
+                            .defaultIfEmpty(c))
                     .collectList();
 
         if (fetchUserCounts)

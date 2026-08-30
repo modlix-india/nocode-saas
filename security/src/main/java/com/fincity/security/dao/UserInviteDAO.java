@@ -1,6 +1,9 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.Tables.SECURITY_USER_INVITE;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -71,6 +74,29 @@ public class UserInviteDAO extends AbstractClientCheckDAO<SecurityUserInviteReco
                 .where(SECURITY_USER_INVITE.INVITE_CODE.eq(code))
                 .limit(1))
                 .map(e -> e.into(this.pojoClass));
+    }
+
+    /**
+     * Every profile of an app, ignoring who is asking.
+     * <p>
+     * This exists so the invites listing can be filtered by app. An invite row
+     * carries a {@code PROFILE_ID} and no app, so "invites into app X" means
+     * "invites whose profile belongs to app X" - and the profile set has to be the
+     * app's real one. {@code ProfileService.readAll} cannot be used here: it
+     * narrows profiles to the caller's own hierarchy and app access, so an
+     * administrator filtering a list of invites they can already see would get a
+     * quietly short answer.
+     * <p>
+     * Nothing about the profiles is returned to the caller - only invite ids are
+     * matched against them, and those invites are still scoped by {@link #filter}.
+     */
+    public Mono<List<ULong>> profileIdsOfApp(ULong appId) {
+
+        return Flux.from(this.dslContext.select(SECURITY_PROFILE.ID)
+                .from(SECURITY_PROFILE)
+                .where(SECURITY_PROFILE.APP_ID.eq(appId)))
+                .map(r -> r.get(SECURITY_PROFILE.ID))
+                .collectList();
     }
 
     public Mono<Boolean> deleteUserInvitation(String code) {

@@ -1,7 +1,11 @@
 package com.fincity.security.service;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +23,13 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.UserDAO;
@@ -34,8 +43,11 @@ import com.fincity.security.jooq.enums.SecurityUserRequestStatus;
 import com.fincity.security.jooq.tables.records.SecurityUserRequestRecord;
 import com.fincity.security.model.UserAppAccessRequest;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class UserRequestService
@@ -130,8 +142,172 @@ public class UserRequestService
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
     @Override
     public Mono<Page<UserRequest>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return super.readPageFilter(pageable, condition)
+        return this.readPageFilter(pageable, condition, null);
+    }
+
+    /**
+     * @param requesterSearch optional: keep only requests whose requester matches
+     *                        this text by name, user name or email. The requester's
+     *                        name is on {@code SECURITY_USER}, not on this table,
+     *                        so it cannot be expressed as a caller condition.
+     */
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
+    public Mono<Page<UserRequest>> readPageFilter(Pageable pageable, AbstractCondition condition,
+            String requesterSearch) {
+
+        return this.withRequesterFilter(condition, requesterSearch)
+                .flatMap(finalCondition -> super.readPageFilter(pageable, finalCondition))
+                .flatMap(page -> this.fillDetails(page.getContent()).thenReturn(page))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserRequestService.readPageFilter"));
+    }
+
+    private Mono<AbstractCondition> withRequesterFilter(AbstractCondition condition, String requesterSearch) {
+
+        if (StringUtil.safeIsBlank(requesterSearch))
+            return Mono.justOrEmpty(condition).defaultIfEmpty(new FilterCondition()
+                    .setField("id").setOperator(FilterConditionOperator.GREATER_THAN).setValue(0));
+
+        return this.dao.userIdsMatching(requesterSearch.trim()).map(userIds -> {
+
+            // No matching person means no matching request. An id that cannot exist
+            // says that plainly; an empty IN list does not travel well across
+            // databases.
+            AbstractCondition userCondition = new FilterCondition()
+                    .setField("userId")
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(userIds.isEmpty() ? List.of(ULong.valueOf(0)) : userIds);
+
+            return condition == null ? userCondition : ComplexCondition.and(condition, userCondition);
+        });
+    }
+
+    /**
+     * Resolves the display names a request row is made of: who asked, which client
+     * they belong to, which app they asked for, and who decided.
+     * <p>
+     * The pane used to do this itself - fetch the page, collect the user ids and
+     * app ids, fire two more queries, then build string-keyed lookup maps in a
+     * nested loop. That is a join, and it belongs here.
+     * <p>
+     * Ids are de-duplicated and every lookup is a cached internal read. Nothing
+     * here can drop a request: the only {@code filter} discards a map ENTRY whose
+     * name did not resolve, and the rows are mutated in place and returned whole.
+     */
+    private Mono<List<UserRequest>> fillDetails(List<UserRequest> requests) {
+
+        if (requests == null || requests.isEmpty())
+            return Mono.just(requests == null ? List.of() : requests);
+
+        return Mono.zip(
+                this.resolveUsers(requests),
+
+                this.resolveNames(requests, UserRequest::getClientId,
+                        id -> this.clientService.getClientInfoById(id).map(Client::getName)),
+
+                this.resolveNames(requests, UserRequest::getAppId,
+                        id -> this.appService.getAppByIdInternal(id).map(App::getAppName)),
+
+                this.resolveNames(requests, UserRequest::getAppId,
+                        id -> this.appService.getAppByIdInternal(id).map(App::getAppCode)),
+
+                this.resolveNames(requests, UserRequest::getUpdatedBy, this::userDisplayName))
+
+                .map(names -> {
+
+                    requests.forEach(request -> {
+
+                        User requester = request.getUserId() == null ? null
+                                : names.getT1().get(request.getUserId());
+
+                        if (requester != null)
+                            request.setRequesterName(displayNameOf(requester))
+                                    .setRequesterUserName(requester.getUserName())
+                                    .setRequesterEmail(requester.getEmailId());
+
+                        request.setClientName(nameOf(names.getT2(), request.getClientId()))
+                                .setAppName(nameOf(names.getT3(), request.getAppId()))
+                                .setAppCode(nameOf(names.getT4(), request.getAppId()))
+                                .setDecidedByName(nameOf(names.getT5(), request.getUpdatedBy()));
+                    });
+
+                    return requests;
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserRequestService.fillDetails"));
+    }
+
+    private Mono<Map<ULong, User>> resolveUsers(List<UserRequest> requests) {
+
+        Set<ULong> ids = requests.stream()
+                .map(UserRequest::getUserId)
+                .filter(id -> id != null && id.longValue() != 0L)
+                .collect(Collectors.toSet());
+
+        if (ids.isEmpty())
+            return Mono.just(Map.of());
+
+        return Flux.fromIterable(ids)
+                .flatMap(id -> this.userDao.readInternal(id).map(user -> Tuples.of(id, user)))
+                .collectMap(Tuple2::getT1, Tuple2::getT2);
+    }
+
+    private Mono<Map<ULong, String>> resolveNames(List<UserRequest> requests,
+            Function<UserRequest, ULong> idOf, Function<ULong, Mono<String>> nameOf) {
+
+        Set<ULong> ids = requests.stream()
+                .map(idOf)
+                .filter(id -> id != null && id.longValue() != 0L)
+                .collect(Collectors.toSet());
+
+        if (ids.isEmpty())
+            return Mono.just(Map.of());
+
+        return Flux.fromIterable(ids)
+                .flatMap(id -> nameOf.apply(id)
+                        .filter(name -> !StringUtil.safeIsBlank(name))
+                        .map(name -> Tuples.of(id, name)))
+                .collectMap(Tuple2::getT1, Tuple2::getT2);
+    }
+
+    /**
+     * A pending request has no {@code UPDATED_BY}, so this id is routinely null -
+     * and a null key is what {@code Map.of().get(...)} throws on.
+     */
+    private static String nameOf(Map<ULong, String> names, ULong id) {
+        return id == null ? null : names.get(id);
+    }
+
+    private Mono<String> userDisplayName(ULong userId) {
+        return this.userDao.readInternal(userId).map(UserRequestService::displayNameOf);
+    }
+
+    /**
+     * Never returns the {@link User} itself - the record carries password and pin
+     * hashes. Falls back through user name and email so a row never reads blank.
+     */
+    private static String displayNameOf(User user) {
+
+        String name = ((StringUtil.safeIsBlank(user.getFirstName()) ? "" : user.getFirstName())
+                + " "
+                + (StringUtil.safeIsBlank(user.getLastName()) ? "" : user.getLastName())).trim();
+
+        if (!name.isEmpty())
+            return name;
+
+        if (!StringUtil.safeIsBlank(user.getUserName()))
+            return user.getUserName();
+
+        return StringUtil.safeIsBlank(user.getEmailId()) ? "" : user.getEmailId();
+    }
+
+    /**
+     * {@code SECURITY_USER_REQUEST} has CREATED_BY and UPDATED_BY columns and both
+     * were null on every row, because {@code AbstractJOOQUpdatableDataService}
+     * fills them from this hook and the base returns empty. UPDATED_BY is the one
+     * that matters here: it is who approved or rejected the request.
+     */
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
+        return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")

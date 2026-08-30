@@ -1,6 +1,9 @@
 package com.fincity.security.dao;
 
 import static com.fincity.security.jooq.Tables.SECURITY_USER_REQUEST;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -10,6 +13,8 @@ import org.jooq.SelectJoinStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+
+import reactor.core.publisher.Flux;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
@@ -55,6 +60,44 @@ public class UserRequestDAO extends AbstractUpdatableClientCheckDAO<SecurityUser
                         SECURITY_USER_REQUEST.STATUS.eq(SecurityUserRequestStatus.PENDING))))
                 .map(Record1::value1)
                 .map(count -> count > 0);
+    }
+
+    /**
+     * Ids of users whose name, user name or email matches the given text.
+     * <p>
+     * This exists so the requests listing can be searched by person. The
+     * requester's name lives on {@code SECURITY_USER}, not on this table, so a
+     * caller-supplied condition cannot express it; the service turns the match
+     * into a {@code userId IN (...)} condition instead.
+     * <p>
+     * No client scoping is applied and none is needed: nothing about the users is
+     * returned, and the request rows that come back are still filtered by
+     * {@link #filter}. Capped so a one-character search cannot pull the whole user
+     * table into a WHERE clause.
+     */
+    public Mono<List<ULong>> userIdsMatching(String text) {
+
+        String like = "%" + text + "%";
+
+        // The full name is matched as well as the parts. Searching per column only
+        // means typing someone's whole name finds nothing, which is the first thing
+        // anyone tries. COALESCE because CONCAT returns null if either half is.
+        Field<String> fullName = DSL.concat(
+                DSL.coalesce(SECURITY_USER.FIRST_NAME, DSL.val("")),
+                DSL.val(" "),
+                DSL.coalesce(SECURITY_USER.LAST_NAME, DSL.val("")));
+
+        return Flux.from(this.dslContext.select(SECURITY_USER.ID)
+                .from(SECURITY_USER)
+                .where(DSL.or(
+                        SECURITY_USER.FIRST_NAME.like(like),
+                        SECURITY_USER.LAST_NAME.like(like),
+                        SECURITY_USER.USER_NAME.like(like),
+                        SECURITY_USER.EMAIL_ID.like(like),
+                        fullName.like(like)))
+                .limit(500))
+                .map(r -> r.get(SECURITY_USER.ID))
+                .collectList();
     }
 
     /**

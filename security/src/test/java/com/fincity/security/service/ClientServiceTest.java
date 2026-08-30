@@ -505,6 +505,10 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
 			when(dao.update(any(Client.class))).thenReturn(Mono.just(entity));
 
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(entity));
+
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
@@ -514,6 +518,36 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evict("clientCodeId", BUS_CLIENT_ID);
 			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
+		}
+
+		@Test
+		@DisplayName("level and type are restored from the stored client, never taken from the request")
+		void levelAndTypeAreNotUpdatable() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "FIXED");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CUSTOMER);
+
+			Client incoming = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "FIXED");
+			incoming.setName("Renamed").setTypeCode("SYS").setLevelType(SecurityClientLevelType.SYSTEM);
+
+			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
+			when(dao.update(any(Client.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.empty());
+
+			StepVerifier.create(service.update(incoming))
+					.assertNext(result -> {
+						assertEquals("BUS", result.getTypeCode());
+						assertEquals(SecurityClientLevelType.CUSTOMER, result.getLevelType());
+						assertEquals("Renamed", result.getName());
+					})
+					.verifyComplete();
 		}
 	}
 
@@ -538,6 +572,10 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			when(dao.readById(BUS_CLIENT_ID)).thenReturn(Mono.just(existing));
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
 			when(dao.update(any(Client.class))).thenReturn(Mono.just(updated));
+
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(existing));
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
@@ -582,6 +620,11 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			// read calls dao.readById
 			when(dao.readById(BUS_CLIENT_ID)).thenReturn(Mono.just(existing));
 			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+
+			// updatableEntity reads the stored client to restore level and type
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(existing));
+
 			when(dao.update(any(Client.class))).thenAnswer(invocation -> {
 				Client c = invocation.getArgument(0);
 				assertEquals(SecurityClientStatusCode.DELETED, c.getStatusCode());
@@ -1938,9 +1981,16 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 	class UpdatableEntityTests {
 
 		@Test
+		@DisplayName("returns the entity, with level and type taken from the stored client")
 		void returnsEntityAsIs() {
 
 			Client entity = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "UPDATABLE");
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "UPDATABLE");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CUSTOMER);
+
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
 
 			// updatableEntity is protected, test via reflection
 			try {

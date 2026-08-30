@@ -181,7 +181,7 @@ public class UserController
 
     @DeleteMapping("/invite/{code}")
     public Mono<ResponseEntity<Boolean>> rejectInvite(@PathVariable String code) {
-        return this.inviteService.deleteUserInvitation(code).map(ResponseEntity::ok);
+        return this.inviteService.revokeInvitation(code).map(ResponseEntity::ok);
     }
 
     @GetMapping("/invites")
@@ -194,9 +194,10 @@ public class UserController
     }
 
     @PostMapping("/invites/" + PATH_QUERY)
-    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(@RequestBody Query query,
+            @RequestParam(required = false) ULong appId) {
         return this.inviteService
-                .getAllInvitedUsers(query.getPageable(), query.getCondition())
+                .getAllInvitedUsers(query.getPageable(), query.getCondition(), appId)
                 .map(ResponseEntity::ok);
     }
 
@@ -332,9 +333,10 @@ public class UserController
     }
 
     @PostMapping("/requests/" + PATH_QUERY)
-    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(@RequestBody Query query,
+            @RequestParam(required = false) String requesterSearch) {
         return this.requestService
-                .readPageFilter(query.getPageable(), query.getCondition())
+                .readPageFilter(query.getPageable(), query.getCondition(), requesterSearch)
                 .map(ResponseEntity::ok);
     }
 
