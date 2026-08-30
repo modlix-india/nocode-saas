@@ -436,7 +436,11 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
         else if (!StringUtil.safeIsBlank(appId))
             appCondition = SECURITY_APP.ID.eq(ULongUtil.valueOf(appId));
 
-        return Flux.from(this.dslContext.select(SECURITY_USER.CLIENT_ID, SECURITY_USER.ID).from(SECURITY_USER)
+        // selectDistinct: the profile/role/app joins fan a single user out into one
+        // row per (profile, role, app) that grants Owner. With no appCode/appId to
+        // narrow it - the clients listing sends neither - a user who owns four apps
+        // came back four times in that client's owners list.
+        return Flux.from(this.dslContext.selectDistinct(SECURITY_USER.CLIENT_ID, SECURITY_USER.ID).from(SECURITY_USER)
                 .leftJoin(SECURITY_PROFILE_USER).on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
                 .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                 .leftJoin(SECURITY_PROFILE_ROLE)
