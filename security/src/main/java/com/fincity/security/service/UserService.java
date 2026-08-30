@@ -834,7 +834,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
                                 .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
                                         managingClientId, userName, emailId, phoneNumber, "INDV", key));
-                        case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
+                        case "BUS", "SYS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
                         default -> Mono.empty();
                     };
                 },
@@ -891,7 +891,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     entity.getPhoneNumber(),
                                     "INDV",
                                     entity.getId()));
-                    case "BUS" -> this.dao.checkUserExists(
+                    case "BUS", "SYS" -> this.dao.checkUserExists(
                             entity.getClientId(),
                             entity.getUserName(),
                             entity.getEmailId(),

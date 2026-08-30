@@ -2,7 +2,9 @@ package com.fincity.saas.core.controller.connection.appdata;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.commons.util.DataFileType;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
@@ -59,6 +62,9 @@ public class AppDataController {
 
 	@Autowired
 	private AppDataService service;
+
+	@Autowired
+	private CoreMessageResourceService messageResourceService;
 
 	@PostMapping("{storage}")
 	public Mono<ResponseEntity<Map<String, Object>>> create(
@@ -179,9 +185,24 @@ public class AppDataController {
 				.map(ResponseEntity::ok);
 	}
 
+	/**
+	 * Drops every row in the storage, and its version history with them.
+	 * <p>
+	 * The opt-in is not ceremony. This path also matches
+	 * {@code DELETE {storage}/{id}} when the id resolves to nothing, so any caller that builds a
+	 * delete URL by concatenating a row id silently wipes the collection the first time that id is
+	 * absent. That has already happened. Requiring {@code deleteAll=true} means an accidentally
+	 * empty id can only ever produce a 400.
+	 */
 	@DeleteMapping("{storage}")
 	public Mono<ResponseEntity<Boolean>> deleteStorage(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
-			@RequestHeader String appCode, @RequestHeader String clientCode) {
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@RequestParam(required = false, defaultValue = "false") Boolean deleteAll) {
+
+		if (!Boolean.TRUE.equals(deleteAll))
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					CoreMessageResourceService.STORAGE_DELETE_ALL_NOT_CONFIRMED, storageName);
 
 		return this.service.deleteStorage(appCode, clientCode, storageName)
 				.map(ResponseEntity::ok);

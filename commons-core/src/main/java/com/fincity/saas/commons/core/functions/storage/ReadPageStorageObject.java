@@ -64,6 +64,8 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
     private static final String EAGER_FIELDS = "eagerFields";
 
+    private static final String IGNORE_FIELDS = "ignoreFields";
+
     private final AppDataService appDataService;
     private final ObjectMapper mapper;
     private final Gson gson;
@@ -104,27 +106,35 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
         return new FunctionSignature()
                 .setNamespace(NAME_SPACE)
                 .setName(FUNCTION_NAME)
-                .setParameters(Map.of(
-                        STORAGE_NAME,
-                        Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME)),
-                        FILTER,
-                        Parameter.of(FILTER, Schema.ofObject(FILTER).setDefaultValue(new JsonObject())),
-                        PAGE,
-                        Parameter.of(PAGE, Schema.ofInteger(PAGE).setDefaultValue(new JsonPrimitive(0))),
-                        SIZE,
-                        Parameter.of(SIZE, Schema.ofInteger(SIZE).setDefaultValue(new JsonPrimitive(20))),
-                        COUNT,
-                        Parameter.of(COUNT, Schema.ofBoolean(COUNT).setDefaultValue(new JsonPrimitive(true))),
-                        SORT,
-                        Parameter.of(SORT, Schema.ofArray(SORT, objectSchema).setDefaultValue(new JsonArray())),
-                        APP_CODE,
-                        Parameter.of(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
-                        CLIENT_CODE,
-                        Parameter.of(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
-                        EAGER,
-                        Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false))),
-                        EAGER_FIELDS,
-                        Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true)))
+                .setParameters(Map.ofEntries(
+                        Map.entry(STORAGE_NAME, Parameter.of(STORAGE_NAME, Schema.ofString(STORAGE_NAME))),
+                        Map.entry(
+                                FILTER,
+                                Parameter.of(FILTER, Schema.ofObject(FILTER).setDefaultValue(new JsonObject()))),
+                        Map.entry(
+                                PAGE, Parameter.of(PAGE, Schema.ofInteger(PAGE).setDefaultValue(new JsonPrimitive(0)))),
+                        Map.entry(
+                                SIZE,
+                                Parameter.of(SIZE, Schema.ofInteger(SIZE).setDefaultValue(new JsonPrimitive(20)))),
+                        Map.entry(
+                                COUNT,
+                                Parameter.of(COUNT, Schema.ofBoolean(COUNT).setDefaultValue(new JsonPrimitive(true)))),
+                        Map.entry(
+                                SORT,
+                                Parameter.of(SORT, Schema.ofArray(SORT, objectSchema).setDefaultValue(new JsonArray()))),
+                        Map.entry(
+                                APP_CODE,
+                                Parameter.of(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive("")))),
+                        Map.entry(
+                                CLIENT_CODE,
+                                Parameter.of(
+                                        CLIENT_CODE,
+                                        Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))),
+                        Map.entry(
+                                EAGER,
+                                Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false)))),
+                        Map.entry(EAGER_FIELDS, Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true)),
+                        Map.entry(IGNORE_FIELDS, Parameter.of(IGNORE_FIELDS, Schema.ofString(IGNORE_FIELDS), true))))
                 .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
     }
 
@@ -142,14 +152,12 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
         boolean eager = context.getArguments().get(EAGER).getAsBoolean();
 
-        List<String> eagerFields = StreamSupport.stream(
-                        context.getArguments()
-                                .get(EAGER_FIELDS)
-                                .getAsJsonArray()
-                                .spliterator(),
-                        false)
-                .map(JsonElement::getAsString)
-                .toList();
+        List<String> eagerFields = this.stringList(context, EAGER_FIELDS);
+
+        // Fields to drop from every returned row. Mongo takes this as a projection
+        // exclusion, so a read can leave a large column (a document body, a blob of
+        // JSON) in the database instead of shipping it to the caller.
+        List<String> ignoreFields = this.stringList(context, IGNORE_FIELDS);
 
         JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
         String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
@@ -164,8 +172,8 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
         }
 
         Query dsq = new Query()
-                .setExcludeFields(false)
-                .setFields(List.of())
+                .setExcludeFields(!ignoreFields.isEmpty())
+                .setFields(ignoreFields)
                 .setCondition(absc)
                 .setPage(page)
                 .setSize(size)
@@ -207,6 +215,17 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
                     return new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(pg)))));
                 });
+    }
+
+    private List<String> stringList(ReactiveFunctionExecutionParameters context, String parameterName) {
+        JsonElement arg = context.getArguments().get(parameterName);
+        if (arg == null || arg.isJsonNull()) return List.of();
+
+        return StreamSupport.stream(arg.getAsJsonArray().spliterator(), false)
+                .filter(e -> e != null && !e.isJsonNull())
+                .map(JsonElement::getAsString)
+                .filter(e -> !StringUtil.isNullOrBlank(e))
+                .toList();
     }
 
     private Sort getSortObj(JsonArray sortJson) {
