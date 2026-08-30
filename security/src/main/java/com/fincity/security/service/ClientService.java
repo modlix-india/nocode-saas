@@ -304,16 +304,26 @@ public class ClientService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> super.create(entity.setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))),
+                // The column defaults to ACTIVE, but the insert always writes the
+                // POJO's value, so a caller that omits the status stores an explicit
+                // null instead - 1057 existing clients are in that state. A null
+                // status matches no status filter and hides the activate/deactivate
+                // control, so it is a bug rather than a state.
+                ca -> super.create(entity
+                        .setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))
+                        .setStatusCode(entity.getStatusCode() == null ? SecurityClientStatusCode.ACTIVE
+                                : entity.getStatusCode())),
 
-                (ca, client) -> {
-                    if (!ca.isSystemClient())
-                        return this.clientHierarchyService
-                                .create(ULongUtil.valueOf(ca.getUser().getClientId()), client.getId())
-                                .map(x -> client);
-
-                    return Mono.just(client);
-                },
+                // Every client needs a hierarchy row, including one created by a
+                // SYSTEM administrator. Skipping it for SYSTEM callers left the new
+                // client with no recorded parent, invisible to every hierarchy walk
+                // (access checks, own-and-managed filters, duplicate rules) and able
+                // to turn a clients listing with ?fetchManagingClient=true into a
+                // 500, because getClientHierarchy errors when the row is absent.
+                (ca, client) -> this.clientHierarchyService
+                        .create(ULongUtil.valueOf(ca.getUser().getClientId()), client.getId())
+                        .map(x -> client)
+                        .defaultIfEmpty(client),
 
                 (ca, client, hClient) -> {
                     if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
