@@ -70,6 +70,10 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
             existing.setVariableSchema(entity.getVariableSchema());
             existing.setChannelTemplates(entity.getChannelTemplates());
             existing.setChannelConnections(entity.getChannelConnections());
+            // channelEnabled was missing here, so every edit to per-channel
+            // enablement was silently discarded on update while still taking
+            // part in the override diff.
+            existing.setChannelEnabled(entity.getChannelEnabled());
 
             existing.setVersion(existing.getVersion() + 1);
 

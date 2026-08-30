@@ -76,9 +76,23 @@ public class ApplicationController
     @GetMapping("/{appCode}/index")
     public Mono<ResponseEntity<Map<String, Object>>> getIndex(
             @PathVariable String appCode,
-            @RequestParam(required = false) String clientCode) {
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false, defaultValue = "false") boolean slim) {
 
-        return indexService.buildIndex(appCode, clientCode)
+        return indexService.buildIndex(appCode, clientCode, !slim)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Service-to-service index, always slim. Called by `multi` when it composes
+     * the cross-service object index for the builder's tree and search box.
+     */
+    @GetMapping("/internal/index/{appCode}")
+    public Mono<ResponseEntity<Map<String, Object>>> getInternalIndex(
+            @PathVariable String appCode,
+            @RequestParam(name = "forClientCode", required = false) String clientCode) {
+
+        return indexService.buildIndex(appCode, clientCode, false)
                 .map(ResponseEntity::ok);
     }
 

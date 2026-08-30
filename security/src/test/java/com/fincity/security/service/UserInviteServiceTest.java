@@ -68,6 +68,9 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private OrgStructureService orgStructureService;
 
+	@Mock
+	private DesignationService designationService;
+
 	private static final ULong USER_ID = ULong.valueOf(10);
 	private static final ULong PROFILE_ID = ULong.valueOf(100);
 	private static final ULong REPORTING_TO_ID = ULong.valueOf(20);
@@ -75,7 +78,8 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new UserInviteService(msgService, clientService, authenticationService, userDao, soxLogService,
-				profileService, appService, clientHierarchyService, clientActivityService, orgStructureService);
+				profileService, appService, clientHierarchyService, clientActivityService, orgStructureService,
+				designationService);
 		lenient().when(orgStructureService.evict(any())).thenReturn(Mono.just(Boolean.TRUE));
 
 		var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");

@@ -39,4 +39,25 @@ public interface IFeignUIService {
                             @RequestHeader("clientCode") String clientCode,
                             @RequestHeader("appCode") String headerAppCode,
                             @RequestParam("deleteAppCode") String deleteAppCode);
+
+    /**
+     * Reactive Feign flattens headers, path variables AND query params into a
+     * single name-keyed map, so no two arguments may share a name. This method
+     * already carries an {@code appCode} HEADER (the calling app's context), so
+     * the target app rides as {@code targetAppCode} and the target client as
+     * {@code forClientCode}. Name either of them {@code appCode} /
+     * {@code clientCode} and the call dies with "Duplicate key appCode" before
+     * it leaves the process; the server side still binds them as
+     * {@code appCode} / {@code clientCode} from its own mapping.
+     */
+    @GetMapping("${ui.index:/api/ui/applications/internal/index/{targetAppCode}}")
+    Mono<Map<String, Object>> objectIndex(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @PathVariable("targetAppCode") String appCode,
+            @RequestParam(name = "forClientCode", required = false) String forClientCode);
+
 }
