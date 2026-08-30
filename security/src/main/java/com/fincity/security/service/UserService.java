@@ -881,23 +881,35 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, existingUser) -> this.clientService
                         .getClientTypeNCodeNClientLevel(entity.getClientId())
                         .map(Tuple2::getT1),
-                (ca, existingUser, clientType) -> switch (clientType) {
-                    case "INDV" -> this.clientHierarchyService
-                            .getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
-                            .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
-                                    managingClientId,
-                                    entity.getUserName(),
-                                    entity.getEmailId(),
-                                    entity.getPhoneNumber(),
-                                    "INDV",
-                                    entity.getId()));
-                    case "BUS", "SYS" -> this.dao.checkUserExists(
-                            entity.getClientId(),
-                            entity.getUserName(),
-                            entity.getEmailId(),
-                            entity.getPhoneNumber(),
-                            null);
-                    default -> Mono.empty();
+                (ca, existingUser, clientType) -> {
+
+                    // Only look for a collision when this edit actually changes an identifier.
+                    // Otherwise an edit to, say, a first name is refused whenever the user already
+                    // shares a userName/email/phone with someone in a managed client — a state the
+                    // edit did not create and does not make worse.
+                    if (Objects.equals(existingUser.getUserName(), entity.getUserName())
+                            && Objects.equals(existingUser.getEmailId(), entity.getEmailId())
+                            && Objects.equals(existingUser.getPhoneNumber(), entity.getPhoneNumber()))
+                        return Mono.just(Boolean.FALSE);
+
+                    return switch (clientType) {
+                        case "INDV" -> this.clientHierarchyService
+                                .getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
+                                .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
+                                        managingClientId,
+                                        entity.getUserName(),
+                                        entity.getEmailId(),
+                                        entity.getPhoneNumber(),
+                                        "INDV",
+                                        entity.getId()));
+                        case "BUS", "SYS" -> this.dao.checkUserExists(
+                                entity.getClientId(),
+                                entity.getUserName(),
+                                entity.getEmailId(),
+                                entity.getPhoneNumber(),
+                                null);
+                        default -> Mono.empty();
+                    };
                 },
                 (ca, existingUser, clientType, userExists) -> {
                     if (Boolean.TRUE.equals(userExists))
