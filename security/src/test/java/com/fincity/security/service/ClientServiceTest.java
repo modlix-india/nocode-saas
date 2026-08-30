@@ -393,6 +393,20 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 	// create
 	// =========================================================================
 
+	/**
+	 * create resolves the parent client and takes the new client's level from
+	 * ITS level, so every create test has to stub that read. With no
+	 * parentClientId in the payload the parent is the caller's own client.
+	 */
+	private void stubParentClient(ULong clientId, SecurityClientLevelType level) {
+
+		Client parent = TestDataFactory.createBusinessClient(clientId, "PARENT" + clientId);
+		parent.setLevelType(level);
+
+		when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(clientId)))
+				.thenReturn(Mono.just(parent));
+	}
+
 	@Nested
 	@DisplayName("create")
 	class CreateTests {
@@ -414,6 +428,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
+
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
 
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
 			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
@@ -448,6 +464,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
+
+			stubParentClient(BUS_CLIENT_ID, SecurityClientLevelType.CLIENT);
 
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
@@ -487,6 +505,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
+
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
 			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
@@ -518,6 +538,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
+
+			stubParentClient(SYSTEM_CLIENT_ID, SecurityClientLevelType.SYSTEM);
 
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, SYSTEM_CLIENT_ID);
 			when(clientHierarchyService.create(SYSTEM_CLIENT_ID, TARGET_CLIENT_ID))
@@ -1968,6 +1990,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
 
+			stubParentClient(BUS_CLIENT_ID, SecurityClientLevelType.CLIENT);
+
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, BUS_CLIENT_ID);
 			when(clientHierarchyService.create(BUS_CLIENT_ID, TARGET_CLIENT_ID))
 					.thenReturn(Mono.just(hierarchy));
@@ -2002,6 +2026,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(com.fincity.saas.commons.security.util.SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.empty());
+
+			stubParentClient(customerClientId, SecurityClientLevelType.CUSTOMER);
 
 			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(TARGET_CLIENT_ID, customerClientId);
 			when(clientHierarchyService.create(customerClientId, TARGET_CLIENT_ID))

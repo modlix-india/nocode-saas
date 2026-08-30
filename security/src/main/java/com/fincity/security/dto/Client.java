@@ -57,6 +57,16 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private List<User> clientManagers;
     private ULong managerId;
 
+    /**
+     * Write-only, and only on create: the client the new one is parented under.
+     * <p>
+     * Not a column. Left null it means "my own client", which is what creation
+     * always did. Set, it has to be a client the caller manages - {@code create}
+     * checks that - and the new client's {@code levelType} is then derived from
+     * THAT parent's level rather than the caller's.
+     */
+    private ULong parentClientId;
+
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {
             case SYSTEM -> SecurityClientLevelType.CLIENT;

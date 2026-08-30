@@ -44,6 +44,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
+import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -304,15 +305,33 @@ public class ClientService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                // The column defaults to ACTIVE, but the insert always writes the
-                // POJO's value, so a caller that omits the status stores an explicit
-                // null instead - 1057 existing clients are in that state. A null
+                ca -> this.resolveParentClient(ca, entity.getParentClientId()),
+
+                // The level is derived from the PARENT's level, not the caller's.
+                // With no parent chosen those are the same client, which is what
+                // creation always did.
+                //
+                // Status: the column defaults to ACTIVE, but the insert always
+                // writes the POJO's value, so a caller that omits it stores an
+                // explicit null - 1057 existing clients are in that state. A null
                 // status matches no status filter and hides the activate/deactivate
                 // control, so it is a bug rather than a state.
-                ca -> super.create(entity
-                        .setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))
-                        .setStatusCode(entity.getStatusCode() == null ? SecurityClientStatusCode.ACTIVE
-                                : entity.getStatusCode())),
+                (ContextAuthentication ca, Client parent) -> {
+
+                    SecurityClientLevelType childLevel = Client
+                            .getChildClientLevelType(parent.getLevelType());
+
+                    if (childLevel == null)
+                        return this.securityMessageResourceService.<Client>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.FORBIDDEN_CREATE,
+                                "Client under " + parent.getCode());
+
+                    return super.create(entity
+                            .setLevelType(childLevel)
+                            .setStatusCode(entity.getStatusCode() == null ? SecurityClientStatusCode.ACTIVE
+                                    : entity.getStatusCode()));
+                },
 
                 // Every client needs a hierarchy row, including one created by a
                 // SYSTEM administrator. Skipping it for SYSTEM callers left the new
@@ -320,12 +339,12 @@ public class ClientService
                 // (access checks, own-and-managed filters, duplicate rules) and able
                 // to turn a clients listing with ?fetchManagingClient=true into a
                 // 500, because getClientHierarchy errors when the row is absent.
-                (ca, client) -> this.clientHierarchyService
-                        .create(ULongUtil.valueOf(ca.getUser().getClientId()), client.getId())
+                (ca, parent, client) -> this.clientHierarchyService
+                        .create(parent.getId(), client.getId())
                         .map(x -> client)
                         .defaultIfEmpty(client),
 
-                (ca, client, hClient) -> {
+                (ca, parent, client, hClient) -> {
                     if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
                             ca.getAuthorities()))
                         return this.clientManagerService
@@ -343,6 +362,36 @@ public class ClientService
 
                     return Mono.just(hClient);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
+    }
+
+    /**
+     * The client a new client is created under.
+     * <p>
+     * Null means the caller's own client, which is the only thing creation ever
+     * supported. Anything else has to be a client the caller actually manages -
+     * the same gate {@code isUserClientManageClient} applies everywhere else - so
+     * a caller cannot graft a new tenant somewhere they have no authority over
+     * simply by naming its id in the payload.
+     */
+    private Mono<Client> resolveParentClient(ContextAuthentication ca, ULong parentClientId) {
+
+        ULong callerClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+        if (parentClientId == null || parentClientId.equals(callerClientId))
+            return this.readInternal(callerClientId);
+
+        return this.isUserClientManageClient(ca, parentClientId)
+                // An id that does not exist makes the hierarchy lookup throw rather
+                // than return false, which surfaced as a 500. A parent the caller
+                // cannot reach and a parent that is not there are the same answer to
+                // the caller, and saying so also avoids confirming which ids exist.
+                .onErrorResume(e -> Mono.empty())
+                .filter(BooleanUtil::safeValueOf)
+                .flatMap(managed -> this.readInternal(parentClientId))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_CREATE,
+                        "Client under the selected parent"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
