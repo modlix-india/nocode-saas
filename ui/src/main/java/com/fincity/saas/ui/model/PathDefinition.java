@@ -124,9 +124,14 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 			return false;
 		}
 
+		// Each type carries exactly its own definition and not the other's. The
+		// REDIRECTION arm used to be a copy of the KIRUN_FUNCTION one, which no
+		// REDIRECTION could ever satisfy: URIPathService.setPathDefinitions has
+		// just populated redirectionDefinition and nulled kiRunFxDefinition for
+		// precisely this type, so every redirect create failed URI_INVALID_TYPE.
 		return switch (this.getUriType()) {
 			case KIRUN_FUNCTION -> (this.kiRunFxDefinition != null && this.redirectionDefinition == null);
-			case REDIRECTION -> (this.redirectionDefinition == null && this.kiRunFxDefinition != null);
+			case REDIRECTION -> (this.redirectionDefinition != null && this.kiRunFxDefinition == null);
 		};
 	}
 }

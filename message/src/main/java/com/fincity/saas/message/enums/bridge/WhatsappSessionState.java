@@ -40,11 +40,25 @@ public enum WhatsappSessionState {
      * only if told which country the instance serves and which number was actually scanned. Shown as
      * a generic error it is unfixable.
      */
-    COUNTRY_MISMATCH;
+    COUNTRY_MISMATCH,
+
+    /**
+     * A different handset scanned the code from the number that was being linked.
+     *
+     * <p>Separate from {@link #COUNTRY_MISMATCH} because the two need different sentences and one of
+     * them was previously not detected at all: the pairing check compared only the *country* of the
+     * JID that scanned, so any other number in the same country linked successfully. The row then
+     * kept displaying the number somebody typed while the session ran on a different one, and
+     * messages went out from a number the CRM did not show anywhere.
+     *
+     * <p>Fixable by the customer in seconds, like a country mismatch, but only if told which number
+     * actually scanned.
+     */
+    NUMBER_MISMATCH;
 
     /** Terminal states hold a slot without being able to use it, so the reaper reclaims them. */
     public boolean isTerminal() {
-        return this == LOGGED_OUT || this == BANNED || this == COUNTRY_MISMATCH;
+        return this == LOGGED_OUT || this == BANNED || this == COUNTRY_MISMATCH || this == NUMBER_MISMATCH;
     }
 
     /** Whether a message may be handed to this session at all. */

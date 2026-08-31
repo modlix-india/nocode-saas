@@ -282,6 +282,14 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         return this.dao.readByWhatsappSessionCode(access, sessionCode);
     }
 
+    /**
+     * Every product that names no number, and so sends through the tenant's default. See {@link
+     * com.fincity.saas.entity.processor.dao.product.ProductDAO#readWithoutWhatsappSession}.
+     */
+    public Mono<List<Product>> getWithoutWhatsappSession(ProcessorAccess access) {
+        return this.dao.readWithoutWhatsappSession(access);
+    }
+
     /** See {@link com.fincity.saas.entity.processor.dao.product.ProductDAO#readFirstActive}. */
     public Mono<Product> readFirstActive(ProcessorAccess access) {
         return this.dao.readFirstActive(access);

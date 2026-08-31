@@ -60,6 +60,63 @@ public class BridgeSessionService {
     }
 
     /**
+     * Starts linking a number.
+     *
+     * <p>Checks up front whether the number already has a placed session, rather than letting it
+     * reach the unique key on the generated linked-number column. The constraint is correct and
+     * stays; the point is that a customer clicking Link twice is an ordinary thing to do and deserves
+     * an answer instead of an integrity violation, whose text used to end up on screen.
+     *
+     * <p>A number whose previous attempt never paired is <b>relinked</b> rather than refused. That is
+     * the difference between an ordinary retry working and not, and it used not to work at all: a
+     * pairing nobody scans leaves a row holding its instance, so every later attempt on that number
+     * was refused, and the customer had no way to see the code again either. Nothing self-healed it,
+     * because an expired attempt lands in DISCONNECTED and the bridge does not retire that state.
+     * Both halves are fixed; this is the half that also covers rows the bridge has already forgotten,
+     * which is every one of them after an instance restart.
+     */
+    public Mono<BridgeSessionSnapshot> createSession(
+            MessageAccess access, String phone, ULong productId, String ownerService) {
+
+        return this.sessionDao
+                .getPlacedByNumber(access.getAppCode(), access.getClientCode(), phone)
+                .flatMap(existing -> this.relinkOrRefuse(access, existing, phone, productId, ownerService))
+                .switchIfEmpty(Mono.defer(() -> this.startLinking(access, phone, productId, ownerService)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.createSession"));
+    }
+
+    /**
+     * Decides what a second link attempt on the same number means.
+     *
+     * <p>{@code LINKED_AT} is the whole test, and it is exact rather than a heuristic: it is written
+     * only when a handset actually completed a scan. So a null means this row has never had a device
+     * behind it, has no conversation history hanging off it and no session at WhatsApp to lose.
+     * Recycling it costs nothing and is what the customer is asking for.
+     *
+     * <p>A row that <em>did</em> pair is refused, exactly as before. Relinking that automatically
+     * would discard a live device store, or one the customer unlinked from their handset five minutes
+     * ago and may want to ask about, on the strength of somebody retyping a number. It stays in the
+     * list with an Unlink button, which is a decision for a person.
+     */
+    private Mono<BridgeSessionSnapshot> relinkOrRefuse(
+            MessageAccess access, WhatsappPhoneNumber existing, String phone, ULong productId, String ownerService) {
+
+        if (existing.getLinkedAt() != null)
+            return Mono.error(new BridgeNumberAlreadyLinkedException(
+                    phone, existing.getSessionState() == null ? null : existing.getSessionState().name()));
+
+        logger.info(
+                "Number {} already has session {} in state {}, which never paired. Retiring it and"
+                        + " starting a fresh link rather than refusing the retry.",
+                phone,
+                existing.getCode(),
+                existing.getSessionState());
+
+        return this.release(access, existing.getCode(), "replaced by a fresh link attempt")
+                .then(Mono.defer(() -> this.startLinking(access, phone, productId, ownerService)));
+    }
+
+    /**
      * Creates a session and asks its instance to start pairing.
      *
      * <p>Order matters and is not arbitrary. The row is written first so the session id exists
@@ -68,26 +125,13 @@ public class BridgeSessionService {
      * of, which is precisely the stray that reconciliation exists to catch and that nobody wants to
      * create deliberately.
      */
-    /**
-     * Starts linking a number.
-     *
-     * <p>Refuses up front when the number already has a placed session, rather than letting it reach
-     * the unique key on the generated linked-number column. The constraint is correct and stays; the
-     * point is that a customer clicking Link twice is an ordinary thing to do and deserves a sentence
-     * instead of an integrity violation, whose text used to end up on screen.
-     */
-    public Mono<BridgeSessionSnapshot> createSession(
+    private Mono<BridgeSessionSnapshot> startLinking(
             MessageAccess access, String phone, ULong productId, String ownerService) {
 
-        return this.sessionDao
-                .getPlacedByNumber(access.getAppCode(), access.getClientCode(), phone)
-                .flatMap(existing -> Mono.<BridgeSessionSnapshot>error(new BridgeNumberAlreadyLinkedException(
-                        phone, existing.getSessionState() == null ? null : existing.getSessionState().name())))
-                .switchIfEmpty(Mono.defer(() -> FlatMapUtil.flatMapMono(
-                        () -> this.placementService.place(phone),
-                        instance -> this.createRow(access, phone, productId, ownerService, instance),
-                        (instance, row) -> this.claimAndStart(access, instance, row, phone))))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.createSession"));
+        return FlatMapUtil.flatMapMono(
+                () -> this.placementService.place(phone),
+                instance -> this.createRow(access, phone, productId, ownerService, instance),
+                (instance, row) -> this.claimAndStart(access, instance, row, phone));
     }
 
     private Mono<WhatsappPhoneNumber> createRow(
@@ -273,6 +317,19 @@ public class BridgeSessionService {
      * reconciliation reports the difference until it catches up.
      */
     public Mono<Void> unlink(MessageAccess access, String sessionId) {
+        return this.release(access, sessionId, "unlinked by the customer")
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.unlink"));
+    }
+
+    /**
+     * The whole of unlinking, with the reason as a parameter.
+     *
+     * <p>Shared with the relink path, which retires a never-paired row before starting a fresh
+     * attempt on the same number and must not label that "unlinked by the customer". The reason is
+     * rendered on the numbers page and read months later out of a log, so a wrong one is a wrong
+     * answer to "what happened to this number", not a cosmetic slip.
+     */
+    private Mono<Void> release(MessageAccess access, String sessionId, String reason) {
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
@@ -280,7 +337,7 @@ public class BridgeSessionService {
                 .flatMap(row -> {
                     if (row.getBridgeInstanceId() == null) {
                         logger.info(
-                                "Unlinking session {}, which no instance holds. Releasing the row"
+                                "Releasing session {}, which no instance holds. Clearing the row"
                                         + " locally; there is nothing to tell.",
                                 sessionId);
                         return Mono.empty();
@@ -309,13 +366,12 @@ public class BridgeSessionService {
                                 return Mono.empty();
                             });
                 })
-                .then(this.sessionDao.releaseAssignment(
-                        sessionId, WhatsappSessionState.LOGGED_OUT, "unlinked by the customer", now))
+                .then(this.sessionDao.releaseAssignment(sessionId, WhatsappSessionState.LOGGED_OUT, reason, now))
                 // And take it off the tenant's list. Releasing the assignment alone left the row
                 // showing with a new state, which reads as the unlink having done nothing.
                 .then(this.sessionDao.deactivate(sessionId))
                 .then()
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.unlink"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BridgeSessionService.release"));
     }
 
     /**

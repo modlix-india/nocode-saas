@@ -53,7 +53,9 @@ public class WhatsappMessageDAO
 
         Condition where = tenant(appCode, clientCode)
                 .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
-                .and(this.isActiveTrue());
+                .and(this.isActiveTrue())
+                // Skip the rows that would draw a bubble with nothing in it. See hasSomethingToShow.
+                .and(this.hasSomethingToShow());
 
         if (search != null && !search.isBlank()) where = where.and(bodyMatches(search));
 
@@ -108,7 +110,9 @@ public class WhatsappMessageDAO
 
         Condition where = tenant(appCode, clientCode)
                 .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
-                .and(this.isActiveTrue());
+                .and(this.isActiveTrue())
+                // Skip the rows that would draw a bubble with nothing in it. See hasSomethingToShow.
+                .and(this.hasSomethingToShow());
 
         if (search != null && !search.isBlank()) where = where.and(bodyMatches(search));
 
@@ -162,7 +166,11 @@ public class WhatsappMessageDAO
 
         Condition where = tenant(appCode, clientCode)
                 .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
-                .and(this.isActiveTrue());
+                .and(this.isActiveTrue())
+                // Same filter as the thread. An empty row left by a receipt is inbound and unread by
+                // every column that decides those, so counting it put an unread badge on a
+                // conversation with nothing new in it and floated the deal to the top of the inbox.
+                .and(this.hasSomethingToShow());
 
         var unread = DSL.sum(DSL.when(
                         ENTITY_PROCESSOR_WHATSAPP_MESSAGES
@@ -213,6 +221,9 @@ public class WhatsappMessageDAO
                 .from(this.table)
                 .where(tenant(appCode, clientCode))
                 .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID.in(ticketIds))
+                // Otherwise the newest row wins the preview line and it has no text, so the inbox
+                // shows a conversation with a blank last message.
+                .and(this.hasSomethingToShow())
                 .and(this.isActiveTrue())
                 .asTable("wa_latest");
 
@@ -450,6 +461,72 @@ public class WhatsappMessageDAO
                 .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.BRIDGE_SESSION_ID.eq(sessionId))
                 .and(orderKey().ge(since))
                 .and(this.isActiveTrue());
+    }
+
+    /**
+     * Rows that actually have something for a reader to look at.
+     *
+     * <p><b>The bubble containing nothing but a timestamp comes from here.</b> Every write path
+     * upserts on the provider's message id, and a delivery receipt for a message this service has
+     * never seen creates the row rather than being dropped, so the status is not lost if the receipt
+     * merely raced the message it belongs to. That is right for a race measured in milliseconds. It is
+     * wrong when the message is never coming, and re-linking a number produces exactly that by the
+     * handful: WhatsApp sends receipts for the backlog it accumulated while no device was attached,
+     * we never held those messages, and each receipt manufactures a permanent empty bubble dated to
+     * whenever the customer wrote it.
+     *
+     * <p>So the rows stay - a receipt is still a fact, and a message that turns up later fills its
+     * row in and becomes visible on its own - and the thread simply does not draw the ones that say
+     * nothing. Anything with text, an attachment, a preview, a declared media type, a reason its
+     * attachment is not coming, or a provider payload counts as something. A media message still
+     * waiting for its bytes has a declared type, so it keeps rendering as pending rather than
+     * vanishing and reappearing.
+     *
+     * <p>{@code JSON_EXTRACT} rather than a null check on the column, because a failed download used
+     * to store {@code {}} rather than nothing, and an empty object is not an attachment. Those rows
+     * are still in the table.
+     */
+    private Condition hasSomethingToShow() {
+        return ENTITY_PROCESSOR_WHATSAPP_MESSAGES
+                .BODY_TEXT
+                .isNotNull()
+                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.BODY_TEXT.ne(DSL.inline("")))
+                .or(jsonHasKeys(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_FILE_DETAIL))
+                .or(jsonHasKeys(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_THUMBNAIL_FILE_DETAIL))
+                .or(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_MIME_TYPE.isNotNull())
+                .or(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MEDIA_ERROR.isNotNull())
+                // A location, a shared contact or an interactive reply can carry its whole content in
+                // the payload with no body text at all, so the payload has to count.
+                .or(jsonHasKeys(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IN_MESSAGE))
+                .or(jsonHasKeys(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE))
+                // And an attachment always counts, even one that never arrived.
+                //
+                // This is the difference between hiding noise and hiding history. A row typed IMAGE
+                // or VIDEO records that the customer sent something, which is worth showing even
+                // when the bytes are gone: the thread says the attachment is unavailable and a person
+                // can ask them to resend. A receipt stub records nothing at all and is typed TEXT or
+                // SYSTEM by default, because a receipt carries no type for parseType to read. So the
+                // type is what separates them, and dropping this clause would quietly delete twenty
+                // real attachments from the visible history on local alone.
+                .or(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_TYPE.in(
+                        WhatsappMessageType.IMAGE,
+                        WhatsappMessageType.VIDEO,
+                        WhatsappMessageType.AUDIO,
+                        WhatsappMessageType.DOCUMENT,
+                        WhatsappMessageType.STICKER));
+    }
+
+    /**
+     * Non-null and not an empty object or array. {@code {}} is stored in places null was meant.
+     *
+     * <p>{@code COALESCE} is load-bearing, not decoration. {@code JSON_LENGTH(NULL)} is NULL and
+     * {@code NULL > 0} is NULL, so without it this contributes NULL rather than false to the chain of
+     * ORs above. That happens to give the right answer today, because an OR is only true when some
+     * operand is true, but it makes the whole predicate unsafe to negate or nest later, and the reason
+     * would not be obvious to whoever did it.
+     */
+    private static Condition jsonHasKeys(Field<?> column) {
+        return DSL.condition("COALESCE(JSON_LENGTH({0}), 0) > 0", column);
     }
 
     private Condition tenant(String appCode, String clientCode) {

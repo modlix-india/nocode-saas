@@ -176,6 +176,7 @@ public class TicketWhatsappConversationService {
     private static WhatsappThreadWindow toWindow(List<WhatsappMessage> content, long total, boolean hasMore) {
 
         foldReactions(content);
+        flattenMediaUrls(content);
 
         WhatsappThreadWindow window = new WhatsappThreadWindow()
                 .setContent(content)
@@ -225,6 +226,33 @@ public class TicketWhatsappConversationService {
         } catch (NumberFormatException e) {
             logger.warn("Ignoring an unreadable thread cursor: {}", raw);
             return null;
+        }
+    }
+
+    /**
+     * Lifts each attachment's URL out of its file-detail object onto a flat field.
+     *
+     * <p>Done here rather than left to the page, because the page cannot do it safely. The expression
+     * engine's {@code ObjectOperator} throws when it indexes into a falsy parent, so
+     * {@code Parent.mediaFileDetail.url} does not evaluate to empty for a message with no attachment:
+     * it raises, and every component gated on it is hidden. That included the line whose only job was
+     * to say the attachment was unavailable, which is why such a message drew a bubble containing its
+     * timestamp and nothing else.
+     *
+     * <p>The nested objects are left in place. They carry the name, size and path that the download
+     * link and the retention sweep both read; this only adds the one field the thread needs to branch
+     * on.
+     */
+    private static void flattenMediaUrls(List<WhatsappMessage> content) {
+
+        for (WhatsappMessage message : content) {
+            if (message.getMediaFileDetail() != null) {
+                message.setMediaUrl(message.getMediaFileDetail().getUrl());
+                message.setMediaName(message.getMediaFileDetail().getName());
+            }
+
+            if (message.getMediaThumbnailFileDetail() != null)
+                message.setMediaThumbnailUrl(message.getMediaThumbnailFileDetail().getUrl());
         }
     }
 
@@ -730,8 +758,25 @@ public class TicketWhatsappConversationService {
                                                     mediaId,
                                                     "fileLocation",
                                                     mediaPathOf(message)))
-                                    .flatMap(fileDetail -> this.whatsappMessageDAO.update(
-                                            message.setMediaFileDetail(toFileDetail(fileDetail))));
+                                    .flatMap(fileDetail -> {
+                                        FileDetail detail = toFileDetail(fileDetail);
+
+                                        // Nothing came back. Left unwritten on purpose so the next
+                                        // open tries again: storing an empty object here is what
+                                        // made one failed download permanent.
+                                        if (detail == null) {
+                                            logger.warn(
+                                                    "Media {} for WhatsApp message {} could not be"
+                                                        + " downloaded. Leaving the row alone so it can be"
+                                                        + " retried.",
+                                                    mediaId,
+                                                    messageId);
+                                            return Mono.just(message);
+                                        }
+
+                                        return this.whatsappMessageDAO.update(
+                                                message.setMediaFileDetail(detail));
+                                    });
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappConversationService.downloadMedia"));
     }
@@ -762,12 +807,25 @@ public class TicketWhatsappConversationService {
                 + message.getCode();
     }
 
+    /**
+     * Reads the files service's description of a downloaded attachment, or answers null.
+     *
+     * <p><b>Null, not an empty object.</b> This returned {@code new FileDetail()} for a null
+     * response, which serialises to {@code {}} and is worse than storing nothing twice over: the
+     * thread finds no url on it and draws an empty bubble, and the guard above
+     * ({@code mediaFileDetail != null}) then treats the row as already downloaded, so the fetch is
+     * never attempted again. One failed download became a permanently blank message.
+     */
     private static FileDetail toFileDetail(Map<String, Object> raw) {
+        if (raw == null || raw.isEmpty()) return null;
+
         FileDetail detail = new FileDetail();
-        if (raw == null) return detail;
         if (raw.get("name") instanceof String s) detail.setName(s);
         if (raw.get("url") instanceof String s) detail.setUrl(s);
-        return detail;
+
+        // Nothing usable in it. Same reasoning: an object with no url is indistinguishable from a
+        // failed download to every reader, and storing it blocks the retry.
+        return detail.getUrl() == null && detail.getName() == null ? null : detail;
     }
 
     /**
