@@ -98,6 +98,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
     private static final String SOURCE_WHATSAPP = "WhatsApp";
+
+    /**
+     * How much of a customer's WhatsApp profile name may become a deal name.
+     *
+     * <p>Well under {@code NAME}'s 512 characters, and that is the point: the column's width is not
+     * the right bound for a value somebody else chooses. WhatsApp's own limit is 25, so anything past
+     * this is not a name and a 512-character one would wreck every list it appears in. Truncation is
+     * safe here because nothing matches on it.
+     */
+    private static final int MAX_INBOUND_NAME_LENGTH = 128;
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -1439,8 +1449,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
      * <p>Three things happen, in order:
      *
      * <ol>
-     *   <li><b>Match.</b> Every active deal on the customer's number, within the product scope. A
-     *       null {@code productId} means the business number is the tenant default and serves every
+     *   <li><b>Match.</b> Every active deal on the customer's number, within the product scope. An
+     *       empty {@code productIds} means the business number is the tenant default and serves every
      *       product, so the match is on the number alone.
      *   <li><b>Create, when nothing matched and {@code createIfMissing}.</b> A stranger messaging
      *       the advertised number is a lead, and with the inbox gated on deal access a message with
@@ -1450,6 +1460,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
      *       them, so anything else would leave stale rows below a live one.
      * </ol>
      *
+     * <p>Matching and creation take separate scopes because they are separate questions. A number can
+     * serve several products, so matching has to look across all of them or a customer's existing deal
+     * on a sibling product is missed and duplicated; creating a deal has to pick exactly one, and only
+     * the caller knows which of the mapped products that should be.
+     *
      * <p>Returns the most recently updated match, which the caller stamps onto the message as its
      * {@code TICKET_ID}. Empty only when nothing matched and creation was not asked for; the message
      * is still stored, it simply has no deal.
@@ -1457,20 +1472,22 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<Ticket> registerWhatsappMessage(
             String appCode,
             String clientCode,
-            ULong productId,
+            WhatsappOrigin origin,
             PhoneNumber customerPhone,
             LocalDateTime occurredAt,
             boolean createIfMissing) {
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
         LocalDateTime messageAt = occurredAt != null ? occurredAt : LocalDateTime.now(ZoneOffset.UTC);
+        WhatsappOrigin from = origin == null ? WhatsappOrigin.unknown() : origin;
 
         return this.dao
-                .readActiveByProductAndPhone(access, productId, customerPhone)
+                .readActiveByProductAndPhone(access, from.productIds(), customerPhone)
                 .flatMap(matched -> {
                     if (!matched.isEmpty()) return Mono.just(matched);
                     if (!createIfMissing) return Mono.just(List.<Ticket>of());
-                    return this.createFromInboundWhatsapp(access, productId, customerPhone)
+                    return this.createFromInboundWhatsapp(
+                                    access, from.createUnderProductId(), customerPhone, from.customerName())
                             .map(List::of)
                             .defaultIfEmpty(List.of());
                 })
@@ -1485,22 +1502,96 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     /**
+     * Moves one deal up the conversation list, for a message whose deal was never in doubt.
+     *
+     * <p>The outbound counterpart to the fan-out in {@link #registerWhatsappMessage}. One deal rather
+     * than every deal on the number, because a message somebody sent went to a particular deal, and
+     * bumping its siblings would make them all look like live conversations.
+     */
+    public Mono<Integer> touchWhatsappConversation(ULong ticketId, LocalDateTime occurredAt) {
+
+        if (ticketId == null) return Mono.just(0);
+
+        return this.dao
+                .touchLastMessageAt(
+                        List.of(ticketId), occurredAt != null ? occurredAt : LocalDateTime.now(ZoneOffset.UTC))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.touchWhatsappConversation"));
+    }
+
+    /**
+     * Everything about where an inbound WhatsApp message came from that deal resolution cares about.
+     *
+     * <p>One record rather than three parameters because the three are read together and are easy to
+     * transpose at a call site: two of them are product ids that mean different things.
+     *
+     * @param productIds which products a match may be found in. Empty means the number serves
+     *     everything, so the match is on the customer's number alone.
+     * @param createUnderProductId the single product a brand-new deal is created in. Null falls back
+     *     to the tenant's oldest active product.
+     * @param customerName the name from the customer's own WhatsApp profile, or null. Names a new
+     *     deal; never matched on.
+     */
+    public record WhatsappOrigin(List<ULong> productIds, ULong createUnderProductId, String customerName) {
+
+        public WhatsappOrigin {
+            productIds = productIds == null ? List.of() : List.copyOf(productIds);
+        }
+
+        /** Nothing resolved: match on the number alone and create wherever the fallback lands. */
+        public static WhatsappOrigin unknown() {
+            return new WhatsappOrigin(List.of(), null, null);
+        }
+
+        /** One product for both scopes, which is what a caller holding a single product id means. */
+        public static WhatsappOrigin ofProduct(ULong productId) {
+            return new WhatsappOrigin(productId == null ? List.of() : List.of(productId), productId, null);
+        }
+    }
+
+    /**
+     * One product for both scopes and no name.
+     *
+     * <p>Kept for the {@code /internal/whatsapp/register} route, whose contract is one optional
+     * {@code productId} query parameter and is called from outside this service.
+     */
+    public Mono<Ticket> registerWhatsappMessage(
+            String appCode,
+            String clientCode,
+            ULong productId,
+            PhoneNumber customerPhone,
+            LocalDateTime occurredAt,
+            boolean createIfMissing) {
+
+        return this.registerWhatsappMessage(
+                appCode,
+                clientCode,
+                WhatsappOrigin.ofProduct(productId),
+                customerPhone,
+                occurredAt,
+                createIfMissing);
+    }
+
+    /**
      * Creates a deal for a customer who messaged in without one.
      *
      * <p>The business number carries the routing information. Mapped to a product, the deal is
      * created there. Unmapped (the tenant default number), there is nothing to disambiguate on, so
      * it lands on the oldest active product and a sales agent moves it.
      *
-     * <p>Only the phone number is known, so it stands in as the deal name until someone edits it.
+     * <p>Named from the customer's own WhatsApp profile name when they have one, and from their phone
+     * number otherwise. The profile name is the only thing an inbound message carries that names the
+     * person, and it used to be discarded two services upstream, so every deal created this way was
+     * called after a phone number and a salesperson opening their pipeline saw a column of digits.
      * Assignment, stage and owner are left to {@code checkEntity}, which runs the same distribution
      * rules as any other intake. Source is {@code WhatsApp} so these are separable from form leads.
      *
      * <p>Note this is reachable by anyone who knows the business number. Rate limiting is not built
      * yet, and the deliberate trade is that dropping the message instead would lose the highest
-     * intent lead the system can receive.
+     * intent lead the system can receive. The name is part of that exposure and is treated as such:
+     * see {@link #dealNameFrom}.
      */
     private Mono<Ticket> createFromInboundWhatsapp(
-            ProcessorAccess access, ULong productId, PhoneNumber customerPhone) {
+            ProcessorAccess access, ULong productId, PhoneNumber customerPhone, String customerName) {
 
         if (customerPhone == null || StringUtil.safeIsBlank(customerPhone.getNumber())) return Mono.empty();
 
@@ -1522,9 +1613,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             .setPhoneNumber(customerPhone.getNumber())
                             .setSource(SOURCE_WHATSAPP)
                             .setProductId(p.getId());
-                    ticket.setName(customerPhone.getNumber());
+                    ticket.setName(dealNameFrom(customerName, customerPhone));
 
-                    return this.create(access, ticket);
+                    return this.create(access, ticket)
+                            .flatMap(created -> this.logInboundWhatsappCreation(access, created));
                 })
                 .switchIfEmpty(Mono.fromRunnable(() -> logger.warn(
                         "Inbound WhatsApp from {} has no deal and no product to create one on.",
@@ -1536,6 +1628,77 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             e.getMessage());
                     return Mono.empty();
                 });
+    }
+
+    /**
+     * Records the creation in the deal's activity log.
+     *
+     * <p>Every other intake does this - {@code create[TicketRequest]}, {@code createForCampaign} and
+     * {@code createForWebsite} all call {@code acCreate} straight after {@code create} - and this path
+     * was the one that did not, so a deal that arrived over WhatsApp had an activity log that began
+     * mid-conversation with no record of where the lead came from. That is the first thing anybody
+     * looks at when asking how a deal got here.
+     *
+     * <p>A failure is swallowed. The deal exists and the customer's message is about to be filed
+     * against it; losing the audit line is worth a log entry, not a lost lead.
+     */
+    private Mono<Ticket> logInboundWhatsappCreation(ProcessorAccess access, Ticket created) {
+
+        return this.activityService
+                // The explicit-access overload, like createForWebsite and createForCampaign use. The
+                // single-argument one resolves the *caller's* security context, and there is no caller
+                // here: this runs on a machine-to-machine handoff from the message service, so it
+                // would find nothing and the activity would never be written - silently, because the
+                // failure is swallowed below.
+                .acCreate(access, created, null)
+                .thenReturn(created)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Created deal {} from an inbound WhatsApp message but could not write its"
+                                    + " creation activity.",
+                            created.getId(),
+                            e);
+                    return Mono.just(created);
+                });
+    }
+
+    /**
+     * What to call a deal created for a stranger who messaged in.
+     *
+     * <p>Their WhatsApp profile name when there is one, their number otherwise. The number is not a
+     * bad name so much as no name at all, and it is what every one of these deals was called.
+     *
+     * <p><b>The name is attacker-controlled and is handled accordingly.</b> Anyone who knows the
+     * business number can reach this by sending one message, and the value is whatever they typed on
+     * their own handset. So it is trimmed, bounded to the column's length, and stripped of the
+     * control characters that would let a name break the line it is rendered on or a CSV export it
+     * lands in. It is only ever a label: resolution stays on the phone number throughout, and nothing
+     * matches on this.
+     *
+     * <p>Package-private so {@code InboundWhatsappDealNameTest} can exercise the sanitising directly.
+     * It is the one part of this class that handles a value chosen by somebody outside the tenant, and
+     * testing it through the reactive create path would need the whole service mocked to assert on a
+     * string.
+     */
+    static String dealNameFrom(String customerName, PhoneNumber customerPhone) {
+
+        if (StringUtil.safeIsBlank(customerName)) return customerPhone.getNumber();
+
+        // Two passes, and the second is not tidiness. Stripping turns each control character into a
+        // space, so "Vishwas\r\nKumar" would otherwise keep a double space, and a name padded with
+        // twenty of them would read as two columns in a list.
+        String cleaned = customerName
+                .replaceAll("[\\p{Cntrl}\\p{Cf}]", " ")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
+
+        // A name that was nothing but control characters. Falling back is right: an empty deal name
+        // is unusable in a list and the number at least identifies the lead.
+        if (cleaned.isEmpty()) return customerPhone.getNumber();
+
+        return cleaned.length() > MAX_INBOUND_NAME_LENGTH
+                ? cleaned.substring(0, MAX_INBOUND_NAME_LENGTH)
+                : cleaned;
     }
 
     private Mono<List<Ticket>> getTickets(

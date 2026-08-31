@@ -77,6 +77,15 @@ public class BridgeEvent implements Serializable {
     private String pushName;
 
     /**
+     * Whether this message came out of WhatsApp's history sync rather than arriving live.
+     *
+     * <p>Forwarded rather than acted on here. It matters two hops away, where it stops a backfill
+     * creating deals: a sync blob carries the recent history of every chat on the handset, so with
+     * creation enabled, linking one number would fabricate a deal per contact.
+     */
+    private Boolean backfilled;
+
+    /**
      * Where the bridge stored an attachment. Present only on MEDIA_READY, which is the second half
      * of a media message: the first half already arrived under this same message id.
      */
