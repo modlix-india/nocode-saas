@@ -68,12 +68,22 @@ set -euo pipefail
 CONTEXT_APP="appbuilder"   # builder app the API calls run under (as the UI does)
 AUTH_CLIENT="SYSTEM"       # the login user's own client (same on every env)
 
+# Non-local environments are addressed by their gateway on the VCN, not through the
+# public edge, so this script needs the VPN.
+#
+# Not a preference. The edge's generic "location ~ /api/" block sets no
+# proxy_read_timeout, so nginx's 60s default applies, and applying one large page is
+# slower than that: leadzump's dealProfile is 1532 components and took 52s on dev and
+# 62s on stage, where it was cut off mid-write with a 504 and nothing committed. The
+# neighbouring "location ~* /api/core/function/" block already carries an explicit
+# 300s for the same reason. The gateway is exactly what nginx proxies to, so going
+# direct drops the timeout and nothing else.
 env_url() {
   case "$1" in
     local) echo "https://apps.local.modlix.com" ;;
-    dev)   echo "https://apps.dev.modlix.com" ;;
-    stage) echo "https://apps.stage.modlix.com" ;;
-    prod)  echo "https://apps.modlix.com" ;;
+    dev)   echo "http://dev.sub10150624021.modlixvcn.oraclevcn.com:8080" ;;
+    stage) echo "http://stage.sub10150624021.modlixvcn.oraclevcn.com:8080" ;;
+    prod)  echo "http://prod.sub10150624021.modlixvcn.oraclevcn.com:8080" ;;
     *) return 1 ;;
   esac
 }
