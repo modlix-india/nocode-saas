@@ -193,7 +193,16 @@ public class WhatsappOutboxSweeper {
         }
 
         return this.sessionService
-                .sendQueued(row.getAppCode(), row.getClientCode(), session, row.getToPhone(), row.getBodyText())
+                // The deal is not in doubt here: the row was queued against it. Passing it means the
+                // stored message is filed against that deal rather than against whichever deal on the
+                // customer's number happened to be touched most recently.
+                .sendQueued(
+                        row.getAppCode(),
+                        row.getClientCode(),
+                        ticket.getId(),
+                        session,
+                        row.getToPhone(),
+                        row.getBodyText())
                 .flatMap(response -> this.outboxDao.markSent(
                         row.getId(),
                         string(response, "messageId"),

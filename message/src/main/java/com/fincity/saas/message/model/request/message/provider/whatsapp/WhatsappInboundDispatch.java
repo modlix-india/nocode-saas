@@ -98,6 +98,38 @@ public class WhatsappInboundDispatch implements Serializable {
     private String bridgeSessionId;
 
     /**
+     * The name the customer has set on their own WhatsApp profile, as WhatsApp sends it with every
+     * inbound message.
+     *
+     * <p>Carried because it is the only thing in an inbound message that names the person. Without
+     * it, a deal created for a stranger who messages in can only be called after their phone number,
+     * which is what every such deal was called. The bridge has always sent it; this hop simply never
+     * copied it across.
+     *
+     * <p>Untrusted display text, set by whoever is messaging. It names a deal and is never matched
+     * on, so the consumer bounds its length and treats a blank as absent.
+     */
+    private String pushName;
+
+    /**
+     * Whether the number this arrived on is the tenant's default.
+     *
+     * <p>Only this service can answer it, because the flag lives on the session row here. The
+     * consumer needs it to decide which products a message on this number may belong to: a product
+     * that names no number sends through the default, so a message on the default legitimately
+     * belongs to a deal on a product that does not name it.
+     */
+    private Boolean sessionIsDefault;
+
+    /**
+     * Whether this message was recovered from WhatsApp's history sync rather than received live.
+     *
+     * <p>Carried so the consumer can refuse to create deals for it. See
+     * {@code BridgeEvent.backfilled}.
+     */
+    private Boolean backfilled;
+
+    /**
      * Tappable actions the sender attached: a "Pay Now" URL, a call button, a quick reply.
      *
      * <p>Flat maps rather than a typed model on purpose. This service only forwards them, and the

@@ -322,7 +322,12 @@ public class WhatsappSessionService {
      * discarding it.
      */
     public Mono<Map<String, Object>> sendQueued(
-            String appCode, String clientCode, Map<String, Object> session, String toPhone, String text) {
+            String appCode,
+            String clientCode,
+            ULong ticketId,
+            Map<String, Object> session,
+            String toPhone,
+            String text) {
 
         String sessionId = string(session, KEY_ID);
 
@@ -331,7 +336,8 @@ public class WhatsappSessionService {
 
         return this.feignMessageService
                 .sendWhatsappSessionMessage(appCode, clientCode, sessionId, Map.of("to", toPhone, "text", text))
-                .flatMap(response -> this.recordOutbound(appCode, clientCode, session, toPhone, text, response)
+                .flatMap(response -> this.recordOutbound(
+                                appCode, clientCode, ticketId, session, toPhone, text, response)
                         .thenReturn(response))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendQueued"));
     }
@@ -374,11 +380,12 @@ public class WhatsappSessionService {
     private Mono<Void> recordOutbound(
             String appCode,
             String clientCode,
+            ULong ticketId,
             Map<String, Object> session,
             String toPhone,
             String text,
             Map<String, Object> response) {
-        return this.recordOutbound(appCode, clientCode, session, toPhone, text, response, null, null, null);
+        return this.recordOutbound(appCode, clientCode, ticketId, session, toPhone, text, response, null, null, null);
     }
 
     /**
@@ -392,6 +399,7 @@ public class WhatsappSessionService {
     private Mono<Void> recordOutbound(
             String appCode,
             String clientCode,
+            ULong ticketId,
             Map<String, Object> session,
             String toPhone,
             String text,
@@ -410,6 +418,11 @@ public class WhatsappSessionService {
 
         WhatsappInboundRequest sent = new WhatsappInboundRequest()
                 .setMetaMessageId(messageId)
+                // The deal this went to, which every caller here already knows. Left out until now,
+                // so an outbound message was filed by resolving the customer's number - and that
+                // resolution answers with the most recently updated match, so on a customer holding
+                // two deals an agent's own message could land on the other one.
+                .setTicketId(ticketId)
                 .setEventType("MESSAGE")
                 .setMessageType((type == null ? WhatsappMessageType.TEXT : type).getValue())
                 .setMessageStatus("sent")
@@ -530,6 +543,7 @@ public class WhatsappSessionService {
                 .flatMap(response -> this.recordOutbound(
                                 access.getAppCode(),
                                 access.getClientCode(),
+                                ticket.getId(),
                                 session,
                                 to,
                                 caption,
@@ -679,6 +693,7 @@ public class WhatsappSessionService {
                 .flatMap(response -> this.recordOutbound(
                                 access.getAppCode(),
                                 access.getClientCode(),
+                                ticket.getId(),
                                 session,
                                 to,
                                 text,

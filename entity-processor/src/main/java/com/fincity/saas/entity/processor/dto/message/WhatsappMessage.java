@@ -138,11 +138,52 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private boolean mediaIsVoiceNote;
 
     /**
+     * Why the attachment never arrived, when it never will.
+     *
+     * <p>The bridge already decides this: it abandons a fetch that cannot succeed, because the media
+     * is too large or WhatsApp no longer serves it, and reports {@code mediaError} on the MEDIA_READY
+     * event. That value travelled all the way here and was then only written to a log, so nothing a
+     * reader could see ever said the attachment was not coming.
+     *
+     * <p>The visible consequence was a bubble with nothing in it. A media message whose bytes never
+     * arrived has no body either, so the thread drew a correctly dated bubble containing only its
+     * timestamp, indistinguishable from a message that was never delivered. Re-linking a number
+     * produces this by the handful: WhatsApp will not serve media for messages sent while no device
+     * was attached.
+     *
+     * <p>Distinct from {@link #mediaExpiredAt}, which means the bytes arrived and our own retention
+     * sweep removed them later. Those two have to read differently: one is history we chose to drop,
+     * the other is something we never had.
+     */
+    private String mediaError;
+
+    /**
      * When the retention sweep removed the bytes. Non-null means the file is gone deliberately,
      * which is a different thing from an attachment that has not arrived yet, and the two have to
      * read differently in the thread.
      */
     private LocalDateTime mediaExpiredAt;
+
+    /**
+     * The attachment's URL, flattened out of {@link #mediaFileDetail} for the thread to read.
+     *
+     * <p>Not a column, like {@code Ticket.latestComment}. Filled in on the read path only.
+     *
+     * <p><b>It exists because the expression engine throws rather than yielding nothing.</b>
+     * {@code ObjectOperator} raises "Cannot apply array operator on a null value" the moment it
+     * indexes into a falsy parent, so {@code Parent.mediaFileDetail.url} does not evaluate to empty
+     * when a message has no attachment - it fails, and a component whose visibility failed is hidden.
+     * Every element of a media bubble was gated on that path, including the one whose whole job was
+     * to say the attachment was unavailable, so all of them disappeared together and the bubble
+     * rendered as a date and nothing else. A scalar cannot be indexed into and cannot throw.
+     */
+    private String mediaUrl;
+
+    /** The inline preview's URL, flattened for the same reason as {@link #mediaUrl}. */
+    private String mediaThumbnailUrl;
+
+    /** The attachment's display name, flattened for the same reason as {@link #mediaUrl}. */
+    private String mediaName;
 
     /**
      * The message a reaction applies to.
@@ -214,6 +255,10 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.mediaThumbnailFileDetail = other.mediaThumbnailFileDetail;
         this.mediaPageCount = other.mediaPageCount;
         this.mediaIsVoiceNote = other.mediaIsVoiceNote;
+        this.mediaError = other.mediaError;
+        this.mediaUrl = other.mediaUrl;
+        this.mediaThumbnailUrl = other.mediaThumbnailUrl;
+        this.mediaName = other.mediaName;
         this.mediaExpiredAt = other.mediaExpiredAt;
         this.reactionToMessageId = other.reactionToMessageId;
         this.reactionEmoji = other.reactionEmoji;

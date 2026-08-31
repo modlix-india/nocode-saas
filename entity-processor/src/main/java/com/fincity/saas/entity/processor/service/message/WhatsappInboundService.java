@@ -7,15 +7,23 @@ import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageStatus;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.message.WhatsappInboundRequest;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.service.TicketAudienceService;
 import com.fincity.saas.entity.processor.service.TicketService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
+import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,16 +59,19 @@ public class WhatsappInboundService {
     private final TicketService ticketService;
     private final WhatsappEventService eventService;
     private final TicketAudienceService audienceService;
+    private final ProductService productService;
 
     public WhatsappInboundService(
             WhatsappMessageDAO dao,
             TicketService ticketService,
             WhatsappEventService eventService,
-            TicketAudienceService audienceService) {
+            TicketAudienceService audienceService,
+            ProductService productService) {
         this.audienceService = audienceService;
         this.dao = dao;
         this.ticketService = ticketService;
         this.eventService = eventService;
+        this.productService = productService;
     }
 
     public Mono<WhatsappMessage> accept(String appCode, String clientCode, WhatsappInboundRequest request) {
@@ -108,6 +119,11 @@ public class WhatsappInboundService {
      * without one has nothing to say, and this is not the place to notice orphans: that is the
      * inbound resolution's job and it logs it there.
      *
+     * <p>The kind decides whether anybody is interrupted, and only a message from the customer is.
+     * {@code MESSAGE} reaches everyone who can see the deal and raises a toast; {@code STATUS}
+     * reaches only whoever has that thread open and raises nothing. Both write the ping the thread
+     * reloads on, so nothing stops refreshing live either way.
+     *
      * <p>Returns the message unchanged and cannot fail the chain. A stale screen is a nuisance; a
      * customer message rejected because a Redis publish failed is a lost conversation.
      */
@@ -119,6 +135,16 @@ public class WhatsappInboundService {
         // A patch completes a bubble that has already been announced, rather than adding one.
         boolean patch = request.isStatusUpdate() || request.isMediaReady();
 
+        // Only a message from the customer is worth interrupting somebody for.
+        //
+        // An outbound mirror used to be announced as MESSAGE, exactly like an inbound one, so
+        // sending a message raised a notification and the customer's reply raised a second: one
+        // conversational turn, two alerts, and the first of them telling the sender what they had
+        // just typed. STATUS is the right kind for it, not silence: it still reaches whoever has
+        // that thread open, so a colleague watching sees the bubble appear live, and it raises
+        // nothing for anyone who is not looking.
+        boolean announceable = !patch && !Boolean.TRUE.equals(request.getOutbound());
+
         // One indexed read plus one audience resolution per stored message. Both used to be free,
         // because the event carried only a deal id and every browser worked out for itself whether
         // it cared. That cost one authenticated ticket read per open browser per event; this costs
@@ -126,11 +152,12 @@ public class WhatsappInboundService {
         return this.ticketService
                 .findById(message.getTicketId())
                 .flatMap(ticket -> this.audienceService.audienceFor(ticket).map(recipients -> {
-                    // The body only rides along for a real message. A status receipt has none, an
-                    // outbound mirror's text is already on the sender's screen, and a media patch
-                    // belongs to a bubble whose body was announced when it arrived - repeating it
-                    // would raise a second toast for one message.
-                    String body = patch ? null : message.getBodyText();
+                    // The body only rides along for something that will actually be announced. It is
+                    // the notification's text and nothing else reads it, so carrying it on a status
+                    // receipt, a media patch or our own outbound mirror only risks a second toast
+                    // for one message. This tracked `patch` alone until the outbound case moved,
+                    // which meant an outbound mirror carried a body it had no use for.
+                    String body = announceable ? message.getBodyText() : null;
                     return new WhatsappEventService.TicketRouting(
                             ticket.getId(),
                             ticket.getProductId(),
@@ -139,13 +166,12 @@ public class WhatsappInboundService {
                             body,
                             recipients);
                 }))
-                // STATUS rather than MESSAGE for both kinds of patch, which is what narrows them to
-                // whoever is actually looking at the thread. A receipt and a late-arriving picture
-                // are both changes to a bubble already on screen; only someone watching that deal
-                // has anywhere to put them.
-                .flatMap(routing -> patch
-                        ? this.eventService.publishStatus(appCode, clientCode, routing)
-                        : this.eventService.publishMessage(appCode, clientCode, routing))
+                // STATUS narrows to whoever is actually looking at the thread. A receipt, a
+                // late-arriving picture and a message we sent ourselves are all changes to a
+                // conversation somebody may have open; none of them is news.
+                .flatMap(routing -> announceable
+                        ? this.eventService.publishMessage(appCode, clientCode, routing)
+                        : this.eventService.publishStatus(appCode, clientCode, routing))
                 .onErrorResume(e -> {
                     logger.warn("Stored WhatsApp message {} but could not announce it.", request.getMetaMessageId(), e);
                     return Mono.empty();
@@ -276,13 +302,17 @@ public class WhatsappInboundService {
     /**
      * Finds or creates the deal this message belongs to, and moves it up the conversation list.
      *
-     * <p>Delegates to {@code registerWhatsappMessage}, which owns the product scoping, the fan-out
-     * across every deal on that number, and the decision to create one when a stranger messages in.
-     * A failure here is logged and the message still stores with no deal: losing what the customer
-     * said is worse than filing it late.
+     * <p>Delegates to {@code registerWhatsappMessage}, which owns the fan-out across the deals on
+     * that number and the decision to create one when a stranger messages in. The product scope is
+     * resolved here, because the mapping lives on this side. A failure is logged and the message
+     * still stores with no deal: losing what the customer said is worse than filing it late.
+     *
+     * <p>An outbound send is not resolved at all. See {@link #attachKnownTicket}.
      */
     private Mono<WhatsappMessage> attachTicket(
             String appCode, String clientCode, WhatsappInboundRequest request, WhatsappMessage message) {
+
+        if (request.getTicketId() != null) return this.attachKnownTicket(request, message);
 
         String customerNumber = request.getCustomerPhoneNumber() != null
                 ? request.getCustomerPhoneNumber()
@@ -290,16 +320,27 @@ public class WhatsappInboundService {
 
         if (customerNumber == null || customerNumber.isBlank()) return Mono.just(message);
 
-        return this.ticketService
-                .registerWhatsappMessage(
+        return this.resolveProducts(appCode, clientCode, request)
+                .flatMap(scope -> this.ticketService.registerWhatsappMessage(
                         appCode,
                         clientCode,
-                        ULongUtil.valueOf(request.getProductId()),
+                        new TicketService.WhatsappOrigin(
+                                scope.productIds(),
+                                scope.createUnder(),
+                                // Only from a genuine inbound message. On an outbound mirror the
+                                // push name is our own linked handset's, so naming a deal from it
+                                // would label the lead with the salesperson's WhatsApp name.
+                                Boolean.TRUE.equals(request.getOutbound()) ? null : request.getPushName()),
                         PhoneNumber.of(customerNumber),
                         occurredAt(request),
-                        // Only a real inbound message justifies creating a deal. A status update is
-                        // about something we already sent, so it never should.
-                        !request.isStatusUpdate() && !Boolean.TRUE.equals(request.getOutbound()))
+                        // Only a real, live inbound message justifies creating a deal. A status
+                        // update is about something we already sent, so it never should - and neither
+                        // does recovered history, however genuinely inbound it was: a sync blob names
+                        // every contact on the handset, and creating for those would read as a flood
+                        // of new leads rather than as the backfill it is.
+                        !request.isStatusUpdate()
+                                && !Boolean.TRUE.equals(request.getOutbound())
+                                && !Boolean.TRUE.equals(request.getBackfilled())))
                 .map(ticket -> message.setTicketId(ticket.getId()))
                 .defaultIfEmpty(message)
                 .onErrorResume(e -> {
@@ -309,6 +350,178 @@ public class WhatsappInboundService {
                             e);
                     return Mono.just(message);
                 });
+    }
+
+    /**
+     * Files a message against the deal the caller already knows it belongs to.
+     *
+     * <p>The outbound path, and the only path where the deal is knowable rather than inferred: a
+     * person clicked Send on a deal, or the sweeper released a message queued against one. Resolving
+     * it by phone number instead was wrong for any customer holding more than one deal, because the
+     * resolution answers with the most recently updated match. An agent sending from one deal could
+     * have their own message filed against another, and since each deal's thread reads only the
+     * messages stamped to it, one conversation ended up scattered across several.
+     *
+     * <p>The deal is still moved up the conversation list, because sending is activity on it. Only
+     * that one deal, unlike the inbound fan-out: a message we sent went to a particular deal.
+     */
+    private Mono<WhatsappMessage> attachKnownTicket(WhatsappInboundRequest request, WhatsappMessage message) {
+
+        return this.ticketService
+                .touchWhatsappConversation(request.getTicketId(), occurredAt(request))
+                .thenReturn(message.setTicketId(request.getTicketId()))
+                .onErrorResume(e -> {
+                    // The stamp is the part that matters and it is already applied; only the sort
+                    // order is lost, and the next message on the thread corrects it.
+                    logger.warn(
+                            "Filed WhatsApp message {} against deal {} but could not move that deal up the"
+                                    + " conversation list.",
+                            request.getMetaMessageId(),
+                            request.getTicketId(),
+                            e);
+                    return Mono.just(message.setTicketId(request.getTicketId()));
+                });
+    }
+
+    /**
+     * Which products a message on this business number belongs to, and where a new deal goes.
+     *
+     * <p>{@code productIds} scopes the match and can hold several, because one number may serve
+     * several products. {@code createUnder} is the single product a brand-new deal is created in, and
+     * is null when nothing can be resolved, which sends the caller to the tenant's oldest active
+     * product as before.
+     */
+    private record ProductScope(List<ULong> productIds, ULong createUnder) {
+
+        /**
+         * Nothing resolved: match on the customer's number alone and let creation fall back to the
+         * tenant's oldest active product, which is what happened before any of this existed.
+         */
+        private static ProductScope unscoped() {
+            return new ProductScope(List.of(), null);
+        }
+    }
+
+    /**
+     * Resolves the product scope for an inbound message from the number it arrived on.
+     *
+     * <p><b>This is the mapping the customer configures, and until now nothing on the inbound path
+     * read it.</b> The message service dispatches {@code productId} from its own
+     * {@code MESSAGE_WHATSAPP_PHONE_NUMBERS.PRODUCT_ID}, a column left over from the Cloud API that
+     * only the link call ever writes and that the numbers page has never sent. So it was null for
+     * every linked number, every inbound deal was created with no product, and creation fell through
+     * to the tenant's oldest active product: every WhatsApp deal landed on one product regardless of
+     * how the numbers screen was set up.
+     *
+     * <p>The live mapping is the reverse direction, {@code Product.whatsappSessionCode}, which is
+     * what the numbers screen writes and what outbound sending already resolves through. So this
+     * reads it, keyed on the bridge session id the dispatch already carries.
+     *
+     * <p>A declared {@code productId} still wins when one is present. It is how pre-pivot Cloud API
+     * rows and any future caller that genuinely knows the product express it, and honouring it costs
+     * a branch.
+     *
+     * <p><b>Which products the number serves is two questions, not one.</b> The products that name
+     * this session, always; plus, when this session is the tenant's <i>default</i>, the products that
+     * name no session at all, because those send through the default and so their deals' own traffic
+     * arrives on this number. Leaving the second set out was the trap: a deal on an unmapped product
+     * would stop matching, its sent messages would vanish from its own thread, and the customer's
+     * replies would manufacture a second deal for them.
+     *
+     * <p>Never fails the handoff. Every unresolved case degrades to matching on the customer's number
+     * alone, which is what happened before any of this existed, because a message filed under the
+     * wrong product is recoverable by a person and a message rejected at ingest is not.
+     */
+    private Mono<ProductScope> resolveProducts(String appCode, String clientCode, WhatsappInboundRequest request) {
+
+        ULong declared = ULongUtil.valueOf(request.getProductId());
+        if (declared != null) return Mono.just(new ProductScope(List.of(declared), declared));
+
+        if (StringUtil.safeIsBlank(request.getBridgeSessionId())) return Mono.just(ProductScope.unscoped());
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+        boolean isDefault = Boolean.TRUE.equals(request.getSessionIsDefault());
+
+        return this.productService
+                .getByWhatsappSessionCode(access, request.getBridgeSessionId())
+                .defaultIfEmpty(List.of())
+                .flatMap(mapped -> (isDefault
+                                ? this.productService.getWithoutWhatsappSession(access).defaultIfEmpty(List.of())
+                                : Mono.just(List.<Product>of()))
+                        .map(unmapped -> this.toScope(request.getBridgeSessionId(), mapped, unmapped)))
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Could not resolve which products WhatsApp number {} serves. Filing this message"
+                                    + " without a product scope, which may put a new deal on the wrong product.",
+                            request.getBridgeSessionId(),
+                            e);
+                    return Mono.just(ProductScope.unscoped());
+                });
+    }
+
+    /**
+     * Turns the products a number serves into a scope.
+     *
+     * <p><b>Matching</b> spans every product in the scope, mapped and default-inherited, and includes
+     * <i>inactive</i> ones: a deal that already exists on a product somebody has since deactivated is
+     * still that customer's deal, and excluding it would create a duplicate on their next message.
+     * Matching used to ignore the scope entirely and match on the customer's number alone, which is
+     * how one customer's conversation ended up spread across deals on unrelated products.
+     *
+     * <p><b>Creation</b> has to pick exactly one, and only from the active products, because {@code
+     * createFromInboundWhatsapp} refuses an inactive one and would store the message with no deal at
+     * all. A product that explicitly names this number is preferred over one that merely inherits it
+     * as the default, which is the whole point of configuring the mapping. Lowest id, the oldest, is
+     * the only stable ordering a product carries.
+     *
+     * <p>Ambiguity is logged rather than guessed at silently. Two products sharing one number is a
+     * real configuration, and a message from a stranger carries nothing saying which they meant, so
+     * somebody has to know it is happening.
+     */
+    private ProductScope toScope(String sessionCode, List<Product> mapped, List<Product> defaultInherited) {
+
+        List<ULong> scope = Stream.concat(mapped.stream(), defaultInherited.stream())
+                .map(Product::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (scope.isEmpty()) return ProductScope.unscoped();
+
+        List<Product> mappedActive = activeByAge(mapped);
+        List<Product> inheritedActive = activeByAge(defaultInherited);
+
+        // Named beats inherited. A product that was pointed at this number deliberately is a better
+        // home for a new lead than one that only reaches it because nobody configured it.
+        List<Product> candidates = mappedActive.isEmpty() ? inheritedActive : mappedActive;
+
+        if (candidates.isEmpty()) {
+            logger.warn(
+                    "WhatsApp number {} serves only inactive product(s) {}. A new deal will go to the"
+                            + " tenant's oldest active product instead.",
+                    sessionCode,
+                    scope);
+            return new ProductScope(scope, null);
+        }
+
+        if (candidates.size() > 1)
+            logger.warn(
+                    "WhatsApp number {} serves {} products. A message from a stranger carries nothing that"
+                            + " says which, so a new deal goes to the oldest of them, {}. Give each product"
+                            + " its own number to make this unambiguous.",
+                    sessionCode,
+                    candidates.size(),
+                    candidates.getFirst().getId());
+
+        return new ProductScope(scope, candidates.getFirst().getId());
+    }
+
+    private static List<Product> activeByAge(List<Product> products) {
+        return products.stream()
+                .filter(product -> product.getId() != null)
+                .filter(Product::isActive)
+                .sorted(Comparator.comparing(Product::getId))
+                .toList();
     }
 
     private void applyStatusTimes(WhatsappMessage message, WhatsappMessageStatus status, LocalDateTime at) {
@@ -342,8 +555,12 @@ public class WhatsappInboundService {
         this.applyMediaFileDetail(message, request);
 
         if (!StringUtil.safeIsBlank(request.getMediaError())) {
-            // Nothing to store and nothing more to wait for. Recorded on the row so the thread can
-            // say the attachment is not coming rather than showing a frame that never fills.
+            // Stored, not merely logged. This comment claimed the row carried it and the code only
+            // wrote a log line, which is why a message whose attachment never arrived rendered as a
+            // bubble containing nothing but its timestamp: no body, no picture and no explanation.
+            message.setMediaError(
+                    request.getMediaError().substring(0, Math.min(request.getMediaError().length(), 500)));
+
             logger.warn(
                     "Attachment for message {} will not arrive: {}",
                     request.getMetaMessageId(),
@@ -362,6 +579,13 @@ public class WhatsappInboundService {
      */
     private void applyMediaFileDetail(WhatsappMessage message, WhatsappInboundRequest request) {
 
+        // Recorded from whichever event carries it, not only from MEDIA_READY. A backfilled message
+        // says up front that its attachment is not coming - there will never be a MEDIA_READY for it -
+        // and without this that message would render as a media bubble with nothing in it.
+        if (!StringUtil.safeIsBlank(request.getMediaError()))
+            message.setMediaError(
+                    request.getMediaError().substring(0, Math.min(request.getMediaError().length(), 500)));
+
         if (request.getMediaMimeType() != null) message.setMediaMimeType(request.getMediaMimeType());
         if (request.getMediaSize() != null) message.setMediaSize(request.getMediaSize());
         if (request.getMediaPageCount() != null) message.setMediaPageCount(request.getMediaPageCount());
@@ -378,7 +602,12 @@ public class WhatsappInboundService {
             message.setReactionToMessageId(request.getReactionToMessageId());
 
         FileDetail detail = toFileDetail(request.getMediaFileDetail());
-        if (detail != null) message.setMediaFileDetail(detail);
+        if (detail != null) {
+            message.setMediaFileDetail(detail);
+            // The bytes arrived after all, so whatever we last said about them not coming is no
+            // longer true. A retry that finally succeeds must not leave the thread still apologising.
+            message.setMediaError(null);
+        }
     }
 
     /**

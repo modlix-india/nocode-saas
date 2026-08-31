@@ -66,4 +66,16 @@ public class BridgeSessionSnapshot implements Serializable {
     private Integer sentLastHour;
     private Integer reconnects;
     private String lastError;
+
+    /**
+     * Whether a handset ever completed a scan on this session, read by the bridge from its device
+     * store rather than from any timestamp.
+     *
+     * <p>Carried because {@code linkedAt} cannot answer the question on its own: it is absent both
+     * for a session that never paired and, before the bridge started restoring it, for every session
+     * on an instance that had restarted. The bridge's own reaper turns on this distinction, and it is
+     * worth having on this side too, so a row in the fleet view that has never had a device behind it
+     * is visibly that rather than looking like an offline customer.
+     */
+    private Boolean paired;
 }
