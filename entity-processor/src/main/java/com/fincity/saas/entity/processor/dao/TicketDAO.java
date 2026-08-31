@@ -177,8 +177,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     /**
-     * Resolves which deal an inbound WhatsApp message belongs to: the most recently updated active
-     * ticket on that product for that customer number.
+     * Every active deal a WhatsApp message on this number belongs to, most recently updated first.
      *
      * <p>Deliberately a plain phone match rather than reusing {@code readTicketByNumberAndEmail},
      * whose matching is driven by the per-app duplicate-detection rule. That rule can require an
@@ -186,20 +185,19 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
      *
      * <p>Both sides store E164 with the leading {@code +} ({@code PhoneUtil.parse} on this side,
      * {@code PhoneNumber.ofWhatsapp} on the message side), so this compares like with like.
-     */
-    /**
-     * Every active deal a WhatsApp message on this number belongs to, most recently updated first.
      *
      * <p>Returns all matches rather than one because a customer can hold several deals on the same
      * product, and the thread is shared across them: they all move to the top of the inbox together
      * when a message arrives. The caller stamps the message's {@code TICKET_ID} with the first.
      *
-     * <p>{@code productId} narrows to a single product when the business number is mapped to one. A
-     * null means the number is the tenant default, which serves every product, so the match is on
-     * the customer's number alone.
+     * <p>{@code productIds} narrows to the products the business number serves. A number can serve
+     * several, which is why this takes a list rather than one id: narrowing to a single product would
+     * hide a customer's existing deal on a sibling product and manufacture a duplicate for them.
+     * Empty or null means the number serves everything, so the match is on the customer's number
+     * alone.
      */
     public Mono<List<Ticket>> readActiveByProductAndPhone(
-            ProcessorAccess access, ULong productId, PhoneNumber phoneNumber) {
+            ProcessorAccess access, List<ULong> productIds, PhoneNumber phoneNumber) {
 
         if (phoneNumber == null || phoneNumber.getNumber() == null || phoneNumber.getNumber().isBlank())
             return Mono.just(List.of());
@@ -207,7 +205,11 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         List<AbstractCondition> conditions = new ArrayList<>();
         conditions.add(onEitherNumber(phoneNumber.getNumber()));
 
-        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+        if (productIds != null && !productIds.isEmpty())
+            conditions.add(new FilterCondition()
+                    .setField(Ticket.Fields.productId)
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(List.copyOf(productIds)));
 
         AbstractCondition condition = super.addAppCodeAndClientCode(ComplexCondition.and(conditions), access);
 

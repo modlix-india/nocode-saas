@@ -161,6 +161,17 @@ public class BridgeEventIngestService {
                 // looked the event up by - and simply never copied across, which left every inbound
                 // row with a null and the pacing layer's reply count reading zero.
                 .setBridgeSessionId(session.getCode())
+                // The customer's own WhatsApp profile name. Present on the bridge's event all along
+                // and never copied, which is why a deal created for a stranger messaging in could
+                // only be named after their phone number.
+                .setPushName(event.getPushName())
+                // Whether this number is the tenant's fallback. The consumer cannot know it - the
+                // flag is on the row here - and needs it to work out which products a message on
+                // this number may belong to.
+                .setSessionIsDefault(Boolean.TRUE.equals(session.getIsDefault()))
+                // Recovered history rather than a live message. Forwarded untouched; the consumer
+                // uses it to refuse deal creation.
+                .setBackfilled(Boolean.TRUE.equals(event.getBackfilled()))
                 .setMediaFileDetail(event.getMediaFileDetail())
                 .setMediaMimeType(event.getMediaMimeType())
                 .setMediaFileName(event.getMediaFileName())

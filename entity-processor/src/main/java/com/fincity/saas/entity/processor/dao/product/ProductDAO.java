@@ -81,6 +81,31 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
     }
 
     /**
+     * Every product that names no linked number, and therefore sends through the tenant's default.
+     *
+     * <p>The other half of resolving which products a WhatsApp message may belong to. Scoping a
+     * message on the default number to the products that explicitly name it would miss exactly these:
+     * a deal on an unmapped product sends through the default, so its own sent messages and the
+     * customer's replies both arrive on that number and must resolve back to it.
+     *
+     * <p>Same index as {@link #readByWhatsappSessionCode} ({@code IDX1_PRODUCTS_AC_CC_WSC}), and not
+     * filtered on active for the same reason: a deactivated product still holds deals whose thread has
+     * to keep working.
+     */
+    public Mono<List<Product>> readWithoutWhatsappSession(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        FilterCondition.make(Product.Fields.whatsappSessionCode, null)
+                                .setOperator(FilterConditionOperator.IS_NULL),
+                        access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(Product.class))
+                        .collectList());
+    }
+
+    /**
      * The tenant's oldest active product.
      *
      * <p>Used when an inbound WhatsApp message arrives from a number with no deal and the business

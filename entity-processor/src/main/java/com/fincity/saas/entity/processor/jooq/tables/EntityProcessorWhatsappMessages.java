@@ -352,6 +352,13 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_ERROR</code>.
+     * Why the attachment never arrived; null means it did, or is still coming
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> MEDIA_ERROR = createField(DSL.name("MEDIA_ERROR"), SQLDataType.VARCHAR(512), this, "Why the attachment never arrived; null means it did, or is still coming");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.MEDIA_EXPIRED_AT</code>.
      * When the retention sweep removed the bytes. Non-null means the file is
      * gone on purpose, not missing by accident.
