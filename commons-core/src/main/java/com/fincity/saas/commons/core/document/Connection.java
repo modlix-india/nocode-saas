@@ -21,7 +21,10 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
-@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'connectionType': 1}", name = "connectionFilteringIndex")
+// Distinct name required. Both of these were previously called
+// "connectionFilteringIndex", so Mongo rejected the second with
+// IndexKeySpecsConflict and only the first was ever created.
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'connectionType': 1}", name = "connectionTypeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)

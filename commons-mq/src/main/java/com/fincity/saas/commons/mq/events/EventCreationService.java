@@ -37,6 +37,11 @@ public class EventCreationService {
 		this.nextRoutingKey = nextRoutingKey.getNext();
 		return Mono.just(queObj)
 				.flatMap(q -> Mono.deferContextual(cv -> {
+					// The draft marker is captured HERE, at publish time, while the
+					// raising request's context still exists. The consumer has no
+					// request to read it from.
+					q.setDraft(Boolean.TRUE.equals(cv.getOrDefault(LogUtil.DRAFT_KEY, Boolean.FALSE)));
+
 					if (!cv.hasKey(LogUtil.DEBUG_KEY))
 						return Mono.just(q);
 					q.setXDebug(cv.get(LogUtil.DEBUG_KEY)

@@ -94,7 +94,12 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 x -> cacheService.evictAll(
                         this.getCacheName(e.getAppCode() + "_" + ManifestService.CACHE_NAME_MANIFEST, e.getAppCode())),
                 (x, y) -> cacheService
-                        .evictAll(this.getCacheName(e.getAppCode() + "_" + CACHE_NAME_PROPERTIES, e.getAppCode())),
+                        .evictAll(this.getCacheName(e.getAppCode() + "_" + CACHE_NAME_PROPERTIES, e.getAppCode()))
+                        // Both surfaces: a publish that cleared only the live entry
+                        // would leave the draft app definition serving indefinitely.
+                        .flatMap(evicted -> cacheService.evictAll(
+                                this.getCacheName(e.getAppCode() + "_" + CACHE_NAME_PROPERTIES, e.getAppCode(),
+                                        true))),
                 (x, y, z) -> cacheService
                         .evictAll(EngineService.CACHE_NAME_APPLICATION + "-" + e.getAppCode()),
                 (x, y, z, a) -> this.ssrCacheEvictionService.evictByAppCode(e.getAppCode()),
@@ -109,7 +114,9 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 x -> cacheService.evictAll(
                         this.getCacheName(appCode + "_" + ManifestService.CACHE_NAME_MANIFEST, appCode)),
                 (x, y) -> cacheService
-                        .evictAll(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode)),
+                        .evictAll(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode))
+                        .flatMap(evicted -> cacheService.evictAll(
+                                this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode, true))),
                 (x, y, z) -> cacheService
                         .evictAll(EngineService.CACHE_NAME_APPLICATION + "-" + appCode),
                 (x, y, z, a) -> this.ssrCacheEvictionService.evictByAppCode(appCode));
@@ -147,14 +154,35 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updatableEntity"));
     }
 
-    public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) { // NOSONAR
+    public Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode) {
+
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readProperties(name, appCode, clientCode, Boolean.TRUE.equals(draft)));
+    }
+
+    /**
+     * The app definition as the runtime consumes it, per surface.
+     *
+     * This is where an app's own draft actually takes effect: the client reads
+     * properties for its theme, styles, page list and app-level settings, so a
+     * drafted Application that this method could not see did nothing at all on the
+     * draft surface no matter what had been saved.
+     *
+     * Two things had to change together. Calling the 4-arg readIfExistsInBase meant
+     * draft = false, so the draft was never substituted; and the cache name had no
+     * surface dimension, so both surfaces shared one entry and whichever was read
+     * first won for the other. Fixing only one of them would have been worse than
+     * fixing neither.
+     */
+    private Mono<Map<String, Object>> readProperties(String name, String appCode, String clientCode,
+            boolean draft) { // NOSONAR
         // This method is not complex, it is just long.
 
         return FlatMapUtil.flatMapMonoWithNull(
 
                 () -> Mono.just(clientCode),
 
-                key -> cacheService.get(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), key)
+                key -> cacheService.get(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode, draft), key)
                         .map(this.pojoClass::cast),
 
                 (key, cApp) -> {
@@ -163,10 +191,14 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
                     return SecurityContextUtil.getUsersContextAuthentication()
                             .flatMap(ca -> this.readIfExistsInBase(name, appCode, ca.getUrlClientCode(),
-                                    clientCode));
+                                    clientCode, draft));
                 },
 
-                (key, cApp, dbApp) -> dbApp == null ? Mono.empty() : this.readInternal(dbApp.getId()),
+                // readDrafted, not readInternal(id): the draft has to be substituted
+                // here, not merely filtered for. Passing the flag to
+                // readIfExistsInBase above only controls the never-published filter.
+                (key, cApp, dbApp) -> dbApp == null ? Mono.empty()
+                        : this.readDrafted(dbApp, draft, clientCode),
 
                 (key, cApp, dbApp, mergedApp) -> {
 
@@ -191,8 +223,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
                     if (cApp == null && mergedApp != null) {
                         return cacheService
-                                .put(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), mergedApp,
-                                        key)
+                                .put(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode, draft),
+                                        mergedApp, key)
                                 .map(e -> clonedApp.getProperties());
                     }
 

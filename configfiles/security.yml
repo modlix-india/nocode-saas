@@ -50,3 +50,19 @@ sms:
     2factor:
       api:
         key: ${smsService.provider.2factor.api.key}
+
+# Draft hostnames need no key of their own. They are built as
+# d<32 hex><security.appCodeSuffix>.modlix.com, reusing the one per-environment
+# marker this service already uses for every other URL it builds, so there is no
+# second setting to keep in step. Blank appCodeSuffix is production and gives
+# d<hex>.modlix.com.
+#
+# The domain is fixed at modlix.com and does NOT follow the app's own live URL.
+# Apps live on sitezump.ai, fincity.com, cityville.in and third-party domains the
+# platform holds no wildcard certificate for; a draft host has to land somewhere we
+# can actually serve.
+#
+# LOCAL ONLY CAVEAT: /etc/hosts cannot wildcard, so a minted host does not resolve
+# on this machine until its exact name is added there. The agent works around that
+# by sending X-Forwarded-Host, which the gateway already reads; a human reviewing
+# the draft in a browser needs the hosts line.

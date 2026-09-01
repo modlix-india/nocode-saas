@@ -22,6 +22,7 @@
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <feign-reactor.version>4.2.1</feign-reactor.version>
         <jooq.version>3.20.3</jooq.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencies>
         <dependency>
@@ -122,6 +123,16 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -129,6 +140,13 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -140,6 +158,30 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!--
+                        Byte Buddy, which Mockito uses to build mocks, only officially
+                        supports JDKs up to 24. On a newer JDK it refuses to instrument a
+                        concrete class, so anything using @MockitoBean or mock(SomeClass)
+                        fails with "Mockito cannot mock this class" / "Could not modify all
+                        classes". That is a property of the JDK, not of the tests, and it
+                        made a plain `mvn clean install` fail here while the same tests
+                        passed when the flag was passed by hand.
+
+                        On a supported JDK this property is inert, so it is safe to set
+                        unconditionally rather than hiding it in a profile someone has to
+                        know to activate. Remove it once Byte Buddy supports the JDK in use.
+
+                        This module declares no jacoco, so setting argLine outright does not
+                        clobber a coverage agent. A module that does configure jacoco must
+                        use @{argLine} here instead.
+                    -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

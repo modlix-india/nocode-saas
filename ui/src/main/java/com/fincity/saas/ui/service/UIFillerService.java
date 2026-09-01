@@ -9,6 +9,12 @@ import com.fincity.saas.ui.repository.UIFillerDocumentRepository;
 @Service
 public class UIFillerService extends AbstractFillerService<UIFiller, UIFillerDocumentRepository> {
 
+    /** Draft and publish are supported for this object. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 	protected UIFillerService() {
 		super(UIFiller.class);
 	}

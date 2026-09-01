@@ -69,6 +69,12 @@ import reactor.util.function.Tuples;
 
 @Service
 public class CoreFunctionService extends AbstractFunctionService<CoreFunction, CoreFunctionDocumentRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     private static final Logger logger = LoggerFactory.getLogger(CoreFunctionService.class);
 

@@ -89,7 +89,16 @@ public class TupleSerializationModule extends SimpleModule {
 			}
 		});
 
-		this.addDeserializer(Tuple2.class, new JsonDeserializer<Tuple2>() {
+		// One deserializer for every arity. `Tuples.fromArray` already returns the
+		// right concrete type and the body below accepts 2..8 elements, so this was
+		// only ever a registration gap -- but Jackson picks a deserializer by the
+		// DECLARED type, and Tuple3 is not a subclass lookup away from Tuple2 as far
+		// as the registry is concerned. Serializers were registered for all eight
+		// from the start; deserializers stopped at Tuple2, so the first service to
+		// return a Tuple3 over the wire got "cannot deserialize from Array value"
+		// and every request through it failed.
+
+		JsonDeserializer<Tuple2> tupleDeserializer = new JsonDeserializer<Tuple2>() {
 
 			@Override
 			public Tuple2 deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
@@ -113,7 +122,15 @@ public class TupleSerializationModule extends SimpleModule {
 
 				return Tuples.fromArray(result.toArray());
 			}
-		});
+		};
+
+		this.addDeserializer(Tuple2.class, tupleDeserializer);
+		this.addDeserializer(Tuple3.class, (JsonDeserializer) tupleDeserializer);
+		this.addDeserializer(Tuple4.class, (JsonDeserializer) tupleDeserializer);
+		this.addDeserializer(Tuple5.class, (JsonDeserializer) tupleDeserializer);
+		this.addDeserializer(Tuple6.class, (JsonDeserializer) tupleDeserializer);
+		this.addDeserializer(Tuple7.class, (JsonDeserializer) tupleDeserializer);
+		this.addDeserializer(Tuple8.class, (JsonDeserializer) tupleDeserializer);
 	}
 
 	@SuppressWarnings("rawtypes")
