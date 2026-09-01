@@ -522,6 +522,49 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteStorage"));
     }
 
+    @Override
+    public Mono<Boolean> dropDraftStorage(String clientCode, Connection conn, Storage storage) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+
+                    MongoClient client = this.getMongoClient(conn);
+                    if (client == null)
+                        return Mono.just(Boolean.FALSE);
+
+                    // Named explicitly rather than resolved from the ambient flag: this
+                    // is called while deleting a definition, which happens on the live
+                    // surface, so isDraft() would be false exactly when we need the
+                    // draft namespace.
+                    String dbName = databaseName(
+                            BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
+                            storage.getAppCode(), true);
+
+                    var db = client.getDatabase(dbName);
+                    return Mono.from(db.getCollection(storage.getUniqueName()).drop())
+                            .then(Mono.from(db.getCollection(storage.getUniqueName() + "_version").drop()))
+                            .thenReturn(Boolean.TRUE)
+                            .onErrorReturn(Boolean.FALSE);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.dropDraftStorage"));
+    }
+
+    @Override
+    public Mono<Boolean> dropDraftDatabase(Connection conn, String appCode, String clientCode) {
+
+        if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank(clientCode))
+            return Mono.just(Boolean.FALSE);
+
+        MongoClient client = this.getMongoClient(conn);
+        if (client == null)
+            return Mono.just(Boolean.FALSE);
+
+        return Mono.from(client.getDatabase(databaseName(clientCode, appCode, true)).drop())
+                .thenReturn(Boolean.TRUE)
+                .onErrorReturn(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.dropDraftDatabase"));
+    }
+
     private Flux<Document> applyQueryOnElements(
             MongoCollection<Document> collection, Query query, Bson bsonCondition, Pageable page) {
         if (query.getFields() == null || query.getFields().isEmpty()) {

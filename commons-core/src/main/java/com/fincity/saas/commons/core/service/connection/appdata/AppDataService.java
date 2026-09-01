@@ -220,6 +220,38 @@ public class AppDataService {
      * resolution does not require an authenticated context, so this is safe from a
      * worker-triggered meter. Only the Mongo data service is implemented today.
      */
+    /**
+     * Drop an app's draft data when the app itself is being deleted.
+     *
+     * Draft rows are sandbox data: once the app is gone they mean nothing, and
+     * leaving them behind would keep an unreachable database on the cluster for
+     * good. The LIVE database is deliberately untouched, because orphaning it is
+     * long-standing behaviour and changing that is a separate decision.
+     */
+    public Mono<Boolean> dropDraftData(String appCode, String clientCode) {
+
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(conn -> this.mongoAppDataService.dropDraftDatabase(conn.orElse(null), appCode, clientCode))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftData"));
+    }
+
+    /**
+     * Drop one storage's draft collection when its definition is deleted.
+     *
+     * Called from StorageService.delete, which runs on the live surface, so the
+     * draft namespace has to be named rather than inferred from the ambient flag.
+     */
+    public Mono<Boolean> dropDraftStorageData(String appCode, String clientCode, Storage storage) {
+
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(conn -> this.mongoAppDataService.dropDraftStorage(clientCode, conn.orElse(null), storage))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftStorageData"));
+    }
+
     public Mono<Long> estimatedRowCount(String appCode, String clientCode) {
         return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
                 .flatMap(conn -> this.mongoAppDataService.estimatedRowCount(conn, appCode, clientCode))

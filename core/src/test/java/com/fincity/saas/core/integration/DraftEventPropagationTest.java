@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -89,20 +92,21 @@ class DraftEventPropagationTest extends AbstractIntegrationTest {
 
     @Test
     @Timeout(30)
-    @DisplayName("the marker round-trips through serialization, since it crosses a broker")
+    @DisplayName("the marker survives the queue's own JSON converter")
     void markerSurvivesSerialization() {
 
         EventQueObject sent = publishAndCapture(true);
 
-        // The object is Java-serialized onto the queue. A transient or missing
-        // accessor would drop the field silently and reintroduce the bug.
-        EventQueObject roundTripped = new EventQueObject()
-                .setEventName(sent.getEventName())
-                .setAppCode(sent.getAppCode())
-                .setClientCode(sent.getClientCode())
-                .setDraft(sent.isDraft());
+        // The converter the broker actually uses, not a hand-rolled copy:
+        // IMQConfiguration wires Jackson2JsonMessageConverter. A field Jackson
+        // cannot see would drop silently on the wire and reintroduce the bug,
+        // and this is the only place in the suite that would catch it.
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        Message message = converter.toMessage(sent, new MessageProperties());
+        Object back = converter.fromMessage(message);
 
-        assertEquals(sent.isDraft(), roundTripped.isDraft());
-        assertTrue(roundTripped.isDraft());
+        assertTrue(back instanceof EventQueObject, "converter did not round-trip the type");
+        assertTrue(((EventQueObject) back).isDraft(), "the marker did not survive serialization");
+        assertEquals(sent.getEventName(), ((EventQueObject) back).getEventName());
     }
 }

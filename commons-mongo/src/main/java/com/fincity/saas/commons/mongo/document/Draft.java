@@ -65,5 +65,18 @@ public class Draft extends AbstractUpdatableDTO<String, String> {
      */
     private int baseVersion;
 
+    /**
+     * The DRAFT's own version, incremented on every save. Distinct from
+     * baseVersion, which is the LIVE document's version and is frozen.
+     *
+     * There is one draft row per (app, type, name, clientCode), so it belongs to a
+     * CLIENT and not to a user: two people editing the same object share it. Before
+     * this field the second save simply replaced the first's content through the
+     * upsert, and neither person was told. baseVersion cannot detect that, because
+     * both people read the same live document and so send the same number; only a
+     * counter on the draft itself moves when someone else saves.
+     */
+    private int version = 1;
+
     private String message;
 }

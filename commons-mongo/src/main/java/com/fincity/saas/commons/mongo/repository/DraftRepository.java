@@ -21,5 +21,8 @@ public interface DraftRepository extends ReactiveCrudRepository<Draft, String> {
 
     Mono<Long> deleteByObjectAppCodeAndClientCode(String objectAppCode, String clientCode);
 
+    Mono<Long> deleteByObjectAppCodeAndObjectTypeAndClientCode(String objectAppCode, String objectType,
+            String clientCode);
+
     Mono<Void> deleteByObjectId(String objectId);
 }

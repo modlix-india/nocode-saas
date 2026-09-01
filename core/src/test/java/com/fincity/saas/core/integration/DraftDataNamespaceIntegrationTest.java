@@ -15,10 +15,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.mockito.Mockito;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
 import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.service.DeletionService;
+import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.mongodb.reactivestreams.client.MongoClient;
@@ -48,6 +51,12 @@ class DraftDataNamespaceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MongoClient mongoClient;
+
+    @Autowired
+    private StorageService storageService;
+
+    @Autowired
+    private DeletionService deletionService;
 
     /**
      * App data lives in its own databases, `<client>_<app>` and its `_draft`
@@ -109,6 +118,10 @@ class DraftDataNamespaceIntegrationTest extends AbstractIntegrationTest {
      * The whole claim being tested is where the bytes land, so going back through
      * the same code path that decides that would prove nothing.
      */
+    private List<String> databaseNames() {
+        return Flux.from(this.mongoClient.listDatabaseNames()).collectList().block();
+    }
+
     private List<String> collectionsIn(String database) {
         return Flux.from(this.mongoClient.getDatabase(database).listCollectionNames())
                 .collectList()
@@ -158,6 +171,66 @@ class DraftDataNamespaceIntegrationTest extends AbstractIntegrationTest {
         assertEquals(1, draftPage.getContent().size(), "the draft surface must see only its own row");
         assertEquals("live row", livePage.getContent().getFirst().get("title"));
         assertEquals("draft row", draftPage.getContent().getFirst().get("title"));
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("deleting the storage definition drops its draft collection but keeps live")
+    void deletingStorageDropsDraftOnly() {
+
+        setInheritance(List.of(SYSTEM));
+        Storage storage = mongoTemplate.findAll(Storage.class).blockFirst();
+        if (storage == null) {
+            storedStorage();
+            storage = mongoTemplate.findAll(Storage.class).blockFirst();
+        }
+        assertNotNull(storage);
+
+        asClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("live row"), false, null));
+        asDraftClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("draft row"), false, null));
+
+        assertTrue(collectionsIn(LIVE_DB).contains(UNIQUE_NAME));
+        assertTrue(collectionsIn(DRAFT_DB).contains(UNIQUE_NAME));
+
+        asClient(storageService.delete(storage.getId()));
+
+        assertFalse(collectionsIn(DRAFT_DB).contains(UNIQUE_NAME),
+                "draft rows outlived the definition that gave them meaning");
+
+        // Live data is deliberately left behind: not dropping it on a definition
+        // delete predates this work, and changing it would destroy customer data.
+        assertTrue(collectionsIn(LIVE_DB).contains(UNIQUE_NAME),
+                "live data must not be destroyed by a definition delete");
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("deleting the app drops the whole draft database but keeps live")
+    void deletingAppDropsDraftDatabaseOnly() {
+
+        setInheritance(List.of(SYSTEM));
+        storedStorage();
+
+        Mockito.when(this.feignSecurityService.hasDeleteAccess(Mockito.anyString(), Mockito.any(), Mockito.any(),
+                Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(Mono.just(Boolean.TRUE));
+
+        asClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("live row"), false, null));
+        asDraftClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("draft row"), false, null));
+
+        assertTrue(databaseNames().contains(LIVE_DB));
+        assertTrue(databaseNames().contains(DRAFT_DB));
+
+        asClient(deletionService.deleteEverything("localhost", "8080", SYSTEM, APP_CODE, APP_CODE));
+
+        assertFalse(databaseNames().contains(DRAFT_DB),
+                "the app's draft database outlived the app");
+
+        // Live app data is deliberately orphaned rather than destroyed. That is
+        // long-standing behaviour and predates the draft surface; a delete that
+        // starts wiping customer data is a separate decision.
+        assertTrue(databaseNames().contains(LIVE_DB),
+                "app deletion must not destroy live customer data");
     }
 
     @Test

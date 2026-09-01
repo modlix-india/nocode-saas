@@ -11,6 +11,7 @@ import com.fincity.saas.commons.core.enums.StorageTriggerType;
 import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.repository.StorageRepository;
+import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.appdata.IAppDataService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -24,6 +25,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -32,14 +37,42 @@ import reactor.util.context.Context;
 
 @Service
 public class StorageService extends AbstractOverridableDataService<Storage, StorageRepository> {
+    /**
+     * Core objects are drafted, exactly like the ui ones.
+     *
+     * A page's draft is worth little on its own: it usually depends on a storage
+     * whose schema changed, a connection, a template or an event that changed with
+     * it. Without this the draft surface could preview the page and nothing it
+     * talks to, so a change that spanned both had to be published to be seen at all,
+     * which is what the draft surface exists to avoid.
+     *
+     * The five draft routes are inherited from AbstractOverridableDataController and
+     * were answering 405 until this flag flipped; the core DraftService bean already
+     * existed and was unused.
+     */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     public static final String CACHE_NAME_STORAGE_SCHEMA = "storageSchema";
+
+    private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
 
     private final CoreMessageResourceService coreMsgService;
     private final CoreSchemaService coreSchemaService;
     private final CoreFunctionService coreFunctionService;
 
     private final Gson gson;
+
+    /**
+     * Lazy on purpose: MongoAppDataService takes StorageService in its constructor,
+     * so a normal injection here is a cycle. Only used on delete.
+     */
+    @Autowired
+    @Lazy
+    private AppDataService appDataService;
 
     protected StorageService(
             CoreMessageResourceService coreMsgService,
@@ -275,7 +308,24 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                         },
                         (storage, beforeExecuted, deleted, afterExecuted) -> this.cacheService
                                 .evict(CACHE_NAME_STORAGE_SCHEMA, id)
-                                .map(e -> deleted))
+                                .map(e -> deleted),
+                        // Draft rows are sandbox data and mean nothing once the
+                        // definition is gone, so they go with it. The LIVE collection
+                        // is deliberately left behind: not dropping it on a definition
+                        // delete is long-standing behaviour, and changing that would
+                        // silently destroy customer data.
+                        (storage, beforeExecuted, deleted, afterExecuted, evicted) -> this.appDataService
+                                .dropDraftStorageData(storage.getAppCode(), storage.getClientCode(), storage)
+                                // Best effort: the definition is already gone, so failing
+                                // the whole delete here would leave a worse state than an
+                                // orphaned sandbox collection. Logged so it is findable.
+                                .onErrorResume(err -> {
+                                    logger.error("Could not drop the draft collection for storage {} in {}/{}",
+                                            storage.getUniqueName(), storage.getClientCode(), storage.getAppCode(),
+                                            err);
+                                    return Mono.just(Boolean.FALSE);
+                                })
+                                .map(dropped -> deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.delete"));
     }
 

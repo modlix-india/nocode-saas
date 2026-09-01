@@ -58,28 +58,42 @@ public class ClientUrlService
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
-    /**
-     * Hostname suffix for draft surfaces, e.g. ".dev.modlix.com". Requires wildcard
-     * DNS and a wildcard certificate for that domain, which is infrastructure, not
-     * code. Blank leaves draft URLs unmintable rather than minting broken ones.
-     */
-    @Value("${security.draftUrlSuffix:}")
-    private String draftUrlSuffix;
 
     private static final String CACHE_NAME_CLIENT_URI = "uri";
 
     // This is used in gateway
-    public static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+    /**
+     * Must stay identical to the gateway's own copy in
+     * {@code GatewayFilter.CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE}: the gateway
+     * writes this cache and security evicts it, so a rename on one side alone
+     * means minting or changing a client URL stops evicting anything and the
+     * gateway serves a stale hostname resolution indefinitely.
+     *
+     * Renamed from "gatewayClientAppCode" when the cached value gained its third
+     * element. See the gateway constant for why the old name could not be kept.
+     */
+    public static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCodeType";
 
     private static final String HTTPS = "https://";
 
     private static final String SLASH = "/";
+
 
     /** Draft hostnames are the only gate on unpublished work, so they get real entropy. */
     private static final SecureRandom DRAFT_HOST_RANDOM = new SecureRandom();
 
     /** 16 bytes, rendered lowercase hex: 128 bits in 32 characters. */
     private static final int DRAFT_HOST_RANDOM_BYTES = 16;
+
+    /**
+     * Draft hosts always live under Modlix's own domain, never under the app's.
+     *
+     * Constant on purpose. The point of a draft host is that the platform can serve
+     * it: this domain is the one whose wildcard we hold, so putting every draft
+     * under it means no DNS record and no certificate per app. An app on
+     * ashwa.fincity.com still gets its draft here.
+     */
+    private static final String DRAFT_HOST_BASE_DOMAIN = ".modlix.com";
 
     public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
             ClientService clientService, AppService appService) {
@@ -424,13 +438,11 @@ public class ClientUrlService
      */
     public Mono<ClientUrl> mintDraftUrl(String appCode) {
 
-        // Without a suffix the generated host is a bare single label that resolves
-        // nowhere, and minting it would still rotate away a working URL. Refuse
-        // rather than hand back something broken.
-        if (StringUtil.safeIsBlank(this.draftUrlSuffix))
-            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    AbstractMessageService.OBJECT_NOT_FOUND, "Draft URL suffix", "security.draftUrlSuffix");
-
+        // No pre-flight check here any more, and that is deliberate rather than an
+        // omission: the host is built from a constant domain and the environment
+        // marker every other URL in this service already uses, so there is no
+        // configuration that can be missing. A blank appCodeSuffix is the
+        // production case, not an error.
         return FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -465,18 +477,27 @@ public class ClientUrlService
     }
 
     /**
-     * A random hostname under the configured suffix. Unguessable on purpose: the
-     * URL is the only thing gating access to the draft surface for anyone the link
-     * is shared with, and UK1_URL_PATTERN keeps it globally unique.
+     * A random hostname under Modlix's own domain: {@code d<32 hex><appCodeSuffix>.modlix.com}.
      *
-     * Built from base36UUID directly, NOT from UniqueUtil.uniqueName. That helper
-     * appends '_' after every name part, and an underscore is illegal in a
-     * hostname under RFC 1123: browsers reject the name and no CA will issue for
-     * it, wildcard certificate or not. The label is a leading letter followed by
-     * lowercase alphanumerics, which is a valid single DNS label and therefore
-     * covered by a *.<env> wildcard.
+     * Unguessable on purpose: the URL is the only thing gating access to the draft
+     * surface for anyone the link is shared with, and UK1_URL_PATTERN keeps it
+     * globally unique.
+     *
+     * The environment comes from {@code security.appCodeSuffix}, the marker this
+     * service and IndexHTMLService already use, rather than a draft-specific key.
+     * A second per-environment setting meaning almost the same thing is a setting
+     * someone eventually forgets to move, and a draft host silently pointing at the
+     * wrong environment is a bad way to find that out. Blank is production and
+     * yields {@code d<hex>.modlix.com}.
+     *
+     * The app's own live URL has no bearing on this. Deriving from it was tried and
+     * reverted: apps live on domains the platform holds no wildcard for
+     * (sitezump.ai, fincity.com, cityville.in), two-label live URLs such as
+     * theorempro.in produced a name directly under a public suffix, and a live URL
+     * whose first label is the environment (dev.adzump.ai) produced a host on the
+     * production apex.
      */
-    private String newDraftHost() {
+    String newDraftHost() {
 
         // NOT UniqueUtil.base36UUID(): that does
         // ByteBuffer.wrap(uuid.toString().getBytes()).getLong(), which reads the
@@ -493,12 +514,13 @@ public class ClientUrlService
         // Lowercase hex, deliberately. Base64url would be shorter but emits '-' and
         // '_', and an underscore is illegal in a hostname; lowercasing base64 would
         // also collapse case and throw away half the entropy. Hex is [0-9a-f] only,
-        // so the label is valid by construction: 'd' plus 32 characters, well inside
-        // the 63-character DNS label limit.
+        // so the label is valid by construction. The leading 'd' is not decoration:
+        // a DNS label may not start with a digit, and hex starts with one 10 times
+        // out of 16.
         StringBuilder label = new StringBuilder(1 + raw.length * 2).append('d');
         for (byte b : raw)
             label.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
 
-        return label + this.draftUrlSuffix;
+        return label + this.appCodeSuffix + DRAFT_HOST_BASE_DOMAIN;
     }
 }

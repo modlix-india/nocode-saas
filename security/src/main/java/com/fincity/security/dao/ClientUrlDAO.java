@@ -43,11 +43,22 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
                         .map(e -> e.into(this.pojoClass)));
     }
 
+    /**
+     * LIVE rows only, and the same for every general-purpose reader below.
+     *
+     * A DRAFT row is a bearer credential: its whole value is that the hostname is
+     * unguessable. These queries feed things that hand a URL back to a caller or
+     * treat it as the app's address, so an unfiltered read leaks the draft host to
+     * anyone who can ask an app for its URLs, and worse, lets a draft host be
+     * picked as the app's canonical one. getDraftUrl above is the only reader that
+     * should see DRAFT, and it asks for it explicitly.
+     */
     public Mono<List<String>> getClientUrlsBasedOnAppAndClient(String appCode, ULong clientId) {
 
         List<Condition> conditions = new ArrayList<>();
 
         conditions.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
+        conditions.add(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.LIVE));
 
         if (clientId != null)
             conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
@@ -59,11 +70,13 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
                 .map(Record1::value1).collectList();
     }
 
+    /** LIVE only. A freshly minted draft is the most recently updated row. */
     public Mono<String> getLatestClientUrlBasedOnAppAndClient(String appCode, ULong clientId) {
 
         List<Condition> conditions = new ArrayList<>();
 
         conditions.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
+        conditions.add(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.LIVE));
 
         if (clientId != null)
             conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId));
@@ -109,7 +122,8 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
                 .leftJoin(SecurityClient.SECURITY_CLIENT)
                 .on(SecurityClient.SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID))
                 .where(SECURITY_CLIENT_URL.APP_CODE.eq(appCode)
-                        .and(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode))))
+                        .and(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode))
+                        .and(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.LIVE))))
                 .map(rec -> rec.into(ClientUrl.class))
                 .collectList();
     }

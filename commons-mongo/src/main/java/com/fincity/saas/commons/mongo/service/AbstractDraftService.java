@@ -34,10 +34,26 @@ public abstract class AbstractDraftService extends AbstractMongoDataService<Stri
         return this.repo
                 .findOneByObjectAppCodeAndObjectTypeAndObjectNameAndClientCode(objectAppCode, objectType, objectName,
                         clientCode)
+                // baseVersion is deliberately NOT re-stamped on an existing draft.
+                // It records the live version the draft was taken FROM, so freezing
+                // it is what makes the optimistic-lock check on publish mean
+                // something: if the live object moved on while a draft sat here, the
+                // publish fails instead of silently overwriting the newer live
+                // content with work derived from an older copy. Re-stamping made the
+                // check compare a version against itself and always pass.
+                //
+                // Recoverable rather than terminal: discard the draft and save again
+                // and the new row takes the current live version as its base.
                 .map(existing -> existing.setContent(content)
-                        .setBaseVersion(baseVersion)
                         .setMessage(message)
-                        .setObjectId(objectId))
+                        .setObjectId(objectId)
+                        // The draft's own counter moves on every save, so the next
+                        // writer's expected version no longer matches. The comparison
+                        // itself lives in AbstractOverridableDataService.saveDraft:
+                        // this class is storage with no policy and no authorization,
+                        // which is what keeps it from becoming a second gate that can
+                        // drift from the first.
+                        .setVersion(existing.getVersion() + 1))
                 .switchIfEmpty(Mono.fromSupplier(() -> new Draft().setObjectType(objectType)
                         .setObjectAppCode(objectAppCode)
                         .setObjectName(objectName)
@@ -93,5 +109,15 @@ public abstract class AbstractDraftService extends AbstractMongoDataService<Stri
      */
     public Mono<Long> deleteEverything(String objectAppCode, String clientCode) {
         return this.repo.deleteByObjectAppCodeAndClientCode(objectAppCode, clientCode);
+    }
+
+    /**
+     * One object type's drafts. deleteEverything runs once per overridable service,
+     * so the type-scoped form is what each of them should call: the unscoped one
+     * would have the first service wipe every other service's drafts too, which
+     * happens to be harmless today only because they all run in the same sweep.
+     */
+    public Mono<Long> deleteBy(String objectAppCode, String objectType, String clientCode) {
+        return this.repo.deleteByObjectAppCodeAndObjectTypeAndClientCode(objectAppCode, objectType, clientCode);
     }
 }

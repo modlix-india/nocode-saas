@@ -42,4 +42,22 @@ public interface IAppDataService {
     Mono<Boolean> checkIfExists(String clientCode, Connection conn, Storage storage, String id);
 
     Mono<Boolean> deleteStorage(String clientCode, Connection conn, Storage storage);
+
+    /**
+     * Drop a storage's DRAFT collection, whatever surface the caller is on.
+     *
+     * Draft rows are sandbox data, so unlike live rows they are safe to discard
+     * when the definition that gave them meaning goes away. deleteStorage only ever
+     * touches the current surface, so this exists to reach the other one.
+     */
+    Mono<Boolean> dropDraftStorage(String clientCode, Connection conn, Storage storage);
+
+    /**
+     * Drop an app's entire draft database.
+     *
+     * Deliberately does not touch the live database: orphaning live app data on app
+     * deletion is long-standing behaviour and changing it is a separate decision
+     * with real consequences.
+     */
+    Mono<Boolean> dropDraftDatabase(Connection conn, String appCode, String clientCode);
 }
