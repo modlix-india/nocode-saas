@@ -64,6 +64,25 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return new DatePair(start, end, timezone);
     }
 
+    public static DatePair defaultWindow(
+            TimePeriod timePeriod, LocalDateTime startUtc, LocalDateTime endUtc, String timezone) {
+        LocalDateTime end = endUtc != null ? endUtc : LocalDateTime.now(ZoneOffset.UTC);
+        TimePeriod period = timePeriod != null ? timePeriod : TimePeriod.WEEKS;
+        LocalDateTime start = startUtc != null ? startUtc : switch (period) {
+            case DAYS -> end.minusDays(30);
+            case MONTHS -> end.minusMonths(12);
+            default -> end.minusWeeks(12);
+        };
+        return DatePair.of(
+                convertUtcToTimezone(start, timezone),
+                convertUtcToTimezone(end, timezone),
+                timezone);
+    }
+
+    public static DatePair defaultWindow(TimePeriod timePeriod, LocalDateTime now, String timezone) {
+        return defaultWindow(timePeriod, null, now, timezone);
+    }
+
     public static ZoneId resolveZoneId(String timezone) {
         if (StringUtil.safeIsBlank(timezone)) return ZoneOffset.UTC;
 
