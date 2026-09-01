@@ -18,6 +18,7 @@ import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -92,6 +93,18 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
 
     public Mono<Storage> validate(Storage storage) { // NOSONAR
         // Cannot split for just one point increase in complexity.
+
+        // uniqueName IS the physical Mongo collection name, on both the live and the
+        // draft surface. It is generated once at create and never regenerated, and
+        // updatableEntity's whitelist deliberately excludes it. But a null one is
+        // reachable: Storage.subApplyOverride materialises a base's uniqueName into a
+        // derived document when the derived value is null, which would silently point
+        // two clients at one collection. Saving without one is never correct, so fail
+        // loudly here rather than orphan or share data.
+        if (StringUtil.safeIsBlank(storage.getUniqueName()))
+            return this.messageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    AbstractMongoMessageResourceService.NAME_MISSING, "uniqueName");
 
         return FlatMapUtil.flatMapMono(
                         () -> this.coreSchemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),

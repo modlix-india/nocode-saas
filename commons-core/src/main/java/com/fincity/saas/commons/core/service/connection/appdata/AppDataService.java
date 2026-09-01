@@ -938,9 +938,14 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(
                         storage,
+                        // ac/cc, NOT the raw method parameters. Every sibling method
+                        // uses the resolved values; these two did not, so a KIRun
+                        // Storage.Delete with a blank clientCode passed null through to
+                        // the collection resolver and produced the literal database
+                        // "null_<appCode>". The delete then silently 404d.
                         (contextAuth, hasAccess) -> FlatMapUtil.flatMapMono(
-                                () -> this.deleteRelatedObjects(appCode, clientCode, dataService, conn, storage, id),
-                                deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id),
+                                () -> this.deleteRelatedObjects(ac, cc, dataService, conn, storage, id),
+                                deleted -> this.deleteWithTriggers(ac, cc, dataService, conn, storage, id),
                                 (deleted, e) -> {
                                     if (e.getT2().isEmpty())
                                         return Mono.just(e.getT1());
@@ -1551,7 +1556,9 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(
                         storage,
-                        (contextAuth, hasAccess) -> dataService.readPageVersion(clientCode, conn, storage, versionId,
+                        // cc, not the raw parameter: readVersion above already does
+                        // this and this one was inconsistent with it.
+                        (contextAuth, hasAccess) -> dataService.readPageVersion(cc, conn, storage, versionId,
                                 query),
                         Storage::getReadAuth,
                         CoreMessageResourceService.FORBIDDEN_READ_STORAGE));

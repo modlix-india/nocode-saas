@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.ClientUrl;
+import com.fincity.security.jooq.enums.SecurityClientUrlUrlType;
 import com.fincity.security.jooq.tables.SecurityClient;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
@@ -83,6 +84,23 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
                 .where(SECURITY_CLIENT_URL.URL_PATTERN.eq(subDomain))
                 .limit(1))
                 .map(e -> e.value1() == 0);
+    }
+
+    /**
+     * The single DRAFT row for an app and client, if one has been minted.
+     *
+     * "At most one per (client, app)" cannot be a unique constraint here: MySQL has
+     * no partial unique index, and the LIVE rows must stay unconstrained. So the
+     * invariant is enforced in ClientUrlService, which reads through this.
+     */
+    public Mono<ClientUrl> getDraftUrl(String appCode, ULong clientId) {
+
+        return Mono.from(this.dslContext.select(SECURITY_CLIENT_URL.fields()).from(SECURITY_CLIENT_URL)
+                .where(SECURITY_CLIENT_URL.APP_CODE.eq(appCode)
+                        .and(SECURITY_CLIENT_URL.CLIENT_ID.eq(clientId))
+                        .and(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.DRAFT)))
+                .limit(1))
+                .map(rec -> rec.into(ClientUrl.class));
     }
 
     public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {

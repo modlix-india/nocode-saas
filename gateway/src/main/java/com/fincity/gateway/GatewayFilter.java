@@ -32,6 +32,12 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	private static final String DEFAULT_CLIENT = "SYSTEM";
 	private static final String DEFAULT_APP = "nothing";
 
+	private static final String LIVE = "LIVE";
+	private static final String DRAFT = "DRAFT";
+
+	/** Mirrors LogUtil.DRAFT_KEY, which the gateway does not depend on. */
+	private static final String DRAFT_HEADER = "x-draft";
+
 	@Autowired
 	private CacheService cacheService;
 
@@ -99,9 +105,13 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		final String finModifiedPath = length != 1 && modifiedPath.charAt(length - 1) == '/'
 				? modifiedPath.substring(0, modifiedPath.length() - 1)
 				: modifiedPath;
+		// A path-prefixed /clientCode/appCode/ URL is never a draft host, so that
+		// branch resolves to LIVE. Only hostname resolution can yield DRAFT.
 		return this.getCodesFromURL(codesPart)
-				.switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
-				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2()));
+				.map(tup -> Tuples.of(tup.getT1(), tup.getT2(), LIVE))
+				.switchIfEmpty(Mono.defer(() -> this.getClientCodeNType(this.getSchemeHostPort(exchange))))
+				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2(),
+						DRAFT.equalsIgnoreCase(tup.getT3())));
 	}
 
 	private Mono<Tuple2<String, String>> getCodesFromURL(String appClientCodePart) {
@@ -124,13 +134,13 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
-			String clientCode, String appCode) {
+			String clientCode, String appCode, boolean draft) {
 
 		Builder req = exchange.getRequest()
 				.mutate();
 
-		logger.debug("{} : clientCode - {}, appCode - {}", exchange.getRequest()
-				.getPath(), clientCode, appCode);
+		logger.debug("{} : clientCode - {}, appCode - {}, draft - {}", exchange.getRequest()
+				.getPath(), clientCode, appCode, draft);
 
 		HttpHeaders inHeaders = exchange.getRequest()
 				.getHeaders();
@@ -140,6 +150,18 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		if (StringUtil.safeIsBlank(inHeaders.getFirst("clientCode"))) {
 			req.header("clientCode", clientCode);
 		}
+
+		// The draft marker is stripped from EVERY request and then set only from
+		// the resolved hostname, so it can only ever originate here.
+		//
+		// Note this deliberately does NOT follow the appCode/clientCode handling
+		// above, which only fills in a value when the caller did not supply one and
+		// is therefore caller-overridable by design. If x-draft worked that way,
+		// any visitor could read unpublished content on the live host by setting a
+		// header, which defeats the entire access model.
+		req.headers(h -> h.remove(DRAFT_HEADER));
+		if (draft)
+			req.header(DRAFT_HEADER, "true");
 
 		ServerHttpRequest modifiedRequest = req.path(modifiedRequestPath)
 				.build();
@@ -174,7 +196,7 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		return Tuples.of(uriScheme, uriHost, uriPort);
 	}
 
-	private Mono<Tuple2<String, String>> getClientCode(Tuple3<String, String, String> tup) {
+	private Mono<Tuple3<String, String, String>> getClientCodeNType(Tuple3<String, String, String> tup) {
 
 		String uriScheme = tup.getT1();
 		String uriHost = tup.getT2();
@@ -182,8 +204,8 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE,
 
-				() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
-						.defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
+				() -> this.security.getClientCodeNType(uriScheme, uriHost, uriPort)
+						.defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP, LIVE)),
 
 				uriScheme, ":", uriHost, ":", uriPort);
 	}

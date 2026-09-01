@@ -34,6 +34,11 @@ public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfigur
                 request.headers().put(LogUtil.DEBUG_KEY, List.of(value));
             }
 
+            // The draft surface marker travels every internal hop, so a nested
+            // service call from a draft request also reads the draft surface.
+            if (Boolean.TRUE.equals(ctxView.getOrDefault(LogUtil.DRAFT_KEY, Boolean.FALSE)))
+                request.headers().put(LogUtil.DRAFT_KEY, List.of("true"));
+
             return Mono.just(request);
         });
     }

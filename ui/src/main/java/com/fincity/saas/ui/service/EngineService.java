@@ -99,7 +99,44 @@ public class EngineService {
                 .defaultIfEmpty(APPLICATION_NOT_FOUND);
     }
 
+    /**
+     * The ETag already carries an auth dimension, `lg-` when authenticated and
+     * `nlg-` when not, so that the two variants of a page never share a cache entry
+     * or a browser cache. The draft surface is a third dimension of exactly the same
+     * kind, so it prefixes the same marker rather than inventing a parallel scheme.
+     *
+     * The `d` goes in front, keeping the first `-` where the eTag branch below
+     * expects it.
+     */
+    private static String uniqueIdPrefix(boolean authenticated, boolean draft) {
+        return (draft ? "d" : "") + (authenticated ? "lg-" : "nlg-");
+    }
+
+    /**
+     * The OUI caches keep one cache name for both surfaces on purpose. Their key
+     * includes the uniqueId, which now carries the `d` marker, so a draft entry and
+     * a live entry can never collide. Suffixing the cache name as well would mean
+     * revisiting all twelve existing evictAll call sites across PageService,
+     * StyleService, StyleThemeService, ApplicationService and the ui base class,
+     * with a real chance of missing one and leaving a stale draft served after a
+     * publish. Sharing the name means every one of them already clears both.
+     *
+     * The definition cache is different: PageCache_&lt;app&gt;_&lt;name&gt; is keyed by
+     * clientCode alone with no uniqueId, so that one does carry the suffix, and
+     * evictRecursively clears both explicitly.
+     */
+    private static String pageCacheName(String appCode) {
+        return CACHE_NAME_PAGE + "-" + appCode;
+    }
+
     public Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode) {
+
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readPage(eTag, pageName, appCode, clientCode, Boolean.TRUE.equals(draft)));
+    }
+
+    private Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode,
+            boolean draft) {
 
         if (eTag == null || eTag.isEmpty()) {
 
@@ -109,12 +146,13 @@ public class EngineService {
 
                             ca -> this.pageService.read(pageName, appCode, clientCode)
                                     .map(e -> new ObjectWithUniqueID<>(e.getObject(),
-                                            (ca.isAuthenticated() ? "lg-" : "nlg-") + e.getUniqueId())),
+                                            uniqueIdPrefix(ca.isAuthenticated(), draft) + e.getUniqueId())),
 
-                            (ca, page) -> this.cacheService.put(CACHE_NAME_PAGE + "-" + appCode, page, clientCode, pageName,
+                            (ca, page) -> this.cacheService.put(pageCacheName(appCode), page, clientCode, pageName,
                                     page.getUniqueId()),
 
-                            (ca, page, page2) -> ResponseEntityUtils.makeResponseEntity(page2, eTag, cacheAge))
+                            (ca, page, page2) -> draft ? ResponseEntityUtils.makeDraftResponseEntity(page2, eTag)
+                                    : ResponseEntityUtils.makeResponseEntity(page2, eTag, cacheAge))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Empty)"))
                     .defaultIfEmpty(PAGE_NOT_FOUND);
 
@@ -125,12 +163,14 @@ public class EngineService {
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> Mono.just((ca.isAuthenticated() ? "lg-" : "nlg-") + uid.substring(uid.indexOf("-") + 1)),
+                        ca -> Mono.just(uniqueIdPrefix(ca.isAuthenticated(), draft)
+                                + uid.substring(uid.indexOf("-") + 1)),
 
                         (ca, nUid) -> this.cacheService
-                                .cacheValueOrGet(CACHE_NAME_PAGE + "-" + appCode,
+                                .cacheValueOrGet(pageCacheName(appCode),
                                         () -> this.pageService.read(pageName, appCode, clientCode), clientCode, pageName, nUid)
-                                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
+                                .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, nUid)
+                                        : ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Not Empty)"))
                 .defaultIfEmpty(PAGE_NOT_FOUND);

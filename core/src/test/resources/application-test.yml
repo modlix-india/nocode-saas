@@ -1,0 +1,55 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+  data:
+    mongodb:
+      # Overridden by @DynamicPropertySource with the Testcontainers mapped port.
+      uri: mongodb://localhost:27017/coretest
+      auto-index-creation: true
+  # core carries R2DBC + Flyway for its own relational tables, which nothing in the
+  # overridable-document stack touches. Turning them off keeps the harness to one
+  # container. A test that needs the relational side should add a MySQL container
+  # and re-enable these rather than assume they are available.
+  #
+  # These three still have to be present even with the autoconfiguration excluded:
+  # AbstractJooqBaseConfiguration declares them as @Value with no default and builds
+  # its DSLContext bean by hand. The pool it creates connects lazily, so a URL
+  # pointing at nothing is fine as long as no test touches the relational side.
+  r2dbc:
+    url: r2dbc:pool:mysql://localhost:3306/coretest
+    username: test
+    password: test
+  flyway:
+    enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.r2dbc.R2dbcDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# Blank redis.url makes AbstractBaseConfiguration.redisClient() return null and every
+# downstream redis bean follow. CacheService is null-safe on all of them and degrades
+# to its Caffeine L1, so no Redis container is needed. Note that means the L2 and its
+# pub/sub invalidation are NOT under test here.
+redis:
+  url:
+  cache:
+    prefix: coretest
+
+logging:
+  level:
+    org.springframework.data.mongodb: WARN
+    com.fincity: INFO

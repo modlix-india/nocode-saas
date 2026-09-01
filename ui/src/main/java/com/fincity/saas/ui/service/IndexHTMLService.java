@@ -274,21 +274,29 @@ public class IndexHTMLService {
 
     public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
-        String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
+        return LogUtil.isDraft().flatMap(draftFlag -> {
 
-        return cacheService.<ObjectWithUniqueID<String>>cacheValueOrGet(cacheName,
+            boolean draft = Boolean.TRUE.equals(draftFlag);
 
-                () -> FlatMapUtil
-                        .flatMapMonoWithNull(
+            String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 
-                                () -> appService.read(appCode, appCode, clientCode),
+            // The HTML shell differs between surfaces: it carries the marker the
+            // client reads, and it inlines the SSR bootstrap. Sharing a cache entry
+            // would serve one surface's shell for the other.
+            return cacheService.<ObjectWithUniqueID<String>>cacheValueOrGet(cacheName,
 
-                                app -> this.indexFromApp(app == null ? null : new Application(app.getObject()), appCode,
-                                        clientCode))
-                        .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                "IndexHTMLService.getIndexHTML (without HTML cache)")),
+                    () -> FlatMapUtil
+                            .flatMapMonoWithNull(
 
-                clientCode);
+                                    () -> appService.read(appCode, appCode, clientCode),
+
+                                    app -> this.indexFromApp(app == null ? null : new Application(app.getObject()),
+                                            appCode, clientCode))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                                    "IndexHTMLService.getIndexHTML (without HTML cache)")),
+
+                    clientCode, draft ? "-draft" : "");
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -325,15 +333,28 @@ public class IndexHTMLService {
         return stringCps;
     }
 
-    @SuppressWarnings("unchecked")
     private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode,
             String clientCode) {
+
+        return LogUtil.isDraft()
+                .map(draftFlag -> this.indexHtml(app, appCode, clientCode, Boolean.TRUE.equals(draftFlag)))
+                .flatMap(html -> html);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<ObjectWithUniqueID<String>> indexHtml(Application app, String appCode, // NOSONAR
+            String clientCode, boolean draft) {
 
         Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
         List<String> codeParts = processCodeParts((Map<String, Object>) appProps.get("codeParts"));
 
-        StringBuilder str = new StringBuilder("<!DOCTYPE html><html lang=\"en\"><head>");
+        // The client reads this to know which surface it is on. It comes from the
+        // server rather than from the URL, because the gateway is the only thing
+        // that decides, and a value the page could set itself would be misleading.
+        StringBuilder str = new StringBuilder("<!DOCTYPE html><html lang=\"en\"")
+                .append(draft ? " data-draft=\"true\"" : "")
+                .append("><head>");
         str.append(codeParts.getFirst());
         str.append(
                 "<meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>");

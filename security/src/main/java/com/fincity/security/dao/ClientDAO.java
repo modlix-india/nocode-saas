@@ -226,15 +226,22 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .select(SECURITY_CLIENT_URL.CLIENT_ID,
                                 SECURITY_CLIENT.CODE,
                                 SECURITY_CLIENT_URL.URL_PATTERN,
-                                SECURITY_CLIENT_URL.APP_CODE)
+                                SECURITY_CLIENT_URL.APP_CODE,
+                                SECURITY_CLIENT_URL.URL_TYPE)
                         .from(SECURITY_CLIENT_URL)
                         .leftJoin(SECURITY_APP)
                         .on(SECURITY_APP.APP_CODE.eq(SECURITY_CLIENT_URL.APP_CODE)
                                 .and(SECURITY_APP.STATUS.eq(SecurityAppStatus.ACTIVE)))
                         .leftJoin(SECURITY_CLIENT)
                         .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID)))
-                .map(e -> new ClientUrlPattern(e.value1()
-                        .toString(), e.value2(), e.value3(), e.value4()))
+                .map(e -> {
+                    // ClientUrlPattern is @Data without chained accessors, so the
+                    // setter returns void and cannot join the expression.
+                    ClientUrlPattern pattern = new ClientUrlPattern(e.value1()
+                            .toString(), e.value2(), e.value3(), e.value4());
+                    pattern.setUrlType(e.value5() == null ? "LIVE" : e.value5().getLiteral());
+                    return pattern;
+                })
                 .map(ClientUrlPattern::makeHostnPort);
     }
 

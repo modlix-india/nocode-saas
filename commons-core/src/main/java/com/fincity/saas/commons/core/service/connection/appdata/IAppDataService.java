@@ -14,6 +14,13 @@ import reactor.core.publisher.Mono;
 public interface IAppDataService {
     String CACHE_SUFFIX_FOR_INDEX_CREATION = "_index_creation";
 
+    /**
+     * Appended to the app's database name on the draft surface, giving
+     * {@code <clientCode>_<appCode>_draft}. Collection names are unchanged, so a
+     * storage keeps the same physical name on both surfaces.
+     */
+    String DRAFT_DB_SUFFIX = "_draft";
+
     Mono<Map<String, Object>> create(String clientCode, Connection conn, Storage storage, DataObject dataObject);
 
     Mono<Map<String, Object>> update(String clientCode, Connection conn, Storage storage, DataObject dataObject, Boolean override);

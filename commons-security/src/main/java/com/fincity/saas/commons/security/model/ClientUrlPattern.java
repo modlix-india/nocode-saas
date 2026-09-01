@@ -26,6 +26,19 @@ public class ClientUrlPattern implements Serializable{
 	private final String urlPattern;
 	private final String appCode;
 
+	/**
+	 * "LIVE" or "DRAFT". Not final and defaulted, so every existing construction
+	 * site keeps compiling and keeps meaning LIVE. A DRAFT hostname is the only
+	 * thing that causes the gateway to mark a request as being on the draft
+	 * surface.
+	 */
+	private String urlType = "LIVE";
+
+	@JsonIgnore
+	public boolean isDraft() {
+		return "DRAFT".equalsIgnoreCase(this.urlType);
+	}
+
 	private Tuple3<Protocol, String, String> hostnPort = null;
 
 	public Tuple3<Protocol, String, String> getHostnPort() {

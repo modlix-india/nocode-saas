@@ -742,6 +742,22 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         storage.getUniqueName()));
     }
 
+    /**
+     * The draft surface gets its own database, not its own collection names.
+     *
+     * Storage.uniqueName is the physical collection name and is generated once at
+     * create time, so live and draft share it and differ only by database. That
+     * means publishing a storage never has to rename or move anything, and a
+     * storage created on the draft surface already has its final collection name.
+     *
+     * Mongo creates databases and collections lazily on first insert, so nothing
+     * needs provisioning: the draft namespace comes into existence when something
+     * is first written to it.
+     */
+    private static String databaseName(String clientCode, String appCode, boolean draft) {
+        return clientCode + "_" + appCode + (draft ? IAppDataService.DRAFT_DB_SUFFIX : "");
+    }
+
     private Mono<MongoCollection<Document>> getCollection(
             Connection conn,
             String appCode,
@@ -749,37 +765,55 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             String uniqueName,
             Map<String, StorageIndex> indexes,
             List<String> textIndexFields) {
-        MongoClient client = this.getMongoClient(conn);
 
-        if (client == null)
-            throw msgService.nonReactiveMessage(
-                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                    CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                    "url");
+        return LogUtil.isDraft().flatMap(draftFlag -> {
 
-        final MongoCollection<Document> collection =
-                client.getDatabase(clientCode + "_" + appCode).getCollection(uniqueName);
+            boolean draft = Boolean.TRUE.equals(draftFlag);
 
-        return cacheService
-                .cacheValueOrGet(
-                        uniqueName + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION,
-                        () -> this.manageIndexes(collection, indexes, textIndexFields),
-                        appCode,
-                        clientCode)
-                .map(e -> collection);
+            MongoClient client = this.getMongoClient(conn);
+
+            if (client == null)
+                throw msgService.nonReactiveMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+                        "url");
+
+            final MongoCollection<Document> collection = client
+                    .getDatabase(databaseName(clientCode, appCode, draft))
+                    .getCollection(uniqueName);
+
+            // The draft flag has to be part of this key too. Index provisioning runs
+            // once per (storage, app, client) and is memoised; without the flag the
+            // live namespace's run would satisfy the draft namespace's and the draft
+            // collection would never get its indexes.
+            return cacheService
+                    .cacheValueOrGet(
+                            uniqueName + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION,
+                            () -> this.manageIndexes(collection, indexes, textIndexFields),
+                            appCode,
+                            clientCode,
+                            draft ? IAppDataService.DRAFT_DB_SUFFIX : "")
+                    .map(e -> collection);
+        });
     }
 
     private Mono<MongoCollection<Document>> getVersionCollection(
             Connection conn, String appCode, String clientCode, String uniqueName) {
-        MongoClient client = this.getMongoClient(conn);
 
-        if (client == null)
-            throw msgService.nonReactiveMessage(
-                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                    CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                    "url");
+        return LogUtil.isDraft().map(draftFlag -> {
 
-        return Mono.just(client.getDatabase(clientCode + "_" + appCode).getCollection(uniqueName + "_version"));
+            MongoClient client = this.getMongoClient(conn);
+
+            if (client == null)
+                throw msgService.nonReactiveMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+                        "url");
+
+            return client
+                    .getDatabase(databaseName(clientCode, appCode, Boolean.TRUE.equals(draftFlag)))
+                    .getCollection(uniqueName + "_version");
+        });
     }
 
     /**
@@ -799,13 +833,35 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (client == null)
             return Mono.just(0L);
 
-        var db = client.getDatabase(clientCode + "_" + appCode);
+        // Counts BOTH surfaces. Draft rows are real rows in a real database and are
+        // billed like live ones.
+        //
+        // This is the one place in this class that must NOT consult LogUtil.isDraft().
+        // The meter runs from a scheduled job (CoreBillingMeteringService's 15-minute
+        // window and daily reconcile) with no inbound request, so the ambient flag is
+        // always false here. It has to name both databases explicitly. Do not
+        // "simplify" this into the draft-aware accessors.
+        return Flux.just(databaseName(clientCode, appCode, false), databaseName(clientCode, appCode, true))
+                .flatMap(dbName -> this.countRowsIn(client, dbName))
+                .reduce(0L, (a, b) -> a + b)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.estimatedRowCount"));
+    }
+
+    /**
+     * An absent database counts as zero rather than failing the metering window.
+     * Most apps never have a draft surface, so the draft database usually does not
+     * exist, and listCollectionNames on a missing database is the normal case here
+     * rather than an error worth propagating.
+     */
+    private Mono<Long> countRowsIn(MongoClient client, String dbName) {
+
+        var db = client.getDatabase(dbName);
         return Flux.from(db.listCollectionNames())
                 .filter(name -> name != null && !name.endsWith("_version") && !name.startsWith("system."))
                 .flatMap(name -> Mono.from(db.getCollection(name).estimatedDocumentCount())
                         .onErrorReturn(0L))
                 .reduce(0L, (a, b) -> a + b)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.estimatedRowCount"));
+                .onErrorReturn(0L);
     }
 
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {
