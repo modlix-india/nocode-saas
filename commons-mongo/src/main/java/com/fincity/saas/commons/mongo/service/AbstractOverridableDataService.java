@@ -34,6 +34,7 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.document.Draft;
 import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.model.TransportObject;
@@ -69,6 +70,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
     protected static final String CACHE_NAME = "Cache";
 
+    /** Keeps the draft surface's cached reads out of the live surface's caches. */
+    protected static final String DRAFT_CACHE_SUFFIX = "_DRAFT";
+
     @Autowired // NOSONAR
     protected CacheService cacheService;
 
@@ -80,6 +84,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
     @Autowired // NOSONAR
     protected AbstractVersionService versionService;
+
+    @Autowired(required = false) // NOSONAR
+    protected AbstractDraftService draftService;
 
     @Autowired // NOSONAR
     protected FeignAuthenticationService securityService;
@@ -303,17 +310,296 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).update")));
     }
 
+    // ── Draft and publish ──────────────────────────────────────────
+    //
+    // Writes say where they go: a caller asks for a draft explicitly, it is never
+    // inferred from ambient request state. A page running on the draft surface
+    // doing an ordinary SendData PUT must not silently divert into a draft it
+    // never asked for.
+    //
+    // Reads are the other half and live on the runtime path, which switches on the
+    // gateway-set flag only, never on anything a caller controls.
+
+    /** Opt in per service. Off by default so commons-core objects are unaffected. */
+    protected boolean isDraftable() {
+        return false;
+    }
+
+    private <T> Mono<T> notDraftable() {
+        return this.messageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.METHOD_NOT_ALLOWED, msg),
+                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Draft", this.getObjectName());
+    }
+
+    /**
+     * Store the entity as unpublished work without touching the live document.
+     *
+     * The content is stored exactly as sent, not as a post-extractOverride delta,
+     * so publish can run the ordinary update pipeline over it instead of
+     * reimplementing the diffing. Nothing on the live surface changes and no cache
+     * is evicted, which is what makes a draft save incapable of leaking.
+     */
+    public Mono<Draft> saveDraft(D entity) {
+        return this.saveDraft(entity, null);
+    }
+
+    /**
+     * @param expectedDraftVersion the draft version the caller last saw, from the
+     *                             `X-Draft-Version` response header on the draft
+     *                             read. Null skips the check and keeps the old
+     *                             last-write-wins behaviour, so existing callers are
+     *                             unaffected until they opt in.
+     */
+    public Mono<Draft> saveDraft(D entity, Integer expectedDraftVersion) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        // Load FIRST, then authorize the stored document, exactly as discardDraft
+        // does below. Authorizing entity.getAppCode()/getClientCode() checked the
+        // codes the caller put in the request body while the write was keyed on the
+        // codes of whatever the id resolved to, and nothing compared the two: a
+        // caller passed the check on an app they legitimately manage and wrote into
+        // someone else's draft, destroying their unpublished work via the upsert.
+        //
+        // This does not restrict legitimate cross-tenant editing. accessCheck still
+        // lets a managing client through via doesClientManageClientCode; the only
+        // change is that the decision is now about the object being written.
+        return FlatMapUtil.<ContextAuthentication, D, Boolean, Draft>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> entity == null || entity.getId() == null ? Mono.empty() : this.repo.findById(entity.getId()),
+
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
+                        ? this.draftVersionCheck(stored, expectedDraftVersion)
+                                .flatMap(ok -> this.draftService.upsert(this.getObjectName().toUpperCase(),
+                                        stored.getAppCode(), stored.getName(), stored.getClientCode(),
+                                        stored.getId(),
+                                        this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP),
+                                        stored.getVersion(), entity.getMessage()))
+                        : Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).saveDraft"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
+                        this.getObjectName()));
+    }
+
+    /**
+     * Create an object that exists but has never gone live.
+     *
+     * Creation itself is never drafted: this writes a real live document with a
+     * real id, so everything that resolves an object by id keeps working, from the
+     * component PATCH endpoints to version history to the builder tree. Only the
+     * never-published marker distinguishes it, and only until first publish.
+     *
+     * The marker is set here rather than accepted from the body, since `published`
+     * is read-only over the API.
+     */
+    public Mono<D> createUnpublished(D entity) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        entity.setPublished(Boolean.FALSE);
+        return this.create(entity);
+    }
+
+    /**
+     * Refuse a save whose expected draft version has moved on.
+     *
+     * A draft row is keyed on (app, type, name, clientCode), so it belongs to a
+     * CLIENT and two people editing the same object share it. Without this the
+     * second save simply replaced the first's content through the upsert and
+     * neither person was told.
+     *
+     * `baseVersion` cannot do this job. It is the LIVE document's version, and both
+     * editors read the same live document, so both send the same number and the
+     * check passes for both. Only the draft's own counter moves when someone else
+     * saves.
+     *
+     * Absent expectation means no check, so every existing caller keeps working
+     * until it starts round-tripping the version. 0 means "there was no draft when
+     * I started", which is a real assertion and fails once one has appeared.
+     */
+    private Mono<Boolean> draftVersionCheck(D stored, Integer expected) {
+
+        if (expected == null)
+            return Mono.just(Boolean.TRUE);
+
+        return this.draftService
+                .find(this.getObjectName().toUpperCase(), stored.getAppCode(), stored.getName(),
+                        stored.getClientCode())
+                .map(Draft::getVersion)
+                .defaultIfEmpty(0)
+                .flatMap(current -> expected.intValue() == current ? Mono.just(Boolean.TRUE)
+                        : this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH));
+    }
+
+    /**
+     * The object as the editor should see it: the draft when one exists, otherwise
+     * the live document.
+     */
+    public Mono<D> readDraft(String id) {
+        return this.readDraftWithVersion(id).map(Tuple2::getT1);
+    }
+
+    /**
+     * The draft plus its own version, which the caller sends back on save so a
+     * second editor cannot silently overwrite the first.
+     *
+     * Version 0 means there is no draft and this is the live document. Sending 0
+     * back on a save is therefore also meaningful: it asserts "no draft existed
+     * when I started", and the check fails if one has appeared since.
+     */
+    public Mono<Tuple2<D, Integer>> readDraftWithVersion(String id) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        // read(id) first, so the draft path runs exactly the same accessCheck as a
+        // live read. A ?draft=true parameter must never be a way around it.
+        return this.read(id)
+                .flatMap(live -> this.draftService.findByObjectId(id)
+                        .map(draft -> Tuples.of(
+                                this.objectMapper.convertValue(draft.getContent(), this.pojoClass),
+                                draft.getVersion()))
+                        .defaultIfEmpty(Tuples.of(live, 0)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readDraft"));
+    }
+
+    /**
+     * Promote a draft to live.
+     *
+     * Deliberately routed through this.update(), not repo.save. Eviction in this
+     * codebase is layered across per-service update() overrides: the ui base class
+     * evicts applicationOUICache and the SSR caches, ApplicationService also clears
+     * indexNewCache, the manifest and cacheProperties, Style/StyleTheme clear their
+     * OUI caches and URIPathService clears URIPatternCache. A base-class publish
+     * writing straight to the repository would skip every one of them, and
+     * publishing an Application would appear to do nothing at all.
+     *
+     * Going through update() also reuses accessCheck, getMergedSources,
+     * extractOverride, the Version snapshot and the optimistic-lock check, so a
+     * publish whose base moved on underneath it is rejected rather than silently
+     * overwriting.
+     */
+    public Mono<D> publish(String id, String message) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        return FlatMapUtil.<Draft, D, D, D>flatMapMono(
+
+                () -> this.draftService.findByObjectId(id)
+                        .switchIfEmpty(this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Draft", id)),
+
+                // An orphaned draft has to fail loudly. An empty Mono here made
+                // publishAll drop the object from its own report: it claimed
+                // attempted=0 with a draft still pending, so nothing told the caller
+                // the object could not be shipped.
+                draft -> this.repo.findById(id)
+                        .switchIfEmpty(this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id)),
+
+                (draft, stored) -> {
+                    D entity = this.objectMapper.convertValue(draft.getContent(), this.pojoClass);
+                    // setId is declared on AbstractDTO, so it returns that type and
+                    // cannot join a chain of the overridable setters.
+                    entity.setId(id);
+                    // Identity comes from the STORED document, never from draft
+                    // content, which is caller supplied. Otherwise update()'s own
+                    // access check runs against codes the caller chose.
+                    entity.setAppCode(stored.getAppCode())
+                            .setClientCode(stored.getClientCode())
+                            .setName(stored.getName())
+                            .setBaseClientCode(stored.getBaseClientCode())
+                            .setVersion(draft.getBaseVersion())
+                            .setMessage(message == null ? draft.getMessage() : message);
+                    return this.update(entity);
+                },
+
+                (draft, stored, published) -> this.markPublished(id, stored)
+                        .then(this.draftService.discardByObjectId(id))
+                        .thenReturn(published))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).publish"));
+    }
+
+    /**
+     * Flip the never-published marker, and only that.
+     *
+     * `published` is not carried through update(): it is server state, and letting
+     * a request body set it meant an ordinary save could hide a live object. So the
+     * one legitimate writer sets it directly, on the stored document, after the
+     * content update has already succeeded. A no-op for anything already visible,
+     * which is almost every publish.
+     */
+    private Mono<Boolean> markPublished(String id, D stored) {
+
+        if (!Boolean.FALSE.equals(stored.getPublished()))
+            return Mono.just(Boolean.TRUE);
+
+        return this.repo.findById(id)
+                .flatMap(fresh -> {
+                    fresh.setPublished(Boolean.TRUE);
+                    return this.repo.save(fresh);
+                })
+                .thenReturn(Boolean.TRUE)
+                .flatMap(done -> this.evictRecursively(stored.getAppCode(), stored.getClientCode(),
+                        stored.getName()));
+    }
+
+    /** Throw away unpublished work. The live document is untouched. */
+    public Mono<Boolean> discardDraft(String id) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        return FlatMapUtil.<ContextAuthentication, D, Boolean, Boolean>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.repo.findById(id),
+
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
+                        ? this.draftService.discardByObjectId(id)
+                        : Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).discardDraft"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
+                        this.getObjectName()));
+    }
+
     protected Mono<D> evictRecursively(D f) {
         return this.evictRecursively(f.getAppCode(), f.getClientCode(), f.getName()).map(e -> f);
     }
 
     protected Mono<Boolean> evictRecursively(String appCode, String clientCode, String name) {
+        // Both surfaces are evicted on every write. A draft save does not reach here
+        // at all, since it never touches the live document; but a publish must clear
+        // the draft surface too, or the draft cache keeps serving content that has
+        // already gone live and the two disagree.
         return FlatMapUtil.flatMapMono(() -> cacheService.evictAll(this.getCacheName(appCode, name)),
 
-                evict1 -> cacheService
+                evict1 -> cacheService.evictAll(this.getCacheName(appCode, name, true)),
+
+                (evict1, evictDraft) -> cacheService
                         .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
-                (evict1, evict2) -> Mono.just(evict1 && evict2))
+                (evict1, evictDraft, evict2) -> Mono.just(evict1 && evict2))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).evictRecursively"));
     }
@@ -354,9 +640,42 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                             entity.getClientCode())
                                     .map(x -> e))
 
+                            // Both surfaces, matching evictRecursively. Without this a
+                            // deleted object kept being served from the draft cache.
+                            .flatMap(e -> cacheService
+                                    .evict(this.getCacheName(entity.getAppCode(), entity.getName(), true),
+                                            entity.getClientCode())
+                                    .map(x -> e))
+
                             .flatMap(e -> cacheService
                                     .evictAll(this.getCacheName(entity.getAppCode(), this.getObjectName()) + READ_PAGE)
-                                    .map(x -> e));
+                                    .map(x -> e))
+
+                            // The draft goes with the object it drafts. Without this
+                            // the row outlived its object and stayed in the pending
+                            // list forever, unpublishable (publish reads the stored
+                            // document by id, which is gone) and undiscardable through
+                            // the UI. Worse, the draft lookup is keyed on NAME, not id,
+                            // so creating a new object with the deleted one's name
+                            // resurrected the dead draft's content on the draft surface
+                            // under the new object.
+                            //
+                            // Keyed by name for exactly that reason: it is the key the
+                            // read path uses, so this is the one that guarantees no
+                            // resurrection even if a row's objectId were stale.
+                            //
+                            // Deliberately NOT gated on isDraftable(). Nothing can
+                            // write a draft for a non-draftable service today, so this
+                            // is a no-op query for them, but "a deleted object never
+                            // leaves a draft" is worth having as an unconditional
+                            // invariant rather than one contingent on a flag that a
+                            // later service could flip off with rows already stored.
+                            // One indexed lookup on a delete is a fair price.
+                            .flatMap(e -> this.draftService == null ? Mono.just(e)
+                                    : this.draftService
+                                            .discard(this.getObjectName().toUpperCase(), entity.getAppCode(),
+                                                    entity.getName(), entity.getClientCode())
+                                            .map(x -> e));
                 })
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -382,15 +701,22 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
         return x.collectList()
                 .flatMap(list -> {
+
+                    // expandDeep yields [self, ...ancestors..., root]. The contract of
+                    // this method is "everything below me, merged, excluding me", so the
+                    // fold seeds at the root and stops at index 1.
+                    //
+                    // It previously seeded at size-2 and ran down to index 0, which both
+                    // dropped the root from any chain of three or more AND returned the
+                    // caller's own entity, since applyOverride mutates and returns `this`.
+                    // In update() that made mergedSources == entity, so extractOverride
+                    // diffed the object against itself and persisted an empty override.
                     if (list.size() == 1)
                         return Mono.empty();
 
-                    if (list.size() == 2)
-                        return Mono.just(list.get(1));
+                    Mono<D> current = Mono.just(list.get(list.size() - 1));
 
-                    Mono<D> current = Mono.just(list.get(list.size() - 2));
-
-                    for (int i = list.size() - 3; i >= 0; i--) {
+                    for (int i = list.size() - 2; i >= 1; i--) {
                         final int fi = i;
                         current = current.flatMap(b -> list.get(fi)
                                 .applyActualOverride(b));
@@ -767,18 +1093,30 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode,
             String clientCode) {
+
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readInternal(name, appCode, urlClientCode, clientCode,
+                        Boolean.TRUE.equals(draft)));
+    }
+
+    protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode, // NOSONAR
+            String clientCode, boolean draft) {
         // Just one complexity point is not a reason to break this function
 
         return FlatMapUtil.flatMapMonoWithNull(
 
                 () -> Mono.just(clientCode),
 
-                key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
+                // Live and draft never share a cache entry. The suffix is on the
+                // cache NAME rather than the key so that evicting on publish can
+                // clear both with the evictAll calls that already exist.
+                key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name, draft), key),
 
                 (key, cEntity) -> cEntity != null ? Mono.just(cEntity.getObject())
-                        : this.readIfExistsInBase(name, appCode, urlClientCode, clientCode),
+                        : this.readIfExistsInBase(name, appCode, urlClientCode, clientCode, draft),
 
-                (key, cEntity, bEntity) -> bEntity == null ? Mono.empty() : this.readInternal(bEntity.getId()),
+                (key, cEntity, bEntity) -> bEntity == null ? Mono.empty()
+                        : this.readDrafted(bEntity, draft, clientCode),
 
                 (key, cEntity, bEntity, mEntity) -> {
                     if (cEntity == null && mEntity == null)
@@ -801,8 +1139,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                     String checksumCode = cEntity == null ? UniqueUtil.shortUUID() : cEntity.getUniqueId();
 
+                    // The write has to use the same draft-aware name as the read
+                    // above. Using the live name unconditionally meant a draft read
+                    // populated the LIVE cache with draft content, so whichever
+                    // surface was read first won for both.
                     if (cEntity == null && mEntity != null)
-                        cacheService.put(this.getCacheName(appCode, name),
+                        cacheService.put(this.getCacheName(appCode, name, draft),
                                 new ObjectWithUniqueID<>(mEntity, checksumCode), key);
 
                     return this.applyChange(name, appCode, clientCode, clonedEntity, checksumCode);
@@ -810,11 +1152,71 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         this.getObjectName() + "Service).readInternal (name, appCode, urlClientCode, clientCode)"));
     }
 
+    /**
+     * The object as the draft surface should serve it: the draft content when one
+     * exists for this exact document, otherwise the ordinary merged read.
+     *
+     * The draft holds the full effective object the editor was working on, not a
+     * delta, so it is returned as-is rather than re-merged against its base.
+     *
+     * Substitution happens for the document being served, not for every ancestor
+     * in the override chain. A draft taken at a base client is therefore visible
+     * on that client's own draft surface but does not re-merge into a derived
+     * client's. Doing that correctly means re-deriving a delta from the draft and
+     * folding it, which is the whole update pipeline, and getting it subtly wrong
+     * would silently resurrect keys a draft had deleted.
+     */
+    /**
+     * Protected rather than private so ApplicationService.readProperties can use it.
+     * That method reimplements readInternal's shape for its own cache, and calling
+     * readInternal(id) there meant the draft was filtered for but never substituted:
+     * the app definition read the whole client runtime depends on ignored drafts
+     * entirely.
+     */
+    protected Mono<D> readDrafted(D stored, boolean draft, String clientCode) {
+
+        if (stored == null)
+            return Mono.empty();
+
+        if (!draft || !this.isDraftable() || this.draftService == null)
+            return this.readInternal(stored.getId());
+
+        // Only the requesting client's OWN draft. readIfExistsInBase returns the
+        // most-derived document in the chain, so when a derived client has no
+        // override of its own, `stored` is an ANCESTOR's document. Substituting
+        // that ancestor's draft served the base client's unpublished work on every
+        // derived client's draft surface, and the base is usually SYSTEM.
+        if (!stored.getClientCode().equals(clientCode))
+            return this.readInternal(stored.getId());
+
+        return this.draftService
+                .find(this.getObjectName().toUpperCase(), stored.getAppCode(), stored.getName(),
+                        stored.getClientCode())
+                .map(d -> this.objectMapper.convertValue(d.getContent(), this.pojoClass))
+                .switchIfEmpty(Mono.defer(() -> this.readInternal(stored.getId())));
+    }
+
     protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
+        return this.readIfExistsInBase(name, appCode, urlClientCode, clientCode, false);
+    }
+
+    protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode,
+            boolean draft) {
 
         return FlatMapUtil.flatMapMono(() -> this.inheritanceService.order(appCode, urlClientCode, clientCode),
 
+                // Never-published objects are filtered out of the list BEFORE the
+                // isEmpty and size()==1 checks below, not inside the reversed walk.
+                // The size()==1 branch returns unconditionally, so filtering only in
+                // the loop would serve unpublished content whenever a name exists at
+                // exactly one client, which is the common case. Dropping them here
+                // also means an unpublished override correctly falls back to a
+                // published ancestor rather than hiding it.
+                //
+                // The draft surface keeps them: showing work that has never gone
+                // live is the entire point of it.
                 clientCodes -> this.repo.findByNameAndAppCodeAndClientCodeIn(name, appCode, clientCodes)
+                        .filter(e -> draft || !Boolean.FALSE.equals(e.getPublished()))
                         .collectList(),
 
                 (clientCodes, lst) -> {
@@ -855,6 +1257,15 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 .toString();
     }
 
+    /**
+     * Live and draft are separate caches, not separate keys within one cache, so
+     * that the evictAll calls already in evictRecursively can clear a whole surface
+     * in one go.
+     */
+    public String getCacheName(String appCode, String name, boolean draft) {
+        return draft ? this.getCacheName(appCode, name) + DRAFT_CACHE_SUFFIX : this.getCacheName(appCode, name);
+    }
+
     @SuppressWarnings("unchecked")
     public Mono<D> createForClient(String id, String clientCode) {
 
@@ -862,8 +1273,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 () -> this.readInternal(id),
 
+                // published is reset rather than inherited: forking an unpublished
+                // object must not produce a derived copy that is invisible at runtime
+                // with no indication why.
                 e -> this.create((D) e.setBaseClientCode(e.getClientCode())
                         .setClientCode(clientCode)
+                        .setPublished(null)
                         .setId(null))
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME,
@@ -937,10 +1352,18 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 (ca, order, hasAccess, names, count) -> this.versionService.deleteBy(appCode, clientCode,
                         this.getObjectName().toUpperCase()),
 
-                (ca, order, hasAccess, names, count, vCount) -> cacheService
+                // Drafts too, for the same reason as versions: an app wipe that left
+                // them behind would leave this app's name permanently claimed in the
+                // pending list of a client that no longer has the app. Unconditional
+                // for the same reason as delete() above.
+                (ca, order, hasAccess, names, count, vCount) -> this.draftService == null
+                        ? Mono.just(0L)
+                        : this.draftService.deleteBy(appCode, this.getObjectName().toUpperCase(), clientCode),
+
+                (ca, order, hasAccess, names, count, vCount, dCount) -> cacheService
                         .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
-                (ca, order, hasAccess, names, count, vCount, pageCache) -> Flux.fromIterable(names)
+                (ca, order, hasAccess, names, count, vCount, dCount, pageCache) -> Flux.fromIterable(names)
                         .map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList()
                         .<Boolean>map(e -> true))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,

@@ -74,32 +74,106 @@ public class EngineService {
 
     public Mono<ResponseEntity<Application>> readApplication(String eTag, String appCode, String clientCode) {
 
-        return this.securityService.getAppStatusByCode(appCode)
+        return LogUtil.isDraft().flatMap(draft -> this.securityService.getAppStatusByCode(appCode)
                 .filter("ACTIVE"::equals)
-                .flatMap(x -> this.internalReadApplication(eTag, appCode, clientCode));
+                .flatMap(x -> this.internalReadApplication(eTag, appCode, clientCode,
+                        Boolean.TRUE.equals(draft))));
     }
 
-    private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode) {
+    private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode,
+            boolean draft) {
 
         if (eTag == null || eTag.isEmpty()) {
             return this.appService.read(appCode, appCode, clientCode)
                 .map(e -> {e.getObject().setUrlClientCode(clientCode); return e;})
+                    .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)))
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, clientCode,
                             e.getUniqueId()))
-                    .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                    .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
+                            : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
                     .defaultIfEmpty(APPLICATION_NOT_FOUND);
         }
 
-        String uid = eTag.startsWith("W/") ? eTag.substring(2) : eTag;
+        // Re-derived, never taken from the client as sent. A live eTag replayed
+        // against the draft host would otherwise write draft content under the live
+        // cache key.
+        String uid = draftUid(eTag.startsWith("W/") ? eTag.substring(2) : eTag, draft);
 
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_APPLICATION + "-" + appCode,
                         () -> this.appService.read(appCode, appCode, clientCode), clientCode, uid)
-                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
+                .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
+                        : ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
                 .defaultIfEmpty(APPLICATION_NOT_FOUND);
     }
 
+    /**
+     * The ETag already carries an auth dimension, `lg-` when authenticated and
+     * `nlg-` when not, so that the two variants of a page never share a cache entry
+     * or a browser cache. The draft surface is a third dimension of exactly the same
+     * kind, so it prefixes the same marker rather than inventing a parallel scheme.
+     *
+     * The `d` goes in front, keeping the first `-` where the eTag branch below
+     * expects it.
+     */
+    private static String uniqueIdPrefix(boolean authenticated, boolean draft) {
+        return (draft ? "d" : "") + (authenticated ? "lg-" : "nlg-");
+    }
+
+    /**
+     * The same draft dimension for the reads that have no auth dimension to hang it
+     * on: application, style and theme.
+     *
+     * These three cache under the object's own uniqueId, so without a marker a draft
+     * read and a live read of the same object share one cache entry and whichever
+     * surface is read first wins for both. That is the identical bug already fixed
+     * once in AbstractOverridableDataService.readInternal, one layer up.
+     *
+     * The separator matters: uniqueIds are base62 (UniqueUtil.BASE) and can
+     * themselves begin with 'd', so a bare 'd' prefix would not be reversible.
+     * "d-" cannot occur inside one. Idempotent on purpose, so marking an
+     * already-marked id is a no-op and unmarking on the live surface always works,
+     * which is what stops a client's live eTag from being replayed on the draft host
+     * to reach a live cache entry.
+     */
+    private static final String DRAFT_UID_MARKER = "d-";
+
+    private static String draftUid(String uniqueId, boolean draft) {
+
+        if (uniqueId == null || uniqueId.isEmpty())
+            return uniqueId;
+
+        String bare = uniqueId.startsWith(DRAFT_UID_MARKER) ? uniqueId.substring(DRAFT_UID_MARKER.length())
+                : uniqueId;
+
+        return draft ? DRAFT_UID_MARKER + bare : bare;
+    }
+
+    /**
+     * The OUI caches keep one cache name for both surfaces on purpose. Their key
+     * includes the uniqueId, which now carries the `d` marker, so a draft entry and
+     * a live entry can never collide. Suffixing the cache name as well would mean
+     * revisiting all twelve existing evictAll call sites across PageService,
+     * StyleService, StyleThemeService, ApplicationService and the ui base class,
+     * with a real chance of missing one and leaving a stale draft served after a
+     * publish. Sharing the name means every one of them already clears both.
+     *
+     * The definition cache is different: PageCache_&lt;app&gt;_&lt;name&gt; is keyed by
+     * clientCode alone with no uniqueId, so that one does carry the suffix, and
+     * evictRecursively clears both explicitly.
+     */
+    private static String pageCacheName(String appCode) {
+        return CACHE_NAME_PAGE + "-" + appCode;
+    }
+
     public Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode) {
+
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readPage(eTag, pageName, appCode, clientCode, Boolean.TRUE.equals(draft)));
+    }
+
+    private Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode,
+            boolean draft) {
 
         if (eTag == null || eTag.isEmpty()) {
 
@@ -109,12 +183,13 @@ public class EngineService {
 
                             ca -> this.pageService.read(pageName, appCode, clientCode)
                                     .map(e -> new ObjectWithUniqueID<>(e.getObject(),
-                                            (ca.isAuthenticated() ? "lg-" : "nlg-") + e.getUniqueId())),
+                                            uniqueIdPrefix(ca.isAuthenticated(), draft) + e.getUniqueId())),
 
-                            (ca, page) -> this.cacheService.put(CACHE_NAME_PAGE + "-" + appCode, page, clientCode, pageName,
+                            (ca, page) -> this.cacheService.put(pageCacheName(appCode), page, clientCode, pageName,
                                     page.getUniqueId()),
 
-                            (ca, page, page2) -> ResponseEntityUtils.makeResponseEntity(page2, eTag, cacheAge))
+                            (ca, page, page2) -> draft ? ResponseEntityUtils.makeDraftResponseEntity(page2, eTag)
+                                    : ResponseEntityUtils.makeResponseEntity(page2, eTag, cacheAge))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Empty)"))
                     .defaultIfEmpty(PAGE_NOT_FOUND);
 
@@ -125,12 +200,14 @@ public class EngineService {
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> Mono.just((ca.isAuthenticated() ? "lg-" : "nlg-") + uid.substring(uid.indexOf("-") + 1)),
+                        ca -> Mono.just(uniqueIdPrefix(ca.isAuthenticated(), draft)
+                                + uid.substring(uid.indexOf("-") + 1)),
 
                         (ca, nUid) -> this.cacheService
-                                .cacheValueOrGet(CACHE_NAME_PAGE + "-" + appCode,
+                                .cacheValueOrGet(pageCacheName(appCode),
                                         () -> this.pageService.read(pageName, appCode, clientCode), clientCode, pageName, nUid)
-                                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
+                                .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, nUid)
+                                        : ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Not Empty)"))
                 .defaultIfEmpty(PAGE_NOT_FOUND);
@@ -138,20 +215,29 @@ public class EngineService {
 
     public Mono<ResponseEntity<String>> readStyle(String eTag, String appCode, String clientCode) {
 
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readStyle(eTag, appCode, clientCode, Boolean.TRUE.equals(draft)));
+    }
+
+    private Mono<ResponseEntity<String>> readStyle(String eTag, String appCode, String clientCode, boolean draft) {
+
         if (eTag == null || eTag.isEmpty()) {
             return this.internalReadStyle(appCode, clientCode)
+                    .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)))
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_STYLE + "-" + appCode, e, clientCode,
                             e.getUniqueId()))
-                    .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                    .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
+                            : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
                     .defaultIfEmpty(STYLE_NOT_FOUND);
         }
 
-        String uid = eTag.startsWith("W/") ? eTag.substring(2) : eTag;
+        String uid = draftUid(eTag.startsWith("W/") ? eTag.substring(2) : eTag, draft);
 
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_STYLE + "-" + appCode,
                         () -> this.internalReadStyle(appCode, clientCode), clientCode, uid)
-                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
+                .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
+                        : ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
                 .defaultIfEmpty(STYLE_NOT_FOUND);
     }
 
@@ -215,20 +301,30 @@ public class EngineService {
     public Mono<ResponseEntity<Map<String, Map<String, String>>>> readTheme(String eTag, String appCode,
                                                                             String clientCode) {
 
+        return LogUtil.isDraft()
+                .flatMap(draft -> this.readTheme(eTag, appCode, clientCode, Boolean.TRUE.equals(draft)));
+    }
+
+    private Mono<ResponseEntity<Map<String, Map<String, String>>>> readTheme(String eTag, String appCode,
+            String clientCode, boolean draft) {
+
         if (eTag == null || eTag.isEmpty()) {
             return this.internalReadTheme(appCode, clientCode)
+                    .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)))
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_THEME + "-" + appCode, e, clientCode,
                             e.getUniqueId()))
-                    .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                    .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
+                            : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
                     .defaultIfEmpty(THEME_NOT_FOUND);
         }
 
-        String uid = eTag.startsWith("W/") ? eTag.substring(2) : eTag;
+        String uid = draftUid(eTag.startsWith("W/") ? eTag.substring(2) : eTag, draft);
 
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_THEME + "-" + appCode,
                         () -> this.internalReadTheme(appCode, clientCode), clientCode, uid)
-                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
+                .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
+                        : ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
                 .defaultIfEmpty(THEME_NOT_FOUND);
     }
 

@@ -19,6 +19,7 @@ import com.fincity.saas.ui.service.PageService;
 import com.fincity.saas.ui.service.StyleService;
 import com.fincity.saas.ui.service.StyleThemeService;
 import com.fincity.saas.ui.service.UIFunctionService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.utils.ResponseEntityUtils;
 
 import reactor.core.publisher.Mono;
@@ -92,9 +93,18 @@ public class EngineController {
             @RequestHeader("clientCode") String clientCode, @PathVariable("namespace") String namespace,
             @PathVariable("name") String name, @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-        return this.functionService.read(namespace + "." + name, appCode, clientCode)
-                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-                .defaultIfEmpty(FUNCTION_NOT_FOUND);
+        // No server-side cache on this route, so the draft dimension is only about
+        // the browser: a draft function served with max-age seven days would keep
+        // being replayed from disk while its author edited it. The eTag is left as
+        // the client sent it, deliberately. Marking it would buy nothing here (there
+        // is no shared cache entry to separate) and the 304 comparison in
+        // makeResponseEntity is a substring match, so an unnecessary marker is a way
+        // to answer 304 when the content actually differs.
+        return LogUtil.isDraft().flatMap(draft -> this.functionService.read(namespace + "." + name, appCode,
+                clientCode)
+                .flatMap(e -> Boolean.TRUE.equals(draft) ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
+                        : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                .defaultIfEmpty(FUNCTION_NOT_FOUND));
     }
 
     @GetMapping("urlDetails")

@@ -135,7 +135,7 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evictAllFunction("clientUrl");
 			verify(cacheService).evictAllFunction("uri");
-			verify(cacheService).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evictAllFunction("certificateCache");
 			verify(cacheService).evictAllFunction("certificatesLastUpdatedCache");
 		}
@@ -263,7 +263,7 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evictAllFunction("clientUrl");
 			verify(cacheService).evictAllFunction("uri");
-			verify(cacheService).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evictAllFunction("certificateCache");
 			verify(cacheService).evictAllFunction("certificatesLastUpdatedCache");
 		}
@@ -313,7 +313,7 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 			// since update(key, fields) delegates to update(entity) internally.
 			verify(cacheService, times(2)).evictAllFunction("clientUrl");
 			verify(cacheService, times(2)).evictAllFunction("uri");
-			verify(cacheService, times(2)).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService, times(2)).evictAllFunction("gatewayClientAppCodeType");
 		}
 	}
 
@@ -341,7 +341,7 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evictAllFunction("clientUrl");
 			verify(cacheService).evictAllFunction("uri");
-			verify(cacheService).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evictAllFunction("certificateCache");
 			verify(cacheService).evictAllFunction("certificatesLastUpdatedCache");
 		}
@@ -535,7 +535,7 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 			// Verify caches are still evicted
 			verify(cacheService).evictAllFunction("clientUrl");
 			verify(cacheService).evictAllFunction("uri");
-			verify(cacheService).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evictAllFunction("certificateCache");
 			verify(cacheService).evictAllFunction("certificatesLastUpdatedCache");
 		}

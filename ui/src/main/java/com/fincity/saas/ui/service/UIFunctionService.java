@@ -11,6 +11,12 @@ import com.google.gson.Gson;
 @Service
 public class UIFunctionService extends AbstractFunctionService<UIFunction, UIFunctionDocumentRepository> {
 
+    /** Draft and publish are supported for this object. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 	protected UIFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(UIFunction.class, feignAuthenticationService, gson);
 	}

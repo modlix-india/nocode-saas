@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecurityClientUrlUrlType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 
 import java.time.LocalDateTime;
@@ -84,11 +85,28 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
     }
 
     /**
+     * Setter for <code>security.security_client_url.URL_TYPE</code>. LIVE
+     * serves published content; DRAFT serves the app draft surface
+     */
+    public SecurityClientUrlRecord setUrlType(SecurityClientUrlUrlType value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_url.URL_TYPE</code>. LIVE
+     * serves published content; DRAFT serves the app draft surface
+     */
+    public SecurityClientUrlUrlType getUrlType() {
+        return (SecurityClientUrlUrlType) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_client_url.CREATED_BY</code>. ID of
      * the user who created this row
      */
     public SecurityClientUrlRecord setCreatedBy(ULong value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -97,7 +115,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(4);
+        return (ULong) get(5);
     }
 
     /**
@@ -105,7 +123,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * when this row is created
      */
     public SecurityClientUrlRecord setCreatedAt(LocalDateTime value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -114,7 +132,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(6);
     }
 
     /**
@@ -122,7 +140,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * the user who updated this row
      */
     public SecurityClientUrlRecord setUpdatedBy(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -131,7 +149,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -139,7 +157,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * when this row is updated
      */
     public SecurityClientUrlRecord setUpdatedAt(LocalDateTime value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -148,7 +166,7 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
      * when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(8);
     }
 
     // -------------------------------------------------------------------------
@@ -174,13 +192,14 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
     /**
      * Create a detached, initialised SecurityClientUrlRecord
      */
-    public SecurityClientUrlRecord(ULong id, ULong clientId, String urlPattern, String appCode, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientUrlRecord(ULong id, ULong clientId, String urlPattern, String appCode, SecurityClientUrlUrlType urlType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityClientUrl.SECURITY_CLIENT_URL);
 
         setId(id);
         setClientId(clientId);
         setUrlPattern(urlPattern);
         setAppCode(appCode);
+        setUrlType(urlType);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

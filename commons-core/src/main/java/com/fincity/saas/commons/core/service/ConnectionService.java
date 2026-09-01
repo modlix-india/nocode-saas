@@ -26,6 +26,12 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected ConnectionService() {
         super(Connection.class);

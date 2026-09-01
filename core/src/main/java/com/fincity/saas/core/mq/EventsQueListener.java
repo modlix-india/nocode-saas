@@ -108,6 +108,14 @@ public class EventsQueListener {
             receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, qob.getXDebug()));
         }
 
+        // Restore the draft marker alongside the debug key. An event raised by a
+        // draft-surface write must keep executing on the draft surface: without
+        // this, a CALL_CORE_FUNCTION task writing through CoreServices.Storage
+        // resolved isDraft() as false and landed in the LIVE database.
+        if (qob.isDraft()) {
+            receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE));
+        }
+
         if (qob.getAuthentication() != null) {
             return receivedMono.contextWrite(ReactiveSecurityContextHolder
                             .withSecurityContext(Mono.just(new SecurityContextImpl(qob.getAuthentication()))))

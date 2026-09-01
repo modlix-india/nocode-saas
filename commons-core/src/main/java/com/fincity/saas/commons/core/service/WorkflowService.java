@@ -14,6 +14,12 @@ import reactor.util.context.Context;
 
 @Service
 public class WorkflowService extends AbstractOverridableDataService<Workflow, WorkflowRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected WorkflowService() {
         super(Workflow.class);

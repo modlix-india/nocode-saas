@@ -1,0 +1,24 @@
+# Shadows ui/src/main/resources/application.yml for tests. Test resources precede
+# main on the classpath, and `classpath:/application.yml` resolves to the first
+# match, so this file is loaded instead of the production one.
+#
+# The only reason it exists is the production file's
+#   config.import: configserver:http://${CLOUD_CONFIG_SERVER:localhost}:${CLOUD_CONFIG_SERVER_PORT:8888}/
+# A config.import declared inside a config file cannot be removed or made optional
+# from outside it: blanking `spring.config.import` leaves it in place, disabling
+# the resolver makes it mandatory-but-unresolvable, and `fail-fast=false` does not
+# apply because the location is not marked optional. Shadowing the file is the only
+# clean way to drop it.
+#
+# Everything else here mirrors the production file so the context is otherwise
+# identical.
+spring:
+  application:
+    name: ui
+  profiles:
+    active: test
+  codec:
+    max-in-memory-size: 10MB
+
+server:
+  port: 0

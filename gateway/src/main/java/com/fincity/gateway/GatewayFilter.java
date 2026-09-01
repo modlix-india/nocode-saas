@@ -26,11 +26,28 @@ import reactor.util.function.Tuples;
 @Component
 public class GatewayFilter implements GlobalFilter, Ordered {
 
-	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+	/**
+	 * Deliberately NOT "gatewayClientAppCode", which is what this cache was called
+	 * while it held a Tuple2 of (clientCode, appCode).
+	 *
+	 * The value gained a third element when hostname resolution started reporting
+	 * the surface. Keeping the old name meant a newly deployed gateway read an
+	 * entry an older one had written and cast Tuple2 to Tuple3, which threw on
+	 * EVERY request until someone evicted the cache by hand. Leaving the old
+	 * endpoint in place makes the rolling deploy safe on the wire; it is the
+	 * shared cache key that makes it unsafe, so the key has to move too.
+	 */
+	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCodeType";
 	private static final String CAHCE_NAME_URLPART = "clienturlpart";
 
 	private static final String DEFAULT_CLIENT = "SYSTEM";
 	private static final String DEFAULT_APP = "nothing";
+
+	private static final String LIVE = "LIVE";
+	private static final String DRAFT = "DRAFT";
+
+	/** Mirrors LogUtil.DRAFT_KEY, which the gateway does not depend on. */
+	private static final String DRAFT_HEADER = "x-draft";
 
 	@Autowired
 	private CacheService cacheService;
@@ -53,9 +70,14 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		if (route != null && route.getId() != null && route.getId()
 				.equals("index"))
+			// The strip below in modifyRequest is the only place x-draft is removed,
+			// and this branch returns before reaching it. No route with this id
+			// exists in either gateway.yml today, so nothing takes this path, but
+			// that makes header forgery one config line away rather than impossible.
 			return chain.filter(exchange.mutate()
 					.request(exchange.getRequest()
 							.mutate()
+							.headers(h -> h.remove(DRAFT_HEADER))
 							.path("/index.html")
 							.build())
 					.build());
@@ -99,9 +121,13 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		final String finModifiedPath = length != 1 && modifiedPath.charAt(length - 1) == '/'
 				? modifiedPath.substring(0, modifiedPath.length() - 1)
 				: modifiedPath;
+		// A path-prefixed /clientCode/appCode/ URL is never a draft host, so that
+		// branch resolves to LIVE. Only hostname resolution can yield DRAFT.
 		return this.getCodesFromURL(codesPart)
-				.switchIfEmpty(Mono.defer(() -> this.getClientCode(this.getSchemeHostPort(exchange))))
-				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2()));
+				.map(tup -> Tuples.of(tup.getT1(), tup.getT2(), LIVE))
+				.switchIfEmpty(Mono.defer(() -> this.getClientCodeNType(this.getSchemeHostPort(exchange))))
+				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2(),
+						DRAFT.equalsIgnoreCase(tup.getT3())));
 	}
 
 	private Mono<Tuple2<String, String>> getCodesFromURL(String appClientCodePart) {
@@ -124,22 +150,52 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	}
 
 	private Mono<Void> modifyRequest(ServerWebExchange exchange, GatewayFilterChain chain, String modifiedRequestPath,
-			String clientCode, String appCode) {
+			String clientCode, String appCode, boolean draft) {
 
 		Builder req = exchange.getRequest()
 				.mutate();
 
-		logger.debug("{} : clientCode - {}, appCode - {}", exchange.getRequest()
-				.getPath(), clientCode, appCode);
+		logger.debug("{} : clientCode - {}, appCode - {}, draft - {}", exchange.getRequest()
+				.getPath(), clientCode, appCode, draft);
 
 		HttpHeaders inHeaders = exchange.getRequest()
 				.getHeaders();
-		if (StringUtil.safeIsBlank(inHeaders.getFirst("appCode"))) {
+
+		String suppliedAppCode = inHeaders.getFirst("appCode");
+		String suppliedClientCode = inHeaders.getFirst("clientCode");
+
+		if (StringUtil.safeIsBlank(suppliedAppCode)) {
 			req.header("appCode", appCode);
 		}
-		if (StringUtil.safeIsBlank(inHeaders.getFirst("clientCode"))) {
+		if (StringUtil.safeIsBlank(suppliedClientCode)) {
 			req.header("clientCode", clientCode);
 		}
+
+		// The draft marker is stripped from EVERY request and then set only from
+		// the resolved hostname, so it can only ever originate here.
+		//
+		// Note this deliberately does NOT follow the appCode/clientCode handling
+		// above, which only fills in a value when the caller did not supply one and
+		// is therefore caller-overridable by design. If x-draft worked that way,
+		// any visitor could read unpublished content on the live host by setting a
+		// header, which defeats the entire access model.
+		//
+		// Filling those two in is not enough on its own, though. The hostname
+		// decides WHICH SURFACE, the headers decide WHOSE app, and until they were
+		// compared the two were independent: a draft host for one app, plus an
+		// appCode header naming another, served the second app's unpublished work to
+		// anyone holding the first app's link. Reproduced anonymously against the
+		// local stack before this check existed.
+		//
+		// So a draft surface is only granted when the request is actually FOR the
+		// app and client that hostname resolves to. A mismatch downgrades to live
+		// rather than being refused: the request is still a legitimate read of a
+		// published page, and refusing it would break the path-prefixed
+		// /clientCode/appCode/page/ form and every tool that pairs a forwarded host
+		// with explicit codes.
+		req.headers(h -> h.remove(DRAFT_HEADER));
+		if (draft && codesMatchResolved(suppliedAppCode, appCode, suppliedClientCode, clientCode))
+			req.header(DRAFT_HEADER, "true");
 
 		ServerHttpRequest modifiedRequest = req.path(modifiedRequestPath)
 				.build();
@@ -147,6 +203,25 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		return chain.filter(exchange.mutate()
 				.request(modifiedRequest)
 				.build());
+	}
+
+	/**
+	 * Whether the caller-supplied codes, if any, are the ones this hostname
+	 * resolves to.
+	 *
+	 * A blank supplied code is not a mismatch: it means the caller named nothing
+	 * and the resolved value was filled in above, which is the ordinary case.
+	 * Compared case-insensitively, since clientCode is conventionally upper case
+	 * and appCode lower, and a case difference is not an attempt at anything.
+	 */
+	private static boolean codesMatchResolved(String suppliedAppCode, String resolvedAppCode,
+			String suppliedClientCode, String resolvedClientCode) {
+
+		return matches(suppliedAppCode, resolvedAppCode) && matches(suppliedClientCode, resolvedClientCode);
+	}
+
+	private static boolean matches(String supplied, String resolved) {
+		return StringUtil.safeIsBlank(supplied) || supplied.equalsIgnoreCase(resolved);
 	}
 
 	private Tuple3<String, String, String> getSchemeHostPort(ServerWebExchange exchange) {
@@ -174,7 +249,7 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		return Tuples.of(uriScheme, uriHost, uriPort);
 	}
 
-	private Mono<Tuple2<String, String>> getClientCode(Tuple3<String, String, String> tup) {
+	private Mono<Tuple3<String, String, String>> getClientCodeNType(Tuple3<String, String, String> tup) {
 
 		String uriScheme = tup.getT1();
 		String uriHost = tup.getT2();
@@ -182,8 +257,8 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 		return cacheService.cacheValueOrGet(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE,
 
-				() -> this.security.getClientCode(uriScheme, uriHost, uriPort)
-						.defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP)),
+				() -> this.security.getClientCodeNType(uriScheme, uriHost, uriPort)
+						.defaultIfEmpty(Tuples.of(DEFAULT_CLIENT, DEFAULT_APP, LIVE)),
 
 				uriScheme, ":", uriHost, ":", uriPort);
 	}
