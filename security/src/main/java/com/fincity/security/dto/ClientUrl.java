@@ -3,6 +3,7 @@ package com.fincity.security.dto;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.enums.ClientUrlType;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,4 +21,10 @@ public class ClientUrl extends AbstractUpdatableDTO<ULong, ULong> {
 	private ULong clientId;
 	private String urlPattern;
 	private String appCode;
+
+	/**
+	 * LIVE serves the published app; DRAFT serves its draft surface. Null is read
+	 * as LIVE, so every existing row keeps its meaning with no backfill.
+	 */
+	private ClientUrlType urlType = ClientUrlType.LIVE;
 }

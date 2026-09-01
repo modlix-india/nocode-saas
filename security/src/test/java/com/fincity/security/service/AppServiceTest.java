@@ -422,7 +422,7 @@ class AppServiceTest extends AbstractServiceUnitTest {
 			verify(cacheService).evictAllFunction("appInheritance");
 			verify(cacheService).evictAllFunction("uri");
 			verify(cacheService).evictAllFunction("clientUrl");
-			verify(cacheService).evictAllFunction("gatewayClientAppCode");
+			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evict("byAppCode", "testapp");
 			verify(cacheService).evict("byAppId", APP_ID);
 		}

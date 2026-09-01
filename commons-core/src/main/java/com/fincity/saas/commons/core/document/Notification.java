@@ -28,7 +28,16 @@ import reactor.util.context.Context;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'name': 1, }", name = "notificationFilteringIndex", unique = true)
-@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'notificationType': 1, }", name = "notificationFilteringIndex", unique = true)
+// Distinct name required: both of these were called "notificationFilteringIndex",
+// so Mongo rejected the second with IndexKeySpecsConflict and it has never existed.
+//
+// Deliberately NOT unique. It was declared unique, but since the index was never
+// created that constraint has never been enforced, and enforcing it now would mean
+// at most one notification per type per app per client. Existing data very likely
+// violates that, and index creation would fail on startup. This adds the missing
+// lookup index without introducing a constraint that has never held. If uniqueness
+// is genuinely wanted, it needs a data audit first.
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'notificationType': 1, }", name = "notificationTypeFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)

@@ -14,6 +14,12 @@ import reactor.util.context.Context;
 
 @Service
 public class EventDefinitionService extends AbstractOverridableDataService<EventDefinition, EventDefinitionRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected EventDefinitionService() {
         super(EventDefinition.class);

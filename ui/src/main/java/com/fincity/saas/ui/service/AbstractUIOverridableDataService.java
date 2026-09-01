@@ -24,6 +24,15 @@ public abstract class AbstractUIOverridableDataService<D extends AbstractOverrid
         super(pojoClass);
     }
 
+    /**
+     * Page, Application, Style and StyleTheme all support draft and publish. The
+     * commons-core objects inherit the code but stay off until they are wanted.
+     */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
     @Override
     public Mono<D> update(D entity) {
         return super.update(entity)

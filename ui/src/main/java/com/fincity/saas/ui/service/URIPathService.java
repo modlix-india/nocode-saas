@@ -45,6 +45,12 @@ import reactor.util.context.Context;
 @Service
 public class URIPathService extends AbstractOverridableDataService<URIPath, URIPathRepository> {
 
+    /** Draft and publish are supported for this object. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
     private static final String CACHE_NAME_URI = "URICache";
 
     private static final String CACHE_NAME_PATTERN = "URIPatternCache";

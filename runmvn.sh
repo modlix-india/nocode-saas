@@ -36,9 +36,6 @@ if [ "$1" == "jooq" ]; then
     echo "Building security..."
     cd ../security
     mvn clean install -Pjooq
-    echo "Building entity-collector..."
-    cd ../entity-collector
-    mvn clean install -Pjooq
     echo "Building entity-processor..."
     cd ../entity-processor
     mvn clean install -Pjooq
@@ -131,10 +128,6 @@ mvn $@
 
 echo "Building entity-processor..."
 cd ../entity-processor
-mvn $@
-
-echo "Building entity-collector..."
-cd ../entity-collector
 mvn $@
 
 echo "Building notification..."

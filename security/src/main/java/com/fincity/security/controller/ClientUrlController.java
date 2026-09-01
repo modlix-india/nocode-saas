@@ -5,6 +5,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,5 +37,25 @@ public class ClientUrlController
     @GetMapping("/urls")
     public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode, @RequestParam String clientCode) {
         return this.service.getClientUrls(appCode, clientCode).map(ResponseEntity::ok);
+    }
+
+    /**
+     * The app's draft hostname, or 404 when none has been minted.
+     */
+    @GetMapping("/draft")
+    public Mono<ResponseEntity<ClientUrl>> getDraftUrl(@RequestParam String appCode) {
+        return this.service.getDraftUrl(appCode)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Mint the app's draft hostname, or rotate it if one already exists. Rotating
+     * revokes the previous link. Requires write access to the app, not just
+     * Client_UPDATE.
+     */
+    @PostMapping("/draft")
+    public Mono<ResponseEntity<ClientUrl>> mintDraftUrl(@RequestParam String appCode) {
+        return this.service.mintDraftUrl(appCode).map(ResponseEntity::ok);
     }
 }

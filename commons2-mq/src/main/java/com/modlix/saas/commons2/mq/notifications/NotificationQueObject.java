@@ -32,5 +32,19 @@ public class NotificationQueObject implements Serializable {
     private String notificationCategory;
     private String connectionName;
     private String xDebug;
+
+    /**
+     * Whether the request that raised this notification was on the draft surface.
+     *
+     * Carried on the message because the consumer runs on its own thread with no
+     * inbound request, exactly like xDebug.
+     *
+     * It governs which NOTIFICATION and CONNECTION definition the sender resolves,
+     * not who receives the message. Recipients still come from the real user
+     * directory: a notification exercised from a sandbox is expected to reach real
+     * people, and only the definition it renders from follows the surface.
+     */
+    private boolean draft;
+
     private Map<String, Object> payload;
 }

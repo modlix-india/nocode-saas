@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CoreSchemaService extends AbstractSchemaService<CoreSchema, CoreSchemaDocumentRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected CoreSchemaService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreSchema.class, feignAuthenticationService, gson);

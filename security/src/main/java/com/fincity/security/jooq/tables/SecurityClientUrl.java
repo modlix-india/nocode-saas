@@ -4,8 +4,10 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.security.jooq.Indexes;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityClientUrlUrlType;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecuritySslCertificate.SecuritySslCertificatePath;
@@ -21,6 +23,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -82,6 +85,12 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
      * The column <code>security.security_client_url.APP_CODE</code>.
      */
     public final TableField<SecurityClientUrlRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>security.security_client_url.URL_TYPE</code>. LIVE
+     * serves published content; DRAFT serves the app draft surface
+     */
+    public final TableField<SecurityClientUrlRecord, SecurityClientUrlUrlType> URL_TYPE = createField(DSL.name("URL_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("LIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityClientUrlUrlType.class), this, "LIVE serves published content; DRAFT serves the app draft surface");
 
     /**
      * The column <code>security.security_client_url.CREATED_BY</code>. ID of
@@ -174,6 +183,11 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Security.SECURITY;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.SECURITY_CLIENT_URL_IDX1_CLIENT_URL_TYPE);
     }
 
     @Override
