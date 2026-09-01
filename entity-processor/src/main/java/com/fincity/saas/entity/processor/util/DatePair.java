@@ -70,7 +70,10 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         TimePeriod period = timePeriod != null ? timePeriod : TimePeriod.WEEKS;
         LocalDateTime start = startUtc != null ? startUtc : switch (period) {
             case DAYS -> end.minusDays(30);
+            case WEEKS -> end.minusWeeks(12);
             case MONTHS -> end.minusMonths(12);
+            case QUARTERS -> end.minusMonths(12);
+            case YEARS -> end.minusYears(3);
             default -> end.minusWeeks(12);
         };
         return DatePair.of(
