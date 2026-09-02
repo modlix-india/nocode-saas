@@ -21,10 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientUrlDAO;
+import com.fincity.security.dao.DraftTokenDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
+import com.fincity.security.dto.DraftToken;
 import com.fincity.security.testutil.TestDataFactory;
 
 import reactor.core.publisher.Mono;
@@ -47,6 +49,9 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 
 	@Mock
 	private AppService appService;
+
+	@Mock
+	private DraftTokenDAO draftTokenDAO;
 
 	@InjectMocks
 	private ClientUrlService service;
@@ -538,6 +543,191 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 			verify(cacheService).evictAllFunction("gatewayClientAppCodeType");
 			verify(cacheService).evictAllFunction("certificateCache");
 			verify(cacheService).evictAllFunction("certificatesLastUpdatedCache");
+		}
+	}
+
+	@Nested
+	@DisplayName("Draft edit token: which hostnames are tokens")
+	class DraftTokenHostParsing {
+
+		@Test
+		@DisplayName("a well formed t- label is a token")
+		void wellFormedLabelIsAToken() {
+			assertEquals("0123456789abcdef0123456789abcdef",
+					ClientUrlService.draftTokenFromHost(
+							"t-0123456789abcdef0123456789abcdef.local.modlix.com"));
+		}
+
+		@Test
+		@DisplayName("the token is read from the first label only")
+		void readsTheFirstLabelOnly() {
+			// The environment suffix and base domain vary; only the label is the grant.
+			assertEquals("0123456789abcdef0123456789abcdef",
+					ClientUrlService.draftTokenFromHost("t-0123456789abcdef0123456789abcdef.modlix.com"));
+		}
+
+		@Test
+		@DisplayName("an ordinary app hostname beginning with t is not a token")
+		void ordinaryHostIsNotAToken() {
+			// The whole reason the label is matched whole rather than by prefix.
+			assertNull(ClientUrlService.draftTokenFromHost("theorempro.local.modlix.com"));
+			assertNull(ClientUrlService.draftTokenFromHost("t-shirts.example.com"));
+		}
+
+		@Test
+		@DisplayName("wrong length, wrong alphabet and wrong case are not tokens")
+		void malformedLabelsAreNotTokens() {
+			assertNull(ClientUrlService.draftTokenFromHost("t-0123456789abcdef.local.modlix.com"));
+			assertNull(ClientUrlService.draftTokenFromHost(
+					"t-0123456789ABCDEF0123456789ABCDEF.local.modlix.com"));
+			assertNull(ClientUrlService.draftTokenFromHost(
+					"t-0123456789abcdef0123456789abcdeg.local.modlix.com"));
+			assertNull(ClientUrlService.draftTokenFromHost(
+					"d0123456789abcdef0123456789abcdef.local.modlix.com"));
+			assertNull(ClientUrlService.draftTokenFromHost(""));
+			assertNull(ClientUrlService.draftTokenFromHost(null));
+		}
+	}
+
+	@Nested
+	@DisplayName("Draft edit token: who it grants the draft surface to")
+	class DraftTokenResolution {
+
+		private static final String TOKEN = "0123456789abcdef0123456789abcdef";
+		private static final String HOST = "t-" + TOKEN + ".local.modlix.com";
+
+		private DraftToken row(String appCode, ULong clientId, java.time.LocalDateTime expiresAt) {
+			DraftToken token = new DraftToken();
+			token.setToken(TOKEN).setAppCode(appCode).setClientId(clientId)
+					.setUserId(ULong.valueOf(7)).setExpiresAt(expiresAt);
+			return token;
+		}
+
+		private java.time.LocalDateTime future() {
+			return java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).plusMinutes(30);
+		}
+
+		private Client client(ULong id, String code) {
+			Client c = new Client();
+			c.setId(id);
+			c.setCode(code);
+			return c;
+		}
+
+		@Test
+		@DisplayName("an unknown token grants nothing")
+		void unknownTokenIsDenied() {
+			when(draftTokenDAO.readByToken(TOKEN)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "myapp", "SYSTEM"))
+					.assertNext(res -> assertEquals(Boolean.FALSE, res.getT1()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a hostname that is not a token grants nothing, without a lookup")
+		void nonTokenHostIsDenied() {
+			StepVerifier.create(service.resolveDraftToken("appbuilder.local.modlix.com", "myapp", "SYSTEM"))
+					.assertNext(res -> assertEquals(Boolean.FALSE, res.getT1()))
+					.verifyComplete();
+
+			verifyNoInteractions(draftTokenDAO);
+		}
+
+		@Test
+		@DisplayName("an expired token grants nothing")
+		void expiredTokenIsDenied() {
+			when(draftTokenDAO.readByToken(TOKEN)).thenReturn(Mono.just(row("myapp", SYSTEM_CLIENT_ID,
+					java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusSeconds(1))));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "myapp", "SYSTEM"))
+					.assertNext(res -> assertEquals(Boolean.FALSE, res.getT1()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a token for another app grants nothing")
+		void otherAppIsDenied() {
+			when(draftTokenDAO.readByToken(TOKEN))
+					.thenReturn(Mono.just(row("myapp", SYSTEM_CLIENT_ID, future())));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "someotherapp", "SYSTEM"))
+					.assertNext(res -> assertEquals(Boolean.FALSE, res.getT1()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("the minting client's own context is granted")
+		void mintingClientIsGranted() {
+			when(draftTokenDAO.readByToken(TOKEN))
+					.thenReturn(Mono.just(row("myapp", SYSTEM_CLIENT_ID, future())));
+			when(clientService.readInternal(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(client(SYSTEM_CLIENT_ID, "SYSTEM")));
+			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(client(SYSTEM_CLIENT_ID, "SYSTEM")));
+			when(clientService.doesClientManageClient(SYSTEM_CLIENT_ID, SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "myapp", "SYSTEM"))
+					.assertNext(res -> {
+						assertEquals(Boolean.TRUE, res.getT1());
+						assertEquals("myapp", res.getT3());
+						assertEquals("SYSTEM", res.getT4());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a managed client's context is granted")
+		void managedClientIsGranted() {
+			when(draftTokenDAO.readByToken(TOKEN))
+					.thenReturn(Mono.just(row("myapp", SYSTEM_CLIENT_ID, future())));
+			when(clientService.readInternal(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(client(SYSTEM_CLIENT_ID, "SYSTEM")));
+			when(clientService.getClientBy("BUS")).thenReturn(Mono.just(client(BUS_CLIENT_ID, "BUS")));
+			when(clientService.doesClientManageClient(SYSTEM_CLIENT_ID, BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "myapp", "BUS"))
+					.assertNext(res -> {
+						assertEquals(Boolean.TRUE, res.getT1());
+						assertEquals("BUS", res.getT4());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("an unmanaged client's context grants nothing")
+		void unmanagedClientIsDenied() {
+			when(draftTokenDAO.readByToken(TOKEN))
+					.thenReturn(Mono.just(row("myapp", BUS_CLIENT_ID, future())));
+			when(clientService.readInternal(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(client(BUS_CLIENT_ID, "BUS")));
+			when(clientService.getClientBy("OTHER")).thenReturn(Mono.just(client(TARGET_CLIENT_ID, "OTHER")));
+			when(clientService.doesClientManageClient(BUS_CLIENT_ID, TARGET_CLIENT_ID))
+					.thenReturn(Mono.just(Boolean.FALSE));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "myapp", "OTHER"))
+					.assertNext(res -> assertEquals(Boolean.FALSE, res.getT1()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("with no codes to check against, the token supplies its own")
+		void blankCodesAdoptTheTokensOwn() {
+			// A request straight to the token hostname, with no /appCode/clientCode
+			// prefix -- the standalone form, and how SSR's own calls arrive.
+			when(draftTokenDAO.readByToken(TOKEN))
+					.thenReturn(Mono.just(row("myapp", SYSTEM_CLIENT_ID, future())));
+			when(clientService.readInternal(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(client(SYSTEM_CLIENT_ID, "SYSTEM")));
+
+			StepVerifier.create(service.resolveDraftToken(HOST, "", ""))
+					.assertNext(res -> {
+						assertEquals(Boolean.TRUE, res.getT1());
+						assertEquals("myapp", res.getT3());
+						assertEquals("SYSTEM", res.getT4());
+					})
+					.verifyComplete();
 		}
 	}
 }

@@ -53,7 +53,7 @@ public class ProfileService
 
     private static final String PROFILE = "Profile";
 
-    private static final String CACHE_AUTHORITIES_BY_ID = "profileAuthsById";
+    public static final String CACHE_AUTHORITIES_BY_ID = "profileAuthsById";
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;

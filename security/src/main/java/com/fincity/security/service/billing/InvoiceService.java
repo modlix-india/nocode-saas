@@ -25,7 +25,9 @@ import com.fincity.security.dao.billing.InvoiceDAO;
 import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.billing.Invoice;
+import com.fincity.security.dto.billing.InvoiceDocuments;
 import com.fincity.security.dto.billing.Payment;
+import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityPaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentStatus;
 import com.fincity.security.service.AppService;
@@ -52,10 +54,11 @@ public class InvoiceService {
     private final EventCreationService ecService;
     private final SecurityMessageResourceService messageResourceService;
     private final ClientUrlService clientUrlService;
+    private final IFeignFilesService filesService;
 
     public InvoiceService(InvoiceDAO dao, PaymentDAO paymentDAO, AppService appService, ClientService clientService,
             EventCreationService ecService, SecurityMessageResourceService messageResourceService,
-            ClientUrlService clientUrlService) {
+            ClientUrlService clientUrlService, IFeignFilesService filesService) {
         this.dao = dao;
         this.paymentDAO = paymentDAO;
         this.appService = appService;
@@ -63,6 +66,7 @@ public class InvoiceService {
         this.ecService = ecService;
         this.messageResourceService = messageResourceService;
         this.clientUrlService = clientUrlService;
+        this.filesService = filesService;
     }
 
     /** Ungated: called only from the purchase flow, which carries its own gate. */
@@ -77,6 +81,41 @@ public class InvoiceService {
                 .flatMap(invoice -> this.assertCanSee(invoice).thenReturn(invoice))
                 .flatMap(this::withPaymentMethod)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.readById"));
+    }
+
+    /**
+     * Party-guarded download links for an invoice's generated PDFs. Reuses the same
+     * seller / buyer / SYSTEM guard as {@link #readById(ULong)}, then resolves each PDF
+     * under the INVOICE's own client (never the caller's), so the buyer, the seller, or a
+     * managing client can all download without the caller's client having to match the
+     * file's client. The time-limited keys are minted through the trusted files-internal
+     * endpoint only after the guard passes.
+     */
+    @PreAuthorize("hasAnyAuthority('Authorities.ROLE_Owner', 'Authorities.Invoice_READ')")
+    public Mono<InvoiceDocuments> readDocumentKeys(ULong id) {
+        return this.dao.readById(id)
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        SecurityMessageResourceService.PARAMS_NOT_FOUND, "Invoice")))
+                .flatMap(invoice -> this.assertCanSee(invoice).thenReturn(invoice))
+                .flatMap(invoice -> FlatMapUtil.flatMapMono(
+                        () -> this.appService.getAppByIdInternal(invoice.getAppId()),
+                        app -> this.clientService.getClientInfoById(invoice.getClientId()),
+                        (app, client) -> Mono.zip(
+                                this.filesService.createSecuredKeyInternal(documentPath(client.getCode(),
+                                        "invoices", app.getAppCode(), "invoice", invoice.getId())),
+                                this.filesService.createSecuredKeyInternal(documentPath(client.getCode(),
+                                        "receipts", app.getAppCode(), "receipt", invoice.getId())))
+                                .map(keys -> new InvoiceDocuments()
+                                        .setInvoiceUrl(keys.getT1())
+                                        .setReceiptUrl(keys.getT2()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.readDocumentKeys"));
+    }
+
+    /** {@code CLIENT/folder/APP/prefix-ID.pdf} - the key TemplateToPdf stored the PDF under. */
+    private static String documentPath(String clientCode, String folder, String appCode, String prefix,
+            ULong invoiceId) {
+        return clientCode + "/" + folder + "/" + appCode + "/" + prefix + "-" + invoiceId + ".pdf";
     }
 
     /**

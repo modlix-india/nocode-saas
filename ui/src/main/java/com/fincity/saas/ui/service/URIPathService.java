@@ -106,6 +106,17 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.update"));
     }
 
+    /**
+     * The pattern cache holds the candidate list the URI matcher walks, so a drafted
+     * path change is invisible on the draft surface until it is cleared. It is keyed
+     * by (appCode, clientCode) with no surface dimension, so both surfaces go.
+     */
+    @Override
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
+        return super.evictDraft(appCode, clientCode, name)
+                .flatMap(evicted -> cacheService.evict(CACHE_NAME_PATTERN, appCode, "-", clientCode));
+    }
+
     @Override
     public Mono<Boolean> delete(String id) {
 

@@ -4,7 +4,9 @@ import com.fincity.security.service.ProfileService;
 
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +30,21 @@ public class RoleV2Controller
 
     public RoleV2Controller(ProfileService profileService) {
         this.profileService = profileService;
+    }
+
+    @GetMapping("/{id}/subRoles")
+    public Mono<ResponseEntity<List<RoleV2>>> subRoles(@PathVariable ULong id) {
+        return this.service.getSubRoles(id).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/{roleId}/subRoles/{subRoleId}")
+    public Mono<ResponseEntity<Boolean>> assignSubRole(@PathVariable ULong roleId, @PathVariable ULong subRoleId) {
+        return this.service.assignSubRole(roleId, subRoleId).map(ResponseEntity::ok);
+    }
+
+    @DeleteMapping("/{roleId}/subRoles/{subRoleId}")
+    public Mono<ResponseEntity<Boolean>> removeSubRole(@PathVariable ULong roleId, @PathVariable ULong subRoleId) {
+        return this.service.removeSubRole(roleId, subRoleId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/assignable/{appCode}")

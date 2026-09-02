@@ -33,6 +33,24 @@ public abstract class AbstractUIOverridableDataService<D extends AbstractOverrid
         return true;
     }
 
+    /**
+     * The draft surface reads through the same Engine caches and the same SSR cache
+     * as live, so a draft save has to clear them as well as the object's own
+     * `_DRAFT` definition cache. Their surface dimension is in the cache KEY (the
+     * `d-` marked uniqueId), not the name, so they can only be cleared whole. This
+     * is the same set update() clears, and for the same reason: missing one leaves
+     * the draft host answering with content from before the save.
+     */
+    @Override
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
+        return super.evictDraft(appCode, clientCode, name)
+                .flatMap(this.cacheService
+                        .evictAllFunction(EngineService.CACHE_NAME_APPLICATION + "-" + appCode))
+                .flatMap(this.cacheService
+                        .evictAllFunction(EngineService.CACHE_NAME_PAGE + "-" + appCode))
+                .flatMap(this.ssrCacheEvictionService.evictByAppCodeFunction(appCode));
+    }
+
     @Override
     public Mono<D> update(D entity) {
         return super.update(entity)

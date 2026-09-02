@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.ui.document.Application;
@@ -73,19 +74,30 @@ public class EngineController {
         return this.engineService.readPage(eTag, pageName, appCode, clientCode);
     }
 
+    /**
+     * The `theme` parameter names the theme the caller has selected, and it is a
+     * query parameter rather than a header on purpose: the browser keys its own
+     * cache by URL, so two themes can never share a cached stylesheet or eTag.
+     *
+     * Absent or unknown means "whichever theme the app defaults to" — never a 404.
+     * A visitor's stored choice outlives the theme it points at, so an author
+     * deleting a theme must not leave every one of those visitors unstyled.
+     */
     @GetMapping(value = "style", produces = { "text/css" })
     public Mono<ResponseEntity<String>> style(@RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
+            @RequestParam(name = "theme", required = false) String theme,
             @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-        return this.engineService.readStyle(eTag, appCode, clientCode);
+        return this.engineService.readStyle(eTag, appCode, clientCode, theme);
     }
 
     @GetMapping(value = "theme")
     public Mono<ResponseEntity<Map<String, Map<String, String>>>> theme(@RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
+            @RequestParam(name = "theme", required = false) String theme,
             @RequestHeader(name = "If-None-Match", required = false) String eTag) {
-        return this.engineService.readTheme(eTag, appCode, clientCode);
+        return this.engineService.readTheme(eTag, appCode, clientCode, theme);
     }
 
     @GetMapping("function/{namespace}/{name}")

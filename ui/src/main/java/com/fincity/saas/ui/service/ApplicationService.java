@@ -106,6 +106,21 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 (x, y, z, a, ssrEvicted) -> Mono.just(e));
     }
 
+    /**
+     * An app definition's draft feeds three more caches than any other object, and
+     * none of them was cleared when a draft was saved.
+     *
+     * `cacheProperties` is the one the whole client runtime reads (page names,
+     * theme, app settings), and the index HTML is worse: the draft shell inlines the
+     * SSR bootstrap, and the client PREFERS `__APP_BOOTSTRAP__.application` over
+     * calling the API at all, so a stale draft shell meant the draft host could
+     * never show a drafted app definition no matter how many times it was saved.
+     */
+    @Override
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
+        return super.evictDraft(appCode, clientCode, name).flatMap(evicted -> this.evictAll(appCode));
+    }
+
     private Mono<Boolean> evictAll(String appCode) {
 
         return FlatMapUtil.flatMapMono(

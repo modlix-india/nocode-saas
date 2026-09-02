@@ -258,6 +258,12 @@ Left: nothing required. Note deliberately that **no axios interceptor was added*
 stamps by hostname and editor writes carry an explicit query parameter, so a client-sent `x-draft`
 would be stripped at the gateway anyway. Do not add one.
 
+This still holds, and the page editor's preview did not change it. Making the editor canvases
+draft-aware needed the surface to cover things no header can reach anyway — the iframe's own
+document, the `<link>` to `api/ui/style`, `EventSource`, and every page the preview navigates to —
+so it is carried the only way that reaches all of them, as **a second kind of hostname**. See
+"The draft edit token" below.
+
 ### 3. `nocode-ai`
 
 - The AppBuilder agent's page tools write through `/api/ui/pages`. Decide whether agent edits
@@ -537,3 +543,98 @@ Not covered, and worth knowing before relying on them:
   rejected the second and it never existed. A reflection test now fails on any recurrence.
 - **Seven `IFeignSecurityService` methods** were reachable by another method's property key
   (`appInheritance` under `security.feign.hasWriteAccess`, and six more).
+
+## The draft edit token
+
+A second hostname that yields DRAFT, added so the page editor's preview canvases render the draft
+surface. The permanent draft link could not do that job:
+
+- It is minted per (logged-in client, appCode) — `ClientUrlService.getDraftUrl` and `mintDraftUrl`
+  both key off `ca.getClientCode()` — so it cannot express previewing an app in **another client's**
+  context, which the editor's client picker allows.
+- It is permanent and anonymous, which is right for sharing a link and wrong for a canvas that is
+  open whenever somebody is editing.
+
+### Shape
+
+`t-<32 hex><appCodeSuffix>.modlix.com`, built by the same construction as `newDraftHost()` with a
+`t-` prefix instead of `d`. 128 bits of `SecureRandom` as lowercase hex, so the label is valid by
+construction and the existing `*.modlix.com` wildcard covers it: no DNS record, no certificate.
+
+The token is stored, not signed — `security_draft_token` (V83), keyed on the 32 hex characters,
+carrying `APP_CODE`, `CLIENT_ID`, `USER_ID` and `EXPIRES_AT`. A DNS label caps at 63 characters, so
+a JWT was never an option, and a row buys real revocation in exchange.
+
+Deliberately **not** a `SECURITY_CLIENT_URL` row. Three queries there already filter
+`URL_TYPE = LIVE` to keep draft hosts out of the general URL readers, and the "latest URL" query
+orders by last-updated and takes one — a token minted every time somebody opens the page editor
+would keep winning that and become the app's canonical URL.
+
+### Routes
+
+- `POST /api/security/clienturls/draft/token?appCode=` — mint. Gated exactly like `mintDraftUrl`:
+  app write access, not `Client_UPDATE`, no `@PreAuthorize`. Does **not** rotate, so two editor tabs
+  on one app get a token each and neither invalidates the other.
+- `POST /api/security/clienturls/draft/token/extend?token=` — heartbeat. Pushes `EXPIRES_AT`
+  forward on the same row, scoped to the minting user, and evicts the gateway's cache. Never mints
+  a replacement: the token **is** the hostname, so a new value would change the canvases' origin and
+  reload all three, losing scroll position and everything the previewed page holds in its store.
+- `GET /api/security/clienturls/internal/draft/token/resolve?host&appCode&clientCode` — what the
+  gateway asks. Returns `(allowed, expiresAtEpochSeconds, appCode, clientCode)`. Under
+  `/clienturls/internal/` specifically because that prefix is already in `SecurityConfiguration`'s
+  permitAll list; the gateway calls it with no credentials.
+
+### What the gateway does
+
+`GatewayFilter.resolveCodesAndSurface` consults the host **alongside** the path when, and only when,
+the first label matches `^t-[0-9a-f]{32}$`. That is the opposite of the permanent draft link, where
+a path-prefixed URL is pinned LIVE — and the difference is the point. The path names the client
+being previewed; the token names who is entitled to preview it, and the check is that the requested
+client is the minting client or one it manages.
+
+Codes come from the path, then the request headers, then the token itself. The header step is not
+optional: SSR renders the shell by calling back through the gateway with explicit `appCode` and
+`clientCode` headers and no path prefix.
+
+`modifyRequest` is untouched. The strip-then-set is still the only place `x-draft` originates, and
+`codesMatchResolved` still refuses to stamp when a supplied header disagrees with what resolved.
+
+Two traps worth keeping in mind:
+
+1. **The expiry is re-checked in the gateway, against the cached value.** `CacheService` has no
+   per-entry TTL and the Caffeine backstop is `cache.local.expire-after-write-minutes` (60), twice a
+   token's life, so caching a bare verdict would let a grant outlive its token by half an hour.
+2. **The expiry crosses the wire as a String.** The tuple deserializer reads elements as plain
+   `Object`, so epoch seconds arrive as an `Integer` and a declared `Long` blows up on the cast.
+
+### What the client does
+
+Nothing is injected. `LazyPageEditor` mints once per session and points the canvases at
+`https://<host>/{appCode}/{clientCode}/page/{pageName}`; everything else follows from the hostname.
+The `url` state stays a path so what the address bar edits and what personalization remembers stay
+portable — a hostname belongs to one session, and a remembered one would come back stale.
+
+The consequence to know about is that the canvases are now **cross-origin** to the editor:
+
+- `contentWindow.location.reload()` and `history.back()`/`.forward()` became `EDITOR_RELOAD`,
+  `EDITOR_HISTORY_BACK` and `EDITOR_HISTORY_FORWARD`, applied by each frame to itself.
+- `determineRightClickPosition` no longer reads the iframe's rect out of `parent.window.document`;
+  it sends raw `clientX/clientY` and `toMasterPosition` in the editor's `masterFunctions` does the
+  arithmetic.
+- Both message listeners now compare `event.source` against the window they expect. That needs no
+  origin allowlist and cannot be spoofed, and it also closes the `throw` on an unrecognised message
+  type, which a stranger could otherwise use to stop the editor.
+- The canvas has its **own localStorage**, so it runs anonymous: `Store.auth` is empty and
+  authority-based visibility renders the logged-out variant. Accepted deliberately rather than
+  postMessaging the auth token in, which would be the injection this shape exists to avoid.
+
+`DraftBanner` hides itself in design mode. The canvas genuinely is the draft surface and the shell
+does stamp `data-draft`, but a banner pinned to the bottom of each of three canvases only covers
+the page being worked on, and nobody in the page editor is confused about which surface they are on.
+
+### Local development
+
+`*.local.modlix.com` is already covered — the local nginx certificate carries that SAN and listens
+`default_server` on 443 — but `/etc/hosts` cannot wildcard and the host is per-session. A one-time
+`/etc/resolver/modlix.com` plus dnsmasq (`address=/local.modlix.com/127.0.0.1`) fixes it. Without
+it the canvas is blank locally and the reason is not guessable.
