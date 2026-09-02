@@ -54,6 +54,19 @@ public class IndexHTMLService {
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
+    /**
+     * Where the visitor's selected theme lives. One cookie per app, because a
+     * single host can serve several apps under /appCode/clientCode/page, and they
+     * do not share a theme.
+     *
+     * The client half of this contract is `themeSelection.ts` in the ui client;
+     * the two must agree on the name or the first paint silently falls back to
+     * the app's default theme.
+     */
+    public static final String THEME_COOKIE_PREFIX = "mlxTheme_";
+
+    private static final String APP_STYLE_LINK_ID = "mlxAppStyle";
+
     private static final String KEY_ENABLED = "enabled";
 
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
@@ -61,8 +74,12 @@ public class IndexHTMLService {
 
     private static final Map<String, String> ICON_PACK = Map.ofEntries(
 
+            // Keep in step with ICON_PACKS in nocode-ui's App.tsx and with
+            // FONT_AWESOME_VERSION in nocode-ui-icon-packs: the pack lists the
+            // classes this stylesheet defines, and a class the loaded stylesheet
+            // does not define renders nothing at all.
             Map.entry("FREE_FONT_AWESOME_ALL",
-                    "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_SYMBOLS_OUTLINED",
                     "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
@@ -74,19 +91,19 @@ public class IndexHTMLService {
                     "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_FILLED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_OUTLINED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_ROUNDED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_SHARP",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_TWO_TONE",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
 
     );
 
@@ -387,12 +404,32 @@ public class IndexHTMLService {
         str.append("</div>");
 
         // Here the preference will be for the style from the style service.
-        str.append("<link rel=\"stylesheet\" href=\"/")
+        //
+        // The link is emitted with no href and filled in by the script below,
+        // because the URL depends on the visitor's selected theme and this whole
+        // document is cached per app and client. An href-less link starts no
+        // request, so setting it a few bytes later costs nothing and keeps the
+        // cached HTML free of any per-user dimension.
+        //
+        // The cookie read is synchronous and happens before the stylesheet is
+        // requested, which is the entire reason a returning visitor's first paint
+        // is already their theme rather than the default.
+        str.append("<link rel=\"stylesheet\" id=\"")
+                .append(APP_STYLE_LINK_ID)
+                .append("\" />");
+        str.append("<script>");
+        str.append("window.__mlxAppCode='").append(appCode).append("';");
+        str.append("(function(){var m=document.cookie.match(/(?:^|;\\s*)")
+                .append(THEME_COOKIE_PREFIX)
+                .append(appCode)
+                .append("=([^;]*)/);")
+                .append("document.getElementById('")
+                .append(APP_STYLE_LINK_ID)
+                .append("').setAttribute('href','/")
                 .append(appCode)
                 .append("/")
                 .append(clientCode)
-                .append("/page/api/ui/style\" />");
-        str.append("<script>");
+                .append("/page/api/ui/style'+(m?'?theme='+m[1]:''));})();");
 
         if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
             str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");

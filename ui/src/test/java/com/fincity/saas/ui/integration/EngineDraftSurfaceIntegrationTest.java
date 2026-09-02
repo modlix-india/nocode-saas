@@ -171,9 +171,11 @@ class EngineDraftSurfaceIntegrationTest extends AbstractIntegrationTest {
         setInheritance(List.of(SYSTEM));
         storedApp("liveTitle");
 
+        // Null theme: the app's default, which is what the runtime asks for when the
+        // visitor has picked none. The named-theme case is not what this is about.
         ResponseEntity<Map<String, Map<String, String>>> theme = draft(
-                this.engineService.readTheme(null, APP_CODE, SYSTEM));
-        ResponseEntity<String> style = draft(this.engineService.readStyle(null, APP_CODE, SYSTEM));
+                this.engineService.readTheme(null, APP_CODE, SYSTEM, null));
+        ResponseEntity<String> style = draft(this.engineService.readStyle(null, APP_CODE, SYSTEM, null));
 
         assertEquals("no-store", theme.getHeaders().getFirst("Cache-Control"));
         assertEquals("no-store", style.getHeaders().getFirst("Cache-Control"));

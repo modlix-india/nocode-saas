@@ -1,6 +1,8 @@
 package com.fincity.gateway;
 
 import java.net.URI;
+import java.time.Instant;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +23,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
+import reactor.util.function.Tuple4;
 import reactor.util.function.Tuples;
 
 @Component
@@ -40,6 +43,38 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 	private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCodeType";
 	private static final String CAHCE_NAME_URLPART = "clienturlpart";
 
+	/**
+	 * Written and read only here, and deliberately never evicted from outside.
+	 *
+	 * Unlike {@code gatewayClientAppCodeType} above, security does not clear this
+	 * one, because it could not: {@code CacheService} scopes a cache name by the
+	 * service's own {@code redis.cache.prefix}, {@code gtw} here against {@code sec}
+	 * in security, so an evictAll there would clear a cache nothing writes.
+	 * Freshness comes from the trust window on each entry instead.
+	 */
+	private static final String CACHE_NAME_GATEWAY_DRAFT_TOKEN = "gatewayDraftToken";
+
+	/**
+	 * An editing session's draft-surface grant, carried as the first host label.
+	 *
+	 * Matched whole, so an ordinary app hostname beginning with "t" is not mistaken
+	 * for one. Mirrors {@code ClientUrlService.DRAFT_TOKEN_LABEL}, which mints it.
+	 */
+	private static final Pattern DRAFT_TOKEN_LABEL = Pattern.compile("^t-[0-9a-f]{32}$");
+
+	/**
+	 * How long a resolved answer may be trusted without asking security again.
+	 *
+	 * The ceiling on three separate staleness windows: how long after a heartbeat
+	 * before an extension is honoured, how long after a token is deleted before it
+	 * stops being, and how long a denial is remembered for a bad hostname.
+	 */
+	private static final long DRAFT_TOKEN_TRUST_SECONDS = 60;
+
+	/** No grant, no codes to adopt; the trust window is stamped on before caching. */
+	private static final Tuple4<Boolean, String, String, String> DRAFT_TOKEN_DENIED = Tuples.of(Boolean.FALSE, "0", "",
+			"");
+
 	private static final String DEFAULT_CLIENT = "SYSTEM";
 	private static final String DEFAULT_APP = "nothing";
 
@@ -48,6 +83,9 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 
 	/** Mirrors LogUtil.DRAFT_KEY, which the gateway does not depend on. */
 	private static final String DRAFT_HEADER = "x-draft";
+
+	private static final String APP_CODE_HEADER = "appCode";
+	private static final String CLIENT_CODE_HEADER = "clientCode";
 
 	@Autowired
 	private CacheService cacheService;
@@ -121,13 +159,144 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		final String finModifiedPath = length != 1 && modifiedPath.charAt(length - 1) == '/'
 				? modifiedPath.substring(0, modifiedPath.length() - 1)
 				: modifiedPath;
-		// A path-prefixed /clientCode/appCode/ URL is never a draft host, so that
-		// branch resolves to LIVE. Only hostname resolution can yield DRAFT.
-		return this.getCodesFromURL(codesPart)
-				.map(tup -> Tuples.of(tup.getT1(), tup.getT2(), LIVE))
-				.switchIfEmpty(Mono.defer(() -> this.getClientCodeNType(this.getSchemeHostPort(exchange))))
+		return this.resolveCodesAndSurface(exchange, codesPart)
 				.flatMap(tup -> this.modifyRequest(exchange, chain, finModifiedPath, tup.getT1(), tup.getT2(),
 						DRAFT.equalsIgnoreCase(tup.getT3())));
+	}
+
+	/**
+	 * (clientCode, appCode, surface) for this request.
+	 *
+	 * Two hostnames can yield DRAFT and they are not the same thing. The permanent
+	 * draft link is a CLIENT_URL row and resolves through getClientCodeNType, which
+	 * is why a path-prefixed URL on it still reads LIVE: the path names an app and
+	 * client the link was never issued for.
+	 *
+	 * A `t-<32 hex>` hostname is an editing session's grant, and there the path
+	 * prefix is the whole point -- it names the client being previewed, and the
+	 * token names who is entitled to preview it. So this branch deliberately does
+	 * consult the host alongside the path, which the other one must not.
+	 *
+	 * Everything else takes exactly the path it took before: the label test is a
+	 * regex over the first host label and no ordinary request pays for a lookup.
+	 */
+	private Mono<Tuple3<String, String, String>> resolveCodesAndSurface(ServerWebExchange exchange, String codesPart) {
+
+		Tuple3<String, String, String> schemeHostPort = this.getSchemeHostPort(exchange);
+		final String host = schemeHostPort.getT2();
+
+		if (!DRAFT_TOKEN_LABEL.matcher(firstLabel(host)).matches())
+			// A path-prefixed /clientCode/appCode/ URL is never a draft host, so that
+			// branch resolves to LIVE. Only hostname resolution can yield DRAFT.
+			return this.getCodesFromURL(codesPart)
+					.map(tup -> Tuples.of(tup.getT1(), tup.getT2(), LIVE))
+					.switchIfEmpty(Mono.defer(() -> this.getClientCodeNType(schemeHostPort)));
+
+		// Codes come from the path when it has them, then from the headers, then from
+		// the token itself. The header step is not optional: SSR renders the shell by
+		// calling back through the gateway with explicit appCode/clientCode headers
+		// and no path prefix, so without it those calls would be checked against the
+		// token's own client, disagree with what SSR asked for, and the pre-render
+		// would silently come back live.
+		HttpHeaders inHeaders = exchange.getRequest()
+				.getHeaders();
+
+		return this.getCodesFromURL(codesPart)
+				.flatMap(tup -> this.draftTokenSurface(host, tup.getT1(), tup.getT2()))
+				.switchIfEmpty(Mono.defer(() -> this.draftTokenSurface(host,
+						StringUtil.safeValueOf(inHeaders.getFirst(CLIENT_CODE_HEADER), ""),
+						StringUtil.safeValueOf(inHeaders.getFirst(APP_CODE_HEADER), ""))));
+	}
+
+	/**
+	 * Resolve a draft-edit token host, and fall back to LIVE rather than refusing.
+	 *
+	 * A token that is unknown, expired or issued for another app is not an error:
+	 * the request is still a legitimate read of a published page, exactly as a
+	 * mismatched draft host is. It also means a canvas whose editor has gone away
+	 * degrades to showing the live app instead of breaking.
+	 *
+	 * Caching is self-correcting rather than evicted, because it cannot be evicted
+	 * from outside. `CacheService.evictAll` scopes the cache name by the service's
+	 * own `redis.cache.prefix` -- `gtw` here, `sec` in security -- so security
+	 * clearing "gatewayDraftToken" clears its own copy and never touches this one.
+	 * Instead every cached answer carries the second until which it may be trusted,
+	 * and the entry is simply ignored once that passes.
+	 *
+	 * That window is the smaller of the token's own expiry and a minute. The expiry
+	 * bound stops a grant outliving its token, which it otherwise would: CacheService
+	 * has no per-entry TTL and its Caffeine backstop is an hour, twice a token's
+	 * life. The minute bound is what makes the other two directions work -- a
+	 * heartbeat's extension is picked up, and a deleted token stops being honoured,
+	 * within sixty seconds rather than at the end of the original window.
+	 */
+	private Mono<Tuple3<String, String, String>> draftTokenSurface(String host, String clientCode, String appCode) {
+
+		return cacheService
+				.<Tuple4<Boolean, String, String, String>>get(CACHE_NAME_GATEWAY_DRAFT_TOKEN, host, ":", appCode, ":",
+						clientCode)
+				.filter(res -> stillTrusted(res.getT2()))
+				.switchIfEmpty(Mono.defer(() -> this.security.resolveDraftToken(host, appCode, clientCode)
+						.defaultIfEmpty(DRAFT_TOKEN_DENIED)
+						.map(GatewayFilter::withTrustWindow)
+						.flatMap(res -> cacheService.put(CACHE_NAME_GATEWAY_DRAFT_TOKEN, res, host, ":", appCode, ":",
+								clientCode))))
+				.map(res -> {
+
+					String effAppCode = StringUtil.safeIsBlank(appCode) ? res.getT3() : appCode;
+					String effClientCode = StringUtil.safeIsBlank(clientCode) ? res.getT4() : clientCode;
+
+					if (StringUtil.safeIsBlank(effAppCode))
+						effAppCode = DEFAULT_APP;
+					if (StringUtil.safeIsBlank(effClientCode))
+						effClientCode = DEFAULT_CLIENT;
+
+					return Tuples.of(effClientCode, effAppCode, Boolean.TRUE.equals(res.getT1()) ? DRAFT : LIVE);
+				})
+				.onErrorReturn(Tuples.of(StringUtil.safeIsBlank(clientCode) ? DEFAULT_CLIENT : clientCode,
+						StringUtil.safeIsBlank(appCode) ? DEFAULT_APP : appCode, LIVE));
+	}
+
+	/**
+	 * Replace security's answer's expiry with how long this gateway may trust it.
+	 *
+	 * A denial gets the flat minute: without it nothing would ever be cached for a
+	 * bad hostname and every request on one would reach security.
+	 */
+	private static Tuple4<Boolean, String, String, String> withTrustWindow(Tuple4<Boolean, String, String, String> res) {
+
+		long horizon = Instant.now()
+				.getEpochSecond() + DRAFT_TOKEN_TRUST_SECONDS;
+
+		if (!Boolean.TRUE.equals(res.getT1()))
+			return Tuples.of(Boolean.FALSE, String.valueOf(horizon), res.getT3(), res.getT4());
+
+		return Tuples.of(Boolean.TRUE, String.valueOf(Math.min(epochSeconds(res.getT2()), horizon)), res.getT3(),
+				res.getT4());
+	}
+
+	private static boolean stillTrusted(String untilEpochSeconds) {
+		return epochSeconds(untilEpochSeconds) > Instant.now()
+				.getEpochSecond();
+	}
+
+	/** Epoch seconds as text, because the tuple deserializer would hand back an Integer. */
+	private static long epochSeconds(String value) {
+
+		try {
+			return Long.parseLong(value);
+		} catch (NumberFormatException e) {
+			return 0L;
+		}
+	}
+
+	private static String firstLabel(String host) {
+
+		if (StringUtil.safeIsBlank(host))
+			return "";
+
+		int dot = host.indexOf('.');
+		return dot == -1 ? host : host.substring(0, dot);
 	}
 
 	private Mono<Tuple2<String, String>> getCodesFromURL(String appClientCodePart) {
@@ -161,14 +330,14 @@ public class GatewayFilter implements GlobalFilter, Ordered {
 		HttpHeaders inHeaders = exchange.getRequest()
 				.getHeaders();
 
-		String suppliedAppCode = inHeaders.getFirst("appCode");
-		String suppliedClientCode = inHeaders.getFirst("clientCode");
+		String suppliedAppCode = inHeaders.getFirst(APP_CODE_HEADER);
+		String suppliedClientCode = inHeaders.getFirst(CLIENT_CODE_HEADER);
 
 		if (StringUtil.safeIsBlank(suppliedAppCode)) {
-			req.header("appCode", appCode);
+			req.header(APP_CODE_HEADER, appCode);
 		}
 		if (StringUtil.safeIsBlank(suppliedClientCode)) {
-			req.header("clientCode", clientCode);
+			req.header(CLIENT_CODE_HEADER, clientCode);
 		}
 
 		// The draft marker is stripped from EVERY request and then set only from

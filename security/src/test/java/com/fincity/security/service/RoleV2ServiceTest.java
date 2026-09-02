@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.security.dao.RoleV2DAO;
@@ -46,6 +47,9 @@ class RoleV2ServiceTest extends AbstractServiceUnitTest {
 	private ClientHierarchyService clientHierarchyService;
 
 	@Mock
+	private CacheService cacheService;
+
+	@Mock
 	private SoxLogService soxLogService;
 
 	@Mock
@@ -60,7 +64,8 @@ class RoleV2ServiceTest extends AbstractServiceUnitTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new RoleV2Service(messageResourceService, clientService, clientHierarchyService);
+		service = new RoleV2Service(messageResourceService, clientService, clientHierarchyService,
+				cacheService);
 
 		// RoleV2Service -> AbstractSecurityUpdatableDataService ->
 		// AbstractJOOQUpdatableDataService -> AbstractJOOQDataService (has dao)

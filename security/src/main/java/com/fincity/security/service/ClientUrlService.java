@@ -4,8 +4,11 @@ import static com.fincity.security.service.AppService.*;
 import static com.fincity.security.service.ClientService.*;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,14 +33,19 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.security.dao.ClientUrlDAO;
+import com.fincity.security.dao.DraftTokenDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
+import com.fincity.security.dto.DraftToken;
 import com.fincity.security.enums.ClientUrlType;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
+import com.fincity.security.model.DraftTokenResponse;
 
 import lombok.NonNull;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple4;
+import reactor.util.function.Tuples;
 
 @Service
 public class ClientUrlService
@@ -95,13 +103,40 @@ public class ClientUrlService
      */
     private static final String DRAFT_HOST_BASE_DOMAIN = ".modlix.com";
 
+    /**
+     * The label prefix that marks a hostname as an editing session's grant.
+     *
+     * A hyphen rather than a bare letter so the shape cannot collide with an app
+     * whose own name begins with t, and the leading character is still a letter,
+     * which a DNS label requires.
+     */
+    private static final String DRAFT_TOKEN_HOST_PREFIX = "t-";
+
+    /** The whole first label of a draft-edit hostname, and nothing looser. */
+    private static final Pattern DRAFT_TOKEN_LABEL = Pattern.compile("^t-[0-9a-f]{32}$");
+
+    /** No grant, no expiry to re-check, and no codes to adopt. */
+    private static final Tuple4<Boolean, String, String, String> DRAFT_TOKEN_DENIED = Tuples.of(Boolean.FALSE, "0", "",
+            "");
+
+    private final DraftTokenDAO draftTokenDAO;
+
+    /**
+     * Long enough that nobody's canvas dies mid-edit, short enough that a leaked
+     * hostname is worth little. The heartbeat keeps pushing it while the editor is
+     * open, so this is really "how long after the editor closes".
+     */
+    @Value("${security.draftToken.expiryMinutes:30}")
+    private int draftTokenExpiryMinutes;
+
     public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
-            ClientService clientService, AppService appService) {
+            ClientService clientService, AppService appService, DraftTokenDAO draftTokenDAO) {
 
         this.cacheService = cacheService;
         this.msgService = msgService;
         this.clientService = clientService;
         this.appService = appService;
+        this.draftTokenDAO = draftTokenDAO;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -518,9 +553,226 @@ public class ClientUrlService
         // a DNS label may not start with a digit, and hex starts with one 10 times
         // out of 16.
         StringBuilder label = new StringBuilder(1 + raw.length * 2).append('d');
-        for (byte b : raw)
-            label.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+        label.append(randomHex(raw));
 
         return label + this.appCodeSuffix + DRAFT_HOST_BASE_DOMAIN;
+    }
+
+    /** 128 bits of {@link #DRAFT_HOST_RANDOM} as 32 lowercase hex characters. */
+    private static String randomHex(byte[] raw) {
+
+        StringBuilder hex = new StringBuilder(raw.length * 2);
+        for (byte b : raw)
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+        return hex.toString();
+    }
+
+    // ── Draft edit token ───────────────────────────────────────────
+    //
+    // The permanent draft link above is per (client, app) and anonymous. This is
+    // the other half: a grant that lasts one editing session, so the page editor
+    // can point its preview iframes at the draft surface for whichever client the
+    // person is previewing, which the permanent link cannot express because it is
+    // minted against the logged-in client only.
+    //
+    // It is carried as a hostname for one reason: the surface has to cover the
+    // iframe's own document, the <link> to api/ui/style, EventSource and every
+    // nested navigation inside the preview, none of which can carry a header.
+
+    /**
+     * Mint an editing session's draft-surface grant for one app.
+     *
+     * Gated exactly like {@link #mintDraftUrl(String)}, and for the same reason:
+     * this hands out unpublished work, so app write access is the bar, not the
+     * broader Authorities.Client_UPDATE the rest of this service uses.
+     *
+     * Unlike mintDraftUrl this does NOT rotate. Two editor tabs on the same app get
+     * a token each and neither invalidates the other, because the token is a
+     * hostname: revoking one tab's grant out from under it would change the origin
+     * its iframes are on.
+     */
+    public Mono<DraftTokenResponse> mintDraftToken(String appCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.appService.hasWriteAccess(appCode, ca.getClientCode()),
+
+                (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
+                        ? this.clientService.getClientBy(ca.getClientCode())
+                        : Mono.empty(),
+
+                (ca, hasAccess, client) -> {
+
+                    byte[] raw = new byte[DRAFT_HOST_RANDOM_BYTES];
+                    DRAFT_HOST_RANDOM.nextBytes(raw);
+
+                    DraftToken token = new DraftToken();
+                    token.setToken(randomHex(raw))
+                            .setAppCode(appCode)
+                            .setClientId(client.getId())
+                            .setUserId(ULongUtil.valueOf(ca.getUser().getId()))
+                            .setExpiresAt(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(this.draftTokenExpiryMinutes));
+
+                    return this.draftTokenDAO.create(token);
+                },
+
+                (ca, hasAccess, client, token) -> Mono.just(new DraftTokenResponse()
+                        .setToken(token.getToken())
+                        .setHost(draftTokenHost(token.getToken()))
+                        .setExpiresAt(token.getExpiresAt())))
+
+                .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.mintDraftToken"));
+    }
+
+    /**
+     * Push an open editor's grant forward, keeping the same token.
+     *
+     * Never mints a replacement. The token IS the hostname, so a new value would
+     * change the iframes' origin and reload all three canvases, losing scroll
+     * position and everything the previewed page holds in its own store. The
+     * property that matters is that the grant dies shortly after the editor is
+     * closed, and expiry alone gives that.
+     *
+     * Nothing is evicted here, and that is not an omission. The gateway caches what
+     * it resolved, but its cache cannot be cleared from this side: CacheService
+     * scopes a cache name by the service's own redis.cache.prefix, so an evictAll
+     * here would clear "sec-gatewayDraftToken", which nothing writes. The gateway
+     * instead stamps each cached answer with how long it may be trusted, capped at a
+     * minute, so an extension is picked up within a minute of this call.
+     */
+    public Mono<DraftTokenResponse> extendDraftToken(String token) {
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.draftTokenDAO.readByToken(token),
+
+                (ca, existing) -> {
+
+                    // Scoped to the minting user. A heartbeat is not a way to keep
+                    // somebody else's grant alive.
+                    if (!ULongUtil.valueOf(ca.getUser().getId()).equals(existing.getUserId()))
+                        return Mono.empty();
+
+                    LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC)
+                            .plusMinutes(this.draftTokenExpiryMinutes);
+
+                    return this.draftTokenDAO.extend(token, existing.getUserId(), expiresAt)
+                            .map(count -> existing.setExpiresAt(expiresAt));
+                },
+
+                (ca, existing, updated) -> Mono.just(new DraftTokenResponse()
+                        .setToken(updated.getToken())
+                        .setHost(draftTokenHost(updated.getToken()))
+                        .setExpiresAt(updated.getExpiresAt())))
+
+                .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.extendDraftToken"));
+    }
+
+    /**
+     * Whether a hostname's draft-edit token grants the draft surface, and for which
+     * app and client.
+     *
+     * {@code (allowed, expiresAtEpochSeconds, appCode, clientCode)}.
+     *
+     * Called by the gateway on every request whose first host label looks like a
+     * token, so it answers rather than throws: an unparseable, unknown, mismatched
+     * or expired token is a plain false and the request is served live.
+     *
+     * The expiry comes back because the gateway caches this and {@code CacheService}
+     * has no per-entry TTL -- its Caffeine backstop is an hour, twice a token's
+     * life, so the gateway re-checks the timestamp itself and a stale entry cannot
+     * authorise anything. It is a STRING rather than a number on purpose: the tuple
+     * deserializer reads elements as plain Objects, so epoch seconds would arrive as
+     * an Integer and the declared Long would blow up on the cast.
+     *
+     * Blank supplied codes mean the caller had none to offer -- a request straight
+     * to the token hostname with no {@code /appCode/clientCode} path prefix -- and
+     * the token's own codes are returned for the gateway to adopt.
+     */
+    public Mono<Tuple4<Boolean, String, String, String>> resolveDraftToken(String host, String appCode,
+            String clientCode) {
+
+        String token = draftTokenFromHost(host);
+
+        if (token == null)
+            return Mono.just(DRAFT_TOKEN_DENIED);
+
+        return this.draftTokenDAO.readByToken(token)
+                .flatMap(row -> {
+
+                    if (row.getExpiresAt().isBefore(LocalDateTime.now(ZoneOffset.UTC)))
+                        return Mono.just(DRAFT_TOKEN_DENIED);
+
+                    if (!StringUtil.safeIsBlank(appCode) && !row.getAppCode().equalsIgnoreCase(appCode))
+                        return Mono.just(DRAFT_TOKEN_DENIED);
+
+                    String expiry = String.valueOf(row.getExpiresAt().toEpochSecond(ZoneOffset.UTC));
+
+                    return this.clientService.readInternal(row.getClientId())
+                            .flatMap(minting -> StringUtil.safeIsBlank(clientCode)
+                                    ? Mono.just(Tuples.of(Boolean.TRUE, expiry, row.getAppCode(), minting.getCode()))
+
+                                    // The client being previewed must be the minting
+                                    // client or one it manages. isClientBeingManagedBy
+                                    // short-circuits on equality, so the same-client
+                                    // case costs no hierarchy read -- do not "simplify"
+                                    // that away, it is the common case.
+                                    : this.clientService.getClientBy(clientCode)
+                                            .flatMap(requested -> this.clientService
+                                                    .doesClientManageClient(row.getClientId(), requested.getId()))
+                                            .map(manages -> BooleanUtil.safeValueOf(manages)
+                                                    ? Tuples.of(Boolean.TRUE, expiry, row.getAppCode(), clientCode)
+                                                    : DRAFT_TOKEN_DENIED))
+                            .defaultIfEmpty(DRAFT_TOKEN_DENIED);
+                })
+                .defaultIfEmpty(DRAFT_TOKEN_DENIED)
+                .onErrorReturn(DRAFT_TOKEN_DENIED)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.resolveDraftToken"));
+    }
+
+    /**
+     * Drop draft-edit tokens whose expiry has passed.
+     *
+     * Minting does not rotate -- two editor tabs on one app each get a token -- so
+     * rows accumulate at roughly the rate people open the page editor and nothing
+     * else removes them. An expired row grants nothing either way; this is
+     * housekeeping, not enforcement.
+     */
+    public Mono<Integer> cleanupExpiredDraftTokens() {
+        return this.draftTokenDAO.deleteExpired();
+    }
+
+    /** {@code t-<32 hex><appCodeSuffix>.modlix.com}, the sibling of {@link #newDraftHost()}. */
+    private String draftTokenHost(String token) {
+        return DRAFT_TOKEN_HOST_PREFIX + token + this.appCodeSuffix + DRAFT_HOST_BASE_DOMAIN;
+    }
+
+    /**
+     * The token inside a hostname, or null when the first label is not one.
+     *
+     * Matched against the first label only, so an ordinary app hostname that merely
+     * begins with a "t" cannot be mistaken for a token, and the environment suffix
+     * never has to be parsed back out.
+     */
+    static String draftTokenFromHost(String host) {
+
+        if (StringUtil.safeIsBlank(host))
+            return null;
+
+        int dot = host.indexOf('.');
+        String label = dot == -1 ? host : host.substring(0, dot);
+
+        return DRAFT_TOKEN_LABEL.matcher(label).matches()
+                ? label.substring(DRAFT_TOKEN_HOST_PREFIX.length())
+                : null;
     }
 }

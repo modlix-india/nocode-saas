@@ -45,7 +45,7 @@ class DraftHostNameTest {
     private static final String SUFFIX = ENV + ".modlix.com";
 
     private static ClientUrlService serviceForEnv(String appCodeSuffix) {
-        ClientUrlService service = new ClientUrlService(null, null, null, null);
+        ClientUrlService service = new ClientUrlService(null, null, null, null, null);
         ReflectionTestUtils.setField(service, "appCodeSuffix", appCodeSuffix);
         return service;
     }
