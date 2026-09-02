@@ -54,6 +54,19 @@ public class IndexHTMLService {
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
+    /**
+     * Where the visitor's selected theme lives. One cookie per app, because a
+     * single host can serve several apps under /appCode/clientCode/page, and they
+     * do not share a theme.
+     *
+     * The client half of this contract is `themeSelection.ts` in the ui client;
+     * the two must agree on the name or the first paint silently falls back to
+     * the app's default theme.
+     */
+    public static final String THEME_COOKIE_PREFIX = "mlxTheme_";
+
+    private static final String APP_STYLE_LINK_ID = "mlxAppStyle";
+
     private static final String KEY_ENABLED = "enabled";
 
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
@@ -391,12 +404,32 @@ public class IndexHTMLService {
         str.append("</div>");
 
         // Here the preference will be for the style from the style service.
-        str.append("<link rel=\"stylesheet\" href=\"/")
+        //
+        // The link is emitted with no href and filled in by the script below,
+        // because the URL depends on the visitor's selected theme and this whole
+        // document is cached per app and client. An href-less link starts no
+        // request, so setting it a few bytes later costs nothing and keeps the
+        // cached HTML free of any per-user dimension.
+        //
+        // The cookie read is synchronous and happens before the stylesheet is
+        // requested, which is the entire reason a returning visitor's first paint
+        // is already their theme rather than the default.
+        str.append("<link rel=\"stylesheet\" id=\"")
+                .append(APP_STYLE_LINK_ID)
+                .append("\" />");
+        str.append("<script>");
+        str.append("window.__mlxAppCode='").append(appCode).append("';");
+        str.append("(function(){var m=document.cookie.match(/(?:^|;\\s*)")
+                .append(THEME_COOKIE_PREFIX)
+                .append(appCode)
+                .append("=([^;]*)/);")
+                .append("document.getElementById('")
+                .append(APP_STYLE_LINK_ID)
+                .append("').setAttribute('href','/")
                 .append(appCode)
                 .append("/")
                 .append(clientCode)
-                .append("/page/api/ui/style\" />");
-        str.append("<script>");
+                .append("/page/api/ui/style'+(m?'?theme='+m[1]:''));})();");
 
         if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
             str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");
