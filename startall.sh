@@ -7,6 +7,9 @@
 # Usage:
 #   ./startall.sh            # start the whole stack
 #   ./startall.sh <service>  # restart a single service (e.g. ./startall.sh core)
+#
+# 'ui-client' is the React dev server from the nocode-ui repo (npm run local, :1234), not the
+# Spring 'ui' service on :8002.
 
 set -e
 
@@ -20,7 +23,16 @@ mkdir -p "$LOG_DIR"
 BRIDGE_DIR="${BRIDGE_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)/whatsapp-bridge}"
 BRIDGE_BIN="$BRIDGE_DIR/out/bridge"
 
-ALL_SERVICES="config eureka core files entity-processor message security multi ui gateway worker adzump bridge"
+# The React client is likewise its own repo, and likewise optional: backend-only work has no reason
+# to run a webpack dev server. Named 'ui-client' rather than 'ui' because 'ui' is already taken by
+# the Spring UI service on :8002, and confusing the two costs an afternoon.
+CLIENT_NAME="ui-client"
+CLIENT_DIR="${CLIENT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)/nocode-ui/ui-app/client}"
+# Must match devServer.port in that repo's webpack.local.js. Both the readiness wait and the
+# orphan sweep in stop_client key off it.
+CLIENT_PORT="${CLIENT_PORT:-1234}"
+
+ALL_SERVICES="config eureka core files entity-processor message security multi ui gateway worker adzump bridge ui-client"
 
 start_service() {
   local name="$1"
@@ -140,6 +152,92 @@ stop_bridge() {
   fi
 }
 
+# The React dev server (nocode-ui), via 'npm run local': webpack-dev-server on :1234, proxying
+# /api to the local gateway. Its own function for the same reason the bridge has one: different
+# repo, different toolchain, and nothing in common with the Maven path.
+start_client() {
+  local log="$LOG_DIR/$CLIENT_NAME.log"
+  local pidfile="$LOG_DIR/$CLIENT_NAME.pid"
+
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+    echo "[$CLIENT_NAME] already running (pid $(cat "$pidfile"))"
+    return 0
+  fi
+
+  if [ ! -d "$CLIENT_DIR" ]; then
+    echo "[$CLIENT_NAME] skipped: no repo at $CLIENT_DIR (set CLIENT_DIR to override)"
+    return 0
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "[$CLIENT_NAME] skipped: npm is not on PATH"
+    return 0
+  fi
+
+  # Deliberately not running 'npm install' from here. It is a one-time setup step that can take
+  # minutes, and mutating node_modules as a side effect of starting the backend stack is the wrong
+  # trade, especially when the reason it is missing is usually a half-finished checkout.
+  if [ ! -d "$CLIENT_DIR/node_modules" ]; then
+    echo "[$CLIENT_NAME] skipped: no node_modules (run 'npm install' in $CLIENT_DIR first)"
+    return 0
+  fi
+
+  echo "[$CLIENT_NAME] starting -> $log"
+  ( cd "$CLIENT_DIR" && nohup npm run local >"$log" 2>&1 & echo $! >"$pidfile" )
+  echo "[$CLIENT_NAME] started (pid $(cat "$pidfile"))"
+  return 0
+}
+
+# TERM a process and every descendant, deepest first.
+#
+# npm is a wrapper: 'npm run local' runs a shell which runs the webpack node process, so the dev
+# server is a grandchild of the recorded pid. TERMing only that pid, or only its direct children
+# the way stopall.sh's generic loop does, leaves node alive still holding :1234.
+kill_tree() {
+  local pid="$1" sig="${2:-TERM}" child
+  for child in $(pgrep -P "$pid" 2>/dev/null); do
+    kill_tree "$child" "$sig"
+  done
+  kill -"$sig" "$pid" 2>/dev/null || true
+  return 0
+}
+
+# Walking the real process tree, and then the listening socket, rather than pattern-matching the
+# repo directory the way stop_service does. Same hazard the bridge comment describes, and worse
+# here: the nocode-ui path is exactly what an editor or an agent started with --add-dir carries in
+# its command line, so 'pgrep -f "$CLIENT_DIR"' would TERM and then KILL the tools you are working
+# in. Both mechanisms below can only reach the dev server itself.
+stop_client() {
+  local pidfile="$LOG_DIR/$CLIENT_NAME.pid"
+
+  if [ -f "$pidfile" ]; then
+    local pid; pid=$(cat "$pidfile")
+    echo "[$CLIENT_NAME] stopping (pid $pid and descendants)"
+    kill_tree "$pid"
+    rm -f "$pidfile"
+  fi
+
+  # Whatever still holds the port. Catches orphans from a crash, or from a Ctrl-C that took out npm
+  # but not the node process underneath it, which is the common case and the one that makes the
+  # next start fail with EADDRINUSE.
+  local holders
+  holders=$(lsof -ti "tcp:$CLIENT_PORT" -sTCP:LISTEN 2>/dev/null || true)
+  if [ -n "$holders" ]; then
+    echo "[$CLIENT_NAME] :$CLIENT_PORT still held (pids: $(echo $holders | tr '\n' ' '))"
+    kill -TERM $holders 2>/dev/null || true
+    for ((i=0; i<15; i++)); do
+      holders=$(lsof -ti "tcp:$CLIENT_PORT" -sTCP:LISTEN 2>/dev/null || true)
+      [ -z "$holders" ] && break
+      sleep 1
+    done
+    if [ -n "$holders" ]; then
+      echo "[$CLIENT_NAME] still alive after TERM, sending KILL"
+      kill -KILL $holders 2>/dev/null || true
+    fi
+  fi
+  return 0
+}
+
 wait_for_port() {
   local name="$1" port="$2" timeout="${3:-180}"
   echo "[$name] waiting on :$port (timeout ${timeout}s)"
@@ -158,6 +256,11 @@ stop_service() {
 
   if [ "$name" = "bridge" ]; then
     stop_bridge
+    return
+  fi
+
+  if [ "$name" = "$CLIENT_NAME" ]; then
+    stop_client
     return
   fi
 
@@ -201,6 +304,7 @@ port_for() {
     ui) echo 8002 ;;
     adzump) echo 8012 ;;
     bridge) echo 9481 ;;
+    "$CLIENT_NAME") echo "$CLIENT_PORT" ;;
     *) echo "" ;;
   esac
 }
@@ -213,6 +317,14 @@ start_one() {
     # Only wait when it actually launched. A skipped bridge has no port and would otherwise burn
     # the full timeout telling you something is wrong when nothing is.
     [ -f "$LOG_DIR/bridge.pid" ] && wait_for_port bridge 9481 30
+    return
+  fi
+  if [ "$name" = "$CLIENT_NAME" ]; then
+    start_client
+    # 300s, well past the other services' 180. This is a cold webpack build of the whole client,
+    # not a JVM coming up. Same reason as the bridge for gating on the pidfile: a skipped client
+    # has no port, and burning the timeout would report a problem where there is none.
+    [ -f "$LOG_DIR/$CLIENT_NAME.pid" ] && wait_for_port "$CLIENT_NAME" "$CLIENT_PORT" 300
     return
   fi
   if [ "$name" = "config" ]; then
@@ -268,5 +380,13 @@ done
 # retries, so it does not matter that message is still coming up.
 start_bridge
 
+# 5. The React dev server. Last because it is the slowest to become useful and the least urgent:
+# it proxies /api to the gateway rather than calling anything at boot, so it does not care that the
+# backend above is still starting. No wait here: the whole-stack path does not block on any of the
+# parallel services either, and a cold webpack build would add minutes to it.
+start_client
+
 echo
 echo "All services launched. Tail a log with:  tail -f logs/<service>.log"
+[ -f "$LOG_DIR/$CLIENT_NAME.pid" ] && echo "UI dev server building on http://localhost:$CLIENT_PORT. Tail with:  tail -f logs/$CLIENT_NAME.log"
+exit 0

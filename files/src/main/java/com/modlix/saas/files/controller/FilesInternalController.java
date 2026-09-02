@@ -33,6 +33,11 @@ public class FilesInternalController {
         this.securedService = securedService;
     }
 
+    @GetMapping(value = "/secured/createKey")
+    public ResponseEntity<String> createSecuredKey(@RequestParam String filePath) {
+        return ResponseEntity.ok(this.securedService.createSecuredAccessInternal(filePath));
+    }
+
     @PostMapping(value = "/{resourceType}")
     public ResponseEntity<FileDetail> create(
             @PathVariable String resourceType,

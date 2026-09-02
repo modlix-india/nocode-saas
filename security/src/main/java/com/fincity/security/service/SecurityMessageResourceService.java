@@ -50,6 +50,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String NEW_PASSWORD_MISSING = "new_password_missing";
     public static final String PASSWORD_USER_ERROR = "password_used_error";
     public static final String DELETE_ROLE_ERROR = "delete_role_error";
+    public static final String SUB_ROLE_CYCLE = "sub_role_cycle";
+    public static final String SUB_ROLE_SELF = "sub_role_self";
     public static final String UNKNOWN_CLIENT = "unknown_client";
     public static final String INACTIVE_CLIENT = "inactive_client";
     public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";

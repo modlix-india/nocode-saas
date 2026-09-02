@@ -32,6 +32,7 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.security.dao.billing.InvoiceDAO;
 import com.fincity.security.dao.billing.PaymentDAO;
 import com.fincity.security.dto.billing.Invoice;
+import com.fincity.security.feign.IFeignFilesService;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityInvoiceStatus;
 import com.fincity.security.service.AbstractServiceUnitTest;
@@ -67,6 +68,8 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     private SecurityMessageResourceService messageResourceService;
     @Mock
     private ClientUrlService clientUrlService;
+    @Mock
+    private IFeignFilesService filesService;
 
     private InvoiceService service;
 
@@ -82,7 +85,7 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
     @BeforeEach
     void setUp() {
         service = new InvoiceService(dao, paymentDAO, appService, clientService, ecService, messageResourceService,
-                clientUrlService);
+                clientUrlService, filesService);
         setupMessageResourceService(messageResourceService);
     }
 
@@ -240,5 +243,43 @@ class InvoiceServiceTest extends AbstractServiceUnitTest {
         assertEquals(APP_CODE, evt.getAppCode());
         assertEquals("MMMM", evt.getClientCode());
         assertEquals("INV/2026-27/10/1", evt.getData().get("invoiceNumber"));
+    }
+
+    // ---------------------------------------------------------------------
+    // readDocumentKeys
+    // ---------------------------------------------------------------------
+
+    @Test
+    void readDocumentKeysMintsBothUnderTheInvoiceClient() {
+        setupSecurityContext(TestDataFactory.createBusinessAuth(BUYER, "MMMM",
+                List.of("Authorities.Invoice_READ")));
+        when(dao.readById(INVOICE_ID)).thenReturn(Mono.just(invoice(SELLER, BUYER)));
+        when(appService.getAppByIdInternal(APP_ID))
+                .thenReturn(Mono.just(TestDataFactory.createOwnApp(APP_ID, SELLER, APP_CODE)));
+        when(clientService.getClientInfoById(BUYER))
+                .thenReturn(Mono.just(TestDataFactory.createClient(BUYER, "MMMM", "BUS",
+                        SecurityClientStatusCode.ACTIVE)));
+        // Files are resolved under the invoice's OWN client (MMMM) + app (adzump), not the caller.
+        when(filesService.createSecuredKeyInternal("MMMM/invoices/" + APP_CODE + "/invoice-" + INVOICE_ID + ".pdf"))
+                .thenReturn(Mono.just("api/files/secured/downloadFileByKey/INVKEY"));
+        when(filesService.createSecuredKeyInternal("MMMM/receipts/" + APP_CODE + "/receipt-" + INVOICE_ID + ".pdf"))
+                .thenReturn(Mono.just("api/files/secured/downloadFileByKey/RCPTKEY"));
+
+        StepVerifier.create(service.readDocumentKeys(INVOICE_ID))
+                .assertNext(docs -> {
+                    assertEquals("api/files/secured/downloadFileByKey/INVKEY", docs.getInvoiceUrl());
+                    assertEquals("api/files/secured/downloadFileByKey/RCPTKEY", docs.getReceiptUrl());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void readDocumentKeysForbidsAThirdParty() {
+        setupSecurityContext(TestDataFactory.createBusinessAuth(OTHER, "XXXX",
+                List.of("Authorities.Invoice_READ")));
+        when(dao.readById(INVOICE_ID)).thenReturn(Mono.just(invoice(SELLER, BUYER)));
+
+        StepVerifier.create(service.readDocumentKeys(INVOICE_ID))
+                .verifyError(GenericException.class);
     }
 }

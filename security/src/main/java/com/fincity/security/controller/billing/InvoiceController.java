@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dto.billing.Invoice;
+import com.fincity.security.dto.billing.InvoiceDocuments;
 import com.fincity.security.service.billing.InvoiceService;
 
 import reactor.core.publisher.Mono;
@@ -44,6 +45,16 @@ public class InvoiceController {
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Invoice>> read(@PathVariable ULong id) {
         return this.invoiceService.readById(id).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Party-guarded download links (secured-key URLs) for the invoice's tax-invoice and
+     * receipt PDFs. Resolves the files under the invoice's own client, so the buyer, the
+     * seller, or a managing client can all download.
+     */
+    @GetMapping("/{id}/documents")
+    public Mono<ResponseEntity<InvoiceDocuments>> documents(@PathVariable ULong id) {
+        return this.invoiceService.readDocumentKeys(id).map(ResponseEntity::ok);
     }
 
     @GetMapping

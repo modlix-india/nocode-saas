@@ -336,8 +336,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
      *
      * The content is stored exactly as sent, not as a post-extractOverride delta,
      * so publish can run the ordinary update pipeline over it instead of
-     * reimplementing the diffing. Nothing on the live surface changes and no cache
-     * is evicted, which is what makes a draft save incapable of leaking.
+     * reimplementing the diffing. No live DOCUMENT changes, which is what makes a
+     * draft save incapable of leaking; the draft surface's own caches do have to be
+     * cleared, and that is what evictDraft is for.
      */
     public Mono<Draft> saveDraft(D entity) {
         return this.saveDraft(entity, null);
@@ -380,6 +381,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                         stored.getId(),
                                         this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP),
                                         stored.getVersion(), entity.getMessage()))
+                                .flatMap(saved -> this.evictDraft(stored.getAppCode(), stored.getClientCode(),
+                                        stored.getName()).thenReturn(saved))
                         : Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).saveDraft"))
@@ -575,6 +578,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
                         ? this.draftService.discardByObjectId(id)
+                                .flatMap(discarded -> this.evictDraft(stored.getAppCode(), stored.getClientCode(),
+                                        stored.getName()).thenReturn(discarded))
                         : Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).discardDraft"))
@@ -583,15 +588,42 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         this.getObjectName()));
     }
 
+    /**
+     * Clear the caches the DRAFT surface reads for one object.
+     *
+     * A draft save leaves the live document alone, so for a long time it evicted
+     * nothing at all. That was wrong: the draft surface has caches of its own, and
+     * they are filled by the first draft READ, not by the save. Whatever was cached
+     * before the save went on being served indefinitely, so the draft host answered
+     * with pre-draft content and the draft looked like it had never been written.
+     * Measured on appbuilder: a draft moving `defaultPage` to `builderHome` still
+     * served `landing` until `ApplicationCache_appbuilder_appbuilder_DRAFT` was
+     * evicted by hand.
+     *
+     * Overrides may also clear caches shared by both surfaces -- the ones whose
+     * surface dimension lives in the KEY (the `d-` marked uniqueId, the `-draft`
+     * suffix on the index HTML key) rather than in the cache NAME, which cannot be
+     * cleared one surface at a time. That costs the live surface a re-read and
+     * cannot serve it draft content: every repopulating read caches under the
+     * surface it was made on.
+     */
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) { // NOSONAR
+        // clientCode is unused here and present for the overrides, matching
+        // evictRecursively below.
+        return cacheService.evictAll(this.getCacheName(appCode, name, true))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).evictDraft"));
+    }
+
     protected Mono<D> evictRecursively(D f) {
         return this.evictRecursively(f.getAppCode(), f.getClientCode(), f.getName()).map(e -> f);
     }
 
     protected Mono<Boolean> evictRecursively(String appCode, String clientCode, String name) {
-        // Both surfaces are evicted on every write. A draft save does not reach here
-        // at all, since it never touches the live document; but a publish must clear
-        // the draft surface too, or the draft cache keeps serving content that has
-        // already gone live and the two disagree.
+        // Both surfaces are evicted on every write. A draft save comes through
+        // evictDraft above instead, since it never touches the live document; but a
+        // publish must clear the draft surface too, or the draft cache keeps serving
+        // content that has already gone live and the two disagree.
         return FlatMapUtil.flatMapMono(() -> cacheService.evictAll(this.getCacheName(appCode, name)),
 
                 evict1 -> cacheService.evictAll(this.getCacheName(appCode, name, true)),
