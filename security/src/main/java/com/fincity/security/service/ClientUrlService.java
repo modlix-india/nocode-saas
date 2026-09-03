@@ -580,16 +580,27 @@ public class ClientUrlService
     // nested navigation inside the preview, none of which can carry a header.
 
     /**
-     * Mint an editing session's draft-surface grant for one app.
+     * The editing grant for one app: the caller's live one if they already hold it,
+     * a new one otherwise.
      *
      * Gated exactly like {@link #mintDraftUrl(String)}, and for the same reason:
      * this hands out unpublished work, so app write access is the bar, not the
-     * broader Authorities.Client_UPDATE the rest of this service uses.
+     * broader Authorities.Client_UPDATE the rest of this service uses. The gate runs
+     * before the reuse lookup, so someone whose write access was removed cannot get
+     * their old grant handed back to them.
      *
-     * Unlike mintDraftUrl this does NOT rotate. Two editor tabs on the same app get
-     * a token each and neither invalidates the other, because the token is a
-     * hostname: revoking one tab's grant out from under it would change the origin
-     * its iframes are on.
+     * Reuse, and not rotation, is what a repeat call gets. Rotation is the wrong
+     * answer twice over: the token IS a hostname, so a second window opening on the
+     * same app would sit on a different origin from the first, and the gateway would
+     * have to resolve and cache that second host from cold. Handing back the one
+     * grant means a refresh, a second window and a restored tab all land on the
+     * origin already resolved, and the row count stops tracking how many times
+     * anybody opened the editor.
+     *
+     * Note what this deliberately does not do: it never revokes. The loser of a
+     * simultaneous open keeps its own grant until that grant's own expiry, because
+     * pulling a token out from under an open editor would change the origin its
+     * iframes are already on. Grants only ever die by expiring.
      */
     public Mono<DraftTokenResponse> mintDraftToken(String appCode) {
 
@@ -604,20 +615,8 @@ public class ClientUrlService
                         ? this.clientService.getClientBy(ca.getClientCode())
                         : Mono.empty(),
 
-                (ca, hasAccess, client) -> {
-
-                    byte[] raw = new byte[DRAFT_HOST_RANDOM_BYTES];
-                    DRAFT_HOST_RANDOM.nextBytes(raw);
-
-                    DraftToken token = new DraftToken();
-                    token.setToken(randomHex(raw))
-                            .setAppCode(appCode)
-                            .setClientId(client.getId())
-                            .setUserId(ULongUtil.valueOf(ca.getUser().getId()))
-                            .setExpiresAt(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(this.draftTokenExpiryMinutes));
-
-                    return this.draftTokenDAO.create(token);
-                },
+                (ca, hasAccess, client) -> this.reuseOrCreateDraftToken(appCode, client.getId(),
+                        ULongUtil.valueOf(ca.getUser().getId())),
 
                 (ca, hasAccess, client, token) -> Mono.just(new DraftTokenResponse()
                         .setToken(token.getToken())
@@ -630,13 +629,57 @@ public class ClientUrlService
     }
 
     /**
+     * The caller's live grant for this app, pushed forward, or a brand new one.
+     *
+     * A reused grant always leaves here with a full window ahead of it, so the
+     * caller never has to care which branch it came from -- a row with four minutes
+     * left is worth reusing precisely because this is also the moment it gets
+     * extended. That extension cannot miss: the read filters out expired rows, and
+     * the only thing that deletes rows is the cleanup job, which takes expired ones
+     * only. The update's affected-row count is therefore not worth branching on,
+     * which is just as well -- MySQL reports rows CHANGED, not matched, so two opens
+     * inside the same second would report zero for a no-op write of the same
+     * second-resolution timestamp.
+     */
+    private Mono<DraftToken> reuseOrCreateDraftToken(String appCode, ULong clientId, ULong userId) {
+
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime expiresAt = now.plusMinutes(this.draftTokenExpiryMinutes);
+
+        return this.draftTokenDAO.readLiveOfUser(userId, appCode, clientId, now)
+
+                .flatMap(existing -> this.draftTokenDAO.extend(existing.getToken(), userId, expiresAt)
+                        .thenReturn(existing.setExpiresAt(expiresAt)))
+
+                .switchIfEmpty(Mono.defer(() -> {
+
+                    byte[] raw = new byte[DRAFT_HOST_RANDOM_BYTES];
+                    DRAFT_HOST_RANDOM.nextBytes(raw);
+
+                    DraftToken token = new DraftToken();
+                    token.setToken(randomHex(raw))
+                            .setAppCode(appCode)
+                            .setClientId(clientId)
+                            .setUserId(userId)
+                            .setExpiresAt(expiresAt);
+
+                    return this.draftTokenDAO.create(token);
+                }));
+    }
+
+    /**
      * Push an open editor's grant forward, keeping the same token.
      *
      * Never mints a replacement. The token IS the hostname, so a new value would
      * change the iframes' origin and reload all three canvases, losing scroll
      * position and everything the previewed page holds in its own store. The
-     * property that matters is that the grant dies shortly after the editor is
-     * closed, and expiry alone gives that.
+     * property that matters is that the grant dies shortly after the last editor
+     * holding it is closed, and expiry alone gives that.
+     *
+     * Since mintDraftToken hands the same grant to every window of the same user on
+     * the same app, several editors can be beating on one token at once. That is
+     * harmless: each beat is the same idempotent write of an absolute expiry, so the
+     * grant simply lives as long as the longest-lived of them.
      *
      * Nothing is evicted here, and that is not an omission. The gateway caches what
      * it resolved, but its cache cannot be cleared from this side: CacheService
@@ -742,10 +785,11 @@ public class ClientUrlService
     /**
      * Drop draft-edit tokens whose expiry has passed.
      *
-     * Minting does not rotate -- two editor tabs on one app each get a token -- so
-     * rows accumulate at roughly the rate people open the page editor and nothing
-     * else removes them. An expired row grants nothing either way; this is
-     * housekeeping, not enforcement.
+     * Rows now accumulate at roughly the rate of (person, app) pairs that go a whole
+     * expiry window without being edited, rather than at the rate people open the
+     * page editor, because minting reuses the caller's live grant. Nothing else
+     * removes them. An expired row grants nothing either way; this is housekeeping,
+     * not enforcement.
      */
     public Mono<Integer> cleanupExpiredDraftTokens() {
         return this.draftTokenDAO.deleteExpired();

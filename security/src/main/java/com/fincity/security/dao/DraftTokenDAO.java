@@ -36,6 +36,36 @@ public class DraftTokenDAO extends AbstractDAO<SecurityDraftTokenRecord, ULong, 
     }
 
     /**
+     * The live grant this user already holds for this app, freshest first.
+     *
+     * Keyed on the same triple {@code resolveDraftToken} later checks a request
+     * against -- user, app, minting client -- so a reused row grants exactly what a
+     * freshly minted one would have, and nothing downstream can tell the two apart.
+     *
+     * Expiry IS filtered here, unlike {@link #readByToken(String)}. That one answers
+     * "what does this hostname mean", which an expired row still answers; this one
+     * answers "may this be handed out again", which an expired row never may. A row
+     * this returns also cannot vanish under the caller: the only thing that deletes
+     * rows is the cleanup job, and it only takes rows already past their expiry.
+     *
+     * The ORDER BY matters because the table has no unique key on this triple -- two
+     * windows opened in the same instant can both miss this read and both insert. The
+     * loser's row is then simply an extra grant that expires on its own, and every
+     * later window converges on whichever row is freshest.
+     */
+    public Mono<DraftToken> readLiveOfUser(ULong userId, String appCode, ULong clientId, LocalDateTime now) {
+
+        return Mono.from(this.dslContext.select(SECURITY_DRAFT_TOKEN.fields()).from(SECURITY_DRAFT_TOKEN)
+                .where(SECURITY_DRAFT_TOKEN.USER_ID.eq(userId)
+                        .and(SECURITY_DRAFT_TOKEN.APP_CODE.eq(appCode))
+                        .and(SECURITY_DRAFT_TOKEN.CLIENT_ID.eq(clientId))
+                        .and(SECURITY_DRAFT_TOKEN.EXPIRES_AT.gt(now)))
+                .orderBy(SECURITY_DRAFT_TOKEN.EXPIRES_AT.desc())
+                .limit(1))
+                .map(rec -> rec.into(DraftToken.class));
+    }
+
+    /**
      * Push an existing token's expiry forward, without changing its value.
      *
      * The token and therefore the hostname must survive a whole editing session:

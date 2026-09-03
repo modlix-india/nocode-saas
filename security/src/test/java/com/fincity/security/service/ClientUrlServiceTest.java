@@ -547,6 +547,103 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 	}
 
 	@Nested
+	@DisplayName("Draft edit token: minting reuses the caller's live grant")
+	class DraftTokenMinting {
+
+		private static final int WINDOW_MINUTES = 30;
+		private static final String HELD = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+		private static final String FRESH = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+		@org.junit.jupiter.api.BeforeEach
+		void injectWindow() throws Exception {
+			// @Value is not applied under MockitoExtension, so the window would be zero
+			// and an extension would be indistinguishable from the expiry it replaced.
+			var field = ClientUrlService.class.getDeclaredField("draftTokenExpiryMinutes");
+			field.setAccessible(true);
+			field.setInt(service, WINDOW_MINUTES);
+		}
+
+		private Client systemClient() {
+			Client c = new Client();
+			c.setId(SYSTEM_CLIENT_ID);
+			c.setCode("SYSTEM");
+			return c;
+		}
+
+		private DraftToken held(java.time.LocalDateTime expiresAt) {
+			DraftToken token = new DraftToken();
+			token.setToken(HELD).setAppCode("myapp").setClientId(SYSTEM_CLIENT_ID)
+					.setUserId(ULong.valueOf(1)).setExpiresAt(expiresAt);
+			return token;
+		}
+
+		@Test
+		@DisplayName("a caller who already holds a live grant gets that same hostname back")
+		void reusesTheLiveGrant() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(systemClient()));
+
+			// Nearly spent on purpose: a grant with two minutes left is exactly the one
+			// worth reusing, because reuse is also when it gets pushed forward.
+			when(draftTokenDAO.readLiveOfUser(eq(ULong.valueOf(1)), eq("myapp"), eq(SYSTEM_CLIENT_ID), any()))
+					.thenReturn(Mono.just(
+							held(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).plusMinutes(2))));
+			when(draftTokenDAO.extend(eq(HELD), eq(ULong.valueOf(1)), any())).thenReturn(Mono.just(1));
+
+			StepVerifier.create(service.mintDraftToken("myapp"))
+					.assertNext(res -> {
+						assertEquals(HELD, res.getToken());
+						assertEquals("t-" + HELD + ".testdomain.com.modlix.com", res.getHost());
+						// Handed back with a full window, not the two minutes it had.
+						assertTrue(res.getExpiresAt()
+								.isAfter(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+										.plusMinutes(WINDOW_MINUTES - 1)),
+								"a reused grant must leave with a full window");
+					})
+					.verifyComplete();
+
+			verify(draftTokenDAO).extend(eq(HELD), eq(ULong.valueOf(1)), any());
+			verify(draftTokenDAO, never()).create(any(DraftToken.class));
+		}
+
+		@Test
+		@DisplayName("a caller holding none gets a new one")
+		void mintsWhenNoneIsHeld() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(systemClient()));
+
+			when(draftTokenDAO.readLiveOfUser(any(), anyString(), any(), any())).thenReturn(Mono.empty());
+			when(draftTokenDAO.create(any(DraftToken.class))).thenAnswer(invocation -> {
+				DraftToken given = invocation.getArgument(0);
+				return Mono.just(given.setToken(FRESH));
+			});
+
+			StepVerifier.create(service.mintDraftToken("myapp"))
+					.assertNext(res -> {
+						assertEquals(FRESH, res.getToken());
+						assertEquals("t-" + FRESH + ".testdomain.com.modlix.com", res.getHost());
+					})
+					.verifyComplete();
+
+			verify(draftTokenDAO, never()).extend(anyString(), any(), any());
+		}
+
+		@Test
+		@DisplayName("without write access the reuse lookup never happens")
+		void noWriteAccessNeverReachesTheLookup() {
+			// The gate has to sit in front of the lookup, or losing write access would
+			// still hand somebody the grant they were holding when they had it.
+			setupSecurityContext(TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUS", List.of()));
+			when(appService.hasWriteAccess("myapp", "BUS")).thenReturn(Mono.just(Boolean.FALSE));
+
+			StepVerifier.create(service.mintDraftToken("myapp"))
+					.verifyError(com.fincity.saas.commons.exeception.GenericException.class);
+
+			verifyNoInteractions(draftTokenDAO);
+		}
+	}
+
+	@Nested
 	@DisplayName("Draft edit token: which hostnames are tokens")
 	class DraftTokenHostParsing {
 
