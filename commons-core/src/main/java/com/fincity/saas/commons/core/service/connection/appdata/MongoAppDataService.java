@@ -42,6 +42,8 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mongodb.ErrorCategory;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
@@ -110,6 +112,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private static final String OPERATION = "operation";
 
     private static final String TEXT_INDEX_NAME = "_textIndex";
+
+    // A duplicate key can come off any unique index, so the _id one is identified by name before
+    // the failure is reported as a clash on the supplied _id.
+    private static final String DUPLICATE_ID_INDEX = "index: _id_";
+
     private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
             FilterConditionOperator.EQUALS,
             "$eq",
@@ -189,6 +196,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Map<String, Object>> create(String clientCode, Connection conn, Storage storage, DataObject dataObject) {
+
+        BsonObjectId givenId = this.takeGivenId(dataObject.getData());
+
         return FlatMapUtil.flatMapMonoWithNull(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getCollection(
@@ -203,33 +213,85 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                                 schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (ca, collection, schema, appSchemaRepo) ->
                                 this.handleRelationsAndValidate(dataObject.getData(), storage, schema, appSchemaRepo),
-                        (ca, collection, schema, appSchemaRepo, je) -> Mono.from(collection.insertOne(BJsonUtil.from(
-                                storage.getRelations() != null
-                                        ? storage.getRelations().keySet()
-                                        : Set.of(),
-                                je))),
+                        (ca, collection, schema, appSchemaRepo, je) -> {
+                            Document document = BJsonUtil.from(
+                                    storage.getRelations() != null
+                                            ? storage.getRelations().keySet()
+                                            : Set.of(),
+                                    je);
+
+                            if (givenId != null) document.append(ID, givenId);
+
+                            return Mono.from(collection.insertOne(document))
+                                    .onErrorResume(
+                                            MongoWriteException.class,
+                                            ex -> this.duplicateGivenId(ex, storage, givenId));
+                        },
                         (ca, collection, schema, appSchemaRepo, je, result) -> Mono.from(collection
-                                .find(Filters.eq(ID, result.getInsertedId()))
+                                .find(Filters.eq(ID, this.insertedId(result, givenId)))
                                 .first()),
                         (ca, collection, schema, appSchemaRepo, je, result, doc) -> this.addVersion(
                                 clientCode,
                                 conn,
                                 storage,
                                 dataObject.getMessage(),
-                                result.getInsertedId() != null
-                                        ? result.getInsertedId().asObjectId()
-                                        : null,
+                                this.insertedId(result, givenId),
                                 ca,
                                 doc,
                                 "CREATE"),
                         (ca, collection, schema, appSchemaRepo, je, result, doc, versionResult) -> {
-                            BsonValue insertedId = result.getInsertedId();
+                            BsonObjectId insertedId = this.insertedId(result, givenId);
                             if (insertedId != null)
-                                doc.append(
-                                        ID, insertedId.asObjectId().getValue().toHexString());
+                                doc.append(ID, insertedId.getValue().toHexString());
                             return Mono.just((Map<String, Object>) doc);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.create"));
+    }
+
+    /**
+     * Pulls a caller supplied _id out of the incoming data. Uploads and transports carry the _id of
+     * every row so relation fields keep pointing at the right rows, but every read, update and
+     * delete here matches _id as an ObjectId, so an _id left in the data as a plain string would be
+     * stored as a string and the row would be unreachable afterwards. A hex id is therefore handed
+     * back for the document to be inserted with, and anything else is dropped for Mongo to
+     * generate. Removing it also keeps _id away from the schema validator, the same way relation
+     * fields are held back.
+     */
+    private BsonObjectId takeGivenId(Map<String, Object> data) {
+        if (data == null) return null;
+
+        Object id = data.remove(ID);
+
+        if (id instanceof ObjectId objectId) return new BsonObjectId(objectId);
+
+        String hexId = StringUtil.safeValueOf(id);
+
+        return !StringUtil.safeIsBlank(hexId) && ObjectId.isValid(hexId)
+                ? new BsonObjectId(new ObjectId(hexId))
+                : null;
+    }
+
+    private BsonObjectId insertedId(InsertOneResult result, BsonObjectId givenId) {
+        BsonValue insertedId = result != null ? result.getInsertedId() : null;
+
+        return insertedId != null && insertedId.isObjectId() ? insertedId.asObjectId() : givenId;
+    }
+
+    /**
+     * Now that a supplied _id is kept, uploading the same file twice collides on it. Answering that
+     * with the raw driver error says nothing about which row is already there.
+     */
+    private Mono<InsertOneResult> duplicateGivenId(
+            MongoWriteException ex, Storage storage, BsonObjectId givenId) {
+        if (givenId == null
+                || ex.getError().getCategory() != ErrorCategory.DUPLICATE_KEY
+                || !ex.getError().getMessage().contains(DUPLICATE_ID_INDEX)) return Mono.error(ex);
+
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                CoreMessageResourceService.STORAGE_OBJECT_ID_EXISTS,
+                givenId.getValue().toHexString(),
+                storage.getName());
     }
 
     @SuppressWarnings("unchecked")
