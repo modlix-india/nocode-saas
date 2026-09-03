@@ -300,11 +300,15 @@ fi
 # its files by id, so --objects URIPath=<id> applies nothing and returns 200).
 # ===========================================================================
 
-# Type folders in the order each service's getServieMap() applies them. Apply is
-# a per-object upsert, so order does not affect correctness; this only keeps the
-# sequence recognisable. Folders not listed here are applied last, sorted.
+# Type folders in the order each service's getServieMap() applies them. Order
+# matters: StorageService.validate resolves the storage's schema ref against the
+# app's schemas and reads every storage its relations name, failing the save if
+# either is missing -- so Schema has to go in before Storage, and a storage
+# before the ones pointing at it. Since we chunk uploads, that ordering is ours
+# to keep as much as the server's. Keep these lists in step with each service's
+# getServieMap(). Folders not listed here are applied last, sorted.
 TYPE_ORDER_ui="Application Page Style Theme Function Schema Filler URIPath"
-TYPE_ORDER_core="Template Storage Function Schema EventAction EventDefinition Filler"
+TYPE_ORDER_core="Schema Storage Function Template EventDefinition EventAction Filler"
 
 FAILED_LIST=""
 
