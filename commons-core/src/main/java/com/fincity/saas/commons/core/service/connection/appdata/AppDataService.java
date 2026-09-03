@@ -1510,11 +1510,25 @@ public class AppDataService {
                 monoList.add(dataService
                         .create(clientCode, conn, storage, new DataObject().setData(job))
                         .map(v -> true));
+        } catch (GenericException ex) {
+            throw ex;
         } catch (Exception ex) {
-            logger.debug("Error while reading upload file. ", ex);
+            throw this.unreadableFile(fileType, ex);
         }
 
         return monoList;
+    }
+
+    /**
+     * The whole file is read before any row is written, so a read failure has inserted nothing and
+     * has to be answered as a failure. Swallowing it answered the upload with true for a file none
+     * of which was read.
+     */
+    private GenericException unreadableFile(DataFileType fileType, Exception ex) {
+        logger.error("Error while reading upload file. ", ex);
+
+        return new GenericException(
+                HttpStatus.BAD_REQUEST, "Unable to read the uploaded " + fileType + " file.", ex);
     }
 
     private List<Mono<Boolean>> flatFileToDB(
@@ -1548,8 +1562,10 @@ public class AppDataService {
                             .map(v -> true));
                 }
             } while (row != null && !row.isEmpty());
+        } catch (GenericException ex) {
+            throw ex;
         } catch (Exception ex) {
-            logger.debug("Error while reading upload file. ", ex);
+            throw this.unreadableFile(fileType, ex);
         }
 
         return monoList;

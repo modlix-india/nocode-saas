@@ -113,16 +113,28 @@ public class DataFileReader implements Closeable {
 			throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
 		int count = 1;
 		boolean inDoubleQuotes = false;
+		boolean escaped = false;
 		StringBuilder str = new StringBuilder();
 		str.append((char) c);
 		while (count != 0) {
 			c = this.reader.read();
-			if (c != -1) {
-				str.append((char) c);
-				if (c == '"')
-					inDoubleQuotes = !inDoubleQuotes;
-				if (inDoubleQuotes)
-					continue;
+
+			// The object is not closed and there is nothing left to read. Without this the loop
+			// spins on -1 for ever and the request never completes.
+			if (c == -1)
+				throw new GenericException(HttpStatus.BAD_REQUEST, "Invalid JSON file");
+
+			str.append((char) c);
+
+			// A \" inside a string used to flip inDoubleQuotes, so every brace in the rest of that
+			// string was counted and the object was split in the wrong place.
+			if (escaped)
+				escaped = false;
+			else if (inDoubleQuotes && c == '\\')
+				escaped = true;
+			else if (c == '"')
+				inDoubleQuotes = !inDoubleQuotes;
+			else if (!inDoubleQuotes) {
 				if (c == '{')
 					count++;
 				else if (c == '}')
