@@ -5,6 +5,7 @@ import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourc
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1332,6 +1333,34 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
     public Class<D> getPojoClass() {
         return this.pojoClass;
+    }
+
+    /**
+     * Names of other objects of <b>this same type</b> that have to be saved
+     * before this one, used to order a transport import.
+     * <p>
+     * Only same type edges belong here. Ordering between types is the job of
+     * the order the services are listed in {@code getServieMap()}.
+     */
+    public Collection<String> getTransportDependencies(D entity) { // NOSONAR
+        // Overridden by the types that actually have dependencies.
+        return List.of();
+    }
+
+    /**
+     * A copy of this entity with the fields that create its same type
+     * dependencies removed, for the first of a two pass save.
+     * <p>
+     * Objects that depend on each other in a cycle cannot be saved in any
+     * single pass when the save itself resolves those references. Returning a
+     * stripped copy here lets a transport get them all in first and then save
+     * them again whole. Null means this type has no way to defer, which is the
+     * right answer whenever the reference is structural rather than a plain
+     * link.
+     */
+    public D stripTransportDependencies(D entity) { // NOSONAR
+        // Overridden by the types that can defer.
+        return null;
     }
 
     public Mono<Boolean> updatedBaseAppCode(String appCode, String newBaseAppCode, String clientCode) {
