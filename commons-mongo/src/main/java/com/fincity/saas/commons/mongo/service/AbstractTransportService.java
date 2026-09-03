@@ -6,13 +6,17 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
@@ -35,6 +39,7 @@ import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.TopologicalUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 
 import lombok.SneakyThrows;
@@ -45,6 +50,8 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 
 public abstract class AbstractTransportService extends AbstractOverridableDataService<Transport, TransportRepository> {
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractTransportService.class);
 
     private static final String TRANSPORT = "Transport";
     private static final String SLASH_ESCAPE = "__slash__";
@@ -123,7 +130,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .defaultIfEmpty(false);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked" })
     private Mono<Boolean> applyTransportForZip(String transportForAppCode, boolean isBaseApp, ContextAuthentication ca,
             Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
 
@@ -135,92 +142,161 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
             FileSystem zipfs = FileSystems.newFileSystem(URI.create("jar:" + zipFile.toUri().toString()), Map.of());
 
-            Map<String, AbstractOverridableDataService> serviceMap = this.getServieMap()
-                    .stream()
-                    .collect(Collectors.toMap(AbstractOverridableDataService::getObjectName,
-                            Function.identity()));
+            // Read the whole zip up front rather than streaming inside the
+            // apply. Everything in it is held in memory either way, and the
+            // objects have to be grouped by type before any of them is saved
+            // so they can be ordered.
+            Map<String, List<TransportObject>> byType = new HashMap<>();
 
-            return Flux.fromIterable(this.getServieMap())
-                    .flatMap(service -> {
-                        Path dirPath = zipfs.getPath("/", service.getObjectName());
-                        if (!Files.exists(dirPath))
-                            return Flux.empty();
-                        try {
-                            return Flux.fromStream(Files.list(dirPath))
-                                    .filter(e -> e.toString().toLowerCase().trim().endsWith(".json"))
-                                    .map(e -> {
-                                        try {
-                                            Map<String, Object> data = this.objectMapper.readValue(Files.readString(e),
-                                                    Map.class);
-                                            return new TransportObject().setData(data)
-                                                    .setObjectType(service.getObjectName());
-                                        } catch (Exception ex) {
-                                            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                                    ex.getMessage(),
-                                                    ex);
-                                        }
-                                    });
-                        } catch (Exception ex) {
-                            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
-                        }
-                    })
-                    .flatMap(
-                            obj -> {
-                                AbstractOverridableDataService service = serviceMap.get(obj.getObjectType());
-                                if (service == null)
-                                    return Mono.empty();
+            for (AbstractOverridableDataService<?, ?> service : this.getServieMap()) {
 
-                                return this.addObjectToService(service, obj, transportForAppCode, ca, baseCodeTup,
-                                        transport,
-                                        isBaseApp);
-                            })
-                    .collectList()
-                    .map(e -> true)
+                Path dirPath = zipfs.getPath("/", service.getObjectName());
+                if (!Files.exists(dirPath))
+                    continue;
+
+                List<TransportObject> objects = new ArrayList<>();
+
+                try (var paths = Files.list(dirPath)) {
+                    for (Path file : paths.filter(e -> e.toString().toLowerCase().trim().endsWith(".json"))
+                            .toList()) {
+                        Map<String, Object> data = this.objectMapper.readValue(Files.readString(file), Map.class);
+                        objects.add(new TransportObject().setData(data).setObjectType(service.getObjectName()));
+                    }
+                }
+
+                if (!objects.isEmpty())
+                    byType.put(service.getObjectName(), objects);
+            }
+
+            return this.applyObjects(byType, transportForAppCode, ca, baseCodeTup, transport, isBaseApp)
                     .doFinally(e -> {
                         try {
                             zipfs.close();
-                            // Files.deleteIfExists(zipFile);
-                            // Files.deleteIfExists(tempDir);
+                            Files.deleteIfExists(zipFile);
+                            Files.deleteIfExists(tempDir);
                         } catch (Exception ex) {
-                            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
+                            // A leftover temp file is not worth failing an
+                            // import that already succeeded, and throwing from
+                            // doFinally would swallow the real outcome.
+                            logger.warn("Could not clean up the transport temp files under {}", tempDir, ex);
                         }
-                    });
+                    })
+                    // Reading the zip and every save below are blocking, and
+                    // applyTransport has no scheduler of its own the way
+                    // makeTransport does.
+                    .subscribeOn(Schedulers.boundedElastic());
         } catch (Exception ex) {
             throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
         }
     }
 
-    @SuppressWarnings({ "rawtypes" })
     private Mono<Boolean> applyTransportForJSON(String transportForAppCode, boolean isBaseApp, ContextAuthentication ca,
             Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
 
-        var serviceMap = this.getServieMap()
+        Map<String, List<TransportObject>> byType = transport.getObjects()
                 .stream()
-                .collect(Collectors.toMap(AbstractOverridableDataService::getObjectName,
-                        Function.identity()));
+                .filter(e -> e.getObjectType() != null)
+                .collect(Collectors.groupingBy(TransportObject::getObjectType));
 
-        return Flux.fromIterable(transport.getObjects())
-                .flatMap(obj -> {
-                    AbstractOverridableDataService service = serviceMap.get(obj.getObjectType());
-                    if (service == null)
-                        return Mono.empty();
+        return this.applyObjects(byType, transportForAppCode, ca, baseCodeTup, transport, isBaseApp);
+    }
 
-                    return this.addObjectToService(service, obj, transportForAppCode, ca, baseCodeTup, transport,
-                            isBaseApp);
+    /**
+     * Saves everything in a transport in an order its dependencies survive.
+     * <p>
+     * Two things are ordered here. Object types go one after another in
+     * {@code getServieMap()} order, because saving one type can resolve
+     * references into another - a Storage's schema ref has to find its Schema,
+     * and both are in the same transport. Within a type, objects are grouped
+     * into dependency waves, so a Storage whose relation points at another
+     * Storage in the same transport is saved after it. Objects inside a wave
+     * are independent of each other and still go concurrently.
+     */
+    private Mono<Boolean> applyObjects(Map<String, List<TransportObject>> byType,
+            String transportForAppCode, ContextAuthentication ca, Optional<Tuple2<String, Boolean>> baseCodeTup,
+            Transport transport, boolean isBaseApp) {
+
+        return Flux.fromIterable(this.getServieMap())
+                .concatMap(service -> {
+
+                    List<TransportObject> objects = byType.get(service.getObjectName());
+                    if (objects == null || objects.isEmpty())
+                        return Flux.<Boolean>empty();
+
+                    return this.applyObjectsOfOneType(service, objects, transportForAppCode, ca, baseCodeTup,
+                            transport, isBaseApp);
+                })
+                .then(Mono.just(true));
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private Flux<Boolean> applyObjectsOfOneType(AbstractOverridableDataService service,
+            List<TransportObject> objects,
+            String transportForAppCode, ContextAuthentication ca, Optional<Tuple2<String, Boolean>> baseCodeTup,
+            Transport transport, boolean isBaseApp) {
+
+        List<AbstractOverridableDTO> entities = objects.stream()
+                .map(o -> (AbstractOverridableDTO) service.makeEntity(o.getObjectType(), o.getData()))
+                .filter(Objects::nonNull)
+                .toList();
+
+        TopologicalUtil.Ordered<AbstractOverridableDTO> ordered = TopologicalUtil.sort(entities,
+                AbstractOverridableDTO::getName, service::getTransportDependencies);
+
+        return Flux.fromIterable(ordered.waves())
+                .concatMap(wave -> Flux.fromIterable(wave)
+                        .flatMap(e -> this.addObjectToService(service, e, transportForAppCode, ca, baseCodeTup,
+                                transport, isBaseApp))
+                        .collectList())
+                .thenMany(this.applyCyclicObjects(service, ordered.cyclic(), transportForAppCode, ca, baseCodeTup,
+                        transport, isBaseApp));
+    }
+
+    /**
+     * Saves the objects a dependency cycle left behind, in two passes.
+     * <p>
+     * Objects that reference each other in a cycle cannot be saved in any
+     * single order when the save itself resolves those references. Each one
+     * goes in first with its links stripped, then again whole once all of them
+     * exist. The second pass finds the row from the first and takes the update
+     * branch, so the end state is the one a single pass would have reached.
+     * <p>
+     * A type that cannot strip its links returns null and the first pass does
+     * nothing for it, which leaves the second pass saving them as they are -
+     * the best that can be done, and what used to happen to everything.
+     */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private Flux<Boolean> applyCyclicObjects(AbstractOverridableDataService service,
+            List<AbstractOverridableDTO> cyclic,
+            String transportForAppCode, ContextAuthentication ca, Optional<Tuple2<String, Boolean>> baseCodeTup,
+            Transport transport, boolean isBaseApp) {
+
+        if (cyclic.isEmpty())
+            return Flux.empty();
+
+        logger.warn("{} objects of type {} depend on each other in a cycle, saving them in two passes : {}",
+                cyclic.size(), service.getObjectName(),
+                cyclic.stream().map(AbstractOverridableDTO::getName).toList());
+
+        return Flux.fromIterable(cyclic)
+                .concatMap(e -> {
+                    AbstractOverridableDTO stripped = (AbstractOverridableDTO) service.stripTransportDependencies(e);
+                    return stripped == null ? Mono.empty()
+                            : this.addObjectToService(service, stripped, transportForAppCode, ca, baseCodeTup,
+                                    transport, isBaseApp);
                 })
                 .collectList()
-                .map(e -> true);
+                .flatMapMany(e -> Flux.fromIterable(cyclic)
+                        .concatMap(entity -> this.addObjectToService(service, entity, transportForAppCode, ca,
+                                baseCodeTup, transport, isBaseApp)));
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private Mono<Boolean> addObjectToService(
             AbstractOverridableDataService service,
-            TransportObject transportObject,
+            AbstractOverridableDTO tentity,
             String transportForAppCode, ContextAuthentication ca, Optional<Tuple2<String, Boolean>> baseCodeTup,
             Transport transport, boolean isBaseApp) {
-
-        AbstractOverridableDTO tentity = service.makeEntity(transportObject.getObjectType(),
-                transportObject.getData());
 
         if (!StringUtil.safeIsBlank(transportForAppCode))
             tentity.setAppCode(transportForAppCode);

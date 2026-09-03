@@ -259,6 +259,11 @@ public class AppDataController {
 	 * {@code Delete} events, and no relation {@code deleteConstraint} checks, so a
 	 * RESTRICT does not stop it and a CASCADE does not follow it. Anything offering
 	 * this to a person has to say so.
+	 * <p>
+	 * Authorised for the storage's own {@code deleteAuth} OR write access to the
+	 * application, because the caller here is usually a builder and a builder holds
+	 * none of an app's runtime authorities. See
+	 * {@code AppDataService.builderOrAuthorised}.
 	 *
 	 * @param dryRun count the rows instead of deleting them
 	 */
@@ -274,10 +279,8 @@ public class AppDataController {
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					CoreMessageResourceService.STORAGE_DELETE_ALL_NOT_CONFIRMED, storageName);
 
-		// A null condition is a match-all in MongoAppDataService.filter, which is what
-		// makes deleteByFilter the whole-collection delete without a second code path.
 		return this.service.onSurface(appCode, draft,
-						this.service.deleteByFilter(appCode, clientCode, storageName, new Query(), dryRun))
+						this.service.clearAllRows(appCode, clientCode, storageName, dryRun))
 				.map(ResponseEntity::ok);
 	}
 

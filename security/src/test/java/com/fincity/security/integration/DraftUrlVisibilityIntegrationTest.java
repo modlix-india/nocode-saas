@@ -121,7 +121,7 @@ class DraftUrlVisibilityIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("the client URL listing does not include the draft either")
     void clientUrlsSkipDraft() {
 
-        List<ClientUrl> urls = this.clientUrlDAO.getClientUrls(this.appCode, this.clientCode).block();
+        List<ClientUrl> urls = this.clientUrlDAO.getClientUrls(this.appCode, this.clientCode, null).block();
 
         assertThat(urls).extracting(ClientUrl::getUrlPattern).contains(LIVE_HOST);
         assertThat(urls).extracting(ClientUrl::getUrlPattern)

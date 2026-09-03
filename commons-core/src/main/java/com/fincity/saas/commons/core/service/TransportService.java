@@ -21,8 +21,20 @@ public class TransportService extends AbstractTransportService {
             EventDefinitionService edService,
             CoreFillerService fillerService) {
         super(feignSecurityService);
+
+        // Import order, not just a list. AbstractTransportService walks this
+        // one type at a time, because saving an object can resolve references
+        // into another type in the same transport.
+        //
+        // Only the first two edges are enforced at save time: StorageService
+        // .validate resolves the storage's schema ref against the app's
+        // schemas, and reads every storage its relations name, failing the
+        // save if either is missing. The rest follow the direction the
+        // references point - a storage's triggers name functions, an action's
+        // tasks name its event definition - and are ordering hygiene rather
+        // than fixes, since nothing validates them today.
         this.serviceList = List.of(
-                templateService, storageService, funService, schemaService, evaService, edService, fillerService);
+                schemaService, storageService, funService, templateService, edService, evaService, fillerService);
     }
 
     @Override
