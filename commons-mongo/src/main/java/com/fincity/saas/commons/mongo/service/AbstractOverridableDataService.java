@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -96,6 +97,14 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     private static final String[] LRO_FIELDS = { "_id", "name", "message", CLIENT_CODE, "permission", APP_CODE,
             "baseClientCode", NOT_OVERRIDABLE, "description", "title", "published", "version", "createdAt",
             "createdBy", "updatedAt", "updatedBy" };
+
+    /**
+     * One page big enough to be every object of one type in one app. An index is
+     * not paged: a tree that showed the first 1,000 storages and silently dropped
+     * the rest would be worse than one that did not exist, so this is the point at
+     * which the shape has to change rather than the number get bigger.
+     */
+    private static final Pageable INDEX_PAGE = PageRequest.of(0, 1000);
 
     @Autowired // NOSONAR
     protected CacheService cacheService;
@@ -1015,6 +1024,35 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                             pageable.getSort().toString()));
 
         return returnList;
+    }
+
+    /**
+     * Every object of this type the given client should see in an app, as
+     * headers: one row per name, the override chain already resolved.
+     *
+     * <p>
+     * This exists so an index (the builder's object tree, the cross-service
+     * {@code multi} index) reads through exactly the same resolution the list
+     * route uses, rather than querying Mongo on {@code appCode} alone. A raw
+     * {@code readPageFilter} on {@code appCode} returns every client's copy of
+     * every name as its own row, which shows the same page two or three times in
+     * a tree and leaks the names and ids of clients outside the caller's
+     * inheritance chain.
+     *
+     * <p>
+     * {@code clientCode} blank means the caller's own client, which is also the
+     * only shape that hits the {@code READ_PAGE} cache: naming a client is a
+     * managed-client read and stays uncached.
+     */
+    public Mono<Page<ListResultObject<D>>> readIndexLRO(String appCode, String clientCode) {
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add(APP_CODE, appCode);
+        if (!StringUtil.safeIsBlank(clientCode))
+            params.add(CLIENT_CODE, clientCode);
+
+        return this.readPageFilterLRO(false, false, INDEX_PAGE, params)
+                .defaultIfEmpty(Page.empty());
     }
 
     private Tuple2<Integer, List<ListResultObject<D>>> filterBasedOnPageSize(Pageable pageable,
