@@ -77,12 +77,27 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
     }
 
     private void storedStorage(boolean versioned) {
+        storedStorage(versioned, null);
+    }
+
+    /**
+     * @param runtimeAuth an authority expression in the APP's own role namespace, the
+     *                    shape a real storage uses ({@code rim}'s Project storage says
+     *                    {@code Authorities.CXAPP.ROLE_Super_Admin}). No builder holds
+     *                    one, which is the whole point of the tests that pass it.
+     */
+    private void storedStorage(boolean versioned, String runtimeAuth) {
 
         Storage storage = new Storage();
         storage.setName(STORAGE_NAME)
                 .setAppCode(APP_CODE)
                 .setClientCode(SYSTEM)
                 .setVersion(1);
+
+        if (runtimeAuth != null)
+            storage.setCreateAuth(runtimeAuth)
+                    .setDeleteAuth(runtimeAuth)
+                    .setUpdateAuth(runtimeAuth);
 
         Map<String, Object> titleField = new HashMap<>();
         titleField.put("type", "STRING");
@@ -114,6 +129,17 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
         Map<String, Object> data = new HashMap<>();
         data.put("title", title);
         return new DataObject().setData(data);
+    }
+
+    /**
+     * A live row written straight to Mongo, bypassing the service.
+     *
+     * The fixtures below deliberately set authorities no caller here holds, so going
+     * through create() would fail on the way IN and never reach what is under test.
+     */
+    private void liveRow(String title) {
+        Mono.from(this.mongoClient.getDatabase(LIVE_DB).getCollection(UNIQUE_NAME)
+                .insertOne(new Document("title", title))).block();
     }
 
     private List<Document> documentsIn(String database, String collection) {
@@ -387,6 +413,95 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
         // refusal that had already emptied the sandbox would be the worst of both.
         assertEquals(1, documentsIn(DRAFT_DB, UNIQUE_NAME).size(),
                 "a refused copy must not have cleared the draft rows");
+    }
+
+    // ── the bar is the APP's, not the app's runtime roles ────────────────────
+    //
+    // Reported from the builder on 2026-09-03: seeding a sandbox on the `rim` app
+    // answered 403. The cause was not the write-access gate, which passed -- it was
+    // gating the copy on the storage's own createAuth, which on that storage reads
+    // `Authorities.CXAPP.ROLE_Super_Admin`. A builder is not a user of the app and
+    // holds no such authority, so the feature was dead for any app that sets one.
+    // Clearing had the identical defect through deleteAuth.
+
+    private static final String RUNTIME_ONLY_AUTH = "Authorities.CXAPP.ROLE_Super_Admin";
+
+    @Test
+    @Timeout(60)
+    @DisplayName("a builder can seed a sandbox for a storage whose createAuth it cannot hold")
+    void copyIgnoresRuntimeCreateAuth() {
+
+        setInheritance(List.of(SYSTEM));
+        storedStorage(false, RUNTIME_ONLY_AUTH);
+
+        liveRow("live one");
+
+        Long copied = asClient(appDataService.copyLiveDataToDraft(APP_CODE, SYSTEM, STORAGE_NAME, true));
+
+        assertEquals(1L, copied, "app write access must be enough to seed the sandbox");
+        assertEquals(1, documentsIn(DRAFT_DB, UNIQUE_NAME).size());
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("a builder can clear rows for a storage whose deleteAuth it cannot hold")
+    void clearIgnoresRuntimeDeleteAuth() {
+
+        setInheritance(List.of(SYSTEM));
+        storedStorage(false, RUNTIME_ONLY_AUTH);
+
+        liveRow("one");
+        liveRow("two");
+
+        Long cleared = asClient(appDataService.clearAllRows(APP_CODE, SYSTEM, STORAGE_NAME, false));
+
+        assertEquals(2L, cleared, "app write access must be enough to clear rows");
+        assertTrue(documentsIn(LIVE_DB, UNIQUE_NAME).isEmpty());
+        assertTrue(collectionsIn(LIVE_DB).contains(UNIQUE_NAME));
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("clearing is still refused when neither bar is met")
+    void clearNeedsOneOfTheTwoBars() {
+
+        setInheritance(List.of(SYSTEM));
+        storedStorage(false, RUNTIME_ONLY_AUTH);
+
+        liveRow("one");
+
+        // Neither the storage's deleteAuth (an app role nobody here holds) nor write
+        // access to the application. The OR must not have become an "always".
+        Mockito.when(this.feignSecurityService.hasWriteAccess(Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(Mono.just(Boolean.FALSE));
+
+        GenericException ex = assertThrows(GenericException.class,
+                () -> asClient(appDataService.clearAllRows(APP_CODE, SYSTEM, STORAGE_NAME, false)));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals(1, documentsIn(LIVE_DB, UNIQUE_NAME).size(), "a refused clear must delete nothing");
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("the storage's own delete authority still admits a runtime caller")
+    void clearStillHonoursDeleteAuth() {
+
+        setInheritance(List.of(SYSTEM));
+        storedStorage(false, "Authorities.Storage_DELETE");
+
+        liveRow("one");
+
+        // The OR's other half: no app write access, but the caller holds exactly what
+        // the storage asks for. Taking this away would leave the DROP route, which is
+        // more destructive, with the looser gate.
+        Mockito.when(this.feignSecurityService.hasWriteAccess(Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(Mono.just(Boolean.FALSE));
+
+        Long cleared = asClient(appDataService.clearAllRows(APP_CODE, SYSTEM, STORAGE_NAME, false));
+
+        assertEquals(1L, cleared);
+        assertTrue(documentsIn(LIVE_DB, UNIQUE_NAME).isEmpty());
     }
 
     @Test

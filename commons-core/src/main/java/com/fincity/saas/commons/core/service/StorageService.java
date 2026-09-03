@@ -23,8 +23,12 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -358,6 +362,44 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                     return this.validate(existing);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.updatableEntity"));
+    }
+
+    /**
+     * The other storages this one's relations point at.
+     * <p>
+     * These are plain, non namespaced storage names resolved within the same
+     * app and client, and {@link #validate(Storage)} reads every one of them
+     * before the save goes through, so a transport has to get them in first.
+     * <p>
+     * The map key is the field name; {@code StorageRelation.fieldName} is
+     * written and diffed but never read anywhere, so it is not a source here.
+     */
+    @Override
+    public Collection<String> getTransportDependencies(Storage entity) {
+
+        if (entity == null || entity.getRelations() == null || entity.getRelations().isEmpty()) return List.of();
+
+        return entity.getRelations().values().stream()
+                .map(StorageRelation::getStorageName)
+                .filter(name -> !StringUtil.safeIsBlank(name))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * A copy without relations, so storages that point at each other can be
+     * saved in two passes.
+     * <p>
+     * Relations are the only thing making one storage depend on another, and
+     * they are a plain link rather than part of the storage's shape, so
+     * dropping them for a first pass and putting them back on a second leaves
+     * exactly the state a single pass would have produced.
+     */
+    @Override
+    public Storage stripTransportDependencies(Storage entity) {
+
+        if (entity == null || entity.getRelations() == null || entity.getRelations().isEmpty()) return null;
+
+        return new Storage(entity).setRelations(null);
     }
 
     public Mono<Schema> getSchema(Storage storage) {

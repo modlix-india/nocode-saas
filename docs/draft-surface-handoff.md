@@ -31,8 +31,23 @@ case, and every pre-existing caller -- nothing changes and the ambient flag gove
 because the builder runs on the LIVE host and still has to read, seed and clear an app's sandbox
 rows; the ambient rule cannot serve that, and the draft host has no row browser.
 Both values are gated on `hasWriteAccess` for the app, not only `true`: forcing `false` from a draft
-host is the mirror-image danger, a draft-surface page writing into live data. It is an ADDITION to
-the storage's own `readAuth`/`createAuth`/`updateAuth`/`deleteAuth`, never a replacement.
+host is the mirror-image danger, a draft-surface page writing into live data. For a READ it is an
+ADDITION to the storage's own `readAuth`, never a replacement.
+
+**The two builder-only routes are gated differently, and this was got wrong first.** `copyToDraft`
+and `{storage}/rows` were initially gated on the storage's own `createAuth` / `deleteAuth`, and both
+answered 403 in the builder against a real app. Those fields answer a RUNTIME question -- may this
+app's *user* create or delete rows -- and are routinely written in the app's own role namespace
+(`Authorities.CXAPP.ROLE_Super_Admin` on the `rim` app's Project storage). A builder is not a user of
+the app and holds none of it, so the feature was unreachable for any app that sets them, which is
+most real apps. The bar is now write access to the APPLICATION, which is what definition writes
+already use (`AbstractOverridableDataService.accessCheck`), so the three are consistent. It grants
+nothing in substance either: anyone with app write access can PUT the storage definition, including
+the auth expression being checked.
+`{storage}/rows` keeps `deleteAuth` as an OR rather than replacing it, because
+`DELETE {storage}?deleteAll=true` -- the DROP, strictly more destructive -- already admits a caller
+holding only `deleteAuth`, and the stricter operation must not end up with the looser gate.
+`copyToDraft` is write-access only: there is no runtime path into it to preserve.
 
 ### The write matrix
 

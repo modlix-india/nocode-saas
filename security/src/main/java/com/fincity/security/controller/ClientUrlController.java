@@ -37,8 +37,16 @@ public class ClientUrlController
         return this.service.getAppUrl(appCode, clientCode).map(ResponseEntity::ok);
     }
 
+    /**
+     * An app's LIVE URLs, each labelled with the client it belongs to.
+     *
+     * `clientCode` is optional: omitted means every client's rows that the
+     * caller may see, which is what a screen listing an app's addresses wants.
+     * Naming one narrows it, and still requires managing that client.
+     */
     @GetMapping("/urls")
-    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode, @RequestParam String clientCode) {
+    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode,
+            @RequestParam(required = false) String clientCode) {
         return this.service.getClientUrls(appCode, clientCode).map(ResponseEntity::ok);
     }
 
@@ -63,11 +71,12 @@ public class ClientUrlController
     }
 
     /**
-     * An editing session's grant of the draft surface, as its own hostname.
+     * The caller's grant of the draft surface for one app, as its own hostname.
      *
      * Gated like the draft URL above: write access to the app, not Client_UPDATE.
-     * Unlike that one it does not rotate, so two editor tabs on the same app each
-     * get their own and neither invalidates the other.
+     * Unlike that one it neither rotates nor revokes: a caller already holding a live
+     * grant for the app gets that same hostname back with its expiry pushed forward,
+     * so a refresh, a second window and a restored tab all share one origin.
      */
     @PostMapping("/draft/token")
     public Mono<ResponseEntity<DraftTokenResponse>> mintDraftToken(@RequestParam String appCode) {
