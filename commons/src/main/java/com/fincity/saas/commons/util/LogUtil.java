@@ -29,10 +29,15 @@ public class LogUtil {
 	 *   target with an explicit ?draft=true, so a page running on the draft surface
 	 *   doing an ordinary SendData PUT is not diverted into a draft it never asked
 	 *   for.
-	 * - App DATA uses it for reads AND writes. AppDataController has no draft
-	 *   parameter on any route; a write on the draft surface goes to the draft
-	 *   database because of this flag alone. That is what makes the draft surface a
-	 *   usable sandbox rather than a read-only preview.
+	 * - App DATA uses it for reads AND writes, and this flag alone is what sends a
+	 *   draft-surface write to the draft database. That is what makes the draft
+	 *   surface a usable sandbox rather than a read-only preview.
+	 *   AppDataController's routes DO take an optional `draft` parameter, added for
+	 *   the builder: it runs on the live host and still has to read, seed and clear
+	 *   an app's sandbox rows. It writes this key into the context for one
+	 *   operation, and only for a caller with write access to the app
+	 *   (AppDataService.onSurface). Omitted, which is the normal case, the ambient
+	 *   flag governs exactly as before.
 	 *
 	 * It also crosses the message queue, carried as a field on EventQueObject. The
 	 * event listener has no inbound request to read it from, and without it a
