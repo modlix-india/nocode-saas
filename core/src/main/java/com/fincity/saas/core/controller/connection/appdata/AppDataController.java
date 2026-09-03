@@ -52,19 +52,45 @@ public class AppDataController {
 	public static final String PATH_ID = "{storage}/{" + PATH_VARIABLE_ID + "}";
 	public static final String PATH_QUERY = "{storage}/query";
 
+	/**
+	 * Empties a storage and keeps it.
+	 * <p>
+	 * A literal segment, not an id in disguise, and that is the point. {@code DELETE
+	 * {storage}} means "drop the collection", and it is reachable by any caller that
+	 * concatenates a row id that turns out to be absent -- which has destroyed a
+	 * collection before. A separate path can only be arrived at deliberately.
+	 */
+	public static final String PATH_ROWS = "{storage}/rows";
+
+	public static final String PATH_COPY_TO_DRAFT = "{storage}/copyToDraft";
+
 	// Here id is version's ID
 	public static final String PATH_VERSION_ID = "{storage}/version/{" + PATH_VARIABLE_ID + "}";
 
 	// Here id is the object's ID for which versions are queried
 	public static final String PATH_VERSION_ID_QUERY = "{storage}/version/{" + PATH_VARIABLE_ID + "}/query";
 
-	private static final Set<String> IGNORE_PARAMS = Set.of("page", "size", "sort", "eager", "eagerFields");
+	// Everything NOT in here is copied into the filter condition by
+	// ConditionUtil.parameterMapToMap, so a declared @RequestParam that is missing from
+	// this set also becomes a condition on a field of that name, and the request
+	// silently matches no row. `draft` has to be here for that reason.
+	private static final Set<String> IGNORE_PARAMS = Set.of("page", "size", "sort", "eager", "eagerFields", "draft");
 
 	@Autowired
 	private AppDataService service;
 
 	@Autowired
 	private CoreMessageResourceService messageResourceService;
+
+	/*
+	 * Every route below takes an optional `draft`.
+	 *
+	 * Which surface a data call hits is normally ambient, from the hostname the
+	 * gateway resolved, and that stays the default: omit the parameter and nothing
+	 * about the call changes. Naming it explicitly is for the builder, which runs on
+	 * the live host and still has to reach an app's draft sandbox. AppDataService
+	 * .onSurface holds the authorisation for that, not this controller.
+	 */
 
 	@PostMapping("{storage}")
 	public Mono<ResponseEntity<Map<String, Object>>> create(
@@ -73,9 +99,11 @@ public class AppDataController {
 			@RequestHeader String clientCode,
 			@RequestParam(required = false, defaultValue = "false") Boolean eager,
 			@RequestParam(required = false) List<String> eagerFields,
+			@RequestParam(required = false) Boolean draft,
 			@RequestBody DataObject entity) {
 
-		return this.service.create(appCode, clientCode, storageName, entity, eager, eagerFields)
+		return this.service.onSurface(appCode, draft,
+						this.service.create(appCode, clientCode, storageName, entity, eager, eagerFields))
 				.map(ResponseEntity::ok);
 	}
 
@@ -87,13 +115,15 @@ public class AppDataController {
 			@PathVariable(name = PATH_VARIABLE_ID, required = false) final String id,
 			@RequestParam(required = false, defaultValue = "false") Boolean eager,
 			@RequestParam(required = false) List<String> eagerFields,
+			@RequestParam(required = false) Boolean draft,
 			@RequestBody DataObject entity) {
 
 		if (id != null)
 			entity.getData()
 					.put("_id", id);
 
-		return this.service.update(appCode, clientCode, storageName, entity, true, eager, eagerFields)
+		return this.service.onSurface(appCode, draft,
+						this.service.update(appCode, clientCode, storageName, entity, true, eager, eagerFields))
 				.map(ResponseEntity::ok);
 	}
 
@@ -105,13 +135,15 @@ public class AppDataController {
 			@PathVariable(name = PATH_VARIABLE_ID, required = false) final String id,
 			@RequestParam(required = false, defaultValue = "false") Boolean eager,
 			@RequestParam(required = false) List<String> eagerFields,
+			@RequestParam(required = false) Boolean draft,
 			@RequestBody DataObject entity) {
 
 		if (id != null)
 			entity.getData()
 					.put("_id", id);
 
-		return this.service.update(appCode, clientCode, storageName, entity, false, eager, eagerFields)
+		return this.service.onSurface(appCode, draft,
+						this.service.update(appCode, clientCode, storageName, entity, false, eager, eagerFields))
 				.map(ResponseEntity::ok);
 
 	}
@@ -124,9 +156,11 @@ public class AppDataController {
 			@RequestParam(required = false, defaultValue = "false") Boolean eager,
 			@RequestParam(required = false) List<String> eagerFields,
 			@PathVariable(PATH_VARIABLE_ID) final String id,
+			@RequestParam(required = false) Boolean draft,
 			ServerHttpRequest request) {
 
-		return this.service.read(appCode, clientCode, storageName, id, eager, eagerFields)
+		return this.service.onSurface(appCode, draft,
+						this.service.read(appCode, clientCode, storageName, id, eager, eagerFields))
 				.map(ResponseEntity::ok);
 	}
 
@@ -138,6 +172,7 @@ public class AppDataController {
 			@RequestParam(value = "count", required = false, defaultValue = "true") Boolean count,
 			@RequestParam(required = false, defaultValue = "false") Boolean eager,
 			@RequestParam(required = false) List<String> eagerFields,
+			@RequestParam(required = false) Boolean draft,
 			Pageable pageable,
 			ServerHttpRequest request) {
 
@@ -161,7 +196,8 @@ public class AppDataController {
 				.setEager(eager)
 				.setEagerFields(eagerFields);
 
-		return this.service.readPage(appCode, clientCode, storageName, query)
+		return this.service.onSurface(appCode, draft,
+						this.service.readPage(appCode, clientCode, storageName, query))
 				.map(ResponseEntity::ok);
 	}
 
@@ -170,18 +206,22 @@ public class AppDataController {
 			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode,
 			@RequestHeader String clientCode,
+			@RequestParam(required = false) Boolean draft,
 			@RequestBody Query query) {
 
-		return this.service.readPage(appCode, clientCode, storageName, query)
+		return this.service.onSurface(appCode, draft,
+						this.service.readPage(appCode, clientCode, storageName, query))
 				.map(ResponseEntity::ok);
 	}
 
 	@DeleteMapping(PATH_ID)
 	public Mono<ResponseEntity<Boolean>> delete(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
-			@PathVariable(PATH_VARIABLE_ID) final String id) {
+			@PathVariable(PATH_VARIABLE_ID) final String id,
+			@RequestParam(required = false) Boolean draft) {
 
-		return this.service.delete(appCode, clientCode, storageName, id)
+		return this.service.onSurface(appCode, draft,
+						this.service.delete(appCode, clientCode, storageName, id))
 				.map(ResponseEntity::ok);
 	}
 
@@ -197,21 +237,75 @@ public class AppDataController {
 	@DeleteMapping("{storage}")
 	public Mono<ResponseEntity<Boolean>> deleteStorage(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
-			@RequestParam(required = false, defaultValue = "false") Boolean deleteAll) {
+			@RequestParam(required = false, defaultValue = "false") Boolean deleteAll,
+			@RequestParam(required = false) Boolean draft) {
 
 		if (!Boolean.TRUE.equals(deleteAll))
 			return this.messageResourceService.throwMessage(
 					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 					CoreMessageResourceService.STORAGE_DELETE_ALL_NOT_CONFIRMED, storageName);
 
-		return this.service.deleteStorage(appCode, clientCode, storageName)
+		return this.service.onSurface(appCode, draft,
+						this.service.deleteStorage(appCode, clientCode, storageName))
+				.map(ResponseEntity::ok);
+	}
+
+	/**
+	 * Deletes every row and keeps the storage.
+	 * <p>
+	 * Distinct from {@link #deleteStorage} in what survives: the collection stays, and
+	 * so does its {@code _version} history. What it does NOT do is run the single-row
+	 * delete path -- no {@code BEFORE_DELETE}/{@code AFTER_DELETE} triggers, no
+	 * {@code Delete} events, and no relation {@code deleteConstraint} checks, so a
+	 * RESTRICT does not stop it and a CASCADE does not follow it. Anything offering
+	 * this to a person has to say so.
+	 *
+	 * @param dryRun count the rows instead of deleting them
+	 */
+	@DeleteMapping(PATH_ROWS)
+	public Mono<ResponseEntity<Long>> deleteAllRows(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@RequestParam(required = false, defaultValue = "false") Boolean deleteAll,
+			@RequestParam(required = false, defaultValue = "false") Boolean dryRun,
+			@RequestParam(required = false) Boolean draft) {
+
+		if (!Boolean.TRUE.equals(deleteAll) && !Boolean.TRUE.equals(dryRun))
+			return this.messageResourceService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					CoreMessageResourceService.STORAGE_DELETE_ALL_NOT_CONFIRMED, storageName);
+
+		// A null condition is a match-all in MongoAppDataService.filter, which is what
+		// makes deleteByFilter the whole-collection delete without a second code path.
+		return this.service.onSurface(appCode, draft,
+						this.service.deleteByFilter(appCode, clientCode, storageName, new Query(), dryRun))
+				.map(ResponseEntity::ok);
+	}
+
+	/**
+	 * Copies this storage's LIVE rows into its DRAFT rows.
+	 * <p>
+	 * Publish promotes definitions and never promotes data, so a draft surface starts
+	 * empty. This is how a sandbox gets realistic rows to work against. It takes no
+	 * {@code draft} parameter because it names both surfaces itself, and it only goes
+	 * one way: draft rows are never copied live.
+	 *
+	 * @param replace empty the draft rows first, rather than overlaying onto them
+	 * @return how many rows were written
+	 */
+	@PostMapping(PATH_COPY_TO_DRAFT)
+	public Mono<ResponseEntity<Long>> copyToDraft(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@RequestParam(required = false, defaultValue = "true") Boolean replace) {
+
+		return this.service.copyLiveDataToDraft(appCode, clientCode, storageName, replace)
 				.map(ResponseEntity::ok);
 	}
 
 	@GetMapping("download/{fileType}/{storage}")
 	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
-			@PathVariable(name = "fileType") DataFileType fileType, ServerHttpRequest request,
+			@PathVariable(name = "fileType") DataFileType fileType,
+			@RequestParam(required = false) Boolean draft, ServerHttpRequest request,
 			ServerHttpResponse response) {
 
 		MultiValueMap<String, String> params = request.getQueryParams();
@@ -227,16 +321,19 @@ public class AppDataController {
 				.setCondition(ConditionUtil.parameterMapToMap(map))
 				.setSize(1000);
 
-		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
+		return this.service.onSurface(appCode, draft,
+				this.service.downloadData(appCode, clientCode, storageName, query, fileType, response));
 	}
 
 	@PostMapping("download/{fileType}/{storage}")
 	public Mono<Void> downloadContent(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
-			@PathVariable(name = "fileType", required = false) DataFileType fileType, @RequestBody Query query,
+			@PathVariable(name = "fileType", required = false) DataFileType fileType,
+			@RequestParam(required = false) Boolean draft, @RequestBody Query query,
 			ServerHttpResponse response) {
 
-		return this.service.downloadData(appCode, clientCode, storageName, query, fileType, response);
+		return this.service.onSurface(appCode, draft,
+				this.service.downloadData(appCode, clientCode, storageName, query, fileType, response));
 	}
 
 	@GetMapping("template/{storage}")
@@ -259,17 +356,19 @@ public class AppDataController {
 	public Mono<ResponseEntity<Boolean>> uploadData(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
 			@RequestParam(value = "type", required = false) DataFileType fileType,
+			@RequestParam(required = false) Boolean draft,
 			@RequestPart(value = "file") Mono<FilePart> filePartMono) {
 
-		return FlatMapUtil.flatMapMono(
+		return this.service.onSurface(appCode, draft, FlatMapUtil.flatMapMono(
 
-				() -> filePartMono,
+						() -> filePartMono,
 
-				filePart -> Mono
-						.just(fileType == null ? DataFileType.getFileTypeFromExtension(filePart.filename()) : fileType),
+						filePart -> Mono.just(fileType == null
+								? DataFileType.getFileTypeFromExtension(filePart.filename())
+								: fileType),
 
-				(filePart, type) -> this.service.uploadData(appCode, clientCode, storageName, type, filePart)
-						.map(ResponseEntity::ok))
+						(filePart, type) -> this.service.uploadData(appCode, clientCode, storageName, type, filePart)
+								.map(ResponseEntity::ok)))
 
 				.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataController.uploadData"));
 	}
@@ -277,9 +376,11 @@ public class AppDataController {
 	@GetMapping(PATH_VERSION_ID)
 	public Mono<ResponseEntity<Map<String, Object>>> getVersion(
 			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
-			@RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId) {
+			@RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId,
+			@RequestParam(required = false) Boolean draft) {
 
-		return this.service.readVersion(appCode, clientCode, storageName, versionId)
+		return this.service.onSurface(appCode, draft,
+						this.service.readVersion(appCode, clientCode, storageName, versionId))
 				.map(ResponseEntity::ok);
 	}
 
@@ -287,9 +388,11 @@ public class AppDataController {
 	public Mono<ResponseEntity<Page<Map<String, Object>>>> findVersions(
 			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 			@RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId,
+			@RequestParam(required = false) Boolean draft,
 			@RequestBody Query query) {
 
-		return this.service.readPageVersion(appCode, clientCode, storageName, versionId, query)
+		return this.service.onSurface(appCode, draft,
+						this.service.readPageVersion(appCode, clientCode, storageName, versionId, query))
 				.map(ResponseEntity::ok);
 	}
 }
