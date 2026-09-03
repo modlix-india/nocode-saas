@@ -49,7 +49,10 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.reactivestreams.client.FindPublisher;
@@ -116,6 +119,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     // A duplicate key can come off any unique index, so the _id one is identified by name before
     // the failure is reported as a clash on the supplied _id.
     private static final String DUPLICATE_ID_INDEX = "index: _id_";
+
+    // How many documents one bulk write carries while seeding the draft surface. Bounded
+    // so a large live collection streams rather than being collected into one list.
+    private static final int COPY_BATCH_SIZE = 500;
+
+    private static final ReplaceOptions UPSERT = new ReplaceOptions().upsert(true);
 
     private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
             FilterConditionOperator.EQUALS,
@@ -625,6 +634,64 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .thenReturn(Boolean.TRUE)
                 .onErrorReturn(Boolean.FALSE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.dropDraftDatabase"));
+    }
+
+    @Override
+    public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, Boolean replace) {
+
+        // Both surfaces are named by writing the flag onto each accessor's own
+        // subscription, rather than reading the ambient one. Going through
+        // getCollection (instead of client.getDatabase directly) is what keeps index
+        // provisioning running on the draft side: it is memoised per
+        // (uniqueName, appCode, clientCode, draftSuffix), so the draft collection has
+        // to ask for it in its own right.
+        Mono<MongoCollection<Document>> liveCollection = this.getCollection(clientCode, conn, storage)
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.FALSE));
+
+        Mono<MongoCollection<Document>> draftCollection = this.getCollection(clientCode, conn, storage)
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE));
+
+        return FlatMapUtil.<MongoCollection<Document>, MongoCollection<Document>, Long, Boolean, Long>flatMapMono(
+
+                () -> liveCollection,
+
+                live -> draftCollection,
+
+                // Counted BEFORE anything is cleared. An empty source answers 0 and
+                // changes nothing: clearing the draft collection and then reporting
+                // "there was nothing to copy" would be the worst of both.
+                //
+                // 0 rather than an empty Mono, because genericOperation -- which every
+                // caller goes through -- has its own switchIfEmpty that turns an empty
+                // result into a 403. An empty here would surface as a denial.
+                (live, draft) -> Mono.from(live.countDocuments()),
+
+                // deleteMany, never drop(). A dropped collection with a warm index
+                // cache never gets its indexes back, because manageIndexes has
+                // already been memoised for this namespace.
+                (live, draft, liveCount) -> liveCount > 0 && BooleanUtil.safeValueOf(replace)
+                        ? Mono.from(draft.deleteMany(Filters.empty())).thenReturn(Boolean.TRUE)
+                        : Mono.just(Boolean.TRUE),
+
+                // _id is carried across unchanged, so relation fields on either surface
+                // keep pointing at the row they named.
+                //
+                // Upserting rather than inserting is what makes this safe to run twice
+                // and safe with replace = false: an insertMany over a draft collection
+                // that already holds any of these ids fails on the duplicate key and
+                // leaves the copy half done.
+                (live, draft, liveCount, cleared) -> liveCount < 1
+                        ? Mono.just(0L)
+                        : Flux.from(live.find())
+                                .buffer(COPY_BATCH_SIZE)
+                                .concatMap(batch -> Mono.from(draft.bulkWrite(batch.stream()
+                                                .map(doc -> (WriteModel<Document>) new ReplaceOneModel<>(
+                                                        Filters.eq(ID, doc.get(ID)), doc, UPSERT))
+                                                .toList()))
+                                        .thenReturn((long) batch.size()))
+                                .reduce(0L, Long::sum))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.copyLiveToDraft"));
     }
 
     private Flux<Document> applyQueryOnElements(

@@ -60,4 +60,17 @@ public interface IAppDataService {
      * with real consequences.
      */
     Mono<Boolean> dropDraftDatabase(Connection conn, String appCode, String clientCode);
+
+    /**
+     * Seed one storage's DRAFT collection from its LIVE rows.
+     *
+     * Publish promotes definitions and never promotes data, so a draft surface
+     * starts empty and stays that way. This is how a sandbox gets realistic rows to
+     * work against. The direction is live to draft only, and it is not the inverse
+     * of publish: draft rows are never copied live.
+     *
+     * @param replace empty the draft collection first, rather than adding to it
+     * @return how many documents were written into the draft collection
+     */
+    Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, Boolean replace);
 }

@@ -18,12 +18,21 @@ Two separate mechanisms, deliberately not one:
 |---|---|---|
 | **Which surface a read sees** | the ambient `x-draft` flag | set by the gateway from the resolved hostname, never by a caller |
 | **Where a DEFINITION write goes** | an explicit `?draft=true` on the call | the caller names its target |
-| **Where a DATA write goes** | the ambient flag | `AppDataController` has no draft parameter |
+| **Where a DATA write goes** | the ambient flag, or an explicit `?draft=` | ambient by default; the parameter is builder-only |
 
 Keeping definition writes explicit matters: a page running *on* the draft surface doing an ordinary
 `UIEngine.SendData` PUT must not be silently diverted into a draft it never asked for. App data is
 the deliberate exception, and it is what makes the draft surface a usable sandbox rather than a
 read-only preview.
+
+**App data now has a second, narrow door.** Every `AppDataController` row route takes an optional
+`draft` parameter, and `AppDataService.onSurface` honours it for one operation. Omitted -- the normal
+case, and every pre-existing caller -- nothing changes and the ambient flag governs. It exists
+because the builder runs on the LIVE host and still has to read, seed and clear an app's sandbox
+rows; the ambient rule cannot serve that, and the draft host has no row browser.
+Both values are gated on `hasWriteAccess` for the app, not only `true`: forcing `false` from a draft
+host is the mirror-image danger, a draft-surface page writing into live data. It is an ADDITION to
+the storage's own `readAuth`/`createAuth`/`updateAuth`/`deleteAuth`, never a replacement.
 
 ### The write matrix
 
@@ -40,6 +49,10 @@ read-only preview.
 | `POST /api/ui/publish/app/{appCode}` | Publishes all of it |
 | `GET`/`POST /api/core/publish/app/{appCode}` | The same two routes for core objects, same gate |
 | `DELETE /api/ui/pages/{id}` | Deletes the object **and its draft**. Nothing is left pending |
+| `POST /api/core/data/{storage}/query?draft=true` | Reads the DRAFT rows from a caller on the live host. Needs write access to the app |
+| `DELETE /api/core/data/{storage}/rows?deleteAll=true` | Deletes every row and **keeps** the collection and its `_version` history. `&dryRun=true` counts instead. Takes `&draft=` |
+| `DELETE /api/core/data/{storage}?deleteAll=true` | Unchanged, and still the DROP: the collection and its history both go |
+| `POST /api/core/data/{storage}/copyToDraft?replace=true` | Copies the storage's LIVE rows into its DRAFT rows, ids intact. One way only |
 
 `publishAll` reports every draft it looked at, including ones it could not ship. An object whose
 document has gone missing under its draft comes back as `published: false` with an `error`, not as a
@@ -242,6 +255,13 @@ generator scripts, not through the page editor or MCP, or they get reverted.
   `GET /api/ui/publish/app/{appCode}/pending`.
 - A way to mint and copy the draft link, from `POST /api/security/clienturls/draft`.
 
+**Done since**, in `appbuilder_SYSTEM/tools/ws_data.py` (the storage Data view on `workspace`):
+a Live/Draft switch on the row browser, "Clear rows" and "Copy live rows here", both behind a
+confirm that names the surface. Its invariants are checked by `draft_check.py` and the whole
+sequence is driven in a browser by `data_flow_drive.py`. The Data view is otherwise unscripted, so
+`ws_data.py` patches `workspace` by naming what it touches and must never replace
+`componentDefinition` or `eventFunctions` wholesale.
+
 ### 2. `nocode-ui` client: mostly done, one thing left
 
 Already done: `globalThis.isDraftMode` (read from the server-stamped `data-draft` attribute, not
@@ -283,8 +303,10 @@ so it is carried the only way that reaches all of them, as **a second kind of ho
 - The two surfaces and the read/write split (the table at the top of this file).
 - Publish semantics: definitions promote, draft data is kept and never promoted.
 - That draft data is real data in a real database, dropped only when the storage definition or the
-  app is deleted. There is no age-based expiry and no manual clear action; a long-lived draft surface
-  accumulates rows and bills for them.
+  app is deleted, or cleared by hand one storage at a time. There is no age-based expiry, so a
+  long-lived draft surface accumulates rows and bills for them.
+- That the builder can browse, seed and clear draft rows without leaving the live host, and how the
+  `draft` parameter on the data routes differs from the ambient flag.
 - The draft link is a bearer credential: anyone with the URL sees unpublished work. Rotating
   revokes it.
 
@@ -405,11 +427,16 @@ metering window.
 
 ### How a write lands there
 
-Purely ambient, from `LogUtil.isDraft()` in the Reactor Context. This is the part that surprises
-people: **`AppDataController` has no `draft` parameter on any of its routes.** A write on the draft
-surface goes to the draft database because of the ambient flag alone. That is the deliberate
-exception to the rule stated at the top of this file, and it is what makes the surface a usable
-sandbox instead of a read-only preview.
+Ambient by default, from `LogUtil.isDraft()` in the Reactor Context. This is the part that
+surprises people: a write on the draft surface goes to the draft database because of the ambient
+flag alone, with nothing in the request saying so. That is the deliberate exception to the rule
+stated at the top of this file, and it is what makes the surface a usable sandbox instead of a
+read-only preview.
+
+Since then the routes have gained an **optional** `draft` parameter, honoured by
+`AppDataService.onSurface` for one operation and only for a caller with write access to the app.
+Omitted, everything above still holds exactly. It exists for the builder, which is on the live host
+and has to reach the sandbox; see the top of this file.
 
 The flag is set only by the gateway from the resolved hostname, and the gateway strips any inbound
 value first, so a caller cannot forge it. It reaches queue consumers as a field on the message
@@ -419,9 +446,15 @@ inbound request to read a context from.
 ### Publish does not promote data
 
 Definitions promote; **draft rows stay where they are**. There is no "copy my draft rows live"
-operation, and none was asked for. The two data sets are independent from the moment the draft
+operation, and there should not be. The two data sets are independent from the moment the draft
 surface is first written to. A draft surface is therefore not a rehearsal of a data migration, and
 should not be described as one.
+
+The OTHER direction does exist now: `POST /api/core/data/{storage}/copyToDraft` copies a storage's
+live rows into its draft rows, `_id`s intact so relation fields keep pointing at the right row. It
+is a way to start a sandbox from realistic data, not a promotion, and it is deliberately one way.
+It upserts rather than inserts, so it is safe to run twice, and it counts the source BEFORE clearing
+the destination -- a refusal that had already emptied the sandbox would be the worst of both.
 
 ### Metering
 
@@ -472,8 +505,11 @@ Two implementation notes that matter if you call these from anywhere new:
   Mono is empty and nothing drops, silently.** It is only ever called from inside `StorageService`'s
   authenticated chain today. It is not safe to call from a scheduled job as written.
 
-**What is retained.** There is no age-based expiry and no manual "clear draft data" action. A draft
-surface that is never deleted keeps its rows indefinitely, and meters them.
+**What is retained.** There is still no age-based expiry, so a draft surface that is never deleted
+keeps its rows indefinitely and meters them. There IS a manual clear now:
+`DELETE /api/core/data/{storage}/rows?deleteAll=true&draft=true`, per storage, surfaced in the
+builder's storage Data view. It empties the collection and keeps it, which is the difference from
+`DELETE {storage}`. Nothing clears a whole draft database short of deleting the app.
 
 ### Test coverage of the deletion paths, and its gaps
 
