@@ -483,17 +483,36 @@ public class ClientUrlService
         return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
     }
 
+    /**
+     * An app's LIVE URLs. A blank clientCode means every client's, not none.
+     *
+     * The workspace pane lists an app's addresses across clients and uses its
+     * client picker to narrow them, so "all of them" had to become expressible.
+     * The two cases are authorized differently and deliberately so:
+     *
+     * - a named client still needs {@code isUserClientManageClient}, unchanged,
+     *   so asking for one client's URLs proves you manage that client;
+     * - the unnamed case cannot ask that question, so the DAO is handed the
+     *   caller's own client id and scopes the rows to the hierarchy it manages.
+     *   Null goes down only for a SYSTEM caller. Read access to the app alone
+     *   must not reveal every client's hostnames.
+     */
     public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
+
+        boolean allClients = StringUtil.safeIsBlank(clientCode);
+
         return FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.appService.hasReadAccess(appCode, ca.getClientCode()).filter(BooleanUtil::safeValueOf),
 
-                (ca, hasAccess) -> this.clientService.isUserClientManageClient(ca, clientCode)
-                        .filter(BooleanUtil::safeValueOf),
+                (ca, hasAccess) -> allClients ? Mono.just(Boolean.TRUE)
+                        : this.clientService.isUserClientManageClient(ca, clientCode)
+                                .filter(BooleanUtil::safeValueOf),
 
-                (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode))
+                (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode,
+                        allClients && !ca.isSystemClient() ? ULongUtil.valueOf(ca.getUser().getClientId()) : null))
                 .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getClientUrls"));

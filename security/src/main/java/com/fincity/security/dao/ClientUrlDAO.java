@@ -12,10 +12,12 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.enums.SecurityClientUrlUrlType;
 import com.fincity.security.jooq.tables.SecurityClient;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
 
@@ -149,14 +151,49 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
                 .map(rec -> rec.into(ClientUrl.class));
     }
 
-    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
+    /**
+     * An app's LIVE URLs, with each row's client named rather than only numbered.
+     *
+     * `clientCode` is now OPTIONAL. Blank means every client's rows, which is
+     * what the workspace's URLs & SSL pane lists: an app's addresses are spread
+     * across clients (527 of them on cxapp) and showing one client's at a time
+     * hid the rest. The picker there narrows this rather than defining it.
+     *
+     * `restrictToClientId` is what keeps that honest. This is a hand-written
+     * query, so the generic `applyClientFilter` that scopes the paged listing
+     * route does NOT apply here; without this, dropping the client condition
+     * would hand every client's hostnames to anyone with read access to the app.
+     * The service passes null only for a SYSTEM caller.
+     *
+     * CODE and NAME are selected under the DTO's own field names so `into`
+     * fills them; see the note on those fields for why the write path does not
+     * mind.
+     */
+    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode, ULong restrictToClientId) {
 
-        return Flux.from(this.dslContext.select(SECURITY_CLIENT_URL.fields()).from(SECURITY_CLIENT_URL)
+        List<Condition> conditions = new ArrayList<>();
+
+        conditions.add(SECURITY_CLIENT_URL.APP_CODE.eq(appCode));
+        conditions.add(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.LIVE));
+
+        if (!StringUtil.safeIsBlank(clientCode))
+            conditions.add(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode));
+
+        if (restrictToClientId != null)
+            conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.in(
+                    this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                            .from(SECURITY_CLIENT_HIERARCHY)
+                            .where(ClientHierarchyDAO.getManageClientCondition(restrictToClientId))));
+
+        List<Field<?>> fields = new ArrayList<>(Arrays.asList(SECURITY_CLIENT_URL.fields()));
+        fields.add(SecurityClient.SECURITY_CLIENT.CODE.as("client_code"));
+        fields.add(SecurityClient.SECURITY_CLIENT.NAME.as("client_name"));
+
+        return Flux.from(this.dslContext.select(fields).from(SECURITY_CLIENT_URL)
                 .leftJoin(SecurityClient.SECURITY_CLIENT)
                 .on(SecurityClient.SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID))
-                .where(SECURITY_CLIENT_URL.APP_CODE.eq(appCode)
-                        .and(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode))
-                        .and(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.LIVE))))
+                .where(DSL.and(conditions))
+                .orderBy(SecurityClient.SECURITY_CLIENT.NAME.asc(), SECURITY_CLIENT_URL.URL_PATTERN.asc()))
                 .map(rec -> rec.into(ClientUrl.class))
                 .collectList();
     }

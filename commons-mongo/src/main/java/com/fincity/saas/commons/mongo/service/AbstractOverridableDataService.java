@@ -63,6 +63,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     private static final String READ_PAGE = "_READ_PAGE";
     private static final String CLIENT_CODE = "clientCode";
     private static final String APP_CODE = "appCode";
+    private static final String NOT_OVERRIDABLE = "notOverridable";
 
     protected static final String CREATE = "CREATE";
     protected static final String UPDATE = "UPDATE";
@@ -73,6 +74,28 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
     /** Keeps the draft surface's cached reads out of the live surface's caches. */
     protected static final String DRAFT_CACHE_SUFFIX = "_DRAFT";
+
+    /**
+     * Every persisted field a {@link ListResultObject} can hold, and nothing else.
+     *
+     * readPageFilterLRO reads into ListResultObject, which only carries the
+     * AbstractOverridableDTO header fields. Without a projection the driver decodes
+     * each whole document — the entire `definition` / `styles` payload included —
+     * into nested org.bson.Document trees before the converter throws all of it
+     * away. The query is not paged at the database either (see below), so one list
+     * call decoded an app's whole page corpus: on dev that is 117 documents and
+     * 33.7 MiB of BSON for cxapp alone, and the ui service OOM'd repeatedly on
+     * 2026-09-03 with a heap full of raw org.bson.Document trees.
+     *
+     * Listing what LRO keeps, rather than excluding the big fields, is deliberate:
+     * the heavy field differs per subclass (Page.definition, Style.styles, ...) and
+     * an exclude list would silently miss any field added later. `data` is absent
+     * on purpose — it is never persisted, only populated from a separate read when
+     * eager is set.
+     */
+    private static final String[] LRO_FIELDS = { "_id", "name", "message", CLIENT_CODE, "permission", APP_CODE,
+            "baseClientCode", NOT_OVERRIDABLE, "description", "title", "published", "version", "createdAt",
+            "createdBy", "updatedAt", "updatedBy" };
 
     @Autowired // NOSONAR
     protected CacheService cacheService;
@@ -809,12 +832,19 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
         return accessCheck.flatMap(e -> this.paramToConditionLRO(mMap, appCode))
                 .flatMap(e -> this.filter(e.getT1()))
-                .flatMapMany(e -> this.mongoTemplate.find(new Query(new Criteria().andOperator(e,
-                        new Criteria().orOperator(Criteria.where("notOverridable")
-                                .ne(Boolean.TRUE),
-                                Criteria.where(CLIENT_CODE)
-                                        .is(clientCode)))),
-                        this.pojoClass, this.getCollectionName()))
+                .flatMapMany(e -> {
+                    // Only getId() is used below — readInternal then fetches each object
+                    // properly (through the cache, with overrides applied). Projecting to
+                    // _id keeps this from decoding every full definition twice.
+                    Query query = new Query(new Criteria().andOperator(e,
+                            new Criteria().orOperator(Criteria.where(NOT_OVERRIDABLE)
+                                    .ne(Boolean.TRUE),
+                                    Criteria.where(CLIENT_CODE)
+                                            .is(clientCode))));
+                    query.fields().include("_id");
+
+                    return this.mongoTemplate.find(query, this.pojoClass, this.getCollectionName());
+                })
                 .flatMap(e -> this.readInternal(e.getId()))
                 .filter(e -> e.getClientCode()
                         .equals(clientCode));
@@ -915,15 +945,23 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                     List<Criteria> conditions = new ArrayList<>();
                     conditions.add(crit);
-                    conditions.add(new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
+                    conditions.add(new Criteria().orOperator(Criteria.where(NOT_OVERRIDABLE).ne(Boolean.TRUE),
                             Criteria.where(CLIENT_CODE).is(ac.getT2())));
 
                     if (clientOnly)
                         conditions.add(Criteria.where(CLIENT_CODE).is(ac.getT2()));
 
+                    // Deliberately unpaged at the database: the override chain is resolved
+                    // below by picking one winner per name across every client in the chain,
+                    // so a skip/limit here would page over pre-dedup rows and drop names.
+                    // LRO_FIELDS is what keeps that affordable — the rows come back as
+                    // headers, not whole definitions.
+                    Query query = new Query(new Criteria().andOperator(conditions))
+                            .with(pageable.getSort());
+                    query.fields().include(LRO_FIELDS);
+
                     return this.mongoTemplate.find(
-                            new Query(new Criteria().andOperator(conditions))
-                                    .with(pageable.getSort()),
+                            query,
                             ListResultObject.class, this.getCollectionName()).map(obj -> (ListResultObject<D>) obj)
                             .collectList();
                 },

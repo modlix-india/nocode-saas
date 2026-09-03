@@ -37,8 +37,16 @@ public class ClientUrlController
         return this.service.getAppUrl(appCode, clientCode).map(ResponseEntity::ok);
     }
 
+    /**
+     * An app's LIVE URLs, each labelled with the client it belongs to.
+     *
+     * `clientCode` is optional: omitted means every client's rows that the
+     * caller may see, which is what a screen listing an app's addresses wants.
+     * Naming one narrows it, and still requires managing that client.
+     */
     @GetMapping("/urls")
-    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode, @RequestParam String clientCode) {
+    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode,
+            @RequestParam(required = false) String clientCode) {
         return this.service.getClientUrls(appCode, clientCode).map(ResponseEntity::ok);
     }
 
