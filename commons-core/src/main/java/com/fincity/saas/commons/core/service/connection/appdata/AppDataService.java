@@ -252,6 +252,100 @@ public class AppDataService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftStorageData"));
     }
 
+    /**
+     * Run one app-data operation against an explicitly named surface.
+     *
+     * Which surface a data call hits is normally ambient: {@code LogUtil.isDraft()},
+     * which the gateway sets from the resolved hostname and strips on the way in, so
+     * no caller can forge it. That is deliberate, and it stays the default -- with
+     * {@code draft == null} this returns the operation untouched.
+     *
+     * The builder is the case the ambient rule cannot serve. It runs on the live
+     * host, and still has to be able to read, seed and clear an app's draft sandbox.
+     * So it may name the surface, the same way a definition write already names its
+     * target with {@code ?draft=true}.
+     *
+     * Both values are gated, not just TRUE. Forcing {@code false} from the draft host
+     * is the mirror-image danger -- a draft-surface page writing into live data -- and
+     * one bar closes both. The bar is write access to the app, because otherwise
+     * anyone who can read a storage's rows could read its unpublished ones, and the
+     * draft hostname would stop being the credential that gates unpublished work.
+     */
+    public <T> Mono<T> onSurface(String appCode, Boolean draft, Mono<T> operation) {
+
+        if (draft == null)
+            return operation;
+
+        Mono<T> denied = this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, appCode);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                // Only the missing-context case falls through here. An empty result
+                // from the operation itself must stay empty, which is why this sits on
+                // the authentication step rather than on the whole chain.
+                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, appCode)))
+                .flatMap(ca -> this.securityService
+                        .hasWriteAccess(appCode == null ? ca.getUrlAppCode() : appCode, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE)
+                        .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                                ? operation.contextWrite(Context.of(LogUtil.DRAFT_KEY, draft))
+                                : denied))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.onSurface"));
+    }
+
+    /**
+     * Seed one storage's draft rows from its live rows.
+     *
+     * Publish promotes definitions and never promotes data, so a draft surface starts
+     * empty and stays empty. This is how a sandbox gets realistic rows.
+     *
+     * It writes into a surface the caller is not on, so it needs the same write-access
+     * bar as {@link #onSurface}, on top of the storage's own create authority. It runs
+     * with no ambient flag of its own: both namespaces are named explicitly, the same
+     * discipline dropDraftStorage and estimatedRowCount already follow.
+     */
+    public Mono<Long> copyLiveDataToDraft(String appCode, String clientCode, String storageName, Boolean replace) {
+
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> this.securityService.hasWriteAccess(ac, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE)
+                        .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                                ? Mono.just(Boolean.TRUE)
+                                : this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, ac)),
+                (ca, ac, cc, canWrite) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, canWrite, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, canWrite, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, canWrite, conn, dataService, storage) -> this.<Long>genericOperation(
+                        storage,
+                        (contextAuth, hasAccess) -> dataService.copyLiveToDraft(cc, conn, storage, replace),
+                        Storage::getCreateAuth,
+                        CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
+
+        // A zero can only mean the live collection was empty, because the count is
+        // taken before anything is written, and in that case nothing was changed --
+        // the draft rows that were there are still there.
+        //
+        // Reported as a bad request rather than a successful copy of nothing, because
+        // "Copied 0 rows" reads as a bug in the copy. Deliberately NOT signalled as an
+        // empty Mono: genericOperation's own switchIfEmpty would turn that into a 403.
+        return mono.flatMap(copied -> copied < 1
+                        ? this.msgService.<Long>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                CoreMessageResourceService.DRAFT_COPY_SOURCE_EMPTY, storageName)
+                        : Mono.just(copied))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.copyLiveDataToDraft"));
+    }
+
     public Mono<Long> estimatedRowCount(String appCode, String clientCode) {
         return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
                 .flatMap(conn -> this.mongoAppDataService.estimatedRowCount(conn, appCode, clientCode))
