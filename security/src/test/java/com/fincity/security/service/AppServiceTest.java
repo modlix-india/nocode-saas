@@ -26,6 +26,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.AppDAO;
+import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -57,6 +58,15 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private AppRegistrationV2DAO appRegistrationDao;
 
+	/**
+	 * Only reached when {@code clientService.subdomainHostsOf} returns a non-empty
+	 * list, which a bare mock does not, so every create test below leaves the
+	 * hostname guard short-circuited. The subdomain collision itself is covered in
+	 * {@code AppSubdomainGuardTest}.
+	 */
+	@Mock
+	private ClientUrlDAO clientUrlDao;
+
 	@Mock
 	private ObjectMapper objectMapper;
 
@@ -72,7 +82,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new AppService(clientService, messageResourceService, cacheService, appRegistrationDao);
+		service = new AppService(clientService, messageResourceService, cacheService, appRegistrationDao,
+				clientUrlDao);
 
 		// Inject the mocked DAO using reflection
 		// AppService -> AbstractJOOQUpdatableDataService -> AbstractJOOQDataService (has dao)
@@ -267,6 +278,50 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
 					.verify();
+		}
+
+		@Test
+		@DisplayName("an appCode whose platform hostname is already held is refused")
+		void create_SubdomainAlreadyTaken_ThrowsConflict() {
+			// The other half of the leadzump case. The row for
+			// leadzump.dev.modlix.com was written in February 2025 and the
+			// `leadzump` app in April, so no check on the row could have caught it;
+			// only a check here can.
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App entity = TestDataFactory.createOwnApp(null, SYSTEM_CLIENT_ID, "leadzump");
+
+			when(clientService.subdomainHostsOf("leadzump"))
+					.thenReturn(List.of("leadzump.dev.modlix.com", "leadzump.dev.sitezump.ai"));
+			when(clientUrlDao.firstTakenPattern(anyList()))
+					.thenReturn(Mono.just("leadzump.dev.modlix.com"));
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).create(any(App.class));
+		}
+
+		@Test
+		@DisplayName("a free platform hostname lets the create through")
+		void create_SubdomainFree_Creates() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App entity = TestDataFactory.createOwnApp(null, SYSTEM_CLIENT_ID, "brandnewapp");
+			App created = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, "brandnewapp");
+
+			when(clientService.subdomainHostsOf("brandnewapp"))
+					.thenReturn(List.of("brandnewapp.dev.modlix.com"));
+			when(clientUrlDao.firstTakenPattern(anyList())).thenReturn(Mono.empty());
+			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(result -> assertEquals(APP_ID, result.getId()))
+					.verifyComplete();
 		}
 
 		@Test

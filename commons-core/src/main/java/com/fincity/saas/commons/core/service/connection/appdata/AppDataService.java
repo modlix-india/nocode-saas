@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -297,15 +298,103 @@ public class AppDataService {
     }
 
     /**
+     * Empty a storage from the BUILDER: every row, collection and history kept.
+     *
+     * Deliberately not {@link #deleteByFilter}, which is the same delete but gated on
+     * the storage's own {@code deleteAuth} because its caller is the running app
+     * through {@code CoreServices.Storage.DeleteByFilter}. That bar is right there and
+     * wrong here; see {@link #builderOrAuthorised}.
+     *
+     * @param dryRun count the rows instead of deleting them
+     */
+    public Mono<Long> clearAllRows(String appCode, String clientCode, String storageName, Boolean dryRun) {
+
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, conn, dataService, storage) -> this.<Long>builderOrAuthorised(
+                        storage, ac,
+                        () -> dataService.deleteByFilter(cc, conn, storage, new Query(), dryRun),
+                        Storage::getDeleteAuth,
+                        CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.clearAllRows"));
+    }
+
+    /**
+     * A storage operation a BUILDER may perform, on top of whoever the storage's own
+     * authority already admits.
+     *
+     * The storage's {@code createAuth} / {@code deleteAuth} answer a RUNTIME question:
+     * may this app's user create or delete rows. They are routinely written in the
+     * app's own role namespace -- {@code Authorities.CXAPP.ROLE_Super_Admin} on the
+     * `rim` app's Project storage, for one -- and a builder working on that app from
+     * the workspace holds none of it and never will. It is not a user of the app. So
+     * gating a builder action on those made the action unreachable for any app that
+     * sets them, which is most real apps.
+     *
+     * The bar that fits is write access to the APPLICATION. It is what definition
+     * writes already use (`AbstractOverridableDataService.accessCheck`) and what naming
+     * a data surface uses, so this makes the three consistent. It also grants nothing
+     * in substance: anyone with app write access can PUT the storage definition,
+     * including the very auth expression being checked here, so a bar the caller can
+     * rewrite in one call was never a bar.
+     *
+     * An OR rather than a replacement, because `DELETE {storage}?deleteAll=true` -- the
+     * DROP, which is strictly more destructive -- already admits a caller holding only
+     * `deleteAuth`. The stricter operation must not end up with the looser gate.
+     */
+    private <T> Mono<T> builderOrAuthorised(
+            Storage storage,
+            String appCode,
+            Supplier<Mono<T>> operation,
+            Function<Storage, String> authFun,
+            String msgString) {
+
+        if (storage == null)
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    CoreMessageResourceService.STORAGE_NOT_FOUND);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    if (SecurityContextUtil.hasAuthority(
+                            authFun.apply(storage), ca.getUser().getAuthorities()))
+                        return Mono.just(Boolean.TRUE);
+
+                    return this.securityService.hasWriteAccess(appCode, ca.getClientCode())
+                            .defaultIfEmpty(Boolean.FALSE);
+                })
+                // The refusal is raised HERE, not as a switchIfEmpty over the whole
+                // chain: an operation that legitimately answers nothing must not be
+                // reported as a denial. That mistake is already in genericOperation and
+                // has cost one debugging session.
+                .flatMap(allowed -> BooleanUtil.safeValueOf(allowed)
+                        ? operation.get()
+                        : this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                msgString, storage.getName()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.builderOrAuthorised"));
+    }
+
+    /**
      * Seed one storage's draft rows from its live rows.
      *
      * Publish promotes definitions and never promotes data, so a draft surface starts
      * empty and stays empty. This is how a sandbox gets realistic rows.
      *
-     * It writes into a surface the caller is not on, so it needs the same write-access
-     * bar as {@link #onSurface}, on top of the storage's own create authority. It runs
-     * with no ambient flag of its own: both namespaces are named explicitly, the same
-     * discipline dropDraftStorage and estimatedRowCount already follow.
+     * Gated on write access to the app alone, NOT on the storage's `createAuth`: see
+     * {@link #builderOrAuthorised} for why that is the wrong question. There is no
+     * runtime path into this route to preserve, so unlike a clear it is not an OR.
+     *
+     * It runs with no ambient flag of its own: both namespaces are named explicitly,
+     * the same discipline dropDraftStorage and estimatedRowCount already follow.
      */
     public Mono<Long> copyLiveDataToDraft(String appCode, String clientCode, String storageName, Boolean replace) {
 
@@ -325,24 +414,27 @@ public class AppDataService {
                         this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
                 (ca, ac, cc, canWrite, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
                         .map(ObjectWithUniqueID::getObject),
-                (ca, ac, cc, canWrite, conn, dataService, storage) -> this.<Long>genericOperation(
-                        storage,
-                        (contextAuth, hasAccess) -> dataService.copyLiveToDraft(cc, conn, storage, replace),
-                        Storage::getCreateAuth,
-                        CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
+                (ca, ac, cc, canWrite, conn, dataService, storage) ->
+                        dataService.copyLiveToDraft(cc, conn, storage, replace));
 
         // A zero can only mean the live collection was empty, because the count is
         // taken before anything is written, and in that case nothing was changed --
         // the draft rows that were there are still there.
         //
         // Reported as a bad request rather than a successful copy of nothing, because
-        // "Copied 0 rows" reads as a bug in the copy. Deliberately NOT signalled as an
-        // empty Mono: genericOperation's own switchIfEmpty would turn that into a 403.
+        // "Copied 0 rows" reads as a bug in the copy.
         return mono.flatMap(copied -> copied < 1
                         ? this.msgService.<Long>throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 CoreMessageResourceService.DRAFT_COPY_SOURCE_EMPTY, storageName)
+                        // The 404 the dropped genericOperation used to raise. Safe as a
+                        // switchIfEmpty only because it sits AFTER this flatMap, which
+                        // either errors or emits: the sole way to arrive empty is a
+                        // storage that did not resolve, or an onlyThruKIRun one.
                         : Mono.just(copied))
+                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.STORAGE_NOT_FOUND)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.copyLiveDataToDraft"));
     }
 

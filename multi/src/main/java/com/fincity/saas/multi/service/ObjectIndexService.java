@@ -34,6 +34,13 @@ import reactor.util.context.Context;
  * The response is a FLAT list rather than a map of typed buckets. A tree groups
  * by type and a search box does not, and flattening once here beats every caller
  * flattening seventeen buckets for itself.
+ *
+ * <p>
+ * Each half arrives already resolved: one row per name, the client's override
+ * chosen over the app owner's base, other clients' documents excluded. There is
+ * deliberately no dedup here on top of that. A ui function and a core function
+ * may share a name and are different things to edit, so the only key that could
+ * be deduped across halves is one that must not be.
  */
 @Service
 public class ObjectIndexService {
@@ -50,6 +57,8 @@ public class ObjectIndexService {
      * everyone's tree the day it ships.
      */
     private static final String TITLE = "title";
+
+    private static final String CLIENT_CODE = "clientCode";
 
     private static final Map<String, String> UI_TYPES = Map.of(
             "pages", "page",
@@ -114,7 +123,10 @@ public class ObjectIndexService {
 
                     Map<String, Object> result = new LinkedHashMap<>();
                     result.put("appCode", appCode);
-                    result.put("clientCode", clientCode);
+                    // The client actually indexed, not the one asked for: a caller
+                    // that omitted it gets its own client back rather than null,
+                    // and a tree can say whose view of the app it is showing.
+                    result.put(CLIENT_CODE, resolvedClientCode(uiIndex, coreIndex, clientCode));
                     result.put("count", filtered.size());
                     result.put("counts", countByType(filtered));
                     // The builder's tree splits ui and core into separate groups
@@ -130,6 +142,25 @@ public class ObjectIndexService {
                     return Mono.just(result);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ObjectIndexService.index"));
+    }
+
+    /**
+     * Whose view of the app this index is. Each half resolves it for itself (blank
+     * means the caller's own client), so either one can answer; the requested
+     * value is the last resort, and is null exactly when nothing answered.
+     */
+    private Object resolvedClientCode(Map<String, Object> uiIndex, Map<String, Object> coreIndex,
+            String requested) {
+
+        String fromUi = str(uiIndex, CLIENT_CODE);
+        if (!fromUi.isEmpty())
+            return fromUi;
+
+        String fromCore = str(coreIndex, CLIENT_CODE);
+        if (!fromCore.isEmpty())
+            return fromCore;
+
+        return requested;
     }
 
     /**
@@ -180,7 +211,7 @@ public class ObjectIndexService {
                 row.put("label", label(map));
                 row.put("id", map.get("id"));
                 row.put("version", map.get("version"));
-                row.put("clientCode", map.get("clientCode"));
+                row.put(CLIENT_CODE, map.get(CLIENT_CODE));
                 out.add(row);
             }
         }

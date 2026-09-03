@@ -290,7 +290,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			insertClientUrl(testClientId, "https://gcurl1-" + ts + ".example.com", testAppCode).block();
 			insertClientUrl(testClientId, "https://gcurl2-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertEquals(2, urls.size());
@@ -306,7 +306,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 		@Test
 		@DisplayName("returns empty list for non-existent clientCode")
 		void nonExistentClientCode_ReturnsEmptyList() {
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, "NOEXIST"))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, "NOEXIST", null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.isEmpty());
@@ -320,7 +320,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			String ts = String.valueOf(System.currentTimeMillis());
 			insertClientUrl(testClientId, "https://noapp-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls("nonExistentApp", testClientCode))
+			StepVerifier.create(clientUrlDAO.getClientUrls("nonExistentApp", testClientCode, null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.isEmpty());
@@ -344,7 +344,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			insertClientUrl(testClientId, "https://diffapp-" + ts + ".example.com", otherAppCode).block();
 
 			// Query with the original testAppCode should not return URLs from otherAppCode
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.stream().noneMatch(u -> u.getUrlPattern().contains("diffapp-" + ts)));
@@ -361,7 +361,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			ULong otherClientId = insertTestClient(otherCode, "Diff Client", "BUS").block();
 			insertClientUrl(otherClientId, "https://diffcli-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.stream().noneMatch(u -> u.getUrlPattern().contains("diffcli-" + ts)));
@@ -376,7 +376,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 
 			insertClientUrl(testClientId, "https://fields-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertEquals(1, urls.size());

@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
@@ -250,19 +252,66 @@ public class ClientService
                 uriPort);
     }
 
+    /**
+     * The appCode a hostname resolves to through the subdomain fallback, or null
+     * when the hostname is not one of the platform's own subdomain hosts.
+     *
+     * Public because it is also the guard. {@code ClientUrlService} has to refuse a
+     * CLIENT_URL row on a hostname that already belongs to an app by convention,
+     * and it has to decide that with exactly the arithmetic used here: a configured
+     * row is matched BEFORE this fallback, so a row on such a hostname silently
+     * takes an app's default host away from it. Two copies of this loop drifting
+     * apart is how leadzump.dev.modlix.com came to serve cxapp.
+     *
+     * A prefix spanning more than one label is not an app's host: an appCode cannot
+     * contain a dot, so {@code a.b.dev.modlix.com} would only ever have found
+     * nothing, and answering null saves the lookup.
+     */
+    public String subdomainAppCode(String uriHost) {
+
+        if (StringUtil.safeIsBlank(uriHost) || this.subDomainURLEndings == null
+                || this.subDomainURLEndings.length == 0)
+            return null;
+
+        String host = uriHost.trim()
+                .toLowerCase();
+
+        for (String eachEnding : this.subDomainURLEndings) {
+
+            if (!host.endsWith(eachEnding))
+                continue;
+
+            String code = host.substring(0, host.length() - eachEnding.length());
+
+            return code.isEmpty() || code.indexOf('.') >= 0 ? null : code;
+        }
+
+        return null;
+    }
+
+    /**
+     * Every hostname that resolves to this appCode through the subdomain fallback.
+     *
+     * The inverse of {@link #subdomainAppCode(String)}, for the guard that runs
+     * the other way round: app creation has to know whether anybody already holds
+     * the hostnames the new app would otherwise answer on.
+     */
+    public List<String> subdomainHostsOf(String appCode) {
+
+        if (StringUtil.safeIsBlank(appCode) || this.subDomainURLEndings == null)
+            return List.of();
+
+        String code = appCode.trim()
+                .toLowerCase();
+
+        return Arrays.stream(this.subDomainURLEndings)
+                .map(ending -> code + ending)
+                .toList();
+    }
+
     private Mono<? extends ClientUrlPattern> getClientPatternBySubdomain(String uriHost) {
 
-        if (this.subDomainURLEndings == null || this.subDomainURLEndings.length == 0)
-            return Mono.empty();
-
-        String code = null;
-        for (String eachEnding : this.subDomainURLEndings) {
-            if (uriHost.toLowerCase()
-                    .endsWith(eachEnding)) {
-                code = uriHost.substring(0, uriHost.length() - eachEnding.length());
-                break;
-            }
-        }
+        String code = this.subdomainAppCode(uriHost);
 
         if (code == null)
             return Mono.empty();

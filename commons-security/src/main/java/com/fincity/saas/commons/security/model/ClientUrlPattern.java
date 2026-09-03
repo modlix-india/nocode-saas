@@ -78,6 +78,26 @@ public class ClientUrlPattern implements Serializable{
 		return this;
 	}
 
+	/**
+	 * The hostname inside a raw pattern, lowercased, or {@code ""} when there is
+	 * none.
+	 *
+	 * Shares {@link #URL_PATTERN} with {@link #makeHostnPort()} on purpose. The
+	 * subdomain guards in the security service have to see a hostname exactly the
+	 * way resolution will see it, and a second parser drifting from this one is how
+	 * a pattern gets past a guard and then resolves as an app's own host anyway.
+	 */
+	public static String hostOf(String urlPattern) {
+
+		if (StringUtil.safeIsBlank(urlPattern))
+			return "";
+
+		Matcher matcher = URL_PATTERN.matcher(urlPattern.trim()
+		        .toLowerCase());
+
+		return matcher.find() ? matcher.group(2) : "";
+	}
+
 	public boolean isValidClientURLPattern(String finHost, String finPort) {
 
 		Tuple3<Protocol, String, String> tuple = this.getHostnPort();
