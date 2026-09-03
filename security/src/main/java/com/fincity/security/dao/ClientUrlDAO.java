@@ -100,6 +100,39 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
     }
 
     /**
+     * The first of these patterns that somebody already holds, or empty.
+     *
+     * One query rather than one per candidate: app creation checks the hostname
+     * the new app would answer on under every configured subdomain ending, and
+     * that is a list, not a value.
+     *
+     * Compared case-insensitively and against the bare hostname only, because the
+     * column holds whatever was typed: 527 of the 570 rows on dev are bare hosts
+     * such as `kk28.dev.modlix.com`, but the column permits a scheme and the
+     * resolver strips one, so an `https://` row on the same hostname resolves the
+     * same way and has to count as taken.
+     */
+    public Mono<String> firstTakenPattern(List<String> patterns) {
+
+        if (patterns == null || patterns.isEmpty())
+            return Mono.empty();
+
+        List<Condition> conditions = new ArrayList<>();
+
+        for (String pattern : patterns) {
+            conditions.add(SECURITY_CLIENT_URL.URL_PATTERN.equalIgnoreCase(pattern));
+            conditions.add(SECURITY_CLIENT_URL.URL_PATTERN.equalIgnoreCase("http://" + pattern));
+            conditions.add(SECURITY_CLIENT_URL.URL_PATTERN.equalIgnoreCase("https://" + pattern));
+        }
+
+        return Mono.from(this.dslContext.select(SECURITY_CLIENT_URL.URL_PATTERN)
+                .from(SECURITY_CLIENT_URL)
+                .where(DSL.or(conditions))
+                .limit(1))
+                .map(Record1::value1);
+    }
+
+    /**
      * The single DRAFT row for an app and client, if one has been minted.
      *
      * "At most one per (client, app)" cannot be a unique constraint here: MySQL has

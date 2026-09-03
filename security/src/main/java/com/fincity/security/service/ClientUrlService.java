@@ -26,6 +26,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -173,13 +174,47 @@ public class ClientUrlService
         return super.readPageFilter(pageable, condition);
     }
 
+    /**
+     * Refuse a pattern that is an application's own platform hostname.
+     *
+     * {@code <appCode>} plus any of {@code security.subdomain.endings} is what
+     * {@link ClientService#subdomainAppCode(String)} already serves, for the app's
+     * owning client, with no row at all. A CLIENT_URL row is matched BEFORE that
+     * fallback, so a row on such a hostname takes an app's default host away from
+     * it silently and for good: leadzump.dev.modlix.com served cxapp from February
+     * 2025, and the app it names had to be reached on leadzumptest.dev.modlix.com
+     * instead. adzump and sitezump went the same way the same week.
+     *
+     * Refused even when the row names that same app. The fallback already answers
+     * on that hostname, so the row can only ever change which client is served
+     * there, and having two mechanisms disagreeing about one hostname is worth
+     * less than the confusion it buys.
+     *
+     * Only the hostname is looked at, parsed with the resolver's own regex: a
+     * pattern may carry a scheme and a port, and neither has any bearing on this.
+     */
+    private Mono<Boolean> checkNotAnAppSubdomain(String urlPattern) {
+
+        String host = ClientUrlPattern.hostOf(urlPattern);
+        String appCode = this.clientService.subdomainAppCode(host);
+
+        if (appCode == null)
+            return Mono.just(Boolean.TRUE);
+
+        return this.appService.getAppByCode(appCode)
+                .flatMap(app -> this.msgService.<Boolean>throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.URL_IS_APP_SUBDOMAIN, host, app.getAppCode()))
+                .defaultIfEmpty(Boolean.TRUE);
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     @Override
     public Mono<ClientUrl> create(ClientUrl entity) {
 
         entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-        return FlatMapUtil.flatMapMono(
+        return this.checkNotAnAppSubdomain(entity.getUrlPattern()).flatMap(ok -> FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
@@ -202,7 +237,7 @@ public class ClientUrlService
                         ent.setClientId(clientId);
 
                     return super.create(ent);
-                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+                })).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.create"))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -216,7 +251,11 @@ public class ClientUrlService
 
         entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-        return super.update(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+        // Guarded as tightly as create: an existing row edited onto an app's own
+        // hostname hijacks it exactly as a new one would.
+        return this.checkNotAnAppSubdomain(entity.getUrlPattern())
+                .flatMap(ok -> super.update(entity))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
@@ -229,7 +268,13 @@ public class ClientUrlService
 
         updateFields.computeIfPresent(URL_PATTERN, (k, v) -> trimBackSlash(v.toString()));
 
-        return super.update(key, updateFields).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+        // A patch that does not touch urlPattern cannot move the row onto a
+        // hostname, so it is not worth a lookup.
+        Object patched = updateFields.get(URL_PATTERN);
+
+        return (patched == null ? Mono.just(Boolean.TRUE) : this.checkNotAnAppSubdomain(patched.toString()))
+                .flatMap(ok -> super.update(key, updateFields))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
@@ -364,17 +409,32 @@ public class ClientUrlService
         return this.dao.checkSubDomainAvailability(subDomain);
     }
 
+    /**
+     * Whether a registrant may claim this subdomain. TRUE means available.
+     *
+     * Two ways it is not: somebody already holds the hostname, or the label is an
+     * existing application's code, in which case the hostname is that app's own
+     * platform host and handing it to a client would take it away from the app.
+     *
+     * The second branch used to run only when the hostname was ALREADY taken, and
+     * to answer TRUE there -- so a colliding appCode reported the subdomain as
+     * available, and the check that was meant to reserve app codes instead waved
+     * duplicates through. Nothing had noticed because the app that matters,
+     * `leadzump`, was created two months AFTER the row that took its hostname, so
+     * the branch never ran on the case it existed for.
+     */
     public Mono<Boolean> checkSubDomainAvailability(String subDomain, String fullURL) {
 
         return FlatMapUtil.flatMapMono(
 
                 () -> this.checkSubDomainAvailabilityWithSuffix(fullURL),
 
-                exists -> {
-                    if (BooleanUtil.safeValueOf(exists))
-                        return Mono.just(exists);
+                free -> {
+                    if (!BooleanUtil.safeValueOf(free))
+                        return Mono.just(Boolean.FALSE);
 
-                    return this.appService.getAppByCode(subDomain).map(e -> true).defaultIfEmpty(false);
+                    return this.appService.getAppByCode(subDomain).map(e -> Boolean.FALSE)
+                            .defaultIfEmpty(Boolean.TRUE);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.checkSubDomainAvailability"));
     }
 
@@ -382,7 +442,13 @@ public class ClientUrlService
 
         entity.setUrlPattern(trimBackSlash(entity.getUrlPattern()));
 
-        return super.create(entity).flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
+        // Registration pre-flights the label through checkSubDomainAvailability
+        // above, but only for a business client and only when a subDomain was
+        // supplied. This is the same guard on the write itself, so no path into
+        // this table can mint an app's platform hostname.
+        return this.checkNotAnAppSubdomain(entity.getUrlPattern())
+                .flatMap(ok -> super.create(entity))
+                .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))

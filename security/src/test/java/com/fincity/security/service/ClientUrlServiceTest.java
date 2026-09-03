@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientUrlDAO;
@@ -196,6 +200,174 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 			// with no elements emitted.
 			StepVerifier.create(service.create(entity))
 					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// an app's own platform hostname
+	// =========================================================================
+
+	/**
+	 * `<appCode><ending>` is served for free by the subdomain fallback, and a
+	 * configured row is matched BEFORE that fallback, so a row on such a hostname
+	 * takes an app's default address away from it permanently and silently. Every
+	 * write into this table is therefore guarded, whichever route it came in by.
+	 */
+	@Nested
+	@DisplayName("a URL on an application's own platform hostname")
+	class AppSubdomainGuardTests {
+
+		private void hostBelongsTo(String host, String appCode) {
+			when(clientService.subdomainAppCode(host)).thenReturn(appCode);
+
+			App app = new App();
+			app.setAppCode(appCode);
+			when(appService.getAppByCode(appCode)).thenReturn(Mono.just(app));
+		}
+
+		@Test
+		@DisplayName("is refused on create, and nothing is written")
+		void create_OnAnAppsHost_ThrowsConflict() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			ClientUrl entity = createClientUrl(null, SYSTEM_CLIENT_ID, "leadzump.dev.modlix.com", "cxapp");
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).create(any(ClientUrl.class));
+		}
+
+		@Test
+		@DisplayName("is refused even when the row names that same application")
+		void create_OnItsOwnAppsHost_StillThrowsConflict() {
+			// The fallback already answers on that hostname, so the row can only
+			// change which client is served there. Two mechanisms disagreeing about
+			// one hostname is worth less than the confusion it buys.
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			ClientUrl entity = createClientUrl(null, SYSTEM_CLIENT_ID, "leadzump.dev.modlix.com", "leadzump");
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).create(any(ClientUrl.class));
+		}
+
+		@Test
+		@DisplayName("is refused however the pattern is written")
+		void create_SchemeAndSlashDoNotEvadeTheGuard() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			ClientUrl entity = createClientUrl(null, SYSTEM_CLIENT_ID, "https://LeadZump.dev.modlix.com/", "cxapp");
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+		}
+
+		@Test
+		@DisplayName("is refused on registration, the route that wrote the leadzump row")
+		void createForRegistration_OnAnAppsHost_ThrowsConflict() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			ClientUrl entity = createClientUrl(null, TARGET_CLIENT_ID, "leadzump.dev.modlix.com", "cxapp");
+
+			StepVerifier.create(service.createForRegistration(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).create(any(ClientUrl.class));
+		}
+
+		@Test
+		@DisplayName("is refused when an existing row is edited onto one")
+		void update_OntoAnAppsHost_ThrowsConflict() {
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			ClientUrl entity = createClientUrl(URL_ID, SYSTEM_CLIENT_ID, "leadzump.dev.modlix.com", "cxapp");
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).update(any(ClientUrl.class));
+		}
+
+		@Test
+		@DisplayName("is refused when a patch moves a row onto one")
+		void updateByMap_OntoAnAppsHost_ThrowsConflict() {
+			hostBelongsTo("leadzump.dev.modlix.com", "leadzump");
+
+			Map<String, Object> fields = new HashMap<>();
+			fields.put("urlPattern", "leadzump.dev.modlix.com");
+
+			StepVerifier.create(service.update(URL_ID, fields))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+		}
+
+		@Test
+		@DisplayName("a hostname whose label is nobody's appCode is left alone")
+		void create_UnclaimedLabel_IsAllowed() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			// The label parses as an appCode but no app holds it, so the fallback
+			// would serve nothing there and the row is the only way to reach it.
+			when(clientService.subdomainAppCode("techtonic.dev.modlix.com")).thenReturn("techtonic");
+			when(appService.getAppByCode("techtonic")).thenReturn(Mono.empty());
+
+			ClientUrl entity = createClientUrl(null, SYSTEM_CLIENT_ID, "techtonic.dev.modlix.com", "cxapp");
+			ClientUrl created = createClientUrl(URL_ID, SYSTEM_CLIENT_ID, "techtonic.dev.modlix.com", "cxapp");
+
+			when(dao.create(any(ClientUrl.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(result -> assertEquals(URL_ID, result.getId()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a hostname outside every ending never reaches the application lookup")
+		void create_CustomDomain_SkipsTheLookup() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			// subdomainAppCode answers null for a custom domain, so the guard costs
+			// nothing on the common case.
+			when(clientService.subdomainAppCode("dev.leadzump.ai")).thenReturn(null);
+
+			ClientUrl entity = createClientUrl(null, SYSTEM_CLIENT_ID, "dev.leadzump.ai", "leadzump");
+			ClientUrl created = createClientUrl(URL_ID, SYSTEM_CLIENT_ID, "dev.leadzump.ai", "leadzump");
+
+			when(dao.create(any(ClientUrl.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(result -> assertEquals(URL_ID, result.getId()))
+					.verifyComplete();
+
+			verify(appService, never()).getAppByCode(anyString());
 		}
 	}
 
@@ -475,35 +647,47 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 	class CheckSubDomainAvailabilityTests {
 
 		@Test
+		@DisplayName("a free hostname whose label is nobody's appCode is available")
 		void checkSubDomainAvailability_Available_ReturnsTrue() {
 			when(dao.checkSubDomainAvailability("https://newdomain.example.com"))
 					.thenReturn(Mono.just(true));
 			when(appService.getAppByCode("newdomain")).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.checkSubDomainAvailability("newdomain", "https://newdomain.example.com"))
-					.assertNext(result -> {
-						// When checkSubDomainAvailability returns true (no URL pattern found),
-						// and no app exists with that code, it returns false
-						assertNotNull(result);
-					})
+					.assertNext(Assertions::assertTrue)
 					.verifyComplete();
 		}
 
 		@Test
+		@DisplayName("a label that is an existing appCode is NOT available, free hostname or not")
+		void checkSubDomainAvailability_LabelIsAnAppCode_ReturnsFalse() {
+			// The case the branch existed for and never handled: leadzump was
+			// registrable as a subdomain because the answer here was inverted, and
+			// the hostname it took is the one the `leadzump` app answers on by
+			// convention.
+			when(dao.checkSubDomainAvailability("https://leadzump.example.com"))
+					.thenReturn(Mono.just(true));
+
+			App app = new App();
+			app.setAppCode("leadzump");
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.just(app));
+
+			StepVerifier.create(service.checkSubDomainAvailability("leadzump", "https://leadzump.example.com"))
+					.assertNext(Assertions::assertFalse)
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a hostname somebody already holds is not available, and the app is not consulted")
 		void checkSubDomainAvailability_Taken_ReturnsFalse() {
 			when(dao.checkSubDomainAvailability("https://taken.example.com"))
 					.thenReturn(Mono.just(false));
-			// When the DAO returns false, BooleanUtil.safeValueOf(false) is false,
-			// so the code enters the else branch and calls appService.getAppByCode
-			when(appService.getAppByCode("taken")).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.checkSubDomainAvailability("taken", "https://taken.example.com"))
-					.assertNext(result -> {
-						// appService returns empty, so defaultIfEmpty(false) yields false
-						assertNotNull(result);
-						assertFalse(result);
-					})
+					.assertNext(Assertions::assertFalse)
 					.verifyComplete();
+
+			verify(appService, never()).getAppByCode(anyString());
 		}
 	}
 
@@ -534,8 +718,12 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 					})
 					.verifyComplete();
 
-			// Verify no client management check was needed (access check is skipped)
-			verifyNoInteractions(clientService);
+			// Verify no client management check was needed (access check is skipped).
+			// clientService is still consulted, for the subdomain endings the
+			// hostname guard needs, so this is narrowed to the access check rather
+			// than asserting no interactions at all.
+			verify(clientService, never()).isUserClientManageClient(any(ContextAuthentication.class),
+					any(ULong.class));
 
 			// Verify caches are still evicted
 			verify(cacheService).evictAllFunction("clientUrl");
