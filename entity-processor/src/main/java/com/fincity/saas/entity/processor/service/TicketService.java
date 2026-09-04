@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -494,15 +495,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                 existing.setEmail(ticket.getEmail());
                 existing.setAssignedUserId(ticket.getAssignedUserId());
-                existing.setStage(ticket.getStage());
-                existing.setStatus(ticket.getStatus());
                 existing.setSubSource(ticket.getSubSource());
                 existing.setTag(ticket.getTag());
 
                 ProcessorAccess access = ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
                         ca.getUser(), null);
 
-                Mono<Ticket> result = this.computeAndSetExpiresOn(access, existing);
+                Mono<Ticket> result = this.applyStageStatus(access, existing, ticket)
+                        .flatMap(sTicket -> this.computeAndSetExpiresOn(access, sTicket));
 
                 if (newAssignedUserId != null
                         && !newAssignedUserId.equals(oldAssignedUserId)) {
@@ -528,6 +528,75 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             }
         )
         .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
+    }
+
+    /**
+     * Moves a deal's stage and status on the generic update path, refusing anything that does not
+     * belong to the deal's own product template.
+     *
+     * <p>These two were a plain assignment until now, so a payload could put any stage id at all on
+     * a deal - one from another product template, or from another tenant entirely - and it was
+     * written and answered 200. The dedicated {@code /stage} route has always checked through
+     * {@link #updateStageStatus}, but the kanban drag-drop and the deal profile form both come
+     * through here instead, so the check has to live here too.
+     *
+     * <p>A stage the payload does not carry leaves the deal where it is rather than clearing it.
+     * Nulling it is never a real operation - a deal with no stage falls out of every board - and a
+     * client that simply does not manage the field would otherwise erase it on an unrelated save,
+     * which is what a PUT omitting {@code stage} used to do.
+     *
+     * <p>Status follows its stage, because it has no meaning apart from one. A status that is not a
+     * child of the resolved stage is dropped rather than refused, which is exactly what
+     * {@link #updateStageStatus} does with one: the kanban sends the deal's existing status
+     * alongside the new stage on every drop, and refusing that would break dragging a card.
+     *
+     * <p>Validated against the deal's stored product, never the payload's. Product is not updatable
+     * here, so the payload's is either the same or an attempt to change it, and neither is the right
+     * thing to check a stage against.
+     */
+    private Mono<Ticket> applyStageStatus(ProcessorAccess access, Ticket existing, Ticket incoming) {
+
+        ULong newStage = incoming.getStage();
+
+        if (newStage == null) return Mono.just(existing);
+
+        if (newStage.equals(existing.getStage()) && Objects.equals(incoming.getStatus(), existing.getStatus()))
+            return Mono.just(existing);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.productService.readById(access, existing.getProductId()),
+                        product -> {
+                            if (product.getProductTemplateId() == null)
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_TYPE_MISSING,
+                                        product.getId());
+
+                            return this.stageService
+                                    .getParentChild(
+                                            access,
+                                            product.getProductTemplateId(),
+                                            Identity.of(newStage.toBigInteger()),
+                                            incoming.getStatus() == null
+                                                    ? null
+                                                    : Identity.of(incoming.getStatus().toBigInteger()))
+                                    .map(stageStatus -> {
+                                        existing.setStage(
+                                                stageStatus.getKey().getId());
+                                        existing.setStatus(
+                                                stageStatus.getValue().isEmpty()
+                                                        ? null
+                                                        : stageStatus
+                                                                .getValue()
+                                                                .getFirst()
+                                                                .getId());
+                                        return existing;
+                                    })
+                                    .switchIfEmpty(this.msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.STAGE_MISSING));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.applyStageStatus"));
     }
 
     @Override
