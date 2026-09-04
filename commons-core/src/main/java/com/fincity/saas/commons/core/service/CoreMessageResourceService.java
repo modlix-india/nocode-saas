@@ -75,6 +75,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
     public static final String DRAFT_COPY_SOURCE_EMPTY = "draft_copy_source_empty";
 
+    public static final String STORAGE_ONLY_THRU_KIRUN = "storage_only_thru_kirun";
+
     public static final String STORAGE_OBJECT_ID_EXISTS = "storage_object_id_exists";
 
     public static final String NOT_ABLE_TO_CREATE_TOKEN = "not_able_to_create_token";

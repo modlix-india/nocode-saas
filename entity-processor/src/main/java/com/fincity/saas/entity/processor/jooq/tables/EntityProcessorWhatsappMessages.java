@@ -292,6 +292,21 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.EDITED_AT</code>.
+     * When this message was last edited by its sender. Null means never edited.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, LocalDateTime> EDITED_AT = createField(DSL.name("EDITED_AT"), SQLDataType.LOCALDATETIME(0), this, "When this message was last edited by its sender. Null means never edited.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_whatsapp_messages.BODY_REVISIONS</code>.
+     * Earlier wordings of this message, oldest first under a revisions key.
+     * Current text stays in BODY_TEXT.
+     */
+    public final TableField<EntityProcessorWhatsappMessagesRecord, Map> BODY_REVISIONS = createField(DSL.name("BODY_REVISIONS"), SQLDataType.JSON, this, "Earlier wordings of this message, oldest first under a revisions key. Current text stays in BODY_TEXT.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_whatsapp_messages.MESSAGE</code>.
      * Outbound message object sent to WhatsApp.
      */
