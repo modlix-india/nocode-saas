@@ -98,6 +98,28 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     /** Plain text extracted at write time, so search can use an index instead of scanning JSON. */
     private String bodyText;
 
+    /**
+     * When the sender last rewrote this message. Null means they never did.
+     *
+     * <p>Kept as its own column rather than derived from {@link #bodyRevisions} being non-empty, so
+     * a thread can label a bubble "edited" and date the label without reading the blob.
+     */
+    private LocalDateTime editedAt;
+
+    /**
+     * What this message used to say, oldest first, under a {@code revisions} key.
+     *
+     * <p>{@link #bodyText} is always the current wording, so nothing that reads a message needs to
+     * know editing exists. This is the trail behind it: the first revision is what the sender
+     * originally wrote, and each later one is a version they replaced, so a message edited five
+     * times keeps all six wordings.
+     *
+     * <p>Every version is kept rather than just the original, because in a CRM the sequence is the
+     * point - a lead moving "50L works" to "45L" to "40L" is a negotiation, and only keeping the
+     * ends of it loses what happened in between.
+     */
+    private Map<String, Object> bodyRevisions;
+
     private Map<String, Object> message;
     private FileDetail mediaFileDetail;
 
