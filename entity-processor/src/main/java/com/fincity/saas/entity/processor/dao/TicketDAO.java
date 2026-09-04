@@ -265,6 +265,32 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .or(ENTITY_PROCESSOR_TICKETS.LAST_MESSAGE_AT.lt(occurredAt))));
     }
 
+    /**
+     * Writes the number this deal is messaged on, and its calling code.
+     *
+     * <p>A direct {@code UPDATE} of the two columns rather than a read-modify-write through the
+     * DTO, because {@code TicketService.updatableEntity} is a whitelist and these two are
+     * deliberately off it: a general ticket save from a client that has never heard of the field
+     * must not clear it. That whitelist discards them on the way in as well, so the route that
+     * exists to set the number is the one that has to write it.
+     *
+     * <p>Unlike {@link #touchLastMessageAt} this does stamp {@code UPDATED_BY}. Somebody typed this
+     * number in after a phone call, and that is exactly the kind of edit the audit trail is for.
+     */
+    public Mono<Integer> updateWhatsappNumber(ULong ticketId, Integer dialCode, String number, ULong updatedBy) {
+
+        if (ticketId == null) return Mono.just(0);
+
+        return Mono.from(this.dslContext
+                .update(ENTITY_PROCESSOR_TICKETS)
+                .set(ENTITY_PROCESSOR_TICKETS.WHATSAPP_NUMBER, number)
+                .set(
+                        ENTITY_PROCESSOR_TICKETS.WHATSAPP_DIAL_CODE,
+                        dialCode == null ? null : Short.valueOf(dialCode.shortValue()))
+                .set(ENTITY_PROCESSOR_TICKETS.UPDATED_BY, updatedBy)
+                .where(ENTITY_PROCESSOR_TICKETS.ID.eq(ticketId)));
+    }
+
     private Mono<AbstractCondition> getOwnerIdentifierConditions(
             AbstractCondition condition,
             ProcessorAccess access,

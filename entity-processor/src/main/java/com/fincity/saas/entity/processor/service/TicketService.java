@@ -1793,16 +1793,29 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             ticket.setWhatsappNumber(clearing ? null : number.getNumber());
                             ticket.setWhatsappDialCode(clearing ? null : number.getCountryCode());
 
-                            return this.update(access, ticket).flatMap(updated -> this.activityService
-                                    .acFieldUpdate(
-                                            updated.getId(),
+                            // Straight to the two columns, not through update(): updatableEntity
+                            // re-reads the row and copies only the fields it names onto it, and these
+                            // two are deliberately not among them for the reason above. Sent through
+                            // the general path they are silently dropped and the call answers 200
+                            // with the old number.
+                            ULong contextUserId = access.getUserId();
+
+                            return this.dao.updateWhatsappNumber(
+                                            ticket.getId(),
+                                            ticket.getWhatsappDialCode(),
+                                            ticket.getWhatsappNumber(),
+                                            contextUserId != null && contextUserId.longValue() != 0L
+                                                    ? contextUserId
+                                                    : null)
+                                    .then(this.activityService.acFieldUpdate(
+                                            ticket.getId(),
                                             request.getComment(),
                                             Ticket.Fields.whatsappNumber + ": "
                                                     + (old == null ? "-" : old) + " -> "
-                                                    + (updated.getWhatsappNumber() == null
+                                                    + (ticket.getWhatsappNumber() == null
                                                             ? "-"
-                                                            : updated.getWhatsappNumber()))
-                                    .thenReturn(updated));
+                                                            : ticket.getWhatsappNumber())))
+                                    .thenReturn(ticket);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappNumber"));
     }
