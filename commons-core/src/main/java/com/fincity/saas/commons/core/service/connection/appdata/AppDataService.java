@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -106,6 +107,20 @@ public class AppDataService {
     private static final String DATA_OBJECT_KEY = "dataObject";
     private static final String EXISTING_DATA_OBJECT_KEY = "existingDataObject";
     private final EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
+
+    /**
+     * Applications whose SESSIONS may read and write an {@code onlyThruKIRun} storage
+     * over the raw data API.
+     *
+     * Matched against {@code ContextAuthentication.verifiedAppCode}, which is the app
+     * the user actually authenticated into. NOT {@code urlAppCode}: that one is set by
+     * {@code JWTTokenFilter} from the {@code appCode} REQUEST HEADER, and the builder
+     * deliberately sends the code of the app being EDITED, so it reads `leadzump` while
+     * editing leadzump and would never match. {@code verifiedAppCode} is stamped at
+     * login and rides in the signed token, so a caller cannot claim it with a header.
+     */
+    @Value("${core.storage.onlyThruKIRun.builderAppCodes:appbuilder,sitezump}")
+    private Set<String> builderAppCodes;
 
     @Autowired
     private ConnectionService connectionService;
@@ -559,7 +574,7 @@ public class AppDataService {
                     .setOperator(FilterConditionOperator.IN)
                     .setMultiValue(value));
             relationList.add(FlatMapUtil.flatMapMono(
-                    () -> this.getStorageWithKIRunValidation(relation.getStorageName(), appCode, clientCode)
+                    () -> this.getStorageForRelation(relation.getStorageName(), appCode, clientCode)
                             .map(ObjectWithUniqueID::getObject),
                     storageObj -> dataService
                             .readPageAsFlux(clientCode, conn, storageObj, query)
@@ -1818,22 +1833,82 @@ public class AppDataService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteStorage"));
     }
 
+    /**
+     * Resolve a storage, refusing an {@code onlyThruKIRun} one unless the caller is
+     * entitled to it. THROWS on refusal; see {@link #getStorageForRelation} for the
+     * lenient variant.
+     *
+     * Throwing rather than returning empty is load-bearing. Every public entry point
+     * here chains through {@code FlatMapUtil.flatMapMonoWithNull}, which is
+     * {@code .map(Optional::of).defaultIfEmpty(Optional.empty())} followed by
+     * {@code .orElse(null)}. So an empty does NOT short-circuit: it arrives as a null
+     * {@code storage} and the chain runs on. {@code readPage} then answered a
+     * misleading "Storage not found" 404 for a storage that plainly exists, and
+     * {@code copyLiveDataToDraft} handed the null straight to
+     * {@code MongoAppDataService.getCollection}, which NPE'd on
+     * {@code storage.getAppCode()} and surfaced as a 500 with a 31KB stack trace.
+     *
+     * That is the second time this deny path has been fixed. The previous attempt
+     * swapped a thrown {@code NoSuchElementException} (from {@code ContextView.get}
+     * on an absent key) for {@code Mono.empty()} so the intended 404 would be
+     * reachable. It never was, because WithNull swallows the empty. An explicit throw
+     * does not depend on emptiness surviving the chain.
+     */
     private Mono<ObjectWithUniqueID<Storage>> getStorageWithKIRunValidation(
             String name, String appCode, String clientCode) {
+        return this.resolveStorage(name, appCode, clientCode, true);
+    }
+
+    /**
+     * Resolve a storage for EAGER RELATION loading, skipping an {@code onlyThruKIRun}
+     * one instead of failing the parent read.
+     *
+     * {@code prepareMonosForPage} builds one mono per eager field with
+     * {@code FlatMapUtil.flatMapMono} (no WithNull), so an empty here short-circuits
+     * that relation alone and the parent row still comes back, just without it. The
+     * strict variant would turn a relation pointing at a KIRun-only storage into a 403
+     * on the whole read, which is a regression on every page doing that today.
+     */
+    private Mono<ObjectWithUniqueID<Storage>> getStorageForRelation(
+            String name, String appCode, String clientCode) {
+        return this.resolveStorage(name, appCode, clientCode, false);
+    }
+
+    private Mono<ObjectWithUniqueID<Storage>> resolveStorage(
+            String name, String appCode, String clientCode, boolean refuseLoudly) {
         return storageService.read(name, appCode, clientCode).flatMap(e -> {
             if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
                 return Mono.just(e);
 
             // ContextView.get(key) THROWS NoSuchElementException when the key is
-            // absent, which is the normal case for a non-KIRun caller. That made
-            // the intended "return empty and let the caller 404" path unreachable:
-            // a page hitting an onlyThruKIRun storage got an unhandled exception
-            // surfaced as a generic 500 with a 27KB stack trace instead of a
-            // meaningful denial. getOrDefault keeps the deny path intact.
+            // absent, which is the normal case for a non-KIRun caller, so this stays
+            // on getOrDefault.
             return Mono.deferContextual(cv -> {
                 if ("true".equals(cv.getOrDefault(DefinitionFunction.CONTEXT_KEY, null)))
                     return Mono.just(e);
-                return Mono.empty();
+
+                // A builder SESSION may reach these rows directly, on either surface.
+                // The flag says "route app traffic through a KIRun function"; it was
+                // never meant to hide the rows from whoever is building the app, and
+                // it did: the workspace data browser could not show them at all.
+                //
+                // Keyed on verifiedAppCode, stamped at login and carried in the signed
+                // token, so it cannot be claimed with a request header. An empty or
+                // unknown value falls through to the refusal, which is fail-safe.
+                return SecurityContextUtil.getUsersContextAuthentication()
+                        .map(ca -> StringUtil.safeIsBlank(ca.getVerifiedAppCode())
+                                ? ""
+                                : ca.getVerifiedAppCode())
+                        .defaultIfEmpty("")
+                        .flatMap(verifiedAppCode -> {
+                            if (this.builderAppCodes.contains(verifiedAppCode))
+                                return Mono.just(e);
+                            if (!refuseLoudly)
+                                return Mono.empty();
+                            return this.msgService.<ObjectWithUniqueID<Storage>>throwMessage(
+                                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                    CoreMessageResourceService.STORAGE_ONLY_THRU_KIRUN, name);
+                        });
             });
         });
     }
