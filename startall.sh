@@ -113,6 +113,12 @@ start_bridge() {
     export BRIDGE_HMAC_SECRET="${BRIDGE_HMAC_SECRET:-local-hmac-secret}"
     # Shortened from the 5-15s production defaults so a test conversation does not take a minute
     # per message. The delay is the feature; this is the only place it is right to shrink it.
+    # Backfill of the messages WhatsApp hands a newly linked device, which is what fills the gap
+    # left by unlinking a number. Passed through rather than pinned: the bridge defaults it OFF on
+    # purpose, and this script had no way to reach it at all, so locally it could not be tested.
+    # Turn it on for a run with:  BRIDGE_HISTORY_SYNC_ENABLED=true ./startall.sh bridge
+    export BRIDGE_HISTORY_SYNC_ENABLED="${BRIDGE_HISTORY_SYNC_ENABLED:-false}"
+    export BRIDGE_HISTORY_MAX_MESSAGES="${BRIDGE_HISTORY_MAX_MESSAGES:-2000}"
     export BRIDGE_SEND_MIN_DELAY="${BRIDGE_SEND_MIN_DELAY:-1s}"
     export BRIDGE_SEND_MAX_DELAY="${BRIDGE_SEND_MAX_DELAY:-3s}"
     nohup "$BRIDGE_BIN" >>"$log" 2>&1 & echo $! >"$pidfile"
