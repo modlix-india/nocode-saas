@@ -115,6 +115,27 @@ public class WhatsappInboundService {
                     .flatMap(message -> this.announce(appCode, clientCode, request, message))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptEdit"));
 
+        // Recovered history is scoped to the gap, not to whatever WhatsApp feels like handing over.
+        //
+        // A newly linked device is offered the recent history of every conversation on the handset,
+        // which on a personal number is that person's unrelated chats - confirmed on local, where one
+        // relink imported 40 messages across 8 deals, most of them bodyless. The only messages worth
+        // importing are the ones dated after the last one we already hold on this number, because
+        // that instant is exactly when the number stopped receiving.
+        //
+        // First link imports nothing, and that is right rather than a limitation: with no earlier
+        // message there is no gap to close, so every candidate is history that predates us caring.
+        if (Boolean.TRUE.equals(request.getBackfilled()))
+            return this.dao
+                    .newestSentTime(appCode, clientCode, request.getWhatsappPhoneNumber())
+                    .filter(watermark -> isAfter(occurredAt(request), watermark))
+                    .flatMap(watermark -> this.dao
+                            .readByMessageId(appCode, clientCode, request.getMetaMessageId())
+                            .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
+                            .switchIfEmpty(Mono.defer(() -> this.insert(appCode, clientCode, request)))
+                            .flatMap(message -> this.announce(appCode, clientCode, request, message)))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptBackfill"));
+
         return this.dao
                 .readByMessageId(appCode, clientCode, request.getMetaMessageId())
                 .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
@@ -541,17 +562,36 @@ public class WhatsappInboundService {
                 .toList();
     }
 
+    /**
+     * Whether a recovered message is newer than the last one already held.
+     *
+     * <p>Strictly after, so a redelivery of the boundary message itself is not re-imported. An
+     * undated candidate is treated as not newer: without a time there is no way to place it in the
+     * gap, and importing it would put a message of unknown age into the middle of a conversation.
+     */
+    private static boolean isAfter(LocalDateTime candidate, LocalDateTime watermark) {
+        return candidate != null && watermark != null && candidate.isAfter(watermark);
+    }
+
     private void applyStatusTimes(WhatsappMessage message, WhatsappMessageStatus status, LocalDateTime at) {
-        if (status == null) return;
-        switch (status) {
-            case SENT -> message.setSentTime(at);
-            case DELIVERED -> message.setDeliveredTime(at);
-            case READ -> message.setReadTime(at);
-            case FAILED -> message.setFailedTime(at);
-            case DELETED -> {
-                /* no dedicated timestamp column */
+
+        // The status-less case falls through to the SENT_TIME fallback below rather than returning.
+        // It used to return here, which made that fallback unreachable for exactly the messages that
+        // need it most: an inbound message and a backfilled one carry no delivery status, so they
+        // were stored with no time at all and sorted to the bottom of the thread. It also left the
+        // backfill high-water mark with nothing to measure against.
+        if (status != null) {
+            switch (status) {
+                case SENT -> message.setSentTime(at);
+                case DELIVERED -> message.setDeliveredTime(at);
+                case READ -> message.setReadTime(at);
+                case FAILED -> message.setFailedTime(at);
+                case DELETED -> {
+                    /* no dedicated timestamp column */
+                }
             }
         }
+
         // Ordering falls back to SENT_TIME, so a message whose first event was a later status still
         // needs one or it sorts to the bottom of the thread.
         if (message.getSentTime() == null) message.setSentTime(at);
