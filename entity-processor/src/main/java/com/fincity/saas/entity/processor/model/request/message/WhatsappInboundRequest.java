@@ -211,4 +211,16 @@ public class WhatsappInboundRequest implements Serializable {
     public boolean isStatusUpdate() {
         return "MESSAGE_STATUS".equals(this.eventType);
     }
+
+    /**
+     * Whether this handoff rewrites a message already stored.
+     *
+     * <p>Like {@link #isMediaReady()} this is a patch and never an insert: it carries the original's
+     * id and the new wording only, so falling through to the ordinary path would file the edit as a
+     * second bubble and leave the first one saying the old thing.
+     */
+    @JsonIgnore
+    public boolean isMessageEdit() {
+        return "MESSAGE_EDIT".equalsIgnoreCase(this.eventType);
+    }
 }
