@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import org.jooq.Condition;
 import org.jooq.InsertValuesStep5;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
@@ -117,19 +118,37 @@ public class CampaignDAO extends BaseUpdatableDAO<EntityProcessorCampaignsRecord
     }
 
     /**
-     * Campaign ids associated with a product for a tenant. Used by the report
-     * filter to scope rows through the join table.
+     * Campaign ids associated with products for a tenant, optionally filtered by
+     * platform.
+     * Joins campaigns table to enforce IS_ACTIVE and platform filter.
      */
-    public Flux<ULong> findCampaignIdsForProduct(String appCode, String clientCode, ULong productId) {
+    public Flux<ULong> findCampaignIdsForProduct(
+                    String appCode,
+                    String clientCode,
+                    List<ULong> productIds,
+                    List<CampaignPlatform> platforms) {
+
+            if (productIds == null || productIds.isEmpty()) {
+                    return Flux.empty();
+            }
+
+            Condition condition = ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.PRODUCT_ID.in(productIds)
+                            .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.APP_CODE.eq(appCode))
+                            .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CLIENT_CODE.eq(clientCode))
+                            .and(ENTITY_PROCESSOR_CAMPAIGNS.IS_ACTIVE.isTrue())
+                            .and(ENTITY_PROCESSOR_CAMPAIGNS.APP_CODE.eq(appCode))
+                            .and(ENTITY_PROCESSOR_CAMPAIGNS.CLIENT_CODE.eq(clientCode));
+
+            if (platforms != null && !platforms.isEmpty()) {
+                    condition = condition.and(ENTITY_PROCESSOR_CAMPAIGNS.CAMPAIGN_PLATFORM.in(platforms));
+            }
 
         return Flux.from(this.dslContext
-                        .select(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CAMPAIGN_ID)
+                        .selectDistinct(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CAMPAIGN_ID)
                         .from(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS)
-                        .where(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS
-                                .PRODUCT_ID
-                                .eq(productId)
-                                .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.APP_CODE.eq(appCode))
-                                .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CLIENT_CODE.eq(clientCode))))
+                        .join(ENTITY_PROCESSOR_CAMPAIGNS)
+                        .on(ENTITY_PROCESSOR_CAMPAIGNS.ID.eq(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CAMPAIGN_ID))
+                        .where(condition))
                 .map(r -> r.get(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CAMPAIGN_ID));
     }
 

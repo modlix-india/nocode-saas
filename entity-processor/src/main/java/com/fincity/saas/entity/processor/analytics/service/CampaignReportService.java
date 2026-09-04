@@ -2,15 +2,30 @@ package com.fincity.saas.entity.processor.analytics.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.CampaignReportDAO;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport.StageCell;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeResponse;
+import com.fincity.saas.entity.processor.analytics.model.RotationRequest;
+import com.fincity.saas.entity.processor.analytics.model.RotationResponse;
+import com.fincity.saas.entity.processor.analytics.model.RotationRow;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
+import com.fincity.saas.entity.processor.dao.CampaignDAO;
+import com.fincity.saas.entity.processor.dao.CampaignMetricDAO;
+import com.fincity.saas.entity.processor.dto.CampaignMetric;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
@@ -19,18 +34,31 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class CampaignReportService implements IProcessorAccessService {
+
+    private static final Set<TimePeriod> SUPPORTED_TIME_PERIODS = Set.of(
+            TimePeriod.DAYS,
+            TimePeriod.WEEKS,
+            TimePeriod.MONTHS,
+            TimePeriod.QUARTERS,
+            TimePeriod.YEARS);
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
@@ -44,16 +72,260 @@ public class CampaignReportService implements IProcessorAccessService {
 
     private final CampaignReportDAO campaignReportDAO;
     private final ProductService productService;
+    private final CampaignDAO campaignDAO;
+    private final CampaignMetricDAO campaignMetricDAO;
 
     public CampaignReportService(
             IFeignSecurityService securityService,
             ProcessorMessageResourceService msgService,
             CampaignReportDAO campaignReportDAO,
-            ProductService productService) {
+            ProductService productService,
+            CampaignDAO campaignDAO,
+            CampaignMetricDAO campaignMetricDAO) {
         this.securityService = securityService;
         this.msgService = msgService;
         this.campaignReportDAO = campaignReportDAO;
         this.productService = productService;
+        this.campaignDAO = campaignDAO;
+        this.campaignMetricDAO = campaignMetricDAO;
+    }
+
+    /**
+     * Build the rotation report (Daily / Weekly / Monthly / Quarterly / Yearly) for products.
+     *
+     * <p>{@code productIds} present → those active products. Absent → every active product the
+     * caller's access allows.
+     */
+    public Mono<RotationResponse> getRotationReport(RotationRequest request) {
+
+        if (request == null) {
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "productIds");
+        }
+
+        if (request.getTimePeriod() != null && !SUPPORTED_TIME_PERIODS.contains(request.getTimePeriod())) {
+            return Mono.error(new GenericException(HttpStatus.BAD_REQUEST,
+                    "Unsupported time period: " + request.getTimePeriod()
+                            + ". Supported periods are: DAYS, WEEKS, MONTHS, QUARTERS, YEARS"));
+        }
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> {
+                    AbstractCondition condition = FilterCondition.make(BaseUpdatableDto.Fields.isActive, true);
+                    if (request.getProductIds() != null && !request.getProductIds().isEmpty()) {
+                        condition = ComplexCondition.and(
+                                condition,
+                                new FilterCondition()
+                                        .setField(AbstractDTO.Fields.id)
+                                        .setOperator(FilterConditionOperator.IN)
+                                        .setValue(request.getProductIds()));
+                    }
+
+                    return productService.readAllFilter(condition).collectList();
+                },
+                (access, products) -> {
+                    if (products.isEmpty()) {
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.IDENTITY_MISSING,
+                                "productIds");
+                    }
+                    return buildRotationReport(access, products, request);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignReportService.getRotationReport"));
+    }
+
+    private Mono<RotationResponse> buildRotationReport(
+            ProcessorAccess access,
+            List<Product> products,
+            RotationRequest request) {
+
+        List<ULong> productIds = products.stream().map(Product::getId).toList();
+        List<ULong> templateIds = products.stream()
+                .map(Product::getProductTemplateId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Mono<List<StageNode>> stageTreeMono = templateIds.isEmpty()
+                ? Mono.just(List.of())
+                : Flux.fromIterable(templateIds)
+                        .flatMap(campaignReportDAO::getStageTreeForProductTemplate)
+                        .flatMapIterable(list -> list)
+                        .distinct(StageNode::getId)
+                        .collectList();
+
+        BaseFilter.ReportOptions options = request.toReportOptions();
+        DatePair datePair = options.totalDatePair();
+        TimePeriod timePeriod = options.timePeriod();
+
+        LocalDate metricFromDate = datePair.getFirst().toLocalDate();
+        LocalDate metricToDate = datePair.getSecond().toLocalDate();
+
+        LocalDateTime startUtcTimestamp = DatePair.convertToUtc(datePair.getFirst(), request.getTimezone());
+        LocalDateTime endUtcTimestamp = DatePair.convertToUtc(datePair.getSecond(), request.getTimezone());
+
+        return campaignDAO.findCampaignIdsForProduct(
+                access.getAppCode(), access.getClientCode(), productIds, request.getPlatforms())
+                .collectList()
+                .flatMap(campaignIds -> {
+                    if (campaignIds.isEmpty()) {
+                        return stageTreeMono.map(stageTree -> new RotationResponse(stageTree, List.of()));
+                    }
+
+                    return Mono.zip(
+                            campaignMetricDAO.findByFilters(
+                                    access.getAppCode(),
+                                    access.getClientCode(),
+                                    campaignIds,
+                                    null,
+                                    metricFromDate,
+                                    metricToDate)
+                                    // Campaign-level rows only (avoids triple-counting with adset/ad rows)
+                                    .filter(metric -> metric.getAdsetId() == null && metric.getAdId() == null)
+                                    .collectList(),
+                            campaignReportDAO.getStageCountsByPeriod(
+                                    access,
+                                    campaignIds,
+                                    startUtcTimestamp,
+                                    endUtcTimestamp,
+                                    timePeriod,
+                                    request.getTimezone()),
+                            stageTreeMono)
+                            .map(tuple -> new RotationResponse(
+                                    tuple.getT3(),
+                                    assembleRotationRows(
+                                            tuple.getT1(),
+                                            tuple.getT2(),
+                                            options,
+                                            request.isIncludeZero())));
+                });
+    }
+
+    private static class PeriodBucketAccumulator {
+        BigDecimal totalSpend = BigDecimal.ZERO;
+        long totalImpressions = 0;
+        long totalClicks = 0;
+        long totalPlatformFormLeads = 0;
+        long totalPlatformWebLeads = 0;
+        Map<String, Long> stageTicketCounts = new HashMap<>();
+    }
+
+    private List<RotationRow> assembleRotationRows(
+            List<CampaignMetric> campaignMetrics,
+            List<CampaignReportDAO.PeriodStageRow> stageRows,
+            BaseFilter.ReportOptions options,
+            boolean includeZero) {
+
+        DatePair totalDateRangeWindow = options.totalDatePair();
+        TimePeriod timePeriod = options.timePeriod();
+
+        NavigableMap<DatePair, PeriodBucketAccumulator> periodBucketMap = totalDateRangeWindow
+                .toTimePeriodMap(timePeriod, PeriodBucketAccumulator::new);
+
+        for (CampaignMetric metric : campaignMetrics) {
+            if (metric.getMetricDate() == null) {
+                continue;
+            }
+            DatePair containingBucket = DatePair.findContainingDate(metric.getMetricDate().atStartOfDay(),
+                    periodBucketMap);
+            if (containingBucket != null) {
+                PeriodBucketAccumulator accumulator = periodBucketMap.get(containingBucket);
+                if (metric.getSpend() != null) {
+                    accumulator.totalSpend = accumulator.totalSpend.add(metric.getSpend());
+                }
+                accumulator.totalImpressions += metric.getImpressions();
+                accumulator.totalClicks += metric.getClicks();
+                accumulator.totalPlatformFormLeads += metric.getPlatformFL();
+                accumulator.totalPlatformWebLeads += metric.getPlatformWL();
+            }
+        }
+
+        for (CampaignReportDAO.PeriodStageRow stageRow : stageRows) {
+            if (stageRow.periodStart() == null) {
+                continue;
+            }
+            DatePair containingBucket = DatePair.findContainingDate(stageRow.periodStart().atStartOfDay(),
+                    periodBucketMap);
+            if (containingBucket != null) {
+                PeriodBucketAccumulator accumulator = periodBucketMap.get(containingBucket);
+                accumulator.stageTicketCounts.merge(stageRow.stageId().toString(), stageRow.count(), Long::sum);
+            }
+        }
+
+        BigDecimal grandTotalSpend = periodBucketMap.values().stream()
+                .map(accumulator -> accumulator.totalSpend)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<RotationRow> rotationRows = new ArrayList<>();
+
+        for (Map.Entry<DatePair, PeriodBucketAccumulator> entry : periodBucketMap.entrySet()) {
+            DatePair bucketBounds = entry.getKey();
+            PeriodBucketAccumulator accumulator = entry.getValue();
+
+            boolean hasActivity = (accumulator.totalSpend.signum() > 0)
+                    || (accumulator.totalImpressions > 0)
+                    || (accumulator.totalClicks > 0)
+                    || (accumulator.totalPlatformFormLeads > 0)
+                    || (accumulator.totalPlatformWebLeads > 0)
+                    || accumulator.stageTicketCounts.values().stream().anyMatch(count -> count > 0);
+
+            if (includeZero || hasActivity) {
+                RotationRow row = new RotationRow();
+                row.setPeriodBounds(bucketBounds);
+                row.setPeriod(formatPeriodLabel(bucketBounds.getFirst().toLocalDate(), timePeriod));
+                row.setSpend(accumulator.totalSpend);
+                row.setImpressions(accumulator.totalImpressions);
+                row.setClicks(accumulator.totalClicks);
+                row.setPlatformFl(accumulator.totalPlatformFormLeads);
+                row.setPlatformWl(accumulator.totalPlatformWebLeads);
+
+                if (grandTotalSpend.signum() > 0 && accumulator.totalSpend.signum() > 0) {
+                    row.setShare(accumulator.totalSpend.multiply(HUNDRED).divide(grandTotalSpend, SCALE,
+                            RoundingMode.HALF_UP));
+                } else {
+                    row.setShare(BigDecimal.ZERO);
+                }
+
+                if (accumulator.totalImpressions > 0) {
+                    row.setCtr(BigDecimal.valueOf(accumulator.totalClicks).multiply(HUNDRED)
+                            .divide(BigDecimal.valueOf(accumulator.totalImpressions), SCALE, RoundingMode.HALF_UP));
+                }
+
+                Map<String, StageCell> stageCells = new HashMap<>();
+                for (Map.Entry<String, Long> stageEntry : accumulator.stageTicketCounts.entrySet()) {
+                    String stageIdKey = stageEntry.getKey();
+                    long stageCount = stageEntry.getValue() == null ? 0L : stageEntry.getValue();
+
+                    StageCell stageCell = new StageCell().setCount(stageCount);
+                    if (stageCount > 0 && accumulator.totalSpend.signum() > 0) {
+                        stageCell.setCpl(accumulator.totalSpend.divide(BigDecimal.valueOf(stageCount), SCALE,
+                                RoundingMode.HALF_UP));
+                    }
+                    stageCells.put(stageIdKey, stageCell);
+                }
+                row.setStageCells(stageCells);
+
+                rotationRows.add(row);
+            }
+        }
+
+        return rotationRows;
+    }
+
+    private static String formatPeriodLabel(LocalDate date, TimePeriod timePeriod) {
+        return switch (timePeriod) {
+            case DAYS -> date.toString();
+            case WEEKS -> "Wk of " + date.format(DateTimeFormatter.ofPattern("MMM dd"));
+            case MONTHS -> date.format(DateTimeFormatter.ofPattern("MMM yyyy"));
+            case QUARTERS -> "Q" + ((date.getMonthValue() - 1) / 3 + 1) + " " + date.getYear();
+            case YEARS -> String.valueOf(date.getYear());
+            default -> date.toString();
+        };
     }
 
     /**
