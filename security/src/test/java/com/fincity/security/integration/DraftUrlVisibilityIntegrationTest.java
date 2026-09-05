@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
@@ -121,7 +122,10 @@ class DraftUrlVisibilityIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("the client URL listing does not include the draft either")
     void clientUrlsSkipDraft() {
 
-        List<ClientUrl> urls = this.clientUrlDAO.getClientUrls(this.appCode, this.clientCode, null).block();
+        List<ClientUrl> urls = this.clientUrlDAO
+                .getClientUrls(this.appCode, this.clientCode, null, null, null, PageRequest.of(0, 50))
+                .block()
+                .getContent();
 
         assertThat(urls).extracting(ClientUrl::getUrlPattern).contains(LIVE_HOST);
         assertThat(urls).extracting(ClientUrl::getUrlPattern)
