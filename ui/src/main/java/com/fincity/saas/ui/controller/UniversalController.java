@@ -306,46 +306,71 @@ public class UniversalController {
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
             ServerHttpRequest request) {
 
-        String addr = ipAddress;
-        if (addr == null) {
-            addr = request.getRemoteAddress() == null ? "" : request.getRemoteAddress().getAddress().getHostAddress();
-        }
+        final String addr = ipAddress != null ? ipAddress
+                : (request.getRemoteAddress() == null ? ""
+                        : request.getRemoteAddress().getAddress().getHostAddress());
 
-        String redirectionScript = "window.location.href = " + jsString(sameOriginRedirect(redirectUrl, request)) + ";";
+        return this.resolveSsoRedirect(redirectUrl, request).flatMap(safeRedirect -> {
 
-        return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
-                .map(ca -> {
-                    // The token is stored JSON-encoded because /hassso reads it back with
-                    // JSON.parse; jsString then makes the whole value a safe JS literal.
-                    String storeTokenScript =
-                            "window.localStorage.setItem('AuthToken', "
-                            + jsString("\"" + ca.getAccessToken() + "\"")
-                            + ");window.localStorage.setItem('AuthTokenExpiry', '"
-                            + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
-                    String htmlContent = START + storeTokenScript + redirectionScript + END;
+            String redirectionScript = "window.location.href = " + jsString(safeRedirect) + ";";
 
-                    return ResponseEntity.ok()
-                            .header("Content-Security-Policy", "frame-ancestors *")
-                            .body(htmlContent);
-                });
+            return this.securityService
+                    .authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
+                    .map(ca -> {
+                        // The token is stored JSON-encoded because the beacon reads it back
+                        // with JSON.parse; jsString then makes the whole value a safe literal.
+                        String storeTokenScript = "window.localStorage.setItem('AuthToken', "
+                                + jsString("\"" + ca.getAccessToken() + "\"")
+                                + ");window.localStorage.setItem('AuthTokenExpiry', '"
+                                + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC)
+                                + "');";
+
+                        return ResponseEntity.ok()
+                                .header("Content-Security-Policy", "frame-ancestors *")
+                                .body(START + storeTokenScript + redirectionScript + END);
+                    });
+        });
     }
 
     /**
-     * Guards the post-SSO redirect against open-redirect abuse. {@link #jsString(String)}
-     * stops the value breaking out of the inline script; this stops it pointing somewhere
-     * else.
+     * Guards the post-SSO redirect against open-redirect abuse. {@link #jsString(String)} stops
+     * the value breaking out of the inline script; this stops it pointing somewhere else.
      * <p>
-     * Every caller lands the user back on the origin that served this hop: the SSO beacon
-     * returns to the beacon host, and the legacy appLogin flow substitutes the redirect
-     * into the target app's own {@code properties.sso.callbackURL} template, so the
-     * callback host and the redirect host are the same app by construction. Social login
-     * does not come through here at all — its cross-origin hop is a 302 out of
-     * {@code ClientRegistrationService.registerWSocialCallback}, guarded separately by
-     * {@code isAllowedSocialRedirect}.
+     * Same-origin is not enough. The beacon seed deliberately lands here on one host and
+     * continues to an app on another, which is the whole point of cross-domain SSO, so a
+     * strict same-origin rule sent every seeded login to "/" on the beacon instead of back to
+     * the app. A cross-origin destination is therefore allowed when the platform recognises
+     * its host as belonging to a real app; an unknown host resolves to appCode
+     * {@value #UNKNOWN_HOST_APP_CODE} and is refused.
      * <p>
-     * Anything rejected falls back to "/" on the same host rather than failing the login.
+     * Note the asymmetry with {@link #hasssoBounce}. There, the server mints a token from the
+     * visitor's own session, so the destination is pinned to the one app the token is for.
+     * Here the token arrives in the URL from the caller, who could only ever supply their own,
+     * so the weaker rule costs nothing and the stricter one breaks the feature.
+     * <p>
+     * Anything rejected falls back to "/" rather than failing the login.
      */
-    static String sameOriginRedirect(String redirectUrl, ServerHttpRequest request) {
+    private Mono<String> resolveSsoRedirect(String redirectUrl, ServerHttpRequest request) {
+
+        String decided = decideRedirectWithoutLookup(redirectUrl, clientFacingHost(request));
+        if (decided != null)
+            return Mono.just(decided);
+
+        URI uri = absoluteHttpUri(redirectUrl);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .map(t -> isRealApp(t.getT2()) ? redirectUrl : "/")
+                .defaultIfEmpty("/");
+    }
+
+    /**
+     * The half of the decision that needs no lookup. Returns the destination to use, or null
+     * when only a host lookup can settle it. Package-private so the rules that do not depend
+     * on the platform's data stay directly testable.
+     */
+    static String decideRedirectWithoutLookup(String redirectUrl, String ownHost) {
 
         if (redirectUrl == null || redirectUrl.isBlank())
             return "/";
@@ -353,34 +378,30 @@ public class UniversalController {
         // A single leading slash is a same-origin path. "//host" and "/\host" are
         // protocol-relative URLs that browsers resolve against another origin.
         if (redirectUrl.charAt(0) == '/')
-            return redirectUrl.length() > 1 && (redirectUrl.charAt(1) == '/' || redirectUrl.charAt(1) == '\\')
-                    ? "/"
-                    : redirectUrl;
+            return redirectUrl.length() > 1
+                    && (redirectUrl.charAt(1) == '/' || redirectUrl.charAt(1) == '\\')
+                            ? "/"
+                            : redirectUrl;
 
-        URI uri;
-        try {
-            uri = URI.create(redirectUrl);
-        } catch (IllegalArgumentException e) {
-            return "/";
-        }
-
-        String scheme = uri.getScheme();
-        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")))
+        URI uri = absoluteHttpUri(redirectUrl);
+        if (uri == null)
             return "/";
 
-        // getHost() resolves "https://trusted.example@evil.example/" to evil.example, so
-        // a userinfo prefix cannot spoof the comparison.
-        String host = uri.getHost();
-        String ownHost = clientFacingHost(request);
+        // getHost() resolves "https://trusted.example@evil.example/" to evil.example, so a
+        // userinfo prefix cannot spoof the comparison.
+        if (uri.getHost().equalsIgnoreCase(ownHost))
+            return redirectUrl;
 
-        return host != null && host.equalsIgnoreCase(ownHost) ? redirectUrl : "/";
+        return null;
     }
 
-    /**
-     * X-Forwarded-Host carries one value per proxy hop joined with commas, and any single
-     * value may include a {@code :port} suffix. The client-facing host is the first entry
-     * with the port stripped.
-     */
+    /** The host resolver answers with this appCode for a host it has no ClientUrl row for. */
+    private static final String UNKNOWN_HOST_APP_CODE = "nothing";
+
+    private static boolean isRealApp(String appCode) {
+        return !StringUtil.safeIsBlank(appCode) && !UNKNOWN_HOST_APP_CODE.equals(appCode);
+    }
+
     static String clientFacingHost(ServerHttpRequest request) {
 
         String raw = request.getHeaders().getFirst("X-Forwarded-Host");
