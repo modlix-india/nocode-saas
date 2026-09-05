@@ -1,6 +1,7 @@
 package com.fincity.saas.ui.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -21,8 +22,9 @@ class SsoRedirectGuardTest {
         return builder.build();
     }
 
+    /** null means "only a host lookup can settle this", i.e. a cross-origin candidate. */
     private static String guard(String redirectUrl) {
-        return UniversalController.sameOriginRedirect(redirectUrl, requestOn(OWN_HOST));
+        return UniversalController.decideRedirectWithoutLookup(redirectUrl, OWN_HOST);
     }
 
     @Test
@@ -46,11 +48,19 @@ class SsoRedirectGuardTest {
     }
 
     @Test
-    void rejectsOtherOriginsBackToTheAppRoot() {
+    void defersOtherOriginsToTheHostLookupRatherThanGuessing() {
 
-        assertEquals("/", guard("https://evil.example/steal"));
-        // A userinfo prefix must not spoof the host comparison.
-        assertEquals("/", guard("https://sitezump.ai@evil.example/steal"));
+        // Cross-origin is no longer an automatic refusal: the beacon seed lands on one host
+        // and continues to an app on another, which is the point of cross-domain SSO. These
+        // return null, meaning "ask whether that host belongs to a real app".
+        assertNull(guard("https://evil.example/steal"));
+        // A userinfo prefix must not spoof the host comparison into passing as same-origin.
+        assertNull(guard("https://sitezump.ai@evil.example/steal"));
+    }
+
+    @Test
+    void rejectsAnythingThatIsNotAnAddressAtAll() {
+
         // Protocol-relative URLs look like paths but resolve to another origin.
         assertEquals("/", guard("//evil.example/steal"));
         assertEquals("/", guard("/\\evil.example/steal"));
