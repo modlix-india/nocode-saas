@@ -1,11 +1,10 @@
 package com.fincity.saas.ui.controller;
 
-import java.time.Duration;
+import java.net.URI;
 import java.time.ZoneOffset;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MimeTypeUtils;
@@ -171,51 +170,110 @@ public class UniversalController {
         return this.securityService.token(token).map(ResponseEntity::ok);
     }
 
+    /**
+     * The cross-app SSO beacon, always a TOP-LEVEL navigation.
+     *
+     * There used to be an iframe/postMessage mode here as well. It could never work across
+     * registrable domains: storage reached from a third-party context is partitioned by
+     * top-level site, so the session this origin really holds is invisible from inside
+     * another app's page in every current browser. It has been removed rather than left as a
+     * path that silently returns "no session" to everyone.
+     */
     @GetMapping(value = "/hassso", produces = MimeTypeUtils.TEXT_HTML_VALUE)
     public Mono<ResponseEntity<String>> hassso(
-            @RequestParam String parentURL,
             @RequestParam String targetAppCode,
             @RequestParam(required = false, defaultValue = "") String targetClientCode,
-            @RequestParam(required = false) Boolean designMode) {
+            @RequestParam(required = false, defaultValue = "") String returnUrl) {
 
-        String safeParentURL = jsString(parentURL);
-        String safeTargetAppCode = jsString(targetAppCode);
-        String safeTargetClientCode = jsString(targetClientCode);
-        // The parent passes designMode explicitly because /hassso always runs in an iframe.
-        String designModeJs = designMode == null
-                ? "var designMode=window.self!==window.top;"
-                : "var designMode=" + designMode + ";";
-
-        String script =
-                "var parentURL=" + safeParentURL + ";" +
-                "var targetAppCode=" + safeTargetAppCode + ";" +
-                "var targetClientCode=" + safeTargetClientCode + ";" +
-                "var parentOrigin=new URL(parentURL).origin;" +
-                designModeJs +
-                "var tokenKey=(designMode?'designMode_':'')+'AuthToken';" +
-                "var expiryKey=(designMode?'designMode_':'')+'AuthTokenExpiry';" +
-                "function postNone(){window.parent.postMessage({type:'sso:none'},parentOrigin);}" +
-                "function postToken(t){window.parent.postMessage({type:'sso:token',token:t},parentOrigin);}" +
-                "var lsToken=localStorage.getItem(tokenKey);" +
-                "var lsExpiry=parseInt(localStorage.getItem(expiryKey)||'0',10)*1000;" +
-                "if(!lsToken||lsExpiry<Date.now()){postNone();}" +
-                "else{" +
-                "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
-                "fetch('/api/security/makeOneTimeToken',{method:'POST',headers:{'Content-Type':'application/json','Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
-                ".then(function(r){return r.ok?r.json():null;})" +
-                ".then(function(d){if(d&&d.token){postToken(d.token);}else{postNone();}})" +
-                ".catch(function(){postNone();});" +
-                "}";
-
-        String htmlContent = START + script + END;
-
-        return Mono.just(ResponseEntity.ok()
-                .header("Content-Security-Policy", "frame-ancestors *")
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .body(htmlContent));
+        return this.hasssoBounce(targetAppCode, targetClientCode, returnUrl);
     }
 
-    private static String jsString(String s) {
+    private static ResponseEntity<String> beaconResponse(String htmlContent) {
+        return ResponseEntity.ok()
+                .header("Content-Security-Policy", "frame-ancestors *")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(htmlContent);
+    }
+
+    /**
+     * The cold-start half of cross-domain SSO, as a TOP-LEVEL navigation instead of an
+     * iframe.
+     * <p>
+     * The iframe path above cannot work across registrable domains: storage reached from a
+     * third-party context is partitioned by top-level site, so what one app writes here is
+     * invisible to the next. Loaded top-level, this page reads the beacon origin's own
+     * first-party storage, mints a one-time token and hands it back on the URL. No
+     * third-party cookie, no Storage Access API, no prompt, and it works in every browser.
+     * <p>
+     * {@code returnUrl} is attacker-controlled and the token is a session, so an open
+     * redirect here is an account takeover. It is checked against the platform's own record:
+     * the host must resolve to the very app the token is being minted for. An unknown host
+     * resolves to appCode "nothing" and is refused.
+     */
+    private Mono<ResponseEntity<String>> hasssoBounce(String targetAppCode, String targetClientCode,
+            String returnUrl) {
+
+        URI uri = absoluteHttpUri(returnUrl);
+
+        if (uri == null || StringUtil.safeIsBlank(targetAppCode))
+            return Mono.just(RESPONSE_BAD_REQUEST);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .filter(t -> targetAppCode.equals(t.getT2()))
+                .map(t -> beaconResponse(START + bounceScript(returnUrl, targetAppCode, targetClientCode) + END))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
+
+    /**
+     * Reads the beacon origin's first-party token, then leaves, one way or the other. The
+     * caller is told "no session" explicitly rather than being left to time out, because it
+     * has to record that it asked and stop asking on every page load.
+     */
+    private static String bounceScript(String returnUrl, String targetAppCode, String targetClientCode) {
+
+        return "var back=" + jsString(returnUrl) + ";" +
+                "var targetAppCode=" + jsString(targetAppCode) + ";" +
+                "var targetClientCode=" + jsString(targetClientCode) + ";" +
+                "function leave(k,v){var u=new URL(back);u.searchParams.set(k,v);window.location.replace(u.toString());}" +
+                "var lsToken=localStorage.getItem('AuthToken');" +
+                "var lsExpiry=parseInt(localStorage.getItem('AuthTokenExpiry')||'0',10)*1000;" +
+                "if(!lsToken||lsExpiry<Date.now()){leave('sso','none');}" +
+                "else{" +
+                "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
+                "fetch('/api/security/makeOneTimeToken',{method:'POST',headers:{'Content-Type':'application/json',"
+                + "'Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},"
+                + "body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
+                ".then(function(r){return r.ok?r.json():null;})" +
+                ".then(function(d){if(d&&d.token){leave('ott',d.token);}else{leave('sso','none');}})" +
+                ".catch(function(){leave('sso','none');});" +
+                "}";
+    }
+
+    /** An absolute http(s) URI, or null. Anything else is not a place to send a session. */
+    // Package-private so HasssoBounceTest can exercise the return-URL check directly.
+    static URI absoluteHttpUri(String value) {
+
+        if (StringUtil.safeIsBlank(value))
+            return null;
+
+        URI uri;
+        try {
+            uri = URI.create(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")))
+            return null;
+
+        return StringUtil.safeIsBlank(uri.getHost()) ? null : uri;
+    }
+
+    // Package-private so SsoRedirectGuardTest can exercise the escaping directly.
+    static String jsString(String s) {
         if (s == null)
             return "''";
         StringBuilder sb = new StringBuilder(s.length() + 2);
@@ -246,8 +304,6 @@ public class UniversalController {
             @RequestHeader(required = false) String appCode,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
-            @RequestParam(defaultValue = "false") boolean cookie,
-            @RequestParam(required = false) Boolean designMode,
             ServerHttpRequest request) {
 
         String addr = ipAddress;
@@ -255,36 +311,86 @@ public class UniversalController {
             addr = request.getRemoteAddress() == null ? "" : request.getRemoteAddress().getAddress().getHostAddress();
         }
 
-        // The caller passes designMode when /sso/{token} runs inside a hidden iframe
-        // (where window.self !== window.top would always be true). For top-level legacy
-        // callers (magic link, password reset) we fall back to the existing detection.
-        String designModeJs = designMode == null
-                ? "var designMode = window.self !== window.top;"
-                : "var designMode = " + designMode + ";";
+        String redirectionScript = "window.location.href = " + jsString(sameOriginRedirect(redirectUrl, request)) + ";";
 
         return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
                 .map(ca -> {
-                    String storeTokenScript = designModeJs +
-                            "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
-                            + ca.getAccessToken()
-                            + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
+                    // The token is stored JSON-encoded because /hassso reads it back with
+                    // JSON.parse; jsString then makes the whole value a safe JS literal.
+                    String storeTokenScript =
+                            "window.localStorage.setItem('AuthToken', "
+                            + jsString("\"" + ca.getAccessToken() + "\"")
+                            + ");window.localStorage.setItem('AuthTokenExpiry', '"
                             + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
-                    String redirectionScript = "window.location.href = '" + redirectUrl + "';";
                     String htmlContent = START + storeTokenScript + redirectionScript + END;
-                    ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                            .header("Content-Security-Policy", "frame-ancestors *");
 
-                    if (cookie) {
-                        ResponseCookie responseCookie = ResponseCookie
-                                .from("AuthToken", ca.getAccessToken())
-                                .path("/")
-                                .maxAge(Duration.ofSeconds(
-                                        ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC)))
-                                .build();
-                        responseBuilder.header(HttpHeaders.SET_COOKIE, responseCookie.toString());
-                    }
-
-                    return responseBuilder.body(htmlContent);
+                    return ResponseEntity.ok()
+                            .header("Content-Security-Policy", "frame-ancestors *")
+                            .body(htmlContent);
                 });
+    }
+
+    /**
+     * Guards the post-SSO redirect against open-redirect abuse. {@link #jsString(String)}
+     * stops the value breaking out of the inline script; this stops it pointing somewhere
+     * else.
+     * <p>
+     * Every caller lands the user back on the origin that served this hop: the SSO beacon
+     * returns to the beacon host, and the legacy appLogin flow substitutes the redirect
+     * into the target app's own {@code properties.sso.callbackURL} template, so the
+     * callback host and the redirect host are the same app by construction. Social login
+     * does not come through here at all — its cross-origin hop is a 302 out of
+     * {@code ClientRegistrationService.registerWSocialCallback}, guarded separately by
+     * {@code isAllowedSocialRedirect}.
+     * <p>
+     * Anything rejected falls back to "/" on the same host rather than failing the login.
+     */
+    static String sameOriginRedirect(String redirectUrl, ServerHttpRequest request) {
+
+        if (redirectUrl == null || redirectUrl.isBlank())
+            return "/";
+
+        // A single leading slash is a same-origin path. "//host" and "/\host" are
+        // protocol-relative URLs that browsers resolve against another origin.
+        if (redirectUrl.charAt(0) == '/')
+            return redirectUrl.length() > 1 && (redirectUrl.charAt(1) == '/' || redirectUrl.charAt(1) == '\\')
+                    ? "/"
+                    : redirectUrl;
+
+        URI uri;
+        try {
+            uri = URI.create(redirectUrl);
+        } catch (IllegalArgumentException e) {
+            return "/";
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")))
+            return "/";
+
+        // getHost() resolves "https://trusted.example@evil.example/" to evil.example, so
+        // a userinfo prefix cannot spoof the comparison.
+        String host = uri.getHost();
+        String ownHost = clientFacingHost(request);
+
+        return host != null && host.equalsIgnoreCase(ownHost) ? redirectUrl : "/";
+    }
+
+    /**
+     * X-Forwarded-Host carries one value per proxy hop joined with commas, and any single
+     * value may include a {@code :port} suffix. The client-facing host is the first entry
+     * with the port stripped.
+     */
+    static String clientFacingHost(ServerHttpRequest request) {
+
+        String raw = request.getHeaders().getFirst("X-Forwarded-Host");
+
+        if (raw == null || raw.isBlank())
+            return request.getURI().getHost();
+
+        int comma = raw.indexOf(',');
+        String first = (comma >= 0 ? raw.substring(0, comma) : raw).trim();
+        int colon = first.indexOf(':');
+        return colon >= 0 ? first.substring(0, colon) : first;
     }
 }
