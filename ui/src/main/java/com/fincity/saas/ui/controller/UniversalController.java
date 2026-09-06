@@ -61,6 +61,8 @@ public class UniversalController {
             .badRequest()
             .build();
 
+    private static final String MODE_LOGOUT = "logout";
+
     private final static String START = "<html><head><title>SSO</title><script>";
     private final static String END = "</script></head><body></body></html>";
 
@@ -183,9 +185,44 @@ public class UniversalController {
     public Mono<ResponseEntity<String>> hassso(
             @RequestParam String targetAppCode,
             @RequestParam(required = false, defaultValue = "") String targetClientCode,
-            @RequestParam(required = false, defaultValue = "") String returnUrl) {
+            @RequestParam(required = false, defaultValue = "") String returnUrl,
+            @RequestParam(required = false, defaultValue = "") String mode) {
+
+        if (MODE_LOGOUT.equals(mode))
+            return this.hasssoLogout(targetAppCode, returnUrl);
 
         return this.hasssoBounce(targetAppCode, targetClientCode, returnUrl);
+    }
+
+    /**
+     * Forget the session on the beacon origin, then continue back to the app.
+     *
+     * Signing out of one app has to reach this origin or it means nothing: the app clears its
+     * own storage, the next cold load bounces here, and this origin cheerfully mints a fresh
+     * token from the session it still holds. The user is signed straight back in and it looks
+     * like logout is broken, because it is.
+     *
+     * Same destination rule as the bounce, for the same reason: this is a navigation target
+     * supplied by the caller.
+     */
+    private Mono<ResponseEntity<String>> hasssoLogout(String targetAppCode, String returnUrl) {
+
+        URI uri = absoluteHttpUri(returnUrl);
+
+        if (uri == null || StringUtil.safeIsBlank(targetAppCode))
+            return Mono.just(RESPONSE_BAD_REQUEST);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .filter(t -> targetAppCode.equals(t.getT2()))
+                .map(t -> beaconResponse(START + logoutScript(returnUrl) + END))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
+
+    private static String logoutScript(String returnUrl) {
+        return "try{localStorage.removeItem('AuthToken');localStorage.removeItem('AuthTokenExpiry');}catch(e){}" +
+                "window.location.replace(" + jsString(returnUrl) + ");";
     }
 
     private static ResponseEntity<String> beaconResponse(String htmlContent) {
@@ -237,15 +274,27 @@ public class UniversalController {
                 "var targetAppCode=" + jsString(targetAppCode) + ";" +
                 "var targetClientCode=" + jsString(targetClientCode) + ";" +
                 "function leave(k,v){var u=new URL(back);u.searchParams.set(k,v);window.location.replace(u.toString());}" +
+                "function forget(){try{localStorage.removeItem('AuthToken');"
+                + "localStorage.removeItem('AuthTokenExpiry');}catch(e){}}" +
                 "var lsToken=localStorage.getItem('AuthToken');" +
                 "var lsExpiry=parseInt(localStorage.getItem('AuthTokenExpiry')||'0',10)*1000;" +
                 "if(!lsToken||lsExpiry<Date.now()){leave('sso','none');}" +
                 "else{" +
                 "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
-                "fetch('/api/security/makeOneTimeToken',{method:'POST',headers:{'Content-Type':'application/json',"
+                // credentials:'omit' is load-bearing, not tidiness. Every 401 on this platform
+                // carries `WWW-Authenticate: Basic`, and a fetch that sends credentials makes
+                // the browser answer that challenge with its own native sign-in dialog. This
+                // page is top-level, so that dialog is shown to the user over a blank page.
+                // The old hidden iframe made the same call and never showed it, because
+                // browsers suppress auth dialogs in cross-origin frames. The token travels in
+                // the Authorization header, so no ambient credentials are wanted anyway.
+                "fetch('/api/security/makeOneTimeToken',{method:'POST',credentials:'omit',"
+                + "headers:{'Content-Type':'application/json',"
                 + "'Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},"
                 + "body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
-                ".then(function(r){return r.ok?r.json():null;})" +
+                // A rejected token is dead: drop it, or every later bounce repeats this round
+                // trip and answers "no session" the slow way.
+                ".then(function(r){if(!r.ok){if(r.status===401||r.status===403){forget();}return null;}return r.json();})" +
                 ".then(function(d){if(d&&d.token){leave('ott',d.token);}else{leave('sso','none');}})" +
                 ".catch(function(){leave('sso','none');});" +
                 "}";

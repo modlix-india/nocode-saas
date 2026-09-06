@@ -15,6 +15,7 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Page;
@@ -182,6 +183,58 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
     // Version check is per-component-key, not whole-document.
 
     /**
+     * The shape both component-level patches must use: authorize the STORED
+     * document, patch the MERGED one, write back only the delta.
+     *
+     * Both halves of this were wrong before, and both only bite on derived
+     * documents, which is why it survived: nearly all PATCH traffic runs on root
+     * documents where a delta and a merge are the same thing. Cross-client editing
+     * makes every edited document derived, so both become routine.
+     *
+     * 1. Authorization ran `read(pageId)` and nothing else. That is the READ check
+     * (checkAppWriteAccess = false), and inheritance grants a derived client read
+     * on every ancestor's document, so any client in the chain could PATCH a
+     * component straight into the base client's live page with no write access
+     * anywhere in the picture.
+     *
+     * 2. `read()` returns the MERGED page and `repo.save(existing)` wrote that back
+     * over the stored row. On a derived document that flattens the delta: the row
+     * stops being an override, freezes a copy of whatever the base held at that
+     * moment, and silently stops inheriting.
+     *
+     * The merged page is still what gets patched, and must be -- a delta legitimately
+     * does not contain the component being edited, so patching the stored row
+     * directly would 404 on every inherited component. Extracting the override
+     * afterwards is what keeps the row a delta, and is the same
+     * getMergedSources/extractOverride pair that update() runs.
+     */
+    private Mono<Page> patchOverridable(String pageId, java.util.function.Function<Page, Mono<Page>> patch) {
+
+        return FlatMapUtil.<ContextAuthentication, Page, Boolean, Page, Page, Page>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> StringUtil.safeIsBlank(pageId) ? Mono.empty() : this.repo.findById(pageId),
+
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? this.read(pageId) : Mono.empty(),
+
+                (ca, stored, hasAccess, merged) -> patch.apply(merged),
+
+                (ca, stored, hasAccess, merged, patched) -> this.getMergedSources(patched)
+                        .flatMap(sources -> this.extractOverride(patched, sources))
+                        .defaultIfEmpty(patched)
+                        .flatMap(this.repo::save))
+
+                .flatMap(this::evictRecursively)
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, "Page"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchOverridable"));
+    }
+
+    /**
      * Patch a single component within a page with per-component version checking.
      *
      * @param pageId                  Page MongoDB ID
@@ -193,9 +246,7 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
     public Mono<Page> patchComponent(String pageId, String componentKey,
             Map<String, Object> componentData, int expectedComponentVersion, String message) {
 
-        return flatMapMono(
-
-                () -> this.read(pageId),
+        return this.patchOverridable(pageId,
 
                 existing -> {
                     Map<String, ComponentDefinition> compDef = existing.getComponentDefinition();
@@ -249,12 +300,8 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                     existing.setVersion(existing.getVersion() + 1);
                     existing.setMessage(message);
 
-                    return this.repo.save(existing);
-                },
-
-                (existing, saved) -> this.evictRecursively(saved)
-
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchComponent"));
+                    return Mono.just(existing);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchComponent"));
     }
 
     /**
@@ -269,9 +316,7 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
     public Mono<Page> patchEventFunction(String pageId, String eventName,
             Map<String, Object> eventDefinition, int expectedEventVersion, String message) {
 
-        return flatMapMono(
-
-                () -> this.read(pageId),
+        return this.patchOverridable(pageId,
 
                 existing -> {
                     // Per-event version check
@@ -299,12 +344,8 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                     existing.setVersion(existing.getVersion() + 1);
                     existing.setMessage(message);
 
-                    return this.repo.save(existing);
-                },
-
-                (existing, saved) -> this.evictRecursively(saved)
-
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchEventFunction"));
+                    return Mono.just(existing);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchEventFunction"));
     }
 
     @Override
