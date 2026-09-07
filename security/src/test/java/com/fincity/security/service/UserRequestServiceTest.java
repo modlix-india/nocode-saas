@@ -118,7 +118,7 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(client));
 			when(appService.getAppByCode("testApp")).thenReturn(Mono.just(app));
-			when(profileService.checkIfUserHasAnyProfile(any(), eq("testApp"))).thenReturn(Mono.just(false));
+			when(profileService.hasAssignedProfile(any(), eq("testApp"))).thenReturn(Mono.just(false));
 			when(dao.checkPendingRequestExists(any(), eq(APP_ID))).thenReturn(Mono.just(false));
 			when(dao.create(any(UserRequest.class))).thenReturn(Mono.just(created));
 
@@ -147,7 +147,7 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(client));
 			when(appService.getAppByCode("testApp")).thenReturn(Mono.just(app));
-			when(profileService.checkIfUserHasAnyProfile(any(), eq("testApp"))).thenReturn(Mono.just(true));
+			when(profileService.hasAssignedProfile(any(), eq("testApp"))).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.createRequest(request))
 					.expectErrorMatches(e -> e instanceof GenericException
@@ -172,7 +172,7 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getClientBy("SYSTEM")).thenReturn(Mono.just(client));
 			when(appService.getAppByCode("testApp")).thenReturn(Mono.just(app));
-			when(profileService.checkIfUserHasAnyProfile(any(), eq("testApp"))).thenReturn(Mono.just(false));
+			when(profileService.hasAssignedProfile(any(), eq("testApp"))).thenReturn(Mono.just(false));
 			when(dao.checkPendingRequestExists(any(), eq(APP_ID))).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.createRequest(request))
