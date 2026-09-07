@@ -3,6 +3,8 @@ package com.fincity.security.controller;
 import java.util.List;
 
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,16 +40,27 @@ public class ClientUrlController
     }
 
     /**
-     * An app's LIVE URLs, each labelled with the client it belongs to.
+     * An app's LIVE URLs, a page at a time, each labelled with the client it
+     * belongs to.
      *
      * `clientCode` is optional: omitted means every client's rows that the
      * caller may see, which is what a screen listing an app's addresses wants.
      * Naming one narrows it, and still requires managing that client.
+     *
+     * `urlPattern` and `clientName` are substring filters, and `page` / `size`
+     * come off the standard {@link Pageable}. This answers a {@link Page} and
+     * not a bare list: `cxapp` has 527 rows and every caller was paging and
+     * searching that itself. `sort` is accepted and ignored -- the order is
+     * fixed at client name, pattern, id, so that paging is stable.
      */
     @GetMapping("/urls")
-    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode,
-            @RequestParam(required = false) String clientCode) {
-        return this.service.getClientUrls(appCode, clientCode).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Page<ClientUrl>>> getClientUrl(@RequestParam String appCode,
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false) String urlPattern,
+            @RequestParam(required = false) String clientName,
+            Pageable pageable) {
+        return this.service.getClientUrls(appCode, clientCode, urlPattern, clientName, pageable)
+                .map(ResponseEntity::ok);
     }
 
     /**

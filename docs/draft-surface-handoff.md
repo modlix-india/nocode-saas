@@ -58,6 +58,7 @@ holding only `deleteAuth`, and the stricter operation must not end up with the l
 | `POST /api/ui/pages` | Live and published, unchanged |
 | `POST /api/ui/pages?draft=true` | Live document with `published = FALSE`. Real id, invisible on the live surface |
 | `GET /api/ui/pages/{id}?draft=true` | Draft content if present, else live. Same access check as a live read |
+| `POST /api/ui/pages/{id}/fork` | Gives the CALLER its own override of this object, `published = FALSE`. No body, no clientCode. Idempotent |
 | `POST /api/ui/pages/{id}/publish` | Applies the draft, clears the flag, deletes the row |
 | `DELETE /api/ui/pages/{id}/draft` | Discards |
 | `GET /api/ui/publish/app/{appCode}/pending` | Everything with pending work, by type |
@@ -78,6 +79,58 @@ unpublished. Drafting creation would mean every create returns a `Draft` id inst
 object id, which breaks `PATCH /{id}/components/{key}`, version history, `createForClient`,
 `UIIndexService` (so the object vanishes from the builder tree), app properties naming a page,
 and the AI agent's `build_page` which creates then immediately uses the returned id.
+
+## Editing an app you do not own
+
+A client granted `security_app_access.EDIT_ACCESS = 1` on someone else's app can now edit that
+app's objects. It never edits the owner's documents: its changes land on its own override, and reach
+its own runtime only when it publishes.
+
+**The first draft save forks.** `saveDraft` resolves the document the draft belongs ON rather than
+assuming it is the one the id named:
+
+1. If the ordinary write check passes for the stored document, that is the target. Self-edit and
+   manager-edit, both unchanged. This is first deliberately: testing the chain first would make
+   SYSTEM editing a tenant's object fork it INTO SYSTEM.
+2. Otherwise the caller's own inheritance chain must contain both its own code and the stored
+   document's. This is the anti-forgery gate: write access to *some* app must not be a licence to
+   fork any document whose id you can guess.
+3. A row already owned by the caller wins, found by CLIENT CODE and never by comparing ids. The
+   editor's id is routinely stale -- it keeps the base's id after the fork and gets it again on
+   every reload -- and matching on it would fork once per save.
+4. Otherwise fork off the **most derived published ancestor**, which is deliberately not the id that
+   was sent. With `[SYSTEM, MID, ME]` and an editor holding SYSTEM's id, forking off SYSTEM would
+   silently drop everything MID contributes.
+5. Refused, with its own message, if the base is `notOverridable` or unpublished. Unpublished
+   matters because `getMergedSources` fetches the base regardless of `published`, so forking off an
+   owner's unfinished work and publishing would put it on the forking client's live surface.
+6. The fork itself needs `<Type>_CREATE`, which is what it is about to do. The AppBuilder Owner
+   profile grants full CRUD so this is not a live gap.
+
+**The fork is a delta, not a copy**, seeded from the MERGED base so `extractOverride` yields an empty
+one. A copy passes every obvious test and only diverges later, the first time the owner changes
+something the forking client never touched. `published = FALSE` is what keeps it off the forking
+client's live surface while leaving it most derived on the draft one -- existing machinery, no new
+surface concept, and `markPublished` already flips it on publish.
+
+**Publish needed no change.** It takes identity from the stored document, so it targets the fork,
+flips `published`, and leaves the owner's row untouched in content and version.
+
+**`Draft.objectId` is the signal.** On a forking save it is NOT the id that was PUT. A client must
+replace its held id with it before the next save, publish, discard or read, and take its next
+`draftVersion` from `Draft.version` in the same response. `draft.clientCode == mine &&
+draft.objectId != idIPut` identifies the case with no new field. `editPage` does this by taking the
+redirect it already takes after a create.
+
+**Concurrency**: two people first-editing the same inherited object at once each see "no row for me"
+and each create one, because `checkIfExists` is a count followed by a save. The loser converges on
+the winner's row rather than erroring (`CONFLICT` today, `DuplicateKeyException` once there is a
+unique index). **There is no unique index on `(appCode, name, clientCode)` for most draftable
+documents** -- only `Notification` and `Draft` declare one -- and `auto-index-creation` is set only
+in the two test profiles in this repo, so whether it exists in a deployed environment is unverified.
+Until that is settled, convergence is the only thing standing between a race and an orphaned fork.
+
+Pinned by `CrossClientForkIntegrationTest` (16 cases).
 
 `GET /api/ui/page/{name}` (the runtime route) **ignores** a `draft` query parameter entirely. It
 switches on the header alone. That route is public, serves anonymous traffic, and returns
@@ -568,6 +621,10 @@ Not covered, and worth knowing before relying on them:
    chain.** A base client's draft shows on its own draft surface but does not re-merge into a
    derived client's. Doing that correctly means re-deriving a delta from the draft and folding it,
    and getting it subtly wrong would silently resurrect keys a draft had deleted.
+   This is no longer a dead end for the derived client: it gets its own row and its own draft on
+   first edit (see "Editing an app you do not own"), which is the sanctioned way to change an
+   inherited object. What still does not happen is a base's *unpublished* work appearing downstream,
+   and that remains correct -- it is unpublished.
 2. **Nothing reconciles a draft with a live edit made after the draft was taken.**
    `Draft.baseVersion` is frozen at first save and the existing optimistic-lock check rejects the
    publish, leaving the draft intact; it does not merge. Recovery is discard and re-save. See
@@ -576,7 +633,12 @@ Not covered, and worth knowing before relying on them:
    opt in.** `Draft.version` now exists and moves on every save, and `saveDraft` refuses with 412
    when the caller's expected version has moved on. The check is deliberately optional: omit the
    version and the old last-write-wins behaviour is unchanged, so no existing caller starts failing.
-   Until the editor round-trips `X-Draft-Version`, the silent overwrite is still reachable.
+   The silent overwrite stays reachable for any caller that does not round-trip `X-Draft-Version`.
+   **The workspace editor now does**: `ws_draft.py`'s `patch_save_object` appends
+   `&draftVersion=` and `patch_ensure_loaded` stamps it from the read's response header, so this no
+   longer describes the editor. It still describes the MCP tools and anything else driving the
+   routes directly. Confirm against the deployed page definition before treating the editor half as
+   closed, since that page is tool-owned and the tool has to have been re-run.
 3. **`Notification`'s second compound index is not unique**, though it was declared so. It was
    never created (name collision with the first), so the constraint has never been enforced, and
    enforcing it now would mean at most one notification per type per app per client, which existing
@@ -594,6 +656,47 @@ Not covered, and worth knowing before relying on them:
   rejected the second and it never existed. A reflection test now fails on any recurrence.
 - **Seven `IFeignSecurityService` methods** were reachable by another method's property key
   (`appInheritance` under `security.feign.hasWriteAccess`, and six more).
+
+### Found while opening up cross-client editing
+
+All three only bite when the caller and the document belong to **different clients in one override
+chain**, which is why they survived: almost everything runs on root documents, where the caller is
+the owner and a delta and a merge are the same thing. Each was verified by reverting the fix and
+watching the new test fail, so they are exploits rather than theory.
+
+- **`update()` authorised the request BODY and wrote the id.** `accessCheck` ran on
+  `entity.getAppCode()`/`getClientCode()` while `updatableEntity` keyed the write on
+  `entity.getId()`, and nothing compared the two. A derived client PUT its own codes in the body,
+  passed on its own `hasWriteAccess`, and `repo.save` wrote the BASE client's live document. An
+  unrelated tenant was already stopped further down by `updatableEntity`'s own `read()`, whose READ
+  check needs both codes in the chain -- a derived client's chain contains both by construction, so
+  it waved the write through. Now loads first and authorises the stored document, exactly as
+  `saveDraft` and `publish` already did, and takes identity from it. `UpdateAuthorizationIntegrationTest`.
+- **`update()` had no `switchIfEmpty`.** The controller does `update(entity).map(ResponseEntity::ok)`,
+  so an empty Mono was an empty 200 and a refused write read as a success.
+- **`readDraftWithVersion` served an ancestor's draft to a derived client.** It ran `read(id)` and
+  then substituted the draft with no check on whose it was; the READ check passes for every ancestor
+  in the chain, and the base is usually SYSTEM. So `GET /{baseId}?draft=true` returned the base's
+  unpublished work to anyone below it, and handed back the base's draft version, which would then
+  412 the derived client's next save. `readDrafted` guards exactly this on the runtime path and says
+  so; the by-id editor path never got the same guard. Gated now on the WRITE check: whoever may
+  write a draft may read it. `DraftReadAuthorizationIntegrationTest`.
+- **`PageService.patchComponent` / `patchEventFunction` were a read check gating a write, and they
+  flattened the delta.** Both did `read(pageId)` then `repo.save(existing)`. `read()` is the READ
+  check, so any client in the chain could patch a component straight into the base's live page with
+  no write access anywhere. And `read()` returns the MERGED page, so saving it wrote merged content
+  over the stored delta: the row stopped being an override, froze a copy of the base, and silently
+  stopped inheriting -- invisible at the time, diverging only at the base's next change. Both now
+  authorise the stored document and write back the extracted override. The merged page is still what
+  gets patched, and must be: a delta legitimately does not contain the component being edited.
+  `PageComponentPatchAuthorizationIntegrationTest`.
+
+Still open, deliberately: **`baseClientCode` is not `@JsonProperty(READ_ONLY)`** (only `published`
+is), so a create can still set it and re-home an object onto any base, inheriting content the caller
+cannot otherwise read. `update()` now overwrites it from the stored document, so the update path is
+closed. Every `setBaseClientCode` in the codebase is server-side (`AbstractTransportService` sets it
+itself after import, `createForClient`, `PersonalizationService`), so marking it READ_ONLY looks
+safe, but three appbuilder pages reference the field and want checking first.
 
 ## The draft edit token
 

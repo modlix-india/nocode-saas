@@ -297,14 +297,6 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                         object.getProperties().remove("manifest");
                     }
 
-                    if (object.getProperties().get("sso") instanceof Map<?, ?> sso) {
-
-                        String url = StringUtil.safeValueOf(sso.get("redirectURL"));
-                        if (url != null) {
-                            ((Map<String, String>) sso).put("redirectURL", processForVariables(url));
-                        }
-                    }
-
                     if (shellPage == null) {
 
                         if (filler == null)

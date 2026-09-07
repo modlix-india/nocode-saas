@@ -69,6 +69,8 @@ public class IndexHTMLService {
 
     private static final String KEY_ENABLED = "enabled";
 
+    private static final String LOCAL_ENV = "local";
+
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
             2, "BEFORE_BODY", 3);
 
@@ -582,15 +584,24 @@ public class IndexHTMLService {
      *   ""        -> "authzump.ai"
      *   ".dev"    -> "dev.authzump.ai"
      *   ".stage"  -> "stage.authzump.ai"
-     *   ".local"  -> "local.authzump.ai"
+     *   ".local"  -> "authzump.local.modlix.com"
+     * <p>
+     * Local is deliberately not "local.authzump.ai". Local hosts are
+     * {@code <app>.local.modlix.com} (dnsmasq wildcards that suffix to 127.0.0.1 on a
+     * developer machine); the .ai names belong to the deployed environments only.
+     * "local.authzump.ai" does resolve, to prod-lb, where it is a stray vhost carrying
+     * appCode "nothing" -- so pointing the beacon there silently broke all local SSO.
      */
-    private static String deriveBeaconHost(String appCodeSuffix) {
+    // Package-private so BeaconHostTest can pin the per-environment mapping.
+    static String deriveBeaconHost(String appCodeSuffix) {
         if (StringUtil.safeIsBlank(appCodeSuffix))
             return "authzump.ai";
         String trimmed = appCodeSuffix.startsWith(".") ? appCodeSuffix.substring(1) : appCodeSuffix;
         int dotIdx = trimmed.indexOf('.');
         String env = dotIdx >= 0 ? trimmed.substring(0, dotIdx) : trimmed;
-        return StringUtil.safeIsBlank(env) ? "authzump.ai" : env + ".authzump.ai";
+        if (StringUtil.safeIsBlank(env))
+            return "authzump.ai";
+        return LOCAL_ENV.equals(env) ? "authzump." + env + ".modlix.com" : env + ".authzump.ai";
     }
 
     @SuppressWarnings("unchecked")

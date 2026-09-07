@@ -9,6 +9,9 @@ import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -152,10 +155,19 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
     }
 
     /**
-     * An app's LIVE URLs, with each row's client named rather than only numbered.
+     * The character that escapes a literal {@code %} or {@code _} in the two
+     * substring filters below. Any character not otherwise special will do; a
+     * backslash would need doubling through both JOOQ and MySQL, so this is one
+     * fewer thing to get wrong.
+     */
+    private static final char LIKE_ESCAPE = '!';
+
+    /**
+     * An app's LIVE URLs, a page at a time, with each row's client named rather
+     * than only numbered.
      *
-     * `clientCode` is now OPTIONAL. Blank means every client's rows, which is
-     * what the workspace's URLs & SSL pane lists: an app's addresses are spread
+     * `clientCode` is OPTIONAL. Blank means every client's rows, which is what
+     * the workspace's URLs & SSL pane lists: an app's addresses are spread
      * across clients (527 of them on cxapp) and showing one client's at a time
      * hid the rest. The picker there narrows this rather than defining it.
      *
@@ -165,11 +177,28 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
      * would hand every client's hostnames to anyone with read access to the app.
      * The service passes null only for a SYSTEM caller.
      *
+     * `urlPattern` and `clientName` are substring filters, applied server-side
+     * so that a client with hundreds of addresses is searchable without shipping
+     * all of them. Both are case-insensitive by collation, not by `lower()`, so
+     * the index on URL_PATTERN is still usable for the non-leading-wildcard part
+     * of a match. Unlike the generic `/query` route -- which interpolates
+     * STRING_LOOSE_EQUAL straight into `like("%" + value + "%")` -- a `%` or `_`
+     * typed here matches itself: a hostname is exactly the kind of value that
+     * contains an underscore, and a filter that silently turns it into "any
+     * character" gives wrong rows with no sign that it did.
+     *
+     * The sort is FIXED at client name, then pattern, then id, and
+     * `pageable.getSort()` is ignored. The id is not decoration: paging over a
+     * non-total order lets MySQL repeat a row on one page and drop it from
+     * another, and two rows can share a client and a pattern only differing by
+     * URL type, which the caller cannot see.
+     *
      * CODE and NAME are selected under the DTO's own field names so `into`
      * fills them; see the note on those fields for why the write path does not
      * mind.
      */
-    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode, ULong restrictToClientId) {
+    public Mono<Page<ClientUrl>> getClientUrls(String appCode, String clientCode, ULong restrictToClientId,
+            String urlPattern, String clientName, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -179,22 +208,49 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
         if (!StringUtil.safeIsBlank(clientCode))
             conditions.add(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode));
 
+        if (!StringUtil.safeIsBlank(urlPattern))
+            conditions.add(contains(SECURITY_CLIENT_URL.URL_PATTERN, urlPattern));
+
+        if (!StringUtil.safeIsBlank(clientName))
+            conditions.add(contains(SecurityClient.SECURITY_CLIENT.NAME, clientName));
+
         if (restrictToClientId != null)
             conditions.add(SECURITY_CLIENT_URL.CLIENT_ID.in(
                     this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
                             .from(SECURITY_CLIENT_HIERARCHY)
                             .where(ClientHierarchyDAO.getManageClientCondition(restrictToClientId))));
 
+        Condition where = DSL.and(conditions);
+
         List<Field<?>> fields = new ArrayList<>(Arrays.asList(SECURITY_CLIENT_URL.fields()));
         fields.add(SecurityClient.SECURITY_CLIENT.CODE.as("client_code"));
         fields.add(SecurityClient.SECURITY_CLIENT.NAME.as("client_name"));
 
-        return Flux.from(this.dslContext.select(fields).from(SECURITY_CLIENT_URL)
+        // The count carries the SAME left join, not because it needs a column
+        // from it but because `clientCode` and `clientName` filter on it. A
+        // count over the bare table would answer for a different query.
+        Mono<Integer> count = Mono.from(this.dslContext.selectCount().from(SECURITY_CLIENT_URL)
                 .leftJoin(SecurityClient.SECURITY_CLIENT)
                 .on(SecurityClient.SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID))
-                .where(DSL.and(conditions))
-                .orderBy(SecurityClient.SECURITY_CLIENT.NAME.asc(), SECURITY_CLIENT_URL.URL_PATTERN.asc()))
+                .where(where))
+                .map(Record1::value1);
+
+        Mono<List<ClientUrl>> rows = Flux.from(this.dslContext.select(fields).from(SECURITY_CLIENT_URL)
+                .leftJoin(SecurityClient.SECURITY_CLIENT)
+                .on(SecurityClient.SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID))
+                .where(where)
+                .orderBy(SecurityClient.SECURITY_CLIENT.NAME.asc(), SECURITY_CLIENT_URL.URL_PATTERN.asc(),
+                        SECURITY_CLIENT_URL.ID.asc())
+                .limit(pageable.getPageSize())
+                .offset(pageable.getOffset()))
                 .map(rec -> rec.into(ClientUrl.class))
                 .collectList();
+
+        return rows.flatMap(list -> count.map(c -> PageableExecutionUtils.getPage(list, pageable, () -> c)));
+    }
+
+    /** A case-insensitive substring match in which `%` and `_` are literal. */
+    private static Condition contains(Field<String> field, String value) {
+        return field.like("%" + DSL.escape(value, LIKE_ESCAPE) + "%", LIKE_ESCAPE);
     }
 }

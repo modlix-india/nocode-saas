@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.ClientUrl;
@@ -23,6 +25,9 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 	private ClientUrlDAO clientUrlDAO;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
+
+	/** Big enough that the existing assertions still see every row they insert. */
+	private static final Pageable PAGE = PageRequest.of(0, 50);
 
 	private ULong testClientId;
 	private String testClientCode;
@@ -290,10 +295,10 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			insertClientUrl(testClientId, "https://gcurl1-" + ts + ".example.com", testAppCode).block();
 			insertClientUrl(testClientId, "https://gcurl2-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
-						assertEquals(2, urls.size());
+						assertEquals(2, urls.getTotalElements());
 						for (ClientUrl url : urls) {
 							assertEquals(testClientId, url.getClientId());
 							assertEquals(testAppCode.trim(), url.getAppCode().trim());
@@ -306,7 +311,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 		@Test
 		@DisplayName("returns empty list for non-existent clientCode")
 		void nonExistentClientCode_ReturnsEmptyList() {
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, "NOEXIST", null))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, "NOEXIST", null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.isEmpty());
@@ -320,7 +325,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			String ts = String.valueOf(System.currentTimeMillis());
 			insertClientUrl(testClientId, "https://noapp-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls("nonExistentApp", testClientCode, null))
+			StepVerifier.create(clientUrlDAO.getClientUrls("nonExistentApp", testClientCode, null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.isEmpty());
@@ -344,7 +349,7 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			insertClientUrl(testClientId, "https://diffapp-" + ts + ".example.com", otherAppCode).block();
 
 			// Query with the original testAppCode should not return URLs from otherAppCode
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.stream().noneMatch(u -> u.getUrlPattern().contains("diffapp-" + ts)));
@@ -361,11 +366,88 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 			ULong otherClientId = insertTestClient(otherCode, "Diff Client", "BUS").block();
 			insertClientUrl(otherClientId, "https://diffcli-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
 						assertTrue(urls.stream().noneMatch(u -> u.getUrlPattern().contains("diffcli-" + ts)));
 					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("urlPattern narrows to a substring of the hostname")
+		void urlPatternFilter_Narrows() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			insertClientUrl(testClientId, "https://alpha-" + ts + ".example.com", testAppCode).block();
+			insertClientUrl(testClientId, "https://beta-" + ts + ".example.com", testAppCode).block();
+
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, "alpha-" + ts, null,
+					PAGE))
+					.assertNext(urls -> {
+						assertEquals(1, urls.getTotalElements());
+						assertTrue(urls.getContent().get(0).getUrlPattern().contains("alpha-" + ts));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("an underscore in the urlPattern filter is a literal, not a wildcard")
+		void urlPatternFilter_UnderscoreIsLiteral() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			insertClientUrl(testClientId, "https://a_b-" + ts + ".example.com", testAppCode).block();
+			insertClientUrl(testClientId, "https://axb-" + ts + ".example.com", testAppCode).block();
+
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, "a_b-" + ts, null,
+					PAGE))
+					.assertNext(urls -> {
+						assertEquals(1, urls.getTotalElements(),
+								"an unescaped LIKE would have matched axb- as well");
+						assertTrue(urls.getContent().get(0).getUrlPattern().contains("a_b-"));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("clientName narrows to a substring of the client's name")
+		void clientNameFilter_Narrows() {
+			String ts = String.valueOf(System.currentTimeMillis());
+			String otherCode = "CN" + ts.substring(ts.length() - 6);
+
+			ULong otherClientId = insertTestClient(otherCode, "Zzmarker " + ts, "BUS").block();
+			insertClientUrl(otherClientId, "https://named-" + ts + ".example.com", testAppCode).block();
+			insertClientUrl(testClientId, "https://unnamed-" + ts + ".example.com", testAppCode).block();
+
+			// No clientCode: the filter is what picks the client, across all of them.
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, null, null, null, "Zzmarker " + ts, PAGE))
+					.assertNext(urls -> {
+						assertEquals(1, urls.getTotalElements());
+						assertEquals(otherClientId, urls.getContent().get(0).getClientId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("pages, and the total counts every match rather than the page")
+		void paging_CountsAllMatches() {
+			String ts = String.valueOf(System.currentTimeMillis());
+
+			for (int i = 0; i < 5; i++)
+				insertClientUrl(testClientId, "https://pg" + i + "-" + ts + ".example.com", testAppCode).block();
+
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null,
+					PageRequest.of(0, 2)))
+					.assertNext(urls -> {
+						assertEquals(2, urls.getContent().size());
+						assertEquals(5, urls.getTotalElements());
+						assertEquals(3, urls.getTotalPages());
+					})
+					.verifyComplete();
+
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null,
+					PageRequest.of(2, 2)))
+					.assertNext(urls -> assertEquals(1, urls.getContent().size(), "last page is the remainder"))
 					.verifyComplete();
 		}
 
@@ -376,12 +458,12 @@ class ClientUrlDAOIntegrationTest extends AbstractIntegrationTest {
 
 			insertClientUrl(testClientId, "https://fields-" + ts + ".example.com", testAppCode).block();
 
-			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null))
+			StepVerifier.create(clientUrlDAO.getClientUrls(testAppCode, testClientCode, null, null, null, PAGE))
 					.assertNext(urls -> {
 						assertNotNull(urls);
-						assertEquals(1, urls.size());
+						assertEquals(1, urls.getTotalElements());
 
-						ClientUrl url = urls.get(0);
+						ClientUrl url = urls.getContent().get(0);
 						assertNotNull(url.getId());
 						assertEquals(testClientId, url.getClientId());
 						assertEquals("https://fields-" + ts + ".example.com", url.getUrlPattern());

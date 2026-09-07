@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -55,6 +56,13 @@ public class ClientUrlService
     private static final String URL_PATTERN = "urlPattern";
 
     private static final String CLIENT_URL = "Client URL";
+
+    /**
+     * Rows per page when the caller names none, matched to what the workspace's
+     * URLs & SSL table shows. Small on purpose: the point of paging this route
+     * was that an unbounded answer is what made that pane unusable.
+     */
+    public static final int DEFAULT_URL_PAGE_SIZE = 20;
 
     private final CacheService cacheService;
 
@@ -496,10 +504,19 @@ public class ClientUrlService
      *   caller's own client id and scopes the rows to the hierarchy it manages.
      *   Null goes down only for a SYSTEM caller. Read access to the app alone
      *   must not reveal every client's hostnames.
+     *
+     * Paged, and filterable on the two things a person actually looks for: a
+     * substring of the hostname and a substring of the client's name. `cxapp`
+     * answers on 527 addresses, and returning all of them was one response the
+     * caller then had to page and search for itself. A null `pageable` means the
+     * first page at {@value #DEFAULT_URL_PAGE_SIZE}; the sort is fixed in the
+     * DAO and any sort on the pageable is ignored.
      */
-    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
+    public Mono<Page<ClientUrl>> getClientUrls(String appCode, String clientCode, String urlPattern,
+            String clientName, Pageable pageable) {
 
         boolean allClients = StringUtil.safeIsBlank(clientCode);
+        Pageable page = pageable == null ? PageRequest.of(0, DEFAULT_URL_PAGE_SIZE) : pageable;
 
         return FlatMapUtil.flatMapMono(
 
@@ -512,7 +529,8 @@ public class ClientUrlService
                                 .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode,
-                        allClients && !ca.isSystemClient() ? ULongUtil.valueOf(ca.getUser().getClientId()) : null))
+                        allClients && !ca.isSystemClient() ? ULongUtil.valueOf(ca.getUser().getClientId()) : null,
+                        urlPattern, clientName, page))
                 .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getClientUrls"));

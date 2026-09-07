@@ -130,6 +130,26 @@ public class AbstractOverridableDataController<D extends AbstractOverridableDTO<
                         .body(t.getT1()));
     }
 
+    /**
+     * Give the caller its own override of this object.
+     *
+     * The explicit form of what the first draft save does on its own, for an editor
+     * that would rather fork before it starts than discover mid-save that the id it
+     * holds is no longer the one to save to. Idempotent: the second call answers the
+     * same row.
+     *
+     * No body and no clientCode, both deliberately. The target is always the caller
+     * and the base is resolved from the inheritance chain, so there is nothing in
+     * the request to get wrong or to forge -- which is the whole point, given that
+     * a body-supplied clientCode or baseClientCode is exactly the shape of bug the
+     * rest of this class has been unwinding.
+     */
+    @PostMapping("/{id}/fork")
+    public Mono<ResponseEntity<D>> fork(@PathVariable String id) {
+
+        return this.service.forkForCaller(id).map(ResponseEntity::ok);
+    }
+
     @PostMapping("/{id}/publish")
     public Mono<ResponseEntity<D>> publish(@PathVariable String id,
             @RequestParam(required = false) String message) {

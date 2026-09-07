@@ -29,6 +29,7 @@ import com.fincity.saas.commons.security.model.UsersListRequest;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuple2;
 
 @ReactiveFeignClient(name = "security")
@@ -148,6 +149,20 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.dependencies:/api/security/applications/internal/dependencies}")
     Mono<List<String>> getDependencies(@RequestParam String appCode);
+
+    /**
+     * Which client and app a hostname serves, plus the surface type:
+     * {@code (clientCode, appCode, urlType)}. An unknown host answers
+     * {@code ("SYSTEM", "nothing", "LIVE")} rather than empty, so "nothing" is the
+     * sentinel for "no ClientUrl row", not an error.
+     * <p>
+     * Unauthenticated by design: this is the gateway's per-request host resolver.
+     * Mirrors {@code IFeignSecurityClient.getClientCodeNType} in the gateway; the two
+     * must stay in step.
+     */
+    @GetMapping("${security.feign.getClientNAppCodeNType:/api/security/clients/internal/getClientNAppCodeNType}")
+    Mono<Tuple3<String, String, String>> getClientNAppCodeNType(@RequestParam String scheme,
+            @RequestParam String host, @RequestParam String port);
 
     @GetMapping("${security.feign.getAppUrl:/api/security/clienturls/internal/applications/property/url}")
     Mono<String> getAppUrl(@RequestParam String appCode, @RequestParam(required = false) String clientCode);
