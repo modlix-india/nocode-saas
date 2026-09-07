@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -302,19 +303,54 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal (id)"));
     }
 
+    /**
+     * Load FIRST, then authorize the stored document, exactly as saveDraft and
+     * publish already do.
+     *
+     * Authorizing entity.getAppCode()/getClientCode() checked the codes the caller
+     * put in the request BODY while updatableEntity keyed the write on
+     * entity.getId(), and nothing compared the two. A caller set both codes to its
+     * own, passed accessCheck on its own client via hasWriteAccess, and then
+     * repo.save wrote whatever document that id resolved to -- another client's
+     * live object.
+     *
+     * Identity is then taken from the stored document rather than the body, which
+     * also closes rename-and-rehome-by-PUT: name, appCode and baseClientCode could
+     * all be changed by a plain update, re-parenting an object in the override
+     * chain. publish() already does exactly this overwrite for the same reason.
+     */
     @Override
     public Mono<D> update(D entity) {
 
-        Mono<D> crtEnt = flatMapMono(
+        Mono<D> crtEnt = FlatMapUtil.<ContextAuthentication, D, Boolean, D>flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.accessCheck(ca, UPDATE, entity == null ? null : entity.getAppCode(),
-                        entity == null ? null : entity.getClientCode(), true),
+                ca -> entity == null || entity.getId() == null ? Mono.empty() : this.repo.findById(entity.getId()),
 
-                (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty())
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> {
+
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.empty();
+
+                    entity.setAppCode(stored.getAppCode())
+                            .setClientCode(stored.getClientCode())
+                            .setName(stored.getName())
+                            .setBaseClientCode(stored.getBaseClientCode());
+
+                    return Mono.just(entity);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).update"));
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).update (accessCheck)"))
+                // update() had no terminator: the controller does
+                // service.update(entity).map(ResponseEntity::ok), so an empty Mono
+                // became an empty 200 and a refused write looked like a success.
+                // Load-first makes empty reachable for an unknown id too.
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
+                        this.getObjectName()));
 
         return crtEnt.flatMap(e -> flatMapMonoWithNull(
 
@@ -399,29 +435,232 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         // This does not restrict legitimate cross-tenant editing. accessCheck still
         // lets a managing client through via doesClientManageClientCode; the only
         // change is that the decision is now about the object being written.
-        return FlatMapUtil.<ContextAuthentication, D, Boolean, Draft>flatMapMono(
+        return FlatMapUtil.<ContextAuthentication, D, D, Draft>flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> entity == null || entity.getId() == null ? Mono.empty() : this.repo.findById(entity.getId()),
 
-                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+                // The document this draft belongs ON, which is not always the one the
+                // id named. Empty means refused, exactly as the old access check did.
+                this::resolveDraftTarget,
 
-                (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
-                        ? this.draftVersionCheck(stored, expectedDraftVersion)
-                                .flatMap(ok -> this.draftService.upsert(this.getObjectName().toUpperCase(),
-                                        stored.getAppCode(), stored.getName(), stored.getClientCode(),
-                                        stored.getId(),
-                                        this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP),
-                                        stored.getVersion(), entity.getMessage()))
-                                .flatMap(saved -> this.evictDraft(stored.getAppCode(), stored.getClientCode(),
-                                        stored.getName()).thenReturn(saved))
-                        : Mono.empty())
+                (ca, stored, target) -> this.draftVersionCheck(target, expectedDraftVersion)
+                        .flatMap(ok -> this.draftService.upsert(this.getObjectName().toUpperCase(),
+                                target.getAppCode(), target.getName(), target.getClientCode(),
+                                target.getId(),
+                                this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP),
+                                target.getVersion(), entity.getMessage()))
+                        .flatMap(saved -> this.evictDraft(target.getAppCode(), target.getClientCode(),
+                                target.getName()).thenReturn(saved)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).saveDraft"))
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
                         this.getObjectName()));
+    }
+
+    /**
+     * Give the caller its own override of this object, deliberately rather than as
+     * a side effect of a save.
+     *
+     * Same resolution and same preconditions as the first draft save, so it is the
+     * explicit form of what saveDraft does implicitly, and it is idempotent: called
+     * twice it answers the same row rather than 409.
+     *
+     * Takes no body and no target client. Both would only be things to forge: the
+     * target is always the caller, and the base is resolved from the chain.
+     *
+     * The extra evictDraft is load bearing. create() ends in evictRecursively,
+     * which clears this object's own live and _DRAFT caches, but does NOT reach the
+     * subclass evictDraft overrides -- the Engine and SSR caches in the ui base
+     * class, the index HTML, manifest and cacheProperties in ApplicationService --
+     * because those carry their surface in the cache KEY rather than its name. In
+     * the saveDraft flow the evictDraft that follows covers them. A bare fork has
+     * nothing following it, so the draft host would keep serving pre-fork content.
+     */
+    public Mono<D> forkForCaller(String id) {
+
+        if (!this.isDraftable())
+            return this.notDraftable();
+
+        return FlatMapUtil.<ContextAuthentication, D, D, D>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> StringUtil.safeIsBlank(id) ? Mono.empty() : this.repo.findById(id),
+
+                this::resolveDraftTarget,
+
+                (ca, stored, target) -> this
+                        .evictDraft(target.getAppCode(), target.getClientCode(), target.getName())
+                        .thenReturn(target))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).forkForCaller"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
+                        this.getObjectName()));
+    }
+
+    /**
+     * The document a draft from this caller belongs on, forking one into existence
+     * if that is what the caller is entitled to and does not have yet.
+     *
+     * A client granted write access to an app it does not own can edit that app's
+     * objects, but it must not edit the OWNER's documents: its changes belong on
+     * its own override, and must not reach its own runtime until it publishes.
+     * Since an override row is a separate document, the first edit has to create
+     * one, and the editor is holding the owner's id at that moment because that is
+     * the only row that existed when it opened.
+     *
+     * Empty means refused and the caller sees the same FORBIDDEN it always did.
+     * Order matters throughout; each step says why.
+     */
+    private Mono<D> resolveDraftTarget(ContextAuthentication ca, D stored) {
+
+        // Self-edit and manager-edit first, both unchanged. Testing the chain
+        // before this would make SYSTEM editing a tenant's object fork it INTO
+        // SYSTEM, which is backwards.
+        return this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true)
+                .flatMap(direct -> {
+
+                    if (BooleanUtil.safeValueOf(direct))
+                        return Mono.just(stored);
+
+                    return this.inheritanceService
+                            .order(stored.getAppCode(), ca.getUrlClientCode(), ca.getClientCode())
+                            .flatMap(chain -> this.forkTarget(ca, stored, chain));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).resolveDraftTarget"));
+    }
+
+    /**
+     * resolveDraftTarget without the fork: the caller's own row when it already has
+     * one, and nothing otherwise.
+     *
+     * Used by discard and by anything else that must act on the caller's own
+     * unpublished work without bringing a row into existence to do it.
+     */
+    private Mono<D> resolveDiscardTarget(ContextAuthentication ca, D stored) {
+
+        return this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true)
+                .flatMap(direct -> {
+
+                    if (BooleanUtil.safeValueOf(direct))
+                        return Mono.just(stored);
+
+                    return this.inheritanceService
+                            .order(stored.getAppCode(), ca.getUrlClientCode(), ca.getClientCode())
+                            .flatMap(chain -> this.ownRowIn(ca, stored, chain));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).resolveDiscardTarget"));
+    }
+
+    private Mono<D> ownRowIn(ContextAuthentication ca, D stored, List<String> chain) {
+
+        if (!chain.contains(ca.getClientCode()) || !chain.contains(stored.getClientCode()))
+            return Mono.empty();
+
+        return this.repo
+                .findOneByNameAndAppCodeAndClientCode(stored.getName(), stored.getAppCode(), ca.getClientCode());
+    }
+
+    private Mono<D> forkTarget(ContextAuthentication ca, D stored, List<String> chain) {
+
+        // The anti-forgery gate. Membership proves the id the caller sent really is
+        // an ancestor in the CALLER'S OWN resolution of this app, rather than an id
+        // guessed from an unrelated tenant. Without it, "I have write access to some
+        // app" would be enough to fork any document in the database.
+        if (!chain.contains(ca.getClientCode()) || !chain.contains(stored.getClientCode()))
+            return Mono.empty();
+
+        return this.repo.findByNameAndAppCodeAndClientCodeIn(stored.getName(), stored.getAppCode(), chain)
+                .collectList()
+                .flatMap(rows -> {
+
+                    // Already forked. Detected by client code and never by comparing
+                    // ids, because the editor's id can be arbitrarily stale -- it
+                    // still holds the base's id after the fork, and on a reload it
+                    // holds it again. This is what makes the whole operation
+                    // idempotent instead of forking once per save.
+                    for (D row : rows)
+                        if (ca.getClientCode().equals(row.getClientCode()))
+                            return Mono.just(row);
+
+                    return this.pickForkBase(rows, chain, ca.getClientCode())
+                            .flatMap(base -> this.forkAfterChecks(ca, stored, base));
+                });
+    }
+
+    /**
+     * The most derived published ancestor, which is deliberately NOT `stored`.
+     *
+     * With a chain [SYSTEM, MID, ME] and an editor holding SYSTEM's id, forking off
+     * SYSTEM would silently drop every override MID contributes, and the caller
+     * would see content change the moment it started editing.
+     */
+    private Mono<D> pickForkBase(List<D> rows, List<String> chain, String myClientCode) {
+
+        for (String cc : chain.reversed()) {
+
+            if (cc.equals(myClientCode))
+                continue;
+
+            for (D row : rows)
+                if (cc.equals(row.getClientCode()))
+                    return Boolean.FALSE.equals(row.getPublished()) ? Mono.empty() : Mono.just(row);
+        }
+
+        return Mono.empty();
+    }
+
+    private Mono<D> forkAfterChecks(ContextAuthentication ca, D stored, D base) {
+
+        if (Boolean.TRUE.equals(base.getNotOverridable()))
+            return this.messageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    AbstractMongoMessageResourceService.FORBIDDEN_FORK_NOT_OVERRIDABLE,
+                    this.getObjectName(), base.getName());
+
+        // CREATE rather than UPDATE, because that is what this is about to do. The
+        // AppBuilder Owner profile grants the full CRUD set, so this is not a live
+        // gap, but a caller holding only UPDATE gets a message that says which
+        // authority is missing rather than a bare refusal.
+        return this.accessCheck(ca, CREATE, stored.getAppCode(), ca.getClientCode(), true)
+                .flatMap(mayCreate -> BooleanUtil.safeValueOf(mayCreate)
+                        ? this.forkConverging(base, stored, ca.getClientCode())
+                        : Mono.empty());
+    }
+
+    /**
+     * Fork, and if someone else got there first, adopt their row.
+     *
+     * checkIfExists is a count followed later by a save with no unique index behind
+     * it, so two people opening the same inherited object and typing at once each
+     * see "no row for me" and each create one. The Draft collection IS unique on
+     * (app, type, name, clientCode), so the second upsert then overwrites the
+     * first's objectId and one of the two forks is orphaned permanently, invisible
+     * on the live surface and picked non-deterministically on the draft one.
+     *
+     * Converging on the winner is both the fix and what makes an explicit fork
+     * request idempotent. Two arms because the race has two windows: CONFLICT is
+     * checkIfExists losing (the wide one, and the only one reachable while no
+     * unique index exists), DuplicateKeyException is the insert losing once there
+     * is one.
+     */
+    private Mono<D> forkConverging(D base, D stored, String clientCode) {
+
+        return this.forkForClient(base, clientCode)
+                .onErrorResume(DuplicateKeyException.class,
+                        e -> this.repo.findOneByNameAndAppCodeAndClientCode(
+                                stored.getName(), stored.getAppCode(), clientCode))
+                .onErrorResume(GenericException.class,
+                        e -> e.getStatusCode() == HttpStatus.CONFLICT
+                                ? this.repo.findOneByNameAndAppCodeAndClientCode(
+                                        stored.getName(), stored.getAppCode(), clientCode)
+                                : Mono.error(e));
     }
 
     /**
@@ -500,11 +739,28 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
         // read(id) first, so the draft path runs exactly the same accessCheck as a
         // live read. A ?draft=true parameter must never be a way around it.
+        //
+        // A live read is NOT enough to see the draft, though. read()'s check is the
+        // read one, and inheritance grants a derived client read access to every
+        // ancestor's document, so this route handed a derived client the BASE
+        // client's unpublished draft -- and the base is usually SYSTEM. readDrafted()
+        // guards exactly this on the runtime path; the by-id editor path never got
+        // the same guard, and cross-client editing makes holding an ancestor's id the
+        // normal case rather than an oddity.
+        //
+        // The gate is the write check: whoever may write this draft may read it. That
+        // keeps the manager case working and closes the derived-client one. Falling
+        // through to the live document rather than erroring is deliberate -- the
+        // caller may legitimately read the object, it just may not see someone else's
+        // unpublished work, and version 0 then correctly says "no draft of yours".
         return this.read(id)
-                .flatMap(live -> this.draftService.findByObjectId(id)
-                        .map(draft -> Tuples.of(
-                                this.objectMapper.convertValue(draft.getContent(), this.pojoClass),
-                                draft.getVersion()))
+                .flatMap(live -> SecurityContextUtil.getUsersContextAuthentication()
+                        .flatMap(ca -> this.accessCheck(ca, UPDATE, live.getAppCode(), live.getClientCode(), true))
+                        .filter(BooleanUtil::safeValueOf)
+                        .flatMap(mayWrite -> this.draftService.findByObjectId(id)
+                                .map(draft -> Tuples.of(
+                                        this.objectMapper.convertValue(draft.getContent(), this.pojoClass),
+                                        draft.getVersion())))
                         .defaultIfEmpty(Tuples.of(live, 0)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readDraft"));
@@ -595,25 +851,37 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         stored.getName()));
     }
 
-    /** Throw away unpublished work. The live document is untouched. */
+    /**
+     * Throw away unpublished work. The live document is untouched.
+     *
+     * Resolves the caller's own row the same way saveDraft does, minus the fork:
+     * an editor holding an ancestor's id is the normal state after a fork, and
+     * discarding is exactly when it is most likely to still be holding one. It must
+     * not 403 for that.
+     *
+     * Never forks: creating a row in order to throw nothing away would be absurd.
+     * A caller entitled to edit but holding an ancestor's id with no row of its own
+     * therefore still gets a refusal rather than a `false`. Distinguishing the two
+     * needs a second entitlement round-trip and buys nothing here -- there is
+     * definitionally no draft of theirs either way, and the editor treats both
+     * answers as "nothing happened".
+     */
     public Mono<Boolean> discardDraft(String id) {
 
         if (!this.isDraftable())
             return this.notDraftable();
 
-        return FlatMapUtil.<ContextAuthentication, D, Boolean, Boolean>flatMapMono(
+        return FlatMapUtil.<ContextAuthentication, D, D, Boolean>flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.repo.findById(id),
 
-                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+                this::resolveDiscardTarget,
 
-                (ca, stored, hasAccess) -> BooleanUtil.safeValueOf(hasAccess)
-                        ? this.draftService.discardByObjectId(id)
-                                .flatMap(discarded -> this.evictDraft(stored.getAppCode(), stored.getClientCode(),
-                                        stored.getName()).thenReturn(discarded))
-                        : Mono.empty())
+                (ca, stored, target) -> this.draftService.discardByObjectId(target.getId())
+                        .flatMap(discarded -> this.evictDraft(target.getAppCode(), target.getClientCode(),
+                                target.getName()).thenReturn(discarded)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).discardDraft"))
                 .switchIfEmpty(messageResourceService.throwMessage(
@@ -1385,13 +1653,60 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 // published is reset rather than inherited: forking an unpublished
                 // object must not produce a derived copy that is invisible at runtime
                 // with no indication why.
-                e -> this.create((D) e.setBaseClientCode(e.getClientCode())
-                        .setClientCode(clientCode)
-                        .setPublished(null)
-                        .setId(null))
+                e -> this.forkFrom((D) e, clientCode, null)
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME,
                 ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).createForClient"));
+    }
+
+    /**
+     * An override that has never gone live: most derived on the DRAFT surface,
+     * filtered out of the LIVE one by readIfExistsInBase, so the forking client's
+     * own runtime keeps serving the base until it publishes.
+     *
+     * That is the whole difference from createForClient, whose `published = null`
+     * means "a live derived copy" and is right for its own purpose. Kept as two
+     * entry points rather than a flag on one, because createForClient sits on a
+     * public route where quietly changing which of the two it means would be a bad
+     * surprise.
+     *
+     * Takes the resolved base document rather than an id: the caller has already
+     * fetched the chain, and re-reading by id would reintroduce the "fork off
+     * whatever id was sent rather than the most derived ancestor" bug.
+     */
+    public Mono<D> forkForClient(D base, String clientCode) {
+
+        return flatMapMono(
+
+                // The row handed in is the stored DELTA. The fork has to be seeded
+                // with MERGED content or extractOverride diffs a delta against its
+                // own base and produces a delta-of-a-delta, silently dropping every
+                // field the base itself inherited.
+                () -> this.readInternal(base.getId()),
+
+                merged -> this.forkFrom(merged, clientCode, Boolean.FALSE))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).forkForClient"));
+    }
+
+    /**
+     * Shared body of the two forks. `published` is the only thing that differs.
+     *
+     * Version resets to 1: create() stamps the first Version snapshot with
+     * created.getVersion(), so carrying the base's number would open the fork's
+     * history at, say, 7 with nothing behind it. Nothing compares versions across
+     * documents -- updatableEntity checks against the stored row and publish
+     * restores draft.baseVersion -- so this is safe and more honest.
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<D> forkFrom(D resolved, String clientCode, Boolean published) {
+
+        return this.create((D) resolved.setBaseClientCode(resolved.getClientCode())
+                .setClientCode(clientCode)
+                .setPublished(published)
+                .setVersion(1)
+                .setId(null));
     }
 
     public TransportObject makeTransportObject(Object entity) {

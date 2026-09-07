@@ -53,6 +53,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
@@ -524,8 +525,14 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
             conditions.add(SECURITY_USER.ID.eq(userId));
 
         if (appCode != null)
-            conditions.add(SECURITY_APP.CLIENT_ID
-                    .eq(SECURITY_USER.CLIENT_ID)
+            // An app declared ANY is open to every client's users by definition, which is the
+            // whole difference between ANY and EXPLICIT. Without this clause the enum value was
+            // inert here: a user could not be resolved for an ANY app unless their client
+            // happened to own it or hold an app_access row, which is exactly what OWN and
+            // EXPLICIT already mean. It matters for a broker app such as authzump, where every
+            // tenant's users must resolve but no tenant should need a grant.
+            conditions.add(SECURITY_APP.APP_ACCESS_TYPE.eq(SecurityAppAppAccessType.ANY)
+                    .or(SECURITY_APP.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
                     .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)));
 
         conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));

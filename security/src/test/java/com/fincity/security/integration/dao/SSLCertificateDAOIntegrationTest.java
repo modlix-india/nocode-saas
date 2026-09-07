@@ -240,6 +240,42 @@ class SSLCertificateDAOIntegrationTest extends AbstractIntegrationTest {
 					})
 					.verifyComplete();
 		}
+
+		@Test
+		@DisplayName("Should demote earlier certificates on the same URL before returning")
+		void createDemotesPredecessorsSynchronously() {
+			ULong oldCertId = insertSSLCert(testUrlId, "demote-old.example.com", true).block();
+			assertNotNull(oldCertId);
+
+			SSLCertificate fresh = new SSLCertificate()
+					.setUrlId(testUrlId)
+					.setCrt(DUMMY_CRT)
+					.setCrtChain(DUMMY_CRT_CHAIN)
+					.setCrtKey(DUMMY_CRT_KEY)
+					.setCsr(DUMMY_CSR)
+					.setDomains("demote-new.example.com")
+					.setOrganization("Test Org")
+					.setExpiryDate(LocalDateTime.now().plusDays(90))
+					.setIssuer("Lets Encrypt")
+					.setCurrent(true);
+
+			ULong newCertId = sslCertificateDAO.create(fresh).map(SSLCertificate::getId).block();
+			assertNotNull(newCertId);
+
+			// No wait and no polling on purpose: the demotion used to be detached
+			// and delayed by ten seconds, so a caller re-reading the list right
+			// after this returned saw two certificates both marked current.
+			List<ULong> current = databaseClient
+					.sql("SELECT ID FROM security_ssl_certificate WHERE URL_ID = :urlId AND `CURRENT` = 1")
+					.bind("urlId", testUrlId.longValue())
+					.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+					.all()
+					.collectList()
+					.block();
+
+			assertEquals(List.of(newCertId), current,
+					"only the newly created certificate may be current once create() completes");
+		}
 	}
 
 	@Nested
