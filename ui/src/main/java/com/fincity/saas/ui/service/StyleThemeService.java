@@ -22,10 +22,26 @@ public class StyleThemeService extends AbstractUIOverridableDataService<StyleThe
         super(StyleTheme.class);
     }
 
+    /**
+     * The style cache is evicted alongside the theme cache because the served CSS
+     * now depends on which theme is active: a theme may carry its own style
+     * document, and deleting a theme shifts resolution to the next one, which may
+     * carry a different one. Evicting only the theme cache left `/api/ui/style`
+     * serving the departed theme's stylesheet.
+     */
     @Override
     public Mono<StyleTheme> update(StyleTheme styleTheme) {
         return super.update(styleTheme)
-                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_THEME + "-" + styleTheme.getAppCode()));
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_THEME + "-" + styleTheme.getAppCode()))
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_STYLE + "-" + styleTheme.getAppCode()));
+    }
+
+    /** Both OUI caches serve both surfaces, for the same reason as update() above. */
+    @Override
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
+        return super.evictDraft(appCode, clientCode, name)
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_THEME + "-" + appCode))
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_STYLE + "-" + appCode));
     }
 
     @Override
@@ -37,7 +53,11 @@ public class StyleThemeService extends AbstractUIOverridableDataService<StyleThe
 
                 (thm, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_THEME + "-" + thm.getAppCode()),
 
-                (thm, deleted, cacheEvicted) -> this.ssrCacheEvictionService.evictByAppCode(thm.getAppCode())
+                (thm, deleted, cacheEvicted) -> this.cacheService
+                        .evictAll(EngineService.CACHE_NAME_STYLE + "-" + thm.getAppCode()),
+
+                (thm, deleted, cacheEvicted, styleEvicted) -> this.ssrCacheEvictionService
+                        .evictByAppCode(thm.getAppCode())
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.delete"));
     }
 

@@ -1,11 +1,10 @@
 package com.fincity.saas.ui.controller;
 
-import java.time.Duration;
+import java.net.URI;
 import java.time.ZoneOffset;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MimeTypeUtils;
@@ -61,6 +60,8 @@ public class UniversalController {
     private static final ResponseEntity<String> RESPONSE_BAD_REQUEST = ResponseEntity
             .badRequest()
             .build();
+
+    private static final String MODE_LOGOUT = "logout";
 
     private final static String START = "<html><head><title>SSO</title><script>";
     private final static String END = "</script></head><body></body></html>";
@@ -171,51 +172,157 @@ public class UniversalController {
         return this.securityService.token(token).map(ResponseEntity::ok);
     }
 
+    /**
+     * The cross-app SSO beacon, always a TOP-LEVEL navigation.
+     *
+     * There used to be an iframe/postMessage mode here as well. It could never work across
+     * registrable domains: storage reached from a third-party context is partitioned by
+     * top-level site, so the session this origin really holds is invisible from inside
+     * another app's page in every current browser. It has been removed rather than left as a
+     * path that silently returns "no session" to everyone.
+     */
     @GetMapping(value = "/hassso", produces = MimeTypeUtils.TEXT_HTML_VALUE)
     public Mono<ResponseEntity<String>> hassso(
-            @RequestParam String parentURL,
             @RequestParam String targetAppCode,
             @RequestParam(required = false, defaultValue = "") String targetClientCode,
-            @RequestParam(required = false) Boolean designMode) {
+            @RequestParam(required = false, defaultValue = "") String returnUrl,
+            @RequestParam(required = false, defaultValue = "") String mode) {
 
-        String safeParentURL = jsString(parentURL);
-        String safeTargetAppCode = jsString(targetAppCode);
-        String safeTargetClientCode = jsString(targetClientCode);
-        // The parent passes designMode explicitly because /hassso always runs in an iframe.
-        String designModeJs = designMode == null
-                ? "var designMode=window.self!==window.top;"
-                : "var designMode=" + designMode + ";";
+        if (MODE_LOGOUT.equals(mode))
+            return this.hasssoLogout(targetAppCode, returnUrl);
 
-        String script =
-                "var parentURL=" + safeParentURL + ";" +
-                "var targetAppCode=" + safeTargetAppCode + ";" +
-                "var targetClientCode=" + safeTargetClientCode + ";" +
-                "var parentOrigin=new URL(parentURL).origin;" +
-                designModeJs +
-                "var tokenKey=(designMode?'designMode_':'')+'AuthToken';" +
-                "var expiryKey=(designMode?'designMode_':'')+'AuthTokenExpiry';" +
-                "function postNone(){window.parent.postMessage({type:'sso:none'},parentOrigin);}" +
-                "function postToken(t){window.parent.postMessage({type:'sso:token',token:t},parentOrigin);}" +
-                "var lsToken=localStorage.getItem(tokenKey);" +
-                "var lsExpiry=parseInt(localStorage.getItem(expiryKey)||'0',10)*1000;" +
-                "if(!lsToken||lsExpiry<Date.now()){postNone();}" +
-                "else{" +
-                "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
-                "fetch('/api/security/makeOneTimeToken',{method:'POST',headers:{'Content-Type':'application/json','Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
-                ".then(function(r){return r.ok?r.json():null;})" +
-                ".then(function(d){if(d&&d.token){postToken(d.token);}else{postNone();}})" +
-                ".catch(function(){postNone();});" +
-                "}";
-
-        String htmlContent = START + script + END;
-
-        return Mono.just(ResponseEntity.ok()
-                .header("Content-Security-Policy", "frame-ancestors *")
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .body(htmlContent));
+        return this.hasssoBounce(targetAppCode, targetClientCode, returnUrl);
     }
 
-    private static String jsString(String s) {
+    /**
+     * Forget the session on the beacon origin, then continue back to the app.
+     *
+     * Signing out of one app has to reach this origin or it means nothing: the app clears its
+     * own storage, the next cold load bounces here, and this origin cheerfully mints a fresh
+     * token from the session it still holds. The user is signed straight back in and it looks
+     * like logout is broken, because it is.
+     *
+     * Same destination rule as the bounce, for the same reason: this is a navigation target
+     * supplied by the caller.
+     */
+    private Mono<ResponseEntity<String>> hasssoLogout(String targetAppCode, String returnUrl) {
+
+        URI uri = absoluteHttpUri(returnUrl);
+
+        if (uri == null || StringUtil.safeIsBlank(targetAppCode))
+            return Mono.just(RESPONSE_BAD_REQUEST);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .filter(t -> targetAppCode.equals(t.getT2()))
+                .map(t -> beaconResponse(START + logoutScript(returnUrl) + END))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
+
+    private static String logoutScript(String returnUrl) {
+        return "try{localStorage.removeItem('AuthToken');localStorage.removeItem('AuthTokenExpiry');}catch(e){}" +
+                "window.location.replace(" + jsString(returnUrl) + ");";
+    }
+
+    private static ResponseEntity<String> beaconResponse(String htmlContent) {
+        return ResponseEntity.ok()
+                .header("Content-Security-Policy", "frame-ancestors *")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(htmlContent);
+    }
+
+    /**
+     * The cold-start half of cross-domain SSO, as a TOP-LEVEL navigation instead of an
+     * iframe.
+     * <p>
+     * The iframe path above cannot work across registrable domains: storage reached from a
+     * third-party context is partitioned by top-level site, so what one app writes here is
+     * invisible to the next. Loaded top-level, this page reads the beacon origin's own
+     * first-party storage, mints a one-time token and hands it back on the URL. No
+     * third-party cookie, no Storage Access API, no prompt, and it works in every browser.
+     * <p>
+     * {@code returnUrl} is attacker-controlled and the token is a session, so an open
+     * redirect here is an account takeover. It is checked against the platform's own record:
+     * the host must resolve to the very app the token is being minted for. An unknown host
+     * resolves to appCode "nothing" and is refused.
+     */
+    private Mono<ResponseEntity<String>> hasssoBounce(String targetAppCode, String targetClientCode,
+            String returnUrl) {
+
+        URI uri = absoluteHttpUri(returnUrl);
+
+        if (uri == null || StringUtil.safeIsBlank(targetAppCode))
+            return Mono.just(RESPONSE_BAD_REQUEST);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .filter(t -> targetAppCode.equals(t.getT2()))
+                .map(t -> beaconResponse(START + bounceScript(returnUrl, targetAppCode, targetClientCode) + END))
+                .defaultIfEmpty(RESPONSE_NOT_FOUND);
+    }
+
+    /**
+     * Reads the beacon origin's first-party token, then leaves, one way or the other. The
+     * caller is told "no session" explicitly rather than being left to time out, because it
+     * has to record that it asked and stop asking on every page load.
+     */
+    private static String bounceScript(String returnUrl, String targetAppCode, String targetClientCode) {
+
+        return "var back=" + jsString(returnUrl) + ";" +
+                "var targetAppCode=" + jsString(targetAppCode) + ";" +
+                "var targetClientCode=" + jsString(targetClientCode) + ";" +
+                "function leave(k,v){var u=new URL(back);u.searchParams.set(k,v);window.location.replace(u.toString());}" +
+                "function forget(){try{localStorage.removeItem('AuthToken');"
+                + "localStorage.removeItem('AuthTokenExpiry');}catch(e){}}" +
+                "var lsToken=localStorage.getItem('AuthToken');" +
+                "var lsExpiry=parseInt(localStorage.getItem('AuthTokenExpiry')||'0',10)*1000;" +
+                "if(!lsToken||lsExpiry<Date.now()){leave('sso','none');}" +
+                "else{" +
+                "var bearer;try{bearer=JSON.parse(lsToken);}catch(e){bearer=lsToken;}" +
+                // credentials:'omit' is load-bearing, not tidiness. Every 401 on this platform
+                // carries `WWW-Authenticate: Basic`, and a fetch that sends credentials makes
+                // the browser answer that challenge with its own native sign-in dialog. This
+                // page is top-level, so that dialog is shown to the user over a blank page.
+                // The old hidden iframe made the same call and never showed it, because
+                // browsers suppress auth dialogs in cross-origin frames. The token travels in
+                // the Authorization header, so no ambient credentials are wanted anyway.
+                "fetch('/api/security/makeOneTimeToken',{method:'POST',credentials:'omit',"
+                + "headers:{'Content-Type':'application/json',"
+                + "'Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},"
+                + "body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
+                // A rejected token is dead: drop it, or every later bounce repeats this round
+                // trip and answers "no session" the slow way.
+                ".then(function(r){if(!r.ok){if(r.status===401||r.status===403){forget();}return null;}return r.json();})" +
+                ".then(function(d){if(d&&d.token){leave('ott',d.token);}else{leave('sso','none');}})" +
+                ".catch(function(){leave('sso','none');});" +
+                "}";
+    }
+
+    /** An absolute http(s) URI, or null. Anything else is not a place to send a session. */
+    // Package-private so HasssoBounceTest can exercise the return-URL check directly.
+    static URI absoluteHttpUri(String value) {
+
+        if (StringUtil.safeIsBlank(value))
+            return null;
+
+        URI uri;
+        try {
+            uri = URI.create(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")))
+            return null;
+
+        return StringUtil.safeIsBlank(uri.getHost()) ? null : uri;
+    }
+
+    // Package-private so SsoRedirectGuardTest can exercise the escaping directly.
+    static String jsString(String s) {
         if (s == null)
             return "''";
         StringBuilder sb = new StringBuilder(s.length() + 2);
@@ -246,45 +353,114 @@ public class UniversalController {
             @RequestHeader(required = false) String appCode,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
-            @RequestParam(defaultValue = "false") boolean cookie,
-            @RequestParam(required = false) Boolean designMode,
             ServerHttpRequest request) {
 
-        String addr = ipAddress;
-        if (addr == null) {
-            addr = request.getRemoteAddress() == null ? "" : request.getRemoteAddress().getAddress().getHostAddress();
-        }
+        final String addr = ipAddress != null ? ipAddress
+                : (request.getRemoteAddress() == null ? ""
+                        : request.getRemoteAddress().getAddress().getHostAddress());
 
-        // The caller passes designMode when /sso/{token} runs inside a hidden iframe
-        // (where window.self !== window.top would always be true). For top-level legacy
-        // callers (magic link, password reset) we fall back to the existing detection.
-        String designModeJs = designMode == null
-                ? "var designMode = window.self !== window.top;"
-                : "var designMode = " + designMode + ";";
+        return this.resolveSsoRedirect(redirectUrl, request).flatMap(safeRedirect -> {
 
-        return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
-                .map(ca -> {
-                    String storeTokenScript = designModeJs +
-                            "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
-                            + ca.getAccessToken()
-                            + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
-                            + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
-                    String redirectionScript = "window.location.href = '" + redirectUrl + "';";
-                    String htmlContent = START + storeTokenScript + redirectionScript + END;
-                    ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                            .header("Content-Security-Policy", "frame-ancestors *");
+            String redirectionScript = "window.location.href = " + jsString(safeRedirect) + ";";
 
-                    if (cookie) {
-                        ResponseCookie responseCookie = ResponseCookie
-                                .from("AuthToken", ca.getAccessToken())
-                                .path("/")
-                                .maxAge(Duration.ofSeconds(
-                                        ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC)))
-                                .build();
-                        responseBuilder.header(HttpHeaders.SET_COOKIE, responseCookie.toString());
-                    }
+            return this.securityService
+                    .authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
+                    .map(ca -> {
+                        // The token is stored JSON-encoded because the beacon reads it back
+                        // with JSON.parse; jsString then makes the whole value a safe literal.
+                        String storeTokenScript = "window.localStorage.setItem('AuthToken', "
+                                + jsString("\"" + ca.getAccessToken() + "\"")
+                                + ");window.localStorage.setItem('AuthTokenExpiry', '"
+                                + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC)
+                                + "');";
 
-                    return responseBuilder.body(htmlContent);
-                });
+                        return ResponseEntity.ok()
+                                .header("Content-Security-Policy", "frame-ancestors *")
+                                .body(START + storeTokenScript + redirectionScript + END);
+                    });
+        });
+    }
+
+    /**
+     * Guards the post-SSO redirect against open-redirect abuse. {@link #jsString(String)} stops
+     * the value breaking out of the inline script; this stops it pointing somewhere else.
+     * <p>
+     * Same-origin is not enough. The beacon seed deliberately lands here on one host and
+     * continues to an app on another, which is the whole point of cross-domain SSO, so a
+     * strict same-origin rule sent every seeded login to "/" on the beacon instead of back to
+     * the app. A cross-origin destination is therefore allowed when the platform recognises
+     * its host as belonging to a real app; an unknown host resolves to appCode
+     * {@value #UNKNOWN_HOST_APP_CODE} and is refused.
+     * <p>
+     * Note the asymmetry with {@link #hasssoBounce}. There, the server mints a token from the
+     * visitor's own session, so the destination is pinned to the one app the token is for.
+     * Here the token arrives in the URL from the caller, who could only ever supply their own,
+     * so the weaker rule costs nothing and the stricter one breaks the feature.
+     * <p>
+     * Anything rejected falls back to "/" rather than failing the login.
+     */
+    private Mono<String> resolveSsoRedirect(String redirectUrl, ServerHttpRequest request) {
+
+        String decided = decideRedirectWithoutLookup(redirectUrl, clientFacingHost(request));
+        if (decided != null)
+            return Mono.just(decided);
+
+        URI uri = absoluteHttpUri(redirectUrl);
+
+        return this.securityService
+                .getClientNAppCodeNType(uri.getScheme(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .map(t -> isRealApp(t.getT2()) ? redirectUrl : "/")
+                .defaultIfEmpty("/");
+    }
+
+    /**
+     * The half of the decision that needs no lookup. Returns the destination to use, or null
+     * when only a host lookup can settle it. Package-private so the rules that do not depend
+     * on the platform's data stay directly testable.
+     */
+    static String decideRedirectWithoutLookup(String redirectUrl, String ownHost) {
+
+        if (redirectUrl == null || redirectUrl.isBlank())
+            return "/";
+
+        // A single leading slash is a same-origin path. "//host" and "/\host" are
+        // protocol-relative URLs that browsers resolve against another origin.
+        if (redirectUrl.charAt(0) == '/')
+            return redirectUrl.length() > 1
+                    && (redirectUrl.charAt(1) == '/' || redirectUrl.charAt(1) == '\\')
+                            ? "/"
+                            : redirectUrl;
+
+        URI uri = absoluteHttpUri(redirectUrl);
+        if (uri == null)
+            return "/";
+
+        // getHost() resolves "https://trusted.example@evil.example/" to evil.example, so a
+        // userinfo prefix cannot spoof the comparison.
+        if (uri.getHost().equalsIgnoreCase(ownHost))
+            return redirectUrl;
+
+        return null;
+    }
+
+    /** The host resolver answers with this appCode for a host it has no ClientUrl row for. */
+    private static final String UNKNOWN_HOST_APP_CODE = "nothing";
+
+    private static boolean isRealApp(String appCode) {
+        return !StringUtil.safeIsBlank(appCode) && !UNKNOWN_HOST_APP_CODE.equals(appCode);
+    }
+
+    static String clientFacingHost(ServerHttpRequest request) {
+
+        String raw = request.getHeaders().getFirst("X-Forwarded-Host");
+
+        if (raw == null || raw.isBlank())
+            return request.getURI().getHost();
+
+        int comma = raw.indexOf(',');
+        String first = (comma >= 0 ? raw.substring(0, comma) : raw).trim();
+        int colon = first.indexOf(':');
+        return colon >= 0 ? first.substring(0, colon) : first;
     }
 }

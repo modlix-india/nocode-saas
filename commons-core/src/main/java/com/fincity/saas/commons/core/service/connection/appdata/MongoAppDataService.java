@@ -42,12 +42,17 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mongodb.ErrorCategory;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.reactivestreams.client.FindPublisher;
@@ -110,6 +115,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private static final String OPERATION = "operation";
 
     private static final String TEXT_INDEX_NAME = "_textIndex";
+
+    // A duplicate key can come off any unique index, so the _id one is identified by name before
+    // the failure is reported as a clash on the supplied _id.
+    private static final String DUPLICATE_ID_INDEX = "index: _id_";
+
+    // How many documents one bulk write carries while seeding the draft surface. Bounded
+    // so a large live collection streams rather than being collected into one list.
+    private static final int COPY_BATCH_SIZE = 500;
+
+    private static final ReplaceOptions UPSERT = new ReplaceOptions().upsert(true);
+
     private static final Map<FilterConditionOperator, String> FILTER_MATCH_OPERATOR = Map.of(
             FilterConditionOperator.EQUALS,
             "$eq",
@@ -189,6 +205,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Map<String, Object>> create(String clientCode, Connection conn, Storage storage, DataObject dataObject) {
+
+        BsonObjectId givenId = this.takeGivenId(dataObject.getData());
+
         return FlatMapUtil.flatMapMonoWithNull(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getCollection(
@@ -203,33 +222,85 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                                 schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (ca, collection, schema, appSchemaRepo) ->
                                 this.handleRelationsAndValidate(dataObject.getData(), storage, schema, appSchemaRepo),
-                        (ca, collection, schema, appSchemaRepo, je) -> Mono.from(collection.insertOne(BJsonUtil.from(
-                                storage.getRelations() != null
-                                        ? storage.getRelations().keySet()
-                                        : Set.of(),
-                                je))),
+                        (ca, collection, schema, appSchemaRepo, je) -> {
+                            Document document = BJsonUtil.from(
+                                    storage.getRelations() != null
+                                            ? storage.getRelations().keySet()
+                                            : Set.of(),
+                                    je);
+
+                            if (givenId != null) document.append(ID, givenId);
+
+                            return Mono.from(collection.insertOne(document))
+                                    .onErrorResume(
+                                            MongoWriteException.class,
+                                            ex -> this.duplicateGivenId(ex, storage, givenId));
+                        },
                         (ca, collection, schema, appSchemaRepo, je, result) -> Mono.from(collection
-                                .find(Filters.eq(ID, result.getInsertedId()))
+                                .find(Filters.eq(ID, this.insertedId(result, givenId)))
                                 .first()),
                         (ca, collection, schema, appSchemaRepo, je, result, doc) -> this.addVersion(
                                 clientCode,
                                 conn,
                                 storage,
                                 dataObject.getMessage(),
-                                result.getInsertedId() != null
-                                        ? result.getInsertedId().asObjectId()
-                                        : null,
+                                this.insertedId(result, givenId),
                                 ca,
                                 doc,
                                 "CREATE"),
                         (ca, collection, schema, appSchemaRepo, je, result, doc, versionResult) -> {
-                            BsonValue insertedId = result.getInsertedId();
+                            BsonObjectId insertedId = this.insertedId(result, givenId);
                             if (insertedId != null)
-                                doc.append(
-                                        ID, insertedId.asObjectId().getValue().toHexString());
+                                doc.append(ID, insertedId.getValue().toHexString());
                             return Mono.just((Map<String, Object>) doc);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.create"));
+    }
+
+    /**
+     * Pulls a caller supplied _id out of the incoming data. Uploads and transports carry the _id of
+     * every row so relation fields keep pointing at the right rows, but every read, update and
+     * delete here matches _id as an ObjectId, so an _id left in the data as a plain string would be
+     * stored as a string and the row would be unreachable afterwards. A hex id is therefore handed
+     * back for the document to be inserted with, and anything else is dropped for Mongo to
+     * generate. Removing it also keeps _id away from the schema validator, the same way relation
+     * fields are held back.
+     */
+    private BsonObjectId takeGivenId(Map<String, Object> data) {
+        if (data == null) return null;
+
+        Object id = data.remove(ID);
+
+        if (id instanceof ObjectId objectId) return new BsonObjectId(objectId);
+
+        String hexId = StringUtil.safeValueOf(id);
+
+        return !StringUtil.safeIsBlank(hexId) && ObjectId.isValid(hexId)
+                ? new BsonObjectId(new ObjectId(hexId))
+                : null;
+    }
+
+    private BsonObjectId insertedId(InsertOneResult result, BsonObjectId givenId) {
+        BsonValue insertedId = result != null ? result.getInsertedId() : null;
+
+        return insertedId != null && insertedId.isObjectId() ? insertedId.asObjectId() : givenId;
+    }
+
+    /**
+     * Now that a supplied _id is kept, uploading the same file twice collides on it. Answering that
+     * with the raw driver error says nothing about which row is already there.
+     */
+    private Mono<InsertOneResult> duplicateGivenId(
+            MongoWriteException ex, Storage storage, BsonObjectId givenId) {
+        if (givenId == null
+                || ex.getError().getCategory() != ErrorCategory.DUPLICATE_KEY
+                || !ex.getError().getMessage().contains(DUPLICATE_ID_INDEX)) return Mono.error(ex);
+
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                CoreMessageResourceService.STORAGE_OBJECT_ID_EXISTS,
+                givenId.getValue().toHexString(),
+                storage.getName());
     }
 
     @SuppressWarnings("unchecked")
@@ -522,6 +593,107 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteStorage"));
     }
 
+    @Override
+    public Mono<Boolean> dropDraftStorage(String clientCode, Connection conn, Storage storage) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+
+                    MongoClient client = this.getMongoClient(conn);
+                    if (client == null)
+                        return Mono.just(Boolean.FALSE);
+
+                    // Named explicitly rather than resolved from the ambient flag: this
+                    // is called while deleting a definition, which happens on the live
+                    // surface, so isDraft() would be false exactly when we need the
+                    // draft namespace.
+                    String dbName = databaseName(
+                            BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
+                            storage.getAppCode(), true);
+
+                    var db = client.getDatabase(dbName);
+                    return Mono.from(db.getCollection(storage.getUniqueName()).drop())
+                            .then(Mono.from(db.getCollection(storage.getUniqueName() + "_version").drop()))
+                            .thenReturn(Boolean.TRUE)
+                            .onErrorReturn(Boolean.FALSE);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.dropDraftStorage"));
+    }
+
+    @Override
+    public Mono<Boolean> dropDraftDatabase(Connection conn, String appCode, String clientCode) {
+
+        if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank(clientCode))
+            return Mono.just(Boolean.FALSE);
+
+        MongoClient client = this.getMongoClient(conn);
+        if (client == null)
+            return Mono.just(Boolean.FALSE);
+
+        return Mono.from(client.getDatabase(databaseName(clientCode, appCode, true)).drop())
+                .thenReturn(Boolean.TRUE)
+                .onErrorReturn(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.dropDraftDatabase"));
+    }
+
+    @Override
+    public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, Boolean replace) {
+
+        // Both surfaces are named by writing the flag onto each accessor's own
+        // subscription, rather than reading the ambient one. Going through
+        // getCollection (instead of client.getDatabase directly) is what keeps index
+        // provisioning running on the draft side: it is memoised per
+        // (uniqueName, appCode, clientCode, draftSuffix), so the draft collection has
+        // to ask for it in its own right.
+        Mono<MongoCollection<Document>> liveCollection = this.getCollection(clientCode, conn, storage)
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.FALSE));
+
+        Mono<MongoCollection<Document>> draftCollection = this.getCollection(clientCode, conn, storage)
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE));
+
+        return FlatMapUtil.<MongoCollection<Document>, MongoCollection<Document>, Long, Boolean, Long>flatMapMono(
+
+                () -> liveCollection,
+
+                live -> draftCollection,
+
+                // Counted BEFORE anything is cleared. An empty source answers 0 and
+                // changes nothing: clearing the draft collection and then reporting
+                // "there was nothing to copy" would be the worst of both.
+                //
+                // 0 rather than an empty Mono, because genericOperation -- which every
+                // caller goes through -- has its own switchIfEmpty that turns an empty
+                // result into a 403. An empty here would surface as a denial.
+                (live, draft) -> Mono.from(live.countDocuments()),
+
+                // deleteMany, never drop(). A dropped collection with a warm index
+                // cache never gets its indexes back, because manageIndexes has
+                // already been memoised for this namespace.
+                (live, draft, liveCount) -> liveCount > 0 && BooleanUtil.safeValueOf(replace)
+                        ? Mono.from(draft.deleteMany(Filters.empty())).thenReturn(Boolean.TRUE)
+                        : Mono.just(Boolean.TRUE),
+
+                // _id is carried across unchanged, so relation fields on either surface
+                // keep pointing at the row they named.
+                //
+                // Upserting rather than inserting is what makes this safe to run twice
+                // and safe with replace = false: an insertMany over a draft collection
+                // that already holds any of these ids fails on the duplicate key and
+                // leaves the copy half done.
+                (live, draft, liveCount, cleared) -> liveCount < 1
+                        ? Mono.just(0L)
+                        : Flux.from(live.find())
+                                .buffer(COPY_BATCH_SIZE)
+                                .concatMap(batch -> Mono.from(draft.bulkWrite(batch.stream()
+                                                .map(doc -> (WriteModel<Document>) new ReplaceOneModel<>(
+                                                        Filters.eq(ID, doc.get(ID)), doc, UPSERT))
+                                                .toList()))
+                                        .thenReturn((long) batch.size()))
+                                .reduce(0L, Long::sum))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.copyLiveToDraft"));
+    }
+
     private Flux<Document> applyQueryOnElements(
             MongoCollection<Document> collection, Query query, Bson bsonCondition, Pageable page) {
         if (query.getFields() == null || query.getFields().isEmpty()) {
@@ -742,6 +914,22 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         storage.getUniqueName()));
     }
 
+    /**
+     * The draft surface gets its own database, not its own collection names.
+     *
+     * Storage.uniqueName is the physical collection name and is generated once at
+     * create time, so live and draft share it and differ only by database. That
+     * means publishing a storage never has to rename or move anything, and a
+     * storage created on the draft surface already has its final collection name.
+     *
+     * Mongo creates databases and collections lazily on first insert, so nothing
+     * needs provisioning: the draft namespace comes into existence when something
+     * is first written to it.
+     */
+    private static String databaseName(String clientCode, String appCode, boolean draft) {
+        return clientCode + "_" + appCode + (draft ? IAppDataService.DRAFT_DB_SUFFIX : "");
+    }
+
     private Mono<MongoCollection<Document>> getCollection(
             Connection conn,
             String appCode,
@@ -749,37 +937,55 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             String uniqueName,
             Map<String, StorageIndex> indexes,
             List<String> textIndexFields) {
-        MongoClient client = this.getMongoClient(conn);
 
-        if (client == null)
-            throw msgService.nonReactiveMessage(
-                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                    CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                    "url");
+        return LogUtil.isDraft().flatMap(draftFlag -> {
 
-        final MongoCollection<Document> collection =
-                client.getDatabase(clientCode + "_" + appCode).getCollection(uniqueName);
+            boolean draft = Boolean.TRUE.equals(draftFlag);
 
-        return cacheService
-                .cacheValueOrGet(
-                        uniqueName + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION,
-                        () -> this.manageIndexes(collection, indexes, textIndexFields),
-                        appCode,
-                        clientCode)
-                .map(e -> collection);
+            MongoClient client = this.getMongoClient(conn);
+
+            if (client == null)
+                throw msgService.nonReactiveMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+                        "url");
+
+            final MongoCollection<Document> collection = client
+                    .getDatabase(databaseName(clientCode, appCode, draft))
+                    .getCollection(uniqueName);
+
+            // The draft flag has to be part of this key too. Index provisioning runs
+            // once per (storage, app, client) and is memoised; without the flag the
+            // live namespace's run would satisfy the draft namespace's and the draft
+            // collection would never get its indexes.
+            return cacheService
+                    .cacheValueOrGet(
+                            uniqueName + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION,
+                            () -> this.manageIndexes(collection, indexes, textIndexFields),
+                            appCode,
+                            clientCode,
+                            draft ? IAppDataService.DRAFT_DB_SUFFIX : "")
+                    .map(e -> collection);
+        });
     }
 
     private Mono<MongoCollection<Document>> getVersionCollection(
             Connection conn, String appCode, String clientCode, String uniqueName) {
-        MongoClient client = this.getMongoClient(conn);
 
-        if (client == null)
-            throw msgService.nonReactiveMessage(
-                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                    CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                    "url");
+        return LogUtil.isDraft().map(draftFlag -> {
 
-        return Mono.just(client.getDatabase(clientCode + "_" + appCode).getCollection(uniqueName + "_version"));
+            MongoClient client = this.getMongoClient(conn);
+
+            if (client == null)
+                throw msgService.nonReactiveMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
+                        "url");
+
+            return client
+                    .getDatabase(databaseName(clientCode, appCode, Boolean.TRUE.equals(draftFlag)))
+                    .getCollection(uniqueName + "_version");
+        });
     }
 
     /**
@@ -799,13 +1005,35 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (client == null)
             return Mono.just(0L);
 
-        var db = client.getDatabase(clientCode + "_" + appCode);
+        // Counts BOTH surfaces. Draft rows are real rows in a real database and are
+        // billed like live ones.
+        //
+        // This is the one place in this class that must NOT consult LogUtil.isDraft().
+        // The meter runs from a scheduled job (CoreBillingMeteringService's 15-minute
+        // window and daily reconcile) with no inbound request, so the ambient flag is
+        // always false here. It has to name both databases explicitly. Do not
+        // "simplify" this into the draft-aware accessors.
+        return Flux.just(databaseName(clientCode, appCode, false), databaseName(clientCode, appCode, true))
+                .flatMap(dbName -> this.countRowsIn(client, dbName))
+                .reduce(0L, (a, b) -> a + b)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.estimatedRowCount"));
+    }
+
+    /**
+     * An absent database counts as zero rather than failing the metering window.
+     * Most apps never have a draft surface, so the draft database usually does not
+     * exist, and listCollectionNames on a missing database is the normal case here
+     * rather than an error worth propagating.
+     */
+    private Mono<Long> countRowsIn(MongoClient client, String dbName) {
+
+        var db = client.getDatabase(dbName);
         return Flux.from(db.listCollectionNames())
                 .filter(name -> name != null && !name.endsWith("_version") && !name.startsWith("system."))
                 .flatMap(name -> Mono.from(db.getCollection(name).estimatedDocumentCount())
                         .onErrorReturn(0L))
                 .reduce(0L, (a, b) -> a + b)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.estimatedRowCount"));
+                .onErrorReturn(0L);
     }
 
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {

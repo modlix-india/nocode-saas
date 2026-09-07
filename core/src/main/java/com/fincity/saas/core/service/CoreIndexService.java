@@ -1,14 +1,13 @@
 package com.fincity.saas.core.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.core.service.ActionService;
@@ -21,10 +20,9 @@ import com.fincity.saas.commons.core.service.NotificationService;
 import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.core.service.TemplateService;
 import com.fincity.saas.commons.core.service.WorkflowService;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.model.ListResultObject;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.StringUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -43,16 +41,20 @@ import reactor.core.publisher.Mono;
  * {@code UIIndexService} uses) for two reasons: zip tops out at eight sources
  * and there are ten here, and adding an eleventh object type should be one line
  * rather than a re-shuffle of tuple indices.
+ *
+ * <p>
+ * Every source reads through {@code readIndexLRO}, so the override chain is
+ * resolved to one row per name exactly as the per-type list routes do. Reading
+ * on {@code appCode} alone returns one row per client per name instead, which is
+ * how the same storage came to appear twice in a tree.
  */
 @Service
 public class CoreIndexService {
 
-    private static final Pageable LARGE_PAGE = PageRequest.of(0, 1000);
-
     /** One indexable object type: the key it appears under, and how to read it. */
     private record IndexSource(
             String key,
-            Function<AbstractCondition, Mono<? extends Page<? extends AbstractOverridableDTO<?>>>> reader) {
+            BiFunction<String, String, Mono<? extends Page<? extends ListResultObject<?>>>> reader) {
     }
 
     private final List<IndexSource> sources;
@@ -70,54 +72,70 @@ public class CoreIndexService {
             ActionService actionService) {
 
         this.sources = List.of(
-                new IndexSource("storages", c -> storageService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("schemas", c -> schemaService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("functions", c -> functionService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("templates", c -> templateService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("connections", c -> connectionService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("eventDefinitions", c -> eventDefinitionService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("eventActions", c -> eventActionService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("notifications", c -> notificationService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("workflows", c -> workflowService.readPageFilter(LARGE_PAGE, c)),
-                new IndexSource("actions", c -> actionService.readPageFilter(LARGE_PAGE, c)));
+                new IndexSource("storages", storageService::readIndexLRO),
+                new IndexSource("schemas", schemaService::readIndexLRO),
+                new IndexSource("functions", functionService::readIndexLRO),
+                new IndexSource("templates", templateService::readIndexLRO),
+                new IndexSource("connections", connectionService::readIndexLRO),
+                new IndexSource("eventDefinitions", eventDefinitionService::readIndexLRO),
+                new IndexSource("eventActions", eventActionService::readIndexLRO),
+                new IndexSource("notifications", notificationService::readIndexLRO),
+                new IndexSource("workflows", workflowService::readIndexLRO),
+                new IndexSource("actions", actionService::readIndexLRO));
     }
 
-    @SuppressWarnings("java:S1172") // clientCode reserved, mirroring UIIndexService
+    /**
+     * @param clientCode whose view of the app to index. Blank means the caller's
+     *                   own client; naming another one is a managed-client read
+     *                   and is refused unless the caller manages it.
+     */
     public Mono<Map<String, Object>> buildIndex(String appCode, String clientCode) {
-
-        FilterCondition appFilter = new FilterCondition()
-                .setField("appCode")
-                .setValue(appCode)
-                .setOperator(FilterConditionOperator.EQUALS);
 
         // Every type is read concurrently; the result map is rebuilt in declared
         // order afterwards so the response is stable regardless of who finishes
         // first (a caller rendering a tree should not see groups reorder).
         return Flux.fromIterable(this.sources)
-                .flatMap(source -> source.reader().apply(appFilter)
+                .flatMap(source -> source.reader().apply(appCode, clientCode)
                         .map(page -> Map.entry(source.key(), summarize(page)))
                         .defaultIfEmpty(Map.entry(source.key(), List.<Map<String, Object>>of())))
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
-                .map(collected -> {
-                    Map<String, Object> result = new LinkedHashMap<>();
-                    result.put("appCode", appCode);
-                    for (IndexSource source : this.sources)
-                        result.put(source.key(), collected.getOrDefault(source.key(), List.of()));
-                    return result;
-                });
+                .flatMap(collected -> this.resolvedClientCode(clientCode)
+                        .map(forClient -> {
+                            Map<String, Object> result = new LinkedHashMap<>();
+                            result.put("appCode", appCode);
+                            // Which client's view this is, resolved. A caller that
+                            // asked for the default has no other way to learn it.
+                            result.put("clientCode", forClient);
+                            for (IndexSource source : this.sources)
+                                result.put(source.key(), collected.getOrDefault(source.key(), List.of()));
+                            return result;
+                        }));
     }
 
-    private List<Map<String, Object>> summarize(Page<? extends AbstractOverridableDTO<?>> page) {
+    /** The client actually indexed: what was asked for, or the caller's own. */
+    private Mono<String> resolvedClientCode(String clientCode) {
+
+        if (!StringUtil.safeIsBlank(clientCode))
+            return Mono.just(clientCode);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .map(ca -> ca.getClientCode())
+                .defaultIfEmpty("");
+    }
+
+    private List<Map<String, Object>> summarize(Page<? extends ListResultObject<?>> page) {
         List<Map<String, Object>> items = new ArrayList<>();
-        for (AbstractOverridableDTO<?> entity : page.getContent()) {
-            Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("name", entity.getName());
+        for (ListResultObject<?> lro : page.getContent()) {
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("name", lro.getName());
             // The builder tree labels objects by title and falls back to name;
             // name is identity and is not editable, so the index must carry both.
-            summary.put("title", entity.getTitle());
-            summary.put("id", entity.getId());
-            summary.put("version", entity.getVersion());
-            summary.put("clientCode", entity.getClientCode());
+            summary.put("title", lro.getTitle());
+            summary.put("id", lro.getId());
+            summary.put("version", lro.getVersion());
+            // The winning document's client: the caller's own when it has an
+            // override, the app owner's otherwise.
+            summary.put("clientCode", lro.getClientCode());
             items.add(summary);
         }
         return items;

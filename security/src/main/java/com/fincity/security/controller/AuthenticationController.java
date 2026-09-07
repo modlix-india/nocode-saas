@@ -28,6 +28,7 @@ import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.TokenService;
 
 import reactor.core.publisher.Mono;
@@ -41,12 +42,14 @@ public class AuthenticationController {
     private final AuthenticationService service;
     private final ClientService clientService;
     private final TokenService tokenService;
+    private final ClientUrlService clientUrlService;
 
     public AuthenticationController(AuthenticationService service, ClientService clientService,
-            TokenService tokenService) {
+            TokenService tokenService, ClientUrlService clientUrlService) {
         this.service = service;
         this.clientService = clientService;
         this.tokenService = tokenService;
+        this.clientUrlService = clientUrlService;
     }
 
     @PostMapping("authenticate")
@@ -185,10 +188,15 @@ public class AuthenticationController {
             @RequestParam(name = "unusedDays", defaultValue = "90") int unusedDays) {
         return Mono.zip(
                 this.tokenService.cleanupExpiredTokens(),
-                this.tokenService.cleanupUnusedTokens(unusedDays))
+                this.tokenService.cleanupUnusedTokens(unusedDays),
+                // Draft-edit tokens ride the same job rather than getting a schedule of
+                // their own. Minting does not rotate, so a row accumulates every time
+                // somebody opens the page editor and nothing else removes them.
+                this.clientUrlService.cleanupExpiredDraftTokens())
                 .map(t -> ResponseEntity.ok(Map.of(
                         "expiredTokensRemoved", t.getT1(),
-                        "unusedTokensRemoved", t.getT2())));
+                        "unusedTokensRemoved", t.getT2(),
+                        "expiredDraftTokensRemoved", t.getT3())));
     }
 
 }

@@ -38,7 +38,6 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.function.Tuples;
 
 @Component
 public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertificateRecord, ULong, SSLCertificate> {
@@ -55,22 +54,27 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 	@Override
 	public Mono<SSLCertificate> create(SSLCertificate pojo) {
 
-		return super.create(pojo).subscribeOn(Schedulers.boundedElastic()).flatMap(e -> {
-
-			Mono.just(Tuples.of(e.getId(), e.getUrlId())).delayElement(Duration.ofSeconds(10))
-					.flatMap(tuple -> this.makeRestOfNotCurrent(tuple.getT1(), tuple.getT2()))
-					.subscribeOn(Schedulers.boundedElastic())
-					.onErrorResume((err) -> {
-						logger.error("Error while updating rest of the not current certificates for url id {}",
-								pojo.getUrlId(), err);
-						return Mono.empty();
-					}).subscribe(value -> {
-						logger.info("Updated rest of the not current certificates for url id {} with status : {}",
-								pojo.getUrlId(), value);
-					});
-
-			return Mono.just(e);
-		});
+		// This used to be detached and delayed by ten seconds, to escape the
+		// insert's locks: `create` in the base DAO ran inside a
+		// `TransactionalOperator` then, so a second transaction on another
+		// connection blocked on the rows it still held. It is plain auto-commit
+		// now and the insert has committed before this Mono emits, so the
+		// update is awaited instead -- a caller that re-reads the list the
+		// moment this returns was seeing two certificates both marked current
+		// for those ten seconds, and so was the cache the nginx feed reads.
+		return super.create(pojo).subscribeOn(Schedulers.boundedElastic())
+				.flatMap(e -> this.makeRestOfNotCurrent(e.getId(), e.getUrlId())
+						.doOnNext(value -> logger.info(
+								"Updated rest of the not current certificates for url id {} with status : {}",
+								e.getUrlId(), value))
+						// An issued certificate must not be lost because the
+						// bookkeeping on its predecessors failed.
+						.onErrorResume(err -> {
+							logger.error("Error while updating rest of the not current certificates for url id {}",
+									e.getUrlId(), err);
+							return Mono.empty();
+						})
+						.thenReturn(e));
 	}
 
 	private Mono<Boolean> makeRestOfNotCurrent(ULong certId, ULong urlId) {

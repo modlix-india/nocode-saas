@@ -54,6 +54,13 @@ public class StyleService extends AbstractUIOverridableDataService<Style, StyleR
                 .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_STYLE + "-" + style.getAppCode()));
     }
 
+    /** The style OUI cache serves both surfaces, so a draft save has to clear it too. */
+    @Override
+    protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
+        return super.evictDraft(appCode, clientCode, name)
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_STYLE + "-" + appCode));
+    }
+
     @Override
     public Mono<Boolean> delete(String id) {
         return FlatMapUtil.flatMapMono(

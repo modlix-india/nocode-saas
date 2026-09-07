@@ -14,6 +14,12 @@ import reactor.util.context.Context;
 
 @Service
 public class ActionService extends AbstractOverridableDataService<Action, ActionRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected ActionService() {
         super(Action.class);

@@ -1,8 +1,10 @@
 package com.fincity.security.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -14,6 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -129,17 +134,41 @@ class ClientUrlControllerTest {
             url2.setUrlPattern("https://app2.example.com");
             url2.setAppCode("testapp");
 
-            when(clientUrlService.getClientUrls(eq("testapp"), eq("clientA")))
-                    .thenReturn(Mono.just(List.of(url1, url2)));
+            // The route answers a Page now, so the rows are under `content` and
+            // the caller gets a count it can page against.
+            when(clientUrlService.getClientUrls(eq("testapp"), eq("clientA"), isNull(), isNull(),
+                    any(Pageable.class)))
+                    .thenReturn(Mono.just(new PageImpl<>(List.of(url1, url2), PageRequest.of(0, 20), 2)));
 
             webTestClient.get()
                     .uri(BASE_PATH + "/urls?appCode=testapp&clientCode=clientA")
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody()
-                    .jsonPath("$[0].urlPattern").isEqualTo("https://app.example.com")
-                    .jsonPath("$[0].appCode").isEqualTo("testapp")
-                    .jsonPath("$[1].urlPattern").isEqualTo("https://app2.example.com");
+                    .jsonPath("$.content[0].urlPattern").isEqualTo("https://app.example.com")
+                    .jsonPath("$.content[0].appCode").isEqualTo("testapp")
+                    .jsonPath("$.content[1].urlPattern").isEqualTo("https://app2.example.com")
+                    .jsonPath("$.totalElements").isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("GET /urls - passes the substring filters and the page through")
+        void getClientUrl_passesFiltersAndPage() {
+            when(clientUrlService.getClientUrls(eq("testapp"), isNull(), eq("dev.modlix"), eq("Acme"),
+                    any(Pageable.class)))
+                    .thenReturn(Mono.just(new PageImpl<>(List.of(createTestClientUrl()),
+                            PageRequest.of(2, 5), 40)));
+
+            webTestClient.get()
+                    .uri(BASE_PATH + "/urls?appCode=testapp&urlPattern=dev.modlix&clientName=Acme&page=2&size=5")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.totalElements").isEqualTo(40)
+                    .jsonPath("$.totalPages").isEqualTo(8);
+
+            verify(clientUrlService).getClientUrls(eq("testapp"), isNull(), eq("dev.modlix"), eq("Acme"),
+                    argThat(p -> p.getPageNumber() == 2 && p.getPageSize() == 5));
         }
     }
 

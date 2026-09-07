@@ -14,6 +14,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.Select;
 import org.jooq.Record2;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
@@ -48,6 +49,7 @@ import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_AC
 import static com.fincity.security.jooq.tables.SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
@@ -610,10 +612,93 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
     }
 
+    /**
+     * The clients that can serve this app: everyone with an access row, plus the
+     * app's OWNING client, which has no access row of its own.
+     *
+     * Was an `UnsupportedOperationException` stub, so
+     * `GET /api/security/applications/clients/{appCode}` answered 500 for every
+     * app and every caller since it was added. Implemented for the workspace's
+     * URLs & SSL client picker, which needs exactly this list.
+     *
+     * The owner is unioned in rather than left out. Without it an app whose
+     * access type is EXPLICIT lists nobody at all, because access is granted per
+     * client and the owner is implicit; the picker would then be unable to offer
+     * the very client that owns the app. `onlyWriteAccess` keeps the owner in
+     * either way -- owning an app is the strongest write access there is.
+     *
+     * @param onlyWriteAccess restrict the access rows to EDIT_ACCESS
+     *                        (the column is EDIT_ACCESS, not WRITE_ACCESS)
+     * @param name            optional substring match on client name or code
+     * @param clientId        the caller's client, or null for a SYSTEM caller,
+     *                        which restricts the result to the hierarchy that
+     *                        client manages
+     */
     public Mono<Page<Client>> getAppClients(String appCode, boolean onlyWriteAccess, String name, ULong clientId,
             Pageable pageable) {
 
-        throw new UnsupportedOperationException("Unimplemented method 'getAppClients'");
+        Condition accessRows = DSL.and(SECURITY_APP.APP_CODE.eq(appCode),
+                onlyWriteAccess ? SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1)) : DSL.noCondition());
+
+        Select<Record1<ULong>> viaAccess = this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID)
+                .from(SECURITY_APP_ACCESS)
+                .join(SECURITY_APP).on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID))
+                .where(accessRows);
+
+        Select<Record1<ULong>> viaOwner = this.dslContext.select(SECURITY_APP.CLIENT_ID)
+                .from(SECURITY_APP)
+                .where(SECURITY_APP.APP_CODE.eq(appCode));
+
+        // UNION, not UNION ALL: an owner that also holds an access row would
+        // otherwise be offered twice.
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(SECURITY_CLIENT.ID.in(viaAccess.union(viaOwner)));
+
+        if (!StringUtil.safeIsBlank(name)) {
+            String like = "%" + name.trim() + "%";
+            conditions.add(SECURITY_CLIENT.NAME.likeIgnoreCase(like)
+                    .or(SECURITY_CLIENT.CODE.likeIgnoreCase(like)));
+        }
+
+        // A SYSTEM caller passes null and sees every client; anyone else sees only
+        // what their own client manages, which is the same rule ClientDAO.filter
+        // applies to a plain client listing.
+        if (clientId != null)
+            conditions.add(SECURITY_CLIENT.ID.in(this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                    .from(SECURITY_CLIENT_HIERARCHY)
+                    .where(ClientHierarchyDAO.getManageClientCondition(clientId))));
+
+        Condition condition = DSL.and(conditions);
+
+        List<SortField<?>> orderBy = new ArrayList<>();
+        pageable.getSort()
+                .forEach(order -> {
+                    Field<?> field = SECURITY_CLIENT.field(
+                            order.getProperty().replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase());
+                    if (field != null)
+                        orderBy.add(field.sort(
+                                order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
+                });
+        if (orderBy.isEmpty())
+            orderBy.add(SECURITY_CLIENT.NAME.sort(SortOrder.ASC));
+
+        Mono<Integer> recordsCount = Mono
+                .from(this.dslContext.selectCount().from(SECURITY_CLIENT).where(condition))
+                .map(Record1::value1);
+
+        Mono<List<Client>> recordsList = Flux
+                .from(this.dslContext.selectFrom(SECURITY_CLIENT)
+                        .where(condition)
+                        .orderBy(orderBy)
+                        .limit(pageable.getPageSize())
+                        .offset(pageable.getOffset()))
+                .map(e -> e.into(Client.class))
+                .collectList();
+
+        return recordsList
+                .flatMap(list -> recordsCount
+                        .map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getAppClients"));
     }
 
     public Mono<Boolean> noOneHasWriteAccessExcept(String appCode, String clientCode) {

@@ -58,7 +58,7 @@ public class BridgeSessionInternalController {
      * empty 400 and nothing anywhere said which field was missing. Hence the message below.
      */
     @PostMapping
-    public Mono<ResponseEntity<BridgeSessionSnapshot>> create(
+    public Mono<ResponseEntity<Object>> create(
             @RequestParam("appCode") String appCode,
             @RequestParam("clientCode") String clientCode,
             @RequestBody Map<String, Object> request) {
@@ -78,15 +78,21 @@ public class BridgeSessionInternalController {
                         phone.toString(),
                         productId == null ? null : ULong.valueOf(productId.toString()),
                         ownerService == null ? null : ownerService.toString())
-                .map(ResponseEntity::ok)
+                .<ResponseEntity<Object>>map(ResponseEntity::ok)
                 // CONFLICT rather than a 500, because this is a normal thing to do: click Link
-                // twice, or link again after abandoning a pairing attempt. The reason travels in a
-                // header so the caller can say something specific without this endpoint growing an
-                // error body shape it does not otherwise have.
+                // twice, or link again after abandoning a pairing attempt.
+                //
+                // The body is what makes the status survive the hop, and it is not decoration. The
+                // shared ControllerAdvice re-raises a FeignException with its original status only
+                // when the response body is JSON carrying a "message" field; with anything else it
+                // falls through to the unknown-error handler and entity-processor answers 500. So
+                // this endpoint answered 409 while the page saw 500 and showed its catch-all
+                // sentence, which never mentioned the one useful thing: unlink it first. The header
+                // stays for anything reading the hop directly, but nothing may depend on it alone.
                 .onErrorResume(BridgeNumberAlreadyLinkedException.class, e -> Mono.just(ResponseEntity.status(
                                 HttpStatus.CONFLICT)
                         .header("X-Reason", "already-linked")
-                        .build()));
+                        .body(Map.of("message", e.getMessage(), "phone", e.getPhone(), "state", e.getState() == null ? "" : e.getState()))));
     }
 
     /** Every session the tenant has, for the integration page's list. */

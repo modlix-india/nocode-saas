@@ -284,6 +284,34 @@ public class WhatsappMessageDAO
     }
 
     /** Looks a message up by Meta's id, which every write path keys on. */
+    /**
+     * When the newest message we already hold on this number was sent.
+     *
+     * <p>The high-water mark a backfill is measured against. WhatsApp hands a newly linked device
+     * the recent history of every conversation on the handset, which is far more than the gap the
+     * unlink actually left, so the only messages worth importing are the ones dated after the last
+     * one we have.
+     *
+     * <p>Empty means we hold nothing for this number, and that is the first-link case: there is no
+     * gap to close, so there is nothing to import. Answering empty rather than a zero date is what
+     * lets the caller tell "nothing yet" from "nothing newer".
+     *
+     * <p>Keyed on the business number rather than per conversation, because the boundary being
+     * recovered is when the number stopped receiving, and that is one instant across every
+     * conversation on it.
+     */
+    public Mono<LocalDateTime> newestSentTime(String appCode, String clientCode, String whatsappPhoneNumber) {
+
+        if (whatsappPhoneNumber == null || whatsappPhoneNumber.isBlank()) return Mono.empty();
+
+        return Mono.from(this.dslContext
+                        .select(DSL.max(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.SENT_TIME))
+                        .from(this.table)
+                        .where(tenant(appCode, clientCode))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.WHATSAPP_PHONE_NUMBER.eq(whatsappPhoneNumber)))
+                .mapNotNull(Record1::value1);
+    }
+
     public Mono<WhatsappMessage> readByMessageId(String appCode, String clientCode, String messageId) {
 
         if (messageId == null || messageId.isBlank()) return Mono.empty();

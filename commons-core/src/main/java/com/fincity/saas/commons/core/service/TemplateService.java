@@ -14,6 +14,12 @@ import reactor.util.context.Context;
 
 @Service
 public class TemplateService extends AbstractOverridableDataService<Template, TemplateRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected TemplateService() {
         super(Template.class);

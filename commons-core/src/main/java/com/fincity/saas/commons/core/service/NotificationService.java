@@ -29,6 +29,12 @@ import reactor.util.context.Context;
 
 @Service
 public class NotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     public static final String USER_ID = "User Id";
     public static final String CLIENT_ID = "Client Id";
@@ -157,6 +163,11 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                             .setConnectionName(connectionName)
                             .setPayload(payload))
                             .flatMap(q -> Mono.deferContextual(cv -> {
+                                // Captured here, while the raising request's context
+                                // still exists. The consumer has none to read from.
+                                q.setDraft(Boolean.TRUE
+                                        .equals(cv.getOrDefault(LogUtil.DRAFT_KEY, Boolean.FALSE)));
+
                                 if (!cv.hasKey(LogUtil.DEBUG_KEY))
                                     return Mono.just(q);
                                 q.setXDebug(cv.get(LogUtil.DEBUG_KEY)

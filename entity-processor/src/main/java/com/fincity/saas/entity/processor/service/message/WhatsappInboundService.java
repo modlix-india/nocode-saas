@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +43,9 @@ import reactor.util.context.Context;
  */
 @Service
 public class WhatsappInboundService {
+
+    /** The single key inside BODY_REVISIONS. Named once so the writer and every reader agree. */
+    private static final String REVISIONS_KEY = "revisions";
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsappInboundService.class);
 
@@ -98,6 +103,39 @@ public class WhatsappInboundService {
                     .flatMap(message -> this.announce(appCode, clientCode, request, message))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptMedia"));
 
+        // A rewrite of a message that already arrived. A patch like media, never an insert: it
+        // carries the original's id and the new wording only, so falling through would file the
+        // edit as a second bubble and leave the first one saying the old thing - which is exactly
+        // what happened before this existed. Empty when the original is unknown, which means the
+        // edit overtook the message it corrects; the bridge redelivers.
+        if (request.isMessageEdit())
+            return this.dao
+                    .readByMessageId(appCode, clientCode, request.getMetaMessageId())
+                    .flatMap(existing -> this.applyEdit(existing, request))
+                    .flatMap(message -> this.announce(appCode, clientCode, request, message))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptEdit"));
+
+        // Recovered history is scoped to the gap, not to whatever WhatsApp feels like handing over.
+        //
+        // A newly linked device is offered the recent history of every conversation on the handset,
+        // which on a personal number is that person's unrelated chats - confirmed on local, where one
+        // relink imported 40 messages across 8 deals, most of them bodyless. The only messages worth
+        // importing are the ones dated after the last one we already hold on this number, because
+        // that instant is exactly when the number stopped receiving.
+        //
+        // First link imports nothing, and that is right rather than a limitation: with no earlier
+        // message there is no gap to close, so every candidate is history that predates us caring.
+        if (Boolean.TRUE.equals(request.getBackfilled()))
+            return this.dao
+                    .newestSentTime(appCode, clientCode, request.getWhatsappPhoneNumber())
+                    .filter(watermark -> isAfter(occurredAt(request), watermark))
+                    .flatMap(watermark -> this.dao
+                            .readByMessageId(appCode, clientCode, request.getMetaMessageId())
+                            .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
+                            .switchIfEmpty(Mono.defer(() -> this.insert(appCode, clientCode, request)))
+                            .flatMap(message -> this.announce(appCode, clientCode, request, message)))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappInboundService.acceptBackfill"));
+
         return this.dao
                 .readByMessageId(appCode, clientCode, request.getMetaMessageId())
                 .flatMap(existing -> this.merge(appCode, clientCode, existing, request))
@@ -133,7 +171,7 @@ public class WhatsappInboundService {
         if (message.getTicketId() == null) return Mono.just(message);
 
         // A patch completes a bubble that has already been announced, rather than adding one.
-        boolean patch = request.isStatusUpdate() || request.isMediaReady();
+        boolean patch = request.isStatusUpdate() || request.isMediaReady() || request.isMessageEdit();
 
         // Only a message from the customer is worth interrupting somebody for.
         //
@@ -524,20 +562,108 @@ public class WhatsappInboundService {
                 .toList();
     }
 
+    /**
+     * Whether a recovered message is newer than the last one already held.
+     *
+     * <p>Strictly after, so a redelivery of the boundary message itself is not re-imported. An
+     * undated candidate is treated as not newer: without a time there is no way to place it in the
+     * gap, and importing it would put a message of unknown age into the middle of a conversation.
+     */
+    private static boolean isAfter(LocalDateTime candidate, LocalDateTime watermark) {
+        return candidate != null && watermark != null && candidate.isAfter(watermark);
+    }
+
     private void applyStatusTimes(WhatsappMessage message, WhatsappMessageStatus status, LocalDateTime at) {
-        if (status == null) return;
-        switch (status) {
-            case SENT -> message.setSentTime(at);
-            case DELIVERED -> message.setDeliveredTime(at);
-            case READ -> message.setReadTime(at);
-            case FAILED -> message.setFailedTime(at);
-            case DELETED -> {
-                /* no dedicated timestamp column */
+
+        // The status-less case falls through to the SENT_TIME fallback below rather than returning.
+        // It used to return here, which made that fallback unreachable for exactly the messages that
+        // need it most: an inbound message and a backfilled one carry no delivery status, so they
+        // were stored with no time at all and sorted to the bottom of the thread. It also left the
+        // backfill high-water mark with nothing to measure against.
+        if (status != null) {
+            switch (status) {
+                case SENT -> message.setSentTime(at);
+                case DELIVERED -> message.setDeliveredTime(at);
+                case READ -> message.setReadTime(at);
+                case FAILED -> message.setFailedTime(at);
+                case DELETED -> {
+                    /* no dedicated timestamp column */
+                }
             }
         }
+
         // Ordering falls back to SENT_TIME, so a message whose first event was a later status still
         // needs one or it sorts to the bottom of the thread.
         if (message.getSentTime() == null) message.setSentTime(at);
+    }
+
+    /**
+     * Rewrites a message's wording, keeping everything it used to say.
+     *
+     * <p>Touches the body, the revision trail and the edited timestamp, and nothing else. The
+     * message's ticket, direction, type and delivery status were settled when it arrived and are not
+     * what an edit changes - a read receipt can easily overtake an edit, so carrying any of them
+     * here would drag them backwards.
+     *
+     * <p><b>Idempotent, which is required rather than tidy.</b> Every handoff in this chain is safe
+     * to redeliver, and an outbox replay of the same edit must not append the same wording to the
+     * trail twice. Comparing against the current body is what makes a repeat a no-op, and it also
+     * absorbs the case where WhatsApp reports an edit that changed nothing.
+     */
+    private Mono<WhatsappMessage> applyEdit(WhatsappMessage message, WhatsappInboundRequest request) {
+
+        String newBody = request.getBodyText();
+
+        // Never blank a real bubble. The bridge already drops an edit it could not decode, so this
+        // is the second guard on the same thing: an edit into nothing is a deletion, and a deletion
+        // arrives as a DELETED status instead.
+        if (StringUtil.safeIsBlank(newBody)) return Mono.just(message);
+
+        String currentBody = message.getBodyText();
+        if (newBody.equals(currentBody)) return Mono.just(message);
+
+        LocalDateTime editedAt = request.getOccurredAt() != null
+                ? request.getOccurredAt()
+                : LocalDateTime.now(ZoneOffset.UTC);
+
+        message.setBodyRevisions(appendRevision(message.getBodyRevisions(), currentBody, editedAt));
+        message.setBodyText(newBody);
+        message.setEditedAt(editedAt);
+
+        return this.dao.update(message);
+    }
+
+    /**
+     * Pushes the wording being replaced onto the end of the trail.
+     *
+     * <p>Rebuilt rather than mutated in place: the map came out of a JSON column and may be
+     * immutable or shared, and appending to it directly is the kind of thing that works until the
+     * converter changes.
+     *
+     * <p>A null previous wording is still recorded. A message that arrived with no body and was
+     * then edited into having one is unusual but real - a caption added to a photo after the fact -
+     * and dropping the empty first entry would make the trail claim the caption was the original.
+     */
+    private static Map<String, Object> appendRevision(
+            Map<String, Object> existing, String replacedBody, LocalDateTime replacedAt) {
+
+        List<Object> revisions = new ArrayList<>();
+
+        if (existing != null && existing.get(REVISIONS_KEY) instanceof List<?> prior) revisions.addAll(prior);
+
+        Map<String, Object> entry = new LinkedHashMap<>();
+        // 1-based, so version 1 is always what the sender originally wrote. Stored rather than left
+        // to the reader's position in the list because the thread renders these through a nested
+        // repeater, which has no index to test - and a label computed from data beats one computed
+        // from where a row happens to sit.
+        entry.put("version", revisions.size() + 1);
+        entry.put("text", replacedBody);
+        entry.put("replacedAt", replacedAt.toString());
+        revisions.add(entry);
+
+        Map<String, Object> updated = new LinkedHashMap<>();
+        updated.put(REVISIONS_KEY, revisions);
+        return updated;
     }
 
     /**

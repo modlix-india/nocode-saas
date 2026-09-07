@@ -50,7 +50,20 @@ public enum DispatchEventType {
      * retention must not reach it. An expired photo in a thread is honest history; a deal that
      * silently loses its avatar after thirty days is a bug.
      */
-    PROFILE_PICTURE(DispatchChannel.WHATSAPP);
+    PROFILE_PICTURE(DispatchChannel.WHATSAPP),
+
+    /**
+     * A rewrite of a message that already arrived, carrying its id and the new wording.
+     *
+     * <p>Its own kind rather than a {@code MESSAGE_STATUS} carrying a body, which is the opposite of
+     * how deletion is modelled and for the opposite reason. A deletion says only that the message is
+     * gone, so it fits in the status field and must leave the body alone; an edit exists to change
+     * the body, and a status handoff is defined not to touch it.
+     *
+     * <p>Applied idempotently by the consumer: the same wording arriving twice must not record the
+     * same revision twice, which is what makes this safe to redeliver like everything else here.
+     */
+    MESSAGE_EDIT(DispatchChannel.WHATSAPP);
 
     private final DispatchChannel channel;
 

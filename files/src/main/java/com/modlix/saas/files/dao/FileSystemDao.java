@@ -34,6 +34,7 @@ import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
 import static com.modlix.saas.files.jooq.tables.FilesFileSystem.FILES_FILE_SYSTEM;
 
 import com.modlix.saas.files.jooq.tables.records.FilesFileSystemRecord;
+import com.modlix.saas.files.util.FileNameUtil;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.FilesPage;
 
@@ -348,6 +349,8 @@ public class FileSystemDao {
             name = path.substring(index + 1);
         }
 
+        FileNameUtil.validate(name);
+
         var parentId = this.getFolderId(fileSystemType, clientCode, parentPath);
         var updatedCreated = false;
 
@@ -420,6 +423,8 @@ public class FileSystemDao {
         String parentPath = lastIndex == -1 ? null : resourcePath.substring(0, lastIndex);
         String name = lastIndex == -1 ? resourcePath : resourcePath.substring(lastIndex + 1);
 
+        FileNameUtil.validate(name);
+
         var parentId = parentPath == null ? Optional.<ULong>empty()
                 : this.getFolderId(fileSystemType, clientCode, parentPath);
 
@@ -467,6 +472,7 @@ public class FileSystemDao {
                 }
 
                 sb.append(part);
+                FileNameUtil.validate(part);
                 if (!nodeMap.containsKey(sb.toString())) {
                     nodeMap.put(sb.toString(),
                             new Node(null, part, sb.toString(), parentNode));

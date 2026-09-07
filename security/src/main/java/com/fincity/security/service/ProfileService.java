@@ -53,7 +53,7 @@ public class ProfileService
 
     private static final String PROFILE = "Profile";
 
-    private static final String CACHE_AUTHORITIES_BY_ID = "profileAuthsById";
+    public static final String CACHE_AUTHORITIES_BY_ID = "profileAuthsById";
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
@@ -477,6 +477,28 @@ public class ProfileService
             return Mono.just(false);
 
         return this.dao.checkIfUserHasAnyProfile(userId, appCode);
+    }
+
+    /**
+     * Whether this user has a profile ASSIGNED to them in this app, as opposed to merely
+     * falling through to the app's default profile.
+     * <p>
+     * {@link #checkIfUserHasAnyProfile} answers a different question and must not be used for
+     * this one: when the user has nothing assigned it falls back to "does this app declare a
+     * default profile", so once an app has one it answers true for everybody. That is right for
+     * "may this user be let in at all" and wrong for "does this user have a real role" -- and
+     * the access-request flow needs the second. An app whose default profile exists precisely
+     * to mark "no access yet" would otherwise refuse every request with
+     * USER_ALREADY_HAVING_APP_ACCESS.
+     */
+    public Mono<Boolean> hasAssignedProfile(ULong userId, String appCode) {
+
+        if (userId == null || StringUtil.safeIsBlank(appCode))
+            return Mono.just(false);
+
+        return this.appService.getAppByCode(appCode)
+                .flatMap(app -> this.dao.getAssignedProfileIds(userId, app.getId()).hasElements())
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {

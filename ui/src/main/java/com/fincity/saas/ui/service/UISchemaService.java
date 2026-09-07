@@ -11,6 +11,12 @@ import com.google.gson.Gson;
 @Service
 public class UISchemaService extends AbstractSchemaService<UISchema, UISchemaDocumentRepository> {
 
+    /** Draft and publish are supported for this object. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 	protected UISchemaService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
 		super(UISchema.class, feignAuthenticationService, gson);
 	}

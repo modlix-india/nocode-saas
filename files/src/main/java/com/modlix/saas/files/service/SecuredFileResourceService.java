@@ -173,6 +173,18 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         return this.secureAccessPathUri + accessKey;
     }
 
+    /**
+     * Mint a time-limited access key for an explicit, client-code-prefixed path
+     * ({@code CLIENT/folder/app/file.pdf}) with NO read-access check. Internal/trusted
+     * only (reached solely through {@code /api/files/internal/**}, which nginx blocks
+     * publicly): the CALLER is responsible for authorizing access before calling. Billing
+     * uses this to hand a buyer/seller a download link for an invoice/receipt PDF once the
+     * invoice party-guard has run in the security service.
+     */
+    public String createSecuredAccessInternal(String path) {
+        return this.secureAccessPathUri + this.createAccessKey(null, null, null, path);
+    }
+
     public void downloadFileByKey(String key, DownloadOptions downloadOptions, HttpServletRequest request,
             HttpServletResponse response) {
 

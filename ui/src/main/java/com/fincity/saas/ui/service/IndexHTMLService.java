@@ -54,15 +54,34 @@ public class IndexHTMLService {
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
+    /**
+     * Where the visitor's selected theme lives. One cookie per app, because a
+     * single host can serve several apps under /appCode/clientCode/page, and they
+     * do not share a theme.
+     *
+     * The client half of this contract is `themeSelection.ts` in the ui client;
+     * the two must agree on the name or the first paint silently falls back to
+     * the app's default theme.
+     */
+    public static final String THEME_COOKIE_PREFIX = "mlxTheme_";
+
+    private static final String APP_STYLE_LINK_ID = "mlxAppStyle";
+
     private static final String KEY_ENABLED = "enabled";
+
+    private static final String LOCAL_ENV = "local";
 
     private static final Map<String, Integer> CODE_PART_PLACES = Map.of("AFTER_HEAD", 0, "BEFORE_HEAD", 1, "AFTER_BODY",
             2, "BEFORE_BODY", 3);
 
     private static final Map<String, String> ICON_PACK = Map.ofEntries(
 
+            // Keep in step with ICON_PACKS in nocode-ui's App.tsx and with
+            // FONT_AWESOME_VERSION in nocode-ui-icon-packs: the pack lists the
+            // classes this stylesheet defines, and a class the loaded stylesheet
+            // does not define renders nothing at all.
             Map.entry("FREE_FONT_AWESOME_ALL",
-                    "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_SYMBOLS_OUTLINED",
                     "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
@@ -74,19 +93,19 @@ public class IndexHTMLService {
                     "<link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_SYMBOLS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_FILLED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_OUTLINED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Outlined\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_ROUNDED",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Round\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_SHARP",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Sharp\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />"),
 
             Map.entry("MATERIAL_ICONS_TWO_TONE",
-                    "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
+                    "<link href=\"https://fonts.googleapis.com/css2?family=Material+Icons+Two+Tone\" rel=\"stylesheet\" /><link href=\"https://cdn.jsdelivr.net/gh/fincity-india/nocode-ui-icon-packs@master/dist/fonts/MATERIAL_ICONS/font.css\" rel=\"stylesheet\" />")
 
     );
 
@@ -274,21 +293,29 @@ public class IndexHTMLService {
 
     public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
-        String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
+        return LogUtil.isDraft().flatMap(draftFlag -> {
 
-        return cacheService.<ObjectWithUniqueID<String>>cacheValueOrGet(cacheName,
+            boolean draft = Boolean.TRUE.equals(draftFlag);
 
-                () -> FlatMapUtil
-                        .flatMapMonoWithNull(
+            String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 
-                                () -> appService.read(appCode, appCode, clientCode),
+            // The HTML shell differs between surfaces: it carries the marker the
+            // client reads, and it inlines the SSR bootstrap. Sharing a cache entry
+            // would serve one surface's shell for the other.
+            return cacheService.<ObjectWithUniqueID<String>>cacheValueOrGet(cacheName,
 
-                                app -> this.indexFromApp(app == null ? null : new Application(app.getObject()), appCode,
-                                        clientCode))
-                        .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                "IndexHTMLService.getIndexHTML (without HTML cache)")),
+                    () -> FlatMapUtil
+                            .flatMapMonoWithNull(
 
-                clientCode);
+                                    () -> appService.read(appCode, appCode, clientCode),
+
+                                    app -> this.indexFromApp(app == null ? null : new Application(app.getObject()),
+                                            appCode, clientCode))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                                    "IndexHTMLService.getIndexHTML (without HTML cache)")),
+
+                    clientCode, draft ? "-draft" : "");
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -325,15 +352,28 @@ public class IndexHTMLService {
         return stringCps;
     }
 
-    @SuppressWarnings("unchecked")
     private Mono<ObjectWithUniqueID<String>> indexFromApp(Application app, String appCode,
             String clientCode) {
+
+        return LogUtil.isDraft()
+                .map(draftFlag -> this.indexHtml(app, appCode, clientCode, Boolean.TRUE.equals(draftFlag)))
+                .flatMap(html -> html);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<ObjectWithUniqueID<String>> indexHtml(Application app, String appCode, // NOSONAR
+            String clientCode, boolean draft) {
 
         Map<String, Object> appProps = app == null ? Map.of() : app.getProperties();
 
         List<String> codeParts = processCodeParts((Map<String, Object>) appProps.get("codeParts"));
 
-        StringBuilder str = new StringBuilder("<!DOCTYPE html><html lang=\"en\"><head>");
+        // The client reads this to know which surface it is on. It comes from the
+        // server rather than from the URL, because the gateway is the only thing
+        // that decides, and a value the page could set itself would be misleading.
+        StringBuilder str = new StringBuilder("<!DOCTYPE html><html lang=\"en\"")
+                .append(draft ? " data-draft=\"true\"" : "")
+                .append("><head>");
         str.append(codeParts.getFirst());
         str.append(
                 "<meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /><title>");
@@ -366,12 +406,32 @@ public class IndexHTMLService {
         str.append("</div>");
 
         // Here the preference will be for the style from the style service.
-        str.append("<link rel=\"stylesheet\" href=\"/")
+        //
+        // The link is emitted with no href and filled in by the script below,
+        // because the URL depends on the visitor's selected theme and this whole
+        // document is cached per app and client. An href-less link starts no
+        // request, so setting it a few bytes later costs nothing and keeps the
+        // cached HTML free of any per-user dimension.
+        //
+        // The cookie read is synchronous and happens before the stylesheet is
+        // requested, which is the entire reason a returning visitor's first paint
+        // is already their theme rather than the default.
+        str.append("<link rel=\"stylesheet\" id=\"")
+                .append(APP_STYLE_LINK_ID)
+                .append("\" />");
+        str.append("<script>");
+        str.append("window.__mlxAppCode='").append(appCode).append("';");
+        str.append("(function(){var m=document.cookie.match(/(?:^|;\\s*)")
+                .append(THEME_COOKIE_PREFIX)
+                .append(appCode)
+                .append("=([^;]*)/);")
+                .append("document.getElementById('")
+                .append(APP_STYLE_LINK_ID)
+                .append("').setAttribute('href','/")
                 .append(appCode)
                 .append("/")
                 .append(clientCode)
-                .append("/page/api/ui/style\" />");
-        str.append("<script>");
+                .append("/page/api/ui/style'+(m?'?theme='+m[1]:''));})();");
 
         if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
             str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");
@@ -524,15 +584,24 @@ public class IndexHTMLService {
      *   ""        -> "authzump.ai"
      *   ".dev"    -> "dev.authzump.ai"
      *   ".stage"  -> "stage.authzump.ai"
-     *   ".local"  -> "local.authzump.ai"
+     *   ".local"  -> "authzump.local.modlix.com"
+     * <p>
+     * Local is deliberately not "local.authzump.ai". Local hosts are
+     * {@code <app>.local.modlix.com} (dnsmasq wildcards that suffix to 127.0.0.1 on a
+     * developer machine); the .ai names belong to the deployed environments only.
+     * "local.authzump.ai" does resolve, to prod-lb, where it is a stray vhost carrying
+     * appCode "nothing" -- so pointing the beacon there silently broke all local SSO.
      */
-    private static String deriveBeaconHost(String appCodeSuffix) {
+    // Package-private so BeaconHostTest can pin the per-environment mapping.
+    static String deriveBeaconHost(String appCodeSuffix) {
         if (StringUtil.safeIsBlank(appCodeSuffix))
             return "authzump.ai";
         String trimmed = appCodeSuffix.startsWith(".") ? appCodeSuffix.substring(1) : appCodeSuffix;
         int dotIdx = trimmed.indexOf('.');
         String env = dotIdx >= 0 ? trimmed.substring(0, dotIdx) : trimmed;
-        return StringUtil.safeIsBlank(env) ? "authzump.ai" : env + ".authzump.ai";
+        if (StringUtil.safeIsBlank(env))
+            return "authzump.ai";
+        return LOCAL_ENV.equals(env) ? "authzump." + env + ".modlix.com" : env + ".authzump.ai";
     }
 
     @SuppressWarnings("unchecked")

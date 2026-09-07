@@ -100,7 +100,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
     private static final String USER_CREATED_PREFIX = "User created: ";
 
-    private static final String CACHE_NAME_USER_ROLE = "userRoles";
+    public static final String CACHE_NAME_USER_ROLE = "userRoles";
     private static final String CACHE_NAME_USER = "user";
 
     private static final int VALIDITY_MINUTES = 30;

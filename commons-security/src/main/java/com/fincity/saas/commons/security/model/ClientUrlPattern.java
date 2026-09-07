@@ -26,6 +26,19 @@ public class ClientUrlPattern implements Serializable{
 	private final String urlPattern;
 	private final String appCode;
 
+	/**
+	 * "LIVE" or "DRAFT". Not final and defaulted, so every existing construction
+	 * site keeps compiling and keeps meaning LIVE. A DRAFT hostname is the only
+	 * thing that causes the gateway to mark a request as being on the draft
+	 * surface.
+	 */
+	private String urlType = "LIVE";
+
+	@JsonIgnore
+	public boolean isDraft() {
+		return "DRAFT".equalsIgnoreCase(this.urlType);
+	}
+
 	private Tuple3<Protocol, String, String> hostnPort = null;
 
 	public Tuple3<Protocol, String, String> getHostnPort() {
@@ -63,6 +76,26 @@ public class ClientUrlPattern implements Serializable{
 
 		this.hostnPort = Tuples.of(protocol, matcher.group(2), port == null ? "" : port);
 		return this;
+	}
+
+	/**
+	 * The hostname inside a raw pattern, lowercased, or {@code ""} when there is
+	 * none.
+	 *
+	 * Shares {@link #URL_PATTERN} with {@link #makeHostnPort()} on purpose. The
+	 * subdomain guards in the security service have to see a hostname exactly the
+	 * way resolution will see it, and a second parser drifting from this one is how
+	 * a pattern gets past a guard and then resolves as an app's own host anyway.
+	 */
+	public static String hostOf(String urlPattern) {
+
+		if (StringUtil.safeIsBlank(urlPattern))
+			return "";
+
+		Matcher matcher = URL_PATTERN.matcher(urlPattern.trim()
+		        .toLowerCase());
+
+		return matcher.find() ? matcher.group(2) : "";
 	}
 
 	public boolean isValidClientURLPattern(String finHost, String finPort) {

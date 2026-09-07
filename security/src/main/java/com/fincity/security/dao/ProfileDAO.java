@@ -270,7 +270,8 @@ public class ProfileDAO extends AbstractUpdatableClientCheckDAO<SecurityProfileR
 
         if (vQuery == null) {
             return Mono.from(this.dslContext.deleteFrom(SECURITY_PROFILE_ROLE)
-                    .where(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(profileId)));
+                    .where(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(profileId)))
+                    .defaultIfEmpty(0);
         }
 
         InsertValuesStep3<SecurityProfileRoleRecord, ULong, ULong, Byte> finVQuery = vQuery;
@@ -285,6 +286,9 @@ public class ProfileDAO extends AbstractUpdatableClientCheckDAO<SecurityProfileR
 
     @SuppressWarnings({ "unchecked" })
     private Stream<ULong> getRoleIdsFromArrangements(Map<String, Object> arrangements) {
+
+        if (arrangements == null || arrangements.isEmpty())
+            return Stream.empty();
 
         return arrangements.values().stream().flatMap(e -> {
 

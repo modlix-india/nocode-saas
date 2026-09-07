@@ -49,6 +49,15 @@ public class JWTTokenFilter implements WebFilter {
 				.get(LogUtil.DEBUG_KEY);
 		final String dc = debugCode == null || debugCode.isEmpty() ? null : debugCode.get(0);
 
+		// Draft surface marker, set by the gateway from the resolved hostname. The
+		// gateway strips any inbound value first, so reaching here means it is
+		// genuine. This filter runs regardless of authorization, so draft mode works
+		// for anonymous requests too.
+		final List<String> draftHeader = request.getHeaders()
+				.get(LogUtil.DRAFT_KEY);
+		final boolean isDraft = draftHeader != null && !draftHeader.isEmpty()
+				&& "true".equalsIgnoreCase(draftHeader.get(0));
+
 		var mono = FlatMapUtil.flatMapMono(
 
 				() -> this.authService.getAuthentication(isBasic, bearerToken, cc, ac, request),
@@ -63,6 +72,9 @@ public class JWTTokenFilter implements WebFilter {
 							.contextWrite(ReactiveSecurityContextHolder
 									.withSecurityContext(Mono.just(new SecurityContextImpl(newCA))));
 				});
+		if (isDraft)
+			mono = mono.contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE));
+
 		if (dc == null)
 			return mono;
 		return mono.contextWrite(Context.of(LogUtil.DEBUG_KEY, dc));

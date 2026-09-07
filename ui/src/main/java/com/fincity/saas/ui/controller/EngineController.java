@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.ui.document.Application;
@@ -19,6 +20,7 @@ import com.fincity.saas.ui.service.PageService;
 import com.fincity.saas.ui.service.StyleService;
 import com.fincity.saas.ui.service.StyleThemeService;
 import com.fincity.saas.ui.service.UIFunctionService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.ui.utils.ResponseEntityUtils;
 
 import reactor.core.publisher.Mono;
@@ -72,19 +74,30 @@ public class EngineController {
         return this.engineService.readPage(eTag, pageName, appCode, clientCode);
     }
 
+    /**
+     * The `theme` parameter names the theme the caller has selected, and it is a
+     * query parameter rather than a header on purpose: the browser keys its own
+     * cache by URL, so two themes can never share a cached stylesheet or eTag.
+     *
+     * Absent or unknown means "whichever theme the app defaults to" — never a 404.
+     * A visitor's stored choice outlives the theme it points at, so an author
+     * deleting a theme must not leave every one of those visitors unstyled.
+     */
     @GetMapping(value = "style", produces = { "text/css" })
     public Mono<ResponseEntity<String>> style(@RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
+            @RequestParam(name = "theme", required = false) String theme,
             @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-        return this.engineService.readStyle(eTag, appCode, clientCode);
+        return this.engineService.readStyle(eTag, appCode, clientCode, theme);
     }
 
     @GetMapping(value = "theme")
     public Mono<ResponseEntity<Map<String, Map<String, String>>>> theme(@RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
+            @RequestParam(name = "theme", required = false) String theme,
             @RequestHeader(name = "If-None-Match", required = false) String eTag) {
-        return this.engineService.readTheme(eTag, appCode, clientCode);
+        return this.engineService.readTheme(eTag, appCode, clientCode, theme);
     }
 
     @GetMapping("function/{namespace}/{name}")
@@ -92,9 +105,18 @@ public class EngineController {
             @RequestHeader("clientCode") String clientCode, @PathVariable("namespace") String namespace,
             @PathVariable("name") String name, @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
-        return this.functionService.read(namespace + "." + name, appCode, clientCode)
-                .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
-                .defaultIfEmpty(FUNCTION_NOT_FOUND);
+        // No server-side cache on this route, so the draft dimension is only about
+        // the browser: a draft function served with max-age seven days would keep
+        // being replayed from disk while its author edited it. The eTag is left as
+        // the client sent it, deliberately. Marking it would buy nothing here (there
+        // is no shared cache entry to separate) and the 304 comparison in
+        // makeResponseEntity is a substring match, so an unnecessary marker is a way
+        // to answer 304 when the content actually differs.
+        return LogUtil.isDraft().flatMap(draft -> this.functionService.read(namespace + "." + name, appCode,
+                clientCode)
+                .flatMap(e -> Boolean.TRUE.equals(draft) ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
+                        : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                .defaultIfEmpty(FUNCTION_NOT_FOUND));
     }
 
     @GetMapping("urlDetails")

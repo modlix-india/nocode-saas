@@ -199,6 +199,28 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!--
+                        Byte Buddy, which Mockito uses to build mocks, only officially
+                        supports JDKs up to 24. On a newer JDK it refuses to instrument a
+                        concrete class, so tests using mock(SomeClass) or @MockitoBean fail
+                        with "Mockito cannot mock this class". That is a property of the JDK
+                        rather than of the tests, and it broke `mvn clean install` here.
+
+                        On a supported JDK this property is inert, so it is set
+                        unconditionally rather than hidden in a profile someone has to know
+                        to activate. Remove it once Byte Buddy supports the JDK in use.
+
+                        This module declares no jacoco, so setting argLine outright does not
+                        clobber a coverage agent. A module that does configure jacoco must
+                        use @{argLine} here instead.
+                    -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>

@@ -44,8 +44,12 @@ public class NotificationSendService {
 
     public void sendNotification(NotificationQueObject qob) {
 
+        // Definition lookups follow the surface the notification was raised on;
+        // recipient resolution below deliberately does not.
+        String draft = qob.isDraft() ? "true" : null;
+
         NotificationConnectionDetails connection = this.coreService.getNotificationConnection(qob.getConnectionName(),
-                qob.getAppCode(), qob.getClientCode(), qob.getUrlClientCode());
+                qob.getAppCode(), qob.getClientCode(), qob.getUrlClientCode(), draft);
 
         if (connection == null) {
             logger.error("Notification connection not found: {}", qob.getConnectionName());
@@ -53,7 +57,7 @@ public class NotificationSendService {
         }
 
         CoreNotification notification = this.coreService.getNotification(qob.getNotificationName(), qob.getAppCode(),
-                qob.getClientCode(), qob.getUrlClientCode());
+                qob.getClientCode(), qob.getUrlClientCode(), draft);
 
         if (notification == null) {
             logger.error("Notification not found: {}", qob.getNotificationName());
