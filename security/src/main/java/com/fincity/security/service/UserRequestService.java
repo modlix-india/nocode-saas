@@ -85,8 +85,13 @@ public class UserRequestService
 
                 (ContextAuthentication ca, Client client) -> this.appService.getAppByCode(request.getAppCode()),
 
+                // `hasAssignedProfile`, NOT `checkIfUserHasAnyProfile`: the latter falls back to
+                // "does this app declare a default profile", so an app whose default profile
+                // exists precisely to mark "no access yet" would refuse every request here with
+                // USER_ALREADY_HAVING_APP_ACCESS. What blocks a request is a profile actually
+                // assigned to this user.
                 (ca, client, app) -> this.profileService
-                        .checkIfUserHasAnyProfile(
+                        .hasAssignedProfile(
                                 ULongUtil.valueOf(ca.getUser().getId()),
                                 app.getAppCode())
                         .flatMap(hasAccess -> {
