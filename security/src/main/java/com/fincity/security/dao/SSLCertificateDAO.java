@@ -79,7 +79,16 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 
 	private Mono<Boolean> makeRestOfNotCurrent(ULong certId, ULong urlId) {
 
-		return Mono.from(this.dslContext.transactionPublisher(trx -> {
+		// `Flux.from(...).last(0)`, never `Mono.from(...)`. `Mono.from` cancels its
+		// source the instant the first element arrives, and the first element here
+		// is the update's row count, which jOOQ emits BEFORE it commits. The
+		// transaction publisher treats that cancellation as an abort and rolls the
+		// update back, so this reported "1 row updated" and left the predecessor
+		// marked current anyway. `last(0)` waits for the completion signal, which
+		// arrives only once the commit has gone through; the default covers a
+		// publisher that emits no count at all rather than erroring on an empty
+		// Flux.
+		return Flux.from(this.dslContext.transactionPublisher(trx -> {
 
 			UpdateConditionStep<SecuritySslCertificateRecord> query = DSL.using(trx)
 					.update(SECURITY_SSL_CERTIFICATE)
@@ -88,7 +97,7 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 							SECURITY_SSL_CERTIFICATE.URL_ID.eq(urlId)));
 
 			return Mono.from(query);
-		})).map(e -> e > 0);
+		})).last(0).map(e -> e > 0);
 	}
 
 	public Mono<SSLCertificate> create(SSLRequest request, Certificate certificate) {
