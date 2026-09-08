@@ -44,17 +44,6 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
     }
 
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds, Boolean isActive) {
-        AbstractCondition condition = this.buildCondition(productIds, isActive);
-        return FlatMapUtil.flatMapMono(
-                () -> this.processorAccessCondition(condition, access),
-                super::filter,
-                (pCondition, jCondition) -> Flux.from(
-                                this.dslContext.selectFrom(this.table).where(jCondition))
-                        .map(rec -> rec.into(Product.class))
-                        .collectList());
-    }
-
-    private AbstractCondition buildCondition(List<ULong> productIds, Boolean isActive) {
         AbstractCondition condition = null;
         if (productIds != null && !productIds.isEmpty()) {
             condition = new FilterCondition()
@@ -66,7 +55,15 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
             AbstractCondition activeCond = FilterCondition.make(BaseUpdatableDto.Fields.isActive, isActive);
             condition = condition == null ? activeCond : ComplexCondition.and(condition, activeCond);
         }
-        return condition;
+        final AbstractCondition finalCondition = condition;
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(finalCondition, access),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(Product.class))
+                        .collectList());
     }
 
     /**

@@ -12,7 +12,7 @@ import com.fincity.saas.entity.processor.analytics.model.CampaignTreeRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeResponse;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTrendRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse;
-import com.fincity.saas.entity.processor.analytics.model.CampaignTrendRow;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse.CampaignTrendRow;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
@@ -125,8 +125,14 @@ public class CampaignReportService implements IProcessorAccessService {
         LocalDateTime startUtcTimestamp = DatePair.convertToUtc(datePair.getFirst(), request.getTimezone());
         LocalDateTime endUtcTimestamp = DatePair.convertToUtc(datePair.getSecond(), request.getTimezone());
 
+        List<ULong> productIds = products.stream().map(Product::getId).toList();
+
         return FlatMapUtil.flatMapMono(
-                () -> Mono.zip(this.resolveCampaignIds(access, products, request), this.getStageTree(products)),
+                () -> Mono.zip(
+                        campaignDAO.findCampaignIdsForProducts(
+                                access.getAppCode(), access.getClientCode(), productIds, request.getPlatforms(), Boolean.TRUE)
+                                .collectList(),
+                        this.getStageTree(products)),
                 idsAndTree -> {
                     List<ULong> campaignIds = idsAndTree.getT1();
                     List<StageNode> stageTree = idsAndTree.getT2();
@@ -136,8 +142,17 @@ public class CampaignReportService implements IProcessorAccessService {
                     }
 
                     return Mono.zip(
-                            this.getCampaignMetrics(access, campaignIds, metricFromDate, metricToDate),
-                            this.getStageCounts(
+                            campaignMetricDAO.findByFilters(
+                                    access.getAppCode(),
+                                    access.getClientCode(),
+                                    campaignIds,
+                                    null,
+                                    metricFromDate,
+                                    metricToDate)
+                                    // Campaign-level rows only (avoids triple-counting with adset/ad rows)
+                                    .filter(metric -> metric.getAdsetId() == null && metric.getAdId() == null)
+                                    .collectList(),
+                            campaignReportDAO.getStageCountsByPeriod(
                                     access,
                                     campaignIds,
                                     startUtcTimestamp,
@@ -153,14 +168,6 @@ public class CampaignReportService implements IProcessorAccessService {
                                             request.isIncludeZero(),
                                             request.getTimezone())));
                 });
-    }
-
-    private Mono<List<ULong>> resolveCampaignIds(
-            ProcessorAccess access, List<Product> products, CampaignTrendRequest request) {
-        List<ULong> productIds = products.stream().map(Product::getId).toList();
-        return campaignDAO.findCampaignIdsForProducts(
-                access.getAppCode(), access.getClientCode(), productIds, request.getPlatforms(), Boolean.TRUE)
-                .collectList();
     }
 
     private Mono<List<StageNode>> getStageTree(List<Product> products) {
@@ -179,36 +186,6 @@ public class CampaignReportService implements IProcessorAccessService {
                 .flatMapIterable(list -> list)
                 .distinct(StageNode::getId)
                 .collectList();
-    }
-
-    private Mono<List<CampaignMetric>> getCampaignMetrics(
-            ProcessorAccess access, List<ULong> campaignIds, LocalDate fromDate, LocalDate toDate) {
-        return campaignMetricDAO.findByFilters(
-                access.getAppCode(),
-                access.getClientCode(),
-                campaignIds,
-                null,
-                fromDate,
-                toDate)
-                // Campaign-level rows only (avoids triple-counting with adset/ad rows)
-                .filter(metric -> metric.getAdsetId() == null && metric.getAdId() == null)
-                .collectList();
-    }
-
-    private Mono<List<PerDateCount>> getStageCounts(
-            ProcessorAccess access,
-            List<ULong> campaignIds,
-            LocalDateTime startUtc,
-            LocalDateTime endUtc,
-            TimePeriod timePeriod,
-            String timezone) {
-        return campaignReportDAO.getStageCountsByPeriod(
-                access,
-                campaignIds,
-                startUtc,
-                endUtc,
-                timePeriod,
-                timezone);
     }
 
     private List<CampaignTrendRow> assembleTrendRows(
