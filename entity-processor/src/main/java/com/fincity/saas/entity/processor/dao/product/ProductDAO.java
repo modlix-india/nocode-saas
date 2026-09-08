@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -39,20 +40,33 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
     }
 
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
+        return this.getAllProducts(access, productIds, null);
+    }
+
+    public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds, Boolean isActive) {
+        AbstractCondition condition = this.buildCondition(productIds, isActive);
         return FlatMapUtil.flatMapMono(
-                () -> this.processorAccessCondition(
-                        productIds != null
-                                ? new FilterCondition()
-                                        .setField(AbstractDTO.Fields.id)
-                                        .setOperator(FilterConditionOperator.IN)
-                                        .setMultiValue(productIds)
-                                : null,
-                        access),
+                () -> this.processorAccessCondition(condition, access),
                 super::filter,
-                (condition, jCondition) -> Flux.from(
+                (pCondition, jCondition) -> Flux.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(Product.class))
                         .collectList());
+    }
+
+    private AbstractCondition buildCondition(List<ULong> productIds, Boolean isActive) {
+        AbstractCondition condition = null;
+        if (productIds != null && !productIds.isEmpty()) {
+            condition = new FilterCondition()
+                    .setField(AbstractDTO.Fields.id)
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(productIds);
+        }
+        if (isActive != null) {
+            AbstractCondition activeCond = FilterCondition.make(BaseUpdatableDto.Fields.isActive, isActive);
+            condition = condition == null ? activeCond : ComplexCondition.and(condition, activeCond);
+        }
+        return condition;
     }
 
     /**

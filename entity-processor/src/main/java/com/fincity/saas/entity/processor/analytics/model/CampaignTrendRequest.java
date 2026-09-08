@@ -14,7 +14,7 @@ import org.jooq.types.ULong;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class RotationRequest extends BaseFilter<RotationRequest> {
+public class CampaignTrendRequest extends BaseFilter<CampaignTrendRequest> {
 
     @Serial
     private static final long serialVersionUID = 1L;

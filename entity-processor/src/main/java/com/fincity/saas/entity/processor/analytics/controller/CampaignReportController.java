@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.analytics.controller;
 
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeResponse;
-import com.fincity.saas.entity.processor.analytics.model.RotationRequest;
-import com.fincity.saas.entity.processor.analytics.model.RotationResponse;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendRequest;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse;
 import com.fincity.saas.entity.processor.analytics.service.CampaignReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +29,11 @@ public class CampaignReportController {
         return campaignReportService.getCampaignTree(request).map(ResponseEntity::ok);
     }
 
-    @PostMapping("/rotation")
+    @PostMapping("/trend")
     @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
-    public Mono<ResponseEntity<RotationResponse>> getRotationReport(@RequestBody RotationRequest request) {
-        return campaignReportService.getRotationReport(request).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<CampaignTrendResponse>> getCampaignTrend(
+            @RequestBody(required = false) CampaignTrendRequest request) {
+        CampaignTrendRequest effectiveRequest = request == null ? new CampaignTrendRequest() : request;
+        return campaignReportService.getCampaignTrend(effectiveRequest).map(ResponseEntity::ok);
     }
 }

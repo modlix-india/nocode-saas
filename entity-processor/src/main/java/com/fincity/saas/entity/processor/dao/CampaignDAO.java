@@ -119,29 +119,32 @@ public class CampaignDAO extends BaseUpdatableDAO<EntityProcessorCampaignsRecord
 
     /**
      * Campaign ids associated with products for a tenant, optionally filtered by
-     * platform.
-     * Joins campaigns table to enforce IS_ACTIVE and platform filter.
+     * platform and active status.
      */
-    public Flux<ULong> findCampaignIdsForProduct(
-                    String appCode,
-                    String clientCode,
-                    List<ULong> productIds,
-                    List<CampaignPlatform> platforms) {
+    public Flux<ULong> findCampaignIdsForProducts(
+            String appCode,
+            String clientCode,
+            List<ULong> productIds,
+            List<CampaignPlatform> platforms,
+            Boolean isActive) {
 
-            if (productIds == null || productIds.isEmpty()) {
-                    return Flux.empty();
-            }
+        if (productIds == null || productIds.isEmpty()) {
+            return Flux.empty();
+        }
 
-            Condition condition = ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.PRODUCT_ID.in(productIds)
-                            .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.APP_CODE.eq(appCode))
-                            .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CLIENT_CODE.eq(clientCode))
-                            .and(ENTITY_PROCESSOR_CAMPAIGNS.IS_ACTIVE.isTrue())
-                            .and(ENTITY_PROCESSOR_CAMPAIGNS.APP_CODE.eq(appCode))
-                            .and(ENTITY_PROCESSOR_CAMPAIGNS.CLIENT_CODE.eq(clientCode));
+        Condition condition = ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.PRODUCT_ID.in(productIds)
+                .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CLIENT_CODE.eq(clientCode))
+                .and(ENTITY_PROCESSOR_CAMPAIGNS.APP_CODE.eq(appCode))
+                .and(ENTITY_PROCESSOR_CAMPAIGNS.CLIENT_CODE.eq(clientCode));
 
-            if (platforms != null && !platforms.isEmpty()) {
-                    condition = condition.and(ENTITY_PROCESSOR_CAMPAIGNS.CAMPAIGN_PLATFORM.in(platforms));
-            }
+        if (isActive != null) {
+            condition = condition.and(ENTITY_PROCESSOR_CAMPAIGNS.IS_ACTIVE.eq(isActive));
+        }
+
+        if (platforms != null && !platforms.isEmpty()) {
+            condition = condition.and(ENTITY_PROCESSOR_CAMPAIGNS.CAMPAIGN_PLATFORM.in(platforms));
+        }
 
         return Flux.from(this.dslContext
                         .selectDistinct(ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS.CAMPAIGN_ID)

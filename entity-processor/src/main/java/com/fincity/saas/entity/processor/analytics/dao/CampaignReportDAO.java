@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport.Level;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
+import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.util.PeriodBucketUtil;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
@@ -505,13 +506,7 @@ public class CampaignReportDAO {
                 });
     }
 
-    /* ---------------- Rotation Report stage counts by period ---------------- */
-
-    public record PeriodStageRow(
-            LocalDate periodStart,
-            ULong stageId,
-            long count
-    ) {}
+    /* ---------------- Campaign Trend stage counts by period ---------------- */
 
     /**
      * Group ticket stage counts by period bucket (DAYS, WEEKS, MONTHS, QUARTERS,
@@ -523,11 +518,11 @@ public class CampaignReportDAO {
      * {@link PeriodBucketUtil}, so leads land in the same period as
      * the spend rows they belong to. Range filters stay raw UTC instants.
      */
-    public Mono<List<PeriodStageRow>> getStageCountsByPeriod(
+    public Mono<List<PerDateCount>> getStageCountsByPeriod(
             ProcessorAccess access,
             List<ULong> campaignIds,
-                    LocalDateTime startDate,
-            LocalDateTime endDate,
+            LocalDateTime startDate,
+                    LocalDateTime endDate,
             TimePeriod timePeriod,
             String timezone) {
 
@@ -562,13 +557,16 @@ public class CampaignReportDAO {
                 .groupBy(periodStartField, ACTIVITIES.STAGE_ID))
                 .collectList()
                 .map(records -> {
-                    List<PeriodStageRow> stageRows = new ArrayList<>();
+                    List<PerDateCount> stageRows = new ArrayList<>();
                     for (Record record : records) {
                         LocalDateTime periodStartTimestamp = record.get("periodStart", LocalDateTime.class);
                         ULong stageId = record.get(ACTIVITIES.STAGE_ID);
                         long ticketCount = record.get("distinctTicketCount", Long.class);
                         if (periodStartTimestamp != null && stageId != null) {
-                            stageRows.add(new PeriodStageRow(periodStartTimestamp.toLocalDate(), stageId, ticketCount));
+                            stageRows.add(new PerDateCount()
+                                    .setDate(periodStartTimestamp)
+                                    .setGroupedId(stageId)
+                                    .setCount(ticketCount));
                         }
                     }
                     return stageRows;
