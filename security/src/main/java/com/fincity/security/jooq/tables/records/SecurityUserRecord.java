@@ -505,6 +505,23 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         return (LocalDateTime) get(28);
     }
 
+    /**
+     * Setter for <code>security.security_user.TIME_ZONE</code>. IANA time zone
+     * overriding the client default; NULL means inherit
+     */
+    public SecurityUserRecord setTimeZone(String value) {
+        set(29, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user.TIME_ZONE</code>. IANA time zone
+     * overriding the client default; NULL means inherit
+     */
+    public String getTimeZone() {
+        return (String) get(29);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -528,7 +545,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
     /**
      * Create a detached, initialised SecurityUserRecord
      */
-    public SecurityUserRecord(ULong id, ULong designationId, ULong reportingTo, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String middleName, String localeCode, String password, Byte passwordHashed, String pin, Byte pinHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, Short noPinFailedAttempt, Short noOtpResendAttempt, Short noOtpFailedAttempt, SecurityUserStatusCode statusCode, LocalDateTime lockedUntil, String lockedDueTo, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityUserRecord(ULong id, ULong designationId, ULong reportingTo, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String middleName, String localeCode, String password, Byte passwordHashed, String pin, Byte pinHashed, Byte accountNonExpired, Byte accountNonLocked, Byte credentialsNonExpired, Short noFailedAttempt, Short noPinFailedAttempt, Short noOtpResendAttempt, Short noOtpFailedAttempt, SecurityUserStatusCode statusCode, LocalDateTime lockedUntil, String lockedDueTo, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String timeZone) {
         super(SecurityUser.SECURITY_USER);
 
         setId(id);
@@ -560,6 +577,7 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setTimeZone(timeZone);
         resetTouchedOnNotNull();
     }
 }

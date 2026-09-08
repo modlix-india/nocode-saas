@@ -1,7 +1,6 @@
 package com.fincity.saas.message.dto.message;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
-import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.util.NameUtil;
 import java.io.Serial;
 import lombok.Data;
@@ -9,7 +8,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -24,11 +22,14 @@ public class Message extends BaseUpdatableDto<Message> {
     private String connectionName;
     private String messageProvider;
     private Boolean isOutbound;
-    private ULong whatsappMessageId;
+
+    // whatsappMessageId, and its relation to the WHATSAPP_MESSAGE series, retired with the Cloud
+    // API. WhatsApp conversation content lives in entity-processor and is keyed by WhatsApp's own
+    // message id, so a foreign key from here to a table this service no longer writes would only
+    // ever have pointed at history that has already moved.
 
     public Message() {
         super();
-        this.relationsMap.put(Fields.whatsappMessageId, MessageSeries.WHATSAPP_MESSAGE.getTable());
     }
 
     public Message(Message message) {
@@ -36,7 +37,6 @@ public class Message extends BaseUpdatableDto<Message> {
         this.connectionName = message.connectionName;
         this.messageProvider = message.messageProvider;
         this.isOutbound = message.isOutbound;
-        this.whatsappMessageId = message.whatsappMessageId;
     }
 
     public Message setMessageProvider(String messageProvider) {

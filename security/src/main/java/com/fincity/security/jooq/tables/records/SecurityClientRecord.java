@@ -290,6 +290,23 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         return (String) get(15);
     }
 
+    /**
+     * Setter for <code>security.security_client.TIME_ZONE</code>. IANA time
+     * zone the tenant operates on
+     */
+    public SecurityClientRecord setTimeZone(String value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.TIME_ZONE</code>. IANA time
+     * zone the tenant operates on
+     */
+    public String getTimeZone() {
+        return (String) get(16);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -313,7 +330,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     /**
      * Create a detached, initialised SecurityClientRecord
      */
-    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry, String billingTimezone) {
+    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry, String billingTimezone, String timeZone) {
         super(SecurityClient.SECURITY_CLIENT);
 
         setId(id);
@@ -332,6 +349,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         setBusinessSize(businessSize);
         setIndustry(industry);
         setBillingTimezone(billingTimezone);
+        setTimeZone(timeZone);
         resetTouchedOnNotNull();
     }
 }

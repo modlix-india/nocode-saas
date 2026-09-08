@@ -50,6 +50,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String NEW_PASSWORD_MISSING = "new_password_missing";
     public static final String PASSWORD_USER_ERROR = "password_used_error";
     public static final String DELETE_ROLE_ERROR = "delete_role_error";
+    public static final String SUB_ROLE_CYCLE = "sub_role_cycle";
+    public static final String SUB_ROLE_SELF = "sub_role_self";
     public static final String UNKNOWN_CLIENT = "unknown_client";
     public static final String INACTIVE_CLIENT = "inactive_client";
     public static final String APP_CODE_NO_SPL_CHAR = "app_code_no_spl_char";
@@ -73,6 +75,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String CLIENT_CODE_OR_ID_ONLY_ONE = "client_code_or_id_only_one";
     public static final String FORBIDDEN_APP_REG_OBJECTS = "forbidden_app_reg_objects";
     public static final String SUBDOMAIN_ALREADY_EXISTS = "subdomain_already_exists";
+    public static final String URL_IS_APP_SUBDOMAIN = "url_is_app_subdomain";
+    public static final String APP_SUBDOMAIN_TAKEN = "app_subdomain_taken";
     public static final String APP_DEPENDENCY_SAME_APP_CODE = "app_dependency_same_app_code";
     public static final String ACTIVE_INACTIVE_ERROR = "active_inactive_error";
     public static final String HIERARCHY_ERROR = "hierarchy_error";

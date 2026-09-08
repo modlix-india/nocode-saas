@@ -38,6 +38,7 @@ import reactor.util.function.Tuples;
 public class FunctionController
         extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
 
+    private final KIRunReactiveFunctionRepository kiRunFunRepo = new KIRunReactiveFunctionRepository();
     private final Gson gson;
 
     public FunctionController(Gson gson) {
@@ -63,7 +64,7 @@ public class FunctionController
                 (ca, tup, appFunctionRepo) -> {
 
                     ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
-                            ? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
+                            ? new ReactiveHybridRepository<ReactiveFunction>(this.kiRunFunRepo,
                                     appFunctionRepo)
                             : appFunctionRepo);
 
@@ -93,7 +94,7 @@ public class FunctionController
                 (ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
 
                 (ca, tup, appFunctionRepo) -> (includeKIRunRepos
-                        ? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
+                        ? new ReactiveHybridRepository<ReactiveFunction>(this.kiRunFunRepo,
                                 appFunctionRepo)
                         : appFunctionRepo).filter(filter).collectList()
 

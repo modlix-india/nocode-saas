@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -409,6 +410,19 @@ public class FileSystemService {
 
     public FileDetail createFileFromInputStream(String clientCode, String path, String fileName,
             InputStream inputStream, long length, boolean override, String contentDisposition) {
+        return this.createFileFromInputStream(clientCode, path, fileName, inputStream, length, override,
+                contentDisposition, null);
+    }
+
+    /**
+     * The same, with a lifetime after which the cleanup may remove the file.
+     *
+     * <p>Null means permanent, and that is the default everywhere else on purpose: only a caller
+     * that knows its file is temporary should be able to make it disappear.
+     */
+    public FileDetail createFileFromInputStream(String clientCode, String path, String fileName,
+            InputStream inputStream, long length, boolean override, String contentDisposition,
+            UInteger expiresAfterMinutes) {
 
         String filePath = fileName == null ? path : (path + R2_FILE_SEPARATOR_STRING + fileName);
         // Collapse any accidental repeated separators (e.g. a trailing-slash path + "/" + name)
@@ -444,7 +458,7 @@ public class FileSystemService {
             this.evictCache(clientCode);
             return this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
                     fileName, ULong.valueOf(length),
-                    exists && override);
+                    exists && override, expiresAfterMinutes);
 
         } catch (IOException e) {
             this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
@@ -646,6 +660,10 @@ public class FileSystemService {
                             fileName,
                             FilesFileSystemFileType.FILE,
                             ULong.valueOf(s3Object.size()),
+                            // No lifetime. This path reconciles objects already in the bucket, and a
+                            // file discovered rather than deliberately uploaded must never be
+                            // something the cleanup can remove.
+                            null,
                             folderIds.get(folder).orElse(null),
                             null,
                             null,
@@ -659,4 +677,40 @@ public class FileSystemService {
         clientCodes.keySet().forEach(this::evictCache);
     }
 
+
+    /**
+     * Removes the objects whose lifetime has run out, and their metadata rows.
+     *
+     * <p>Object first, row second. The row is the only record of where the object is, so deleting it
+     * first and then failing to delete the object leaves bytes in the bucket that nothing knows
+     * about and nothing will ever collect. The other order leaves a row pointing at a missing
+     * object, which the next pass simply tries again and succeeds at.
+     *
+     * <p>One failure does not stop the pass. A single unreadable key should not hold up every other
+     * expired file behind it.
+     */
+    public int deleteExpired(int limit) {
+
+        List<FileSystemDao.ExpiredFile> expired = this.fileSystemDao.readExpired(limit);
+        int removed = 0;
+
+        for (FileSystemDao.ExpiredFile file : expired) {
+
+            String key = (file.clientCode() + file.path()).replace("//", "/");
+
+            try {
+                s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
+                this.fileSystemDao.deleteById(file.id());
+                this.evictCache(file.clientCode());
+                removed++;
+            } catch (Exception e) {
+                logger.error("Could not remove the expired file {}", key, e);
+            }
+        }
+
+        if (removed > 0)
+            logger.info("Removed {} expired file(s) from {}", removed, this.fileSystemType);
+
+        return removed;
+    }
 }

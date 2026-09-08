@@ -3,6 +3,7 @@ package com.fincity.saas.commons.model.dto;
 import java.io.Serial;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.fincity.saas.commons.difference.IDifferentiable;
 import lombok.Data;
@@ -32,6 +33,20 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
     private Boolean notOverridable;
     private String description;
     private String title;
+
+    /**
+     * Whether this object is visible on the live surface.
+     *
+     * null means legacy, treated as published: every document already in Mongo
+     * predates this field, so no migration or backfill is needed and
+     * Boolean.FALSE.equals(...) is the null-safe check to use everywhere.
+     *
+     * Only a create made in draft mode writes FALSE. Creation itself is never
+     * drafted, so the object is real and fully addressable from the moment it
+     * exists, it simply does not render until first published.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Boolean published;
 
     private int version = 1;
 
@@ -78,6 +93,7 @@ public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>
                 .setAppCode(obj.getAppCode())
                 .setBaseClientCode(obj.getBaseClientCode())
                 .setVersion(obj.getVersion())
+                .setPublished(obj.getPublished())
                 .setDescription(obj.getDescription())
                 .setTitle(obj.getTitle())
                 .setUpdatedAt(obj.getUpdatedAt())

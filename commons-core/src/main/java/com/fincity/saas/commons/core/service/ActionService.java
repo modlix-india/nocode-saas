@@ -14,6 +14,12 @@ import reactor.util.context.Context;
 
 @Service
 public class ActionService extends AbstractOverridableDataService<Action, ActionRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     protected ActionService() {
         super(Action.class);
@@ -29,6 +35,10 @@ public class ActionService extends AbstractOverridableDataService<Action, Action
 
                     existing.setFunctionName(entity.getFunctionName());
                     existing.setFunctionNamespace(entity.getFunctionNamespace());
+                    // properties was missing here, so every edit to it was
+                    // silently discarded on update while still taking part in
+                    // the override diff.
+                    existing.setProperties(entity.getProperties());
 
                     existing.setVersion(existing.getVersion() + 1);
 

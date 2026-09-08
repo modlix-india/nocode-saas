@@ -29,4 +29,15 @@ public class UserInvite extends AbstractDTO<ULong, ULong> {
     private ULong profileId;
     private ULong designationId;
     private ULong reportingTo;
+
+    // Display names resolved on read, not columns. An invite row is almost all
+    // foreign keys - a listing that shows the raw ids tells the reader nothing.
+    // Filled by UserInviteService.fillDetails; left null when the id is absent or
+    // no longer resolves.
+    private String clientName;
+    private String profileName;
+    private String appCode;
+    private String designationName;
+    private String reportingToName;
+    private String createdByName;
 }

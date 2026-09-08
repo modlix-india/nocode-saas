@@ -54,4 +54,74 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
                         .map(rec -> rec.into(Product.class))
                         .collectList());
     }
+
+    /**
+     * Every product currently sending from one linked number.
+     *
+     * <p>The reverse of the mapping, which is the direction the numbers screen asks in: it lists
+     * numbers and wants to show, and edit, the products on each. It is also what makes saving that
+     * screen correct, since deselecting a product has to clear its code and the client has no way to
+     * work out which products those were.
+     *
+     * <p>Not filtered on active. A deactivated product still holds its number, and clearing it here
+     * because it happens to be inactive would silently drop the mapping the moment anybody edited an
+     * unrelated number.
+     */
+    public Mono<List<Product>> readByWhatsappSessionCode(ProcessorAccess access, String sessionCode) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        FilterCondition.make(Product.Fields.whatsappSessionCode, sessionCode)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(Product.class))
+                        .collectList());
+    }
+
+    /**
+     * Every product that names no linked number, and therefore sends through the tenant's default.
+     *
+     * <p>The other half of resolving which products a WhatsApp message may belong to. Scoping a
+     * message on the default number to the products that explicitly name it would miss exactly these:
+     * a deal on an unmapped product sends through the default, so its own sent messages and the
+     * customer's replies both arrive on that number and must resolve back to it.
+     *
+     * <p>Same index as {@link #readByWhatsappSessionCode} ({@code IDX1_PRODUCTS_AC_CC_WSC}), and not
+     * filtered on active for the same reason: a deactivated product still holds deals whose thread has
+     * to keep working.
+     */
+    public Mono<List<Product>> readWithoutWhatsappSession(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        FilterCondition.make(Product.Fields.whatsappSessionCode, null)
+                                .setOperator(FilterConditionOperator.IS_NULL),
+                        access),
+                super::filter,
+                (condition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(Product.class))
+                        .collectList());
+    }
+
+    /**
+     * The tenant's oldest active product.
+     *
+     * <p>Used when an inbound WhatsApp message arrives from a number with no deal and the business
+     * number it landed on is not mapped to a product. Something has to own the deal that gets
+     * created, and {@code Product} carries no ordering column, so lowest id (oldest created) is the
+     * one stable choice available. A sales agent moves the deal afterwards.
+     */
+    public Mono<Product> readFirstActive(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(null, access),
+                super::filter,
+                (condition, jCondition) -> Mono.from(this.dslContext
+                                .selectFrom(this.table)
+                                .where(jCondition.and(super.isActiveTrue()))
+                                .orderBy(ENTITY_PROCESSOR_PRODUCTS.ID.asc())
+                                .limit(1))
+                        .map(rec -> rec.into(Product.class)));
+    }
 }

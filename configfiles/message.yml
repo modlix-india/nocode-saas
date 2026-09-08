@@ -39,6 +39,32 @@ management:
     flyway:
       enabled: true
 
+message:
+  bridge:
+    # Shared with every WhatsApp bridge instance in this environment.
+    #
+    # Empty by default, and the service refuses bridge calls when it is empty rather than accepting
+    # them. That is deliberate: an unconfigured secret must not silently open the endpoint that
+    # hands out ownership of customers' WhatsApp sessions.
+    #
+    # The bridge is Go and not a Spring Cloud Config client, so both sides read this from their own
+    # environment. The values must match exactly, and a mismatch presents as every call 401ing with
+    # "signature did not verify" while both services look healthy.
+    hmac-secret: ${BRIDGE_HMAC_SECRET:}
+
+    # Authenticates registration, and the CI release call. Separate from the HMAC secret so it can
+    # be rotated without re-keying messages in flight, which matters because this is the credential
+    # that admits an unknown host to the fleet.
+    bootstrap-secret: ${BRIDGE_BOOTSTRAP_SECRET:}
+
+    # Clock skew tolerance between regions. Wide enough that a badly synced host does not fail every
+    # call, narrow enough that a captured request expires quickly.
+    signature-tolerance-seconds: 300
+
+    # Three missed 15s heartbeats. Past this an instance is marked DOWN and stops taking placements;
+    # its existing sessions stay assigned to it and are deliberately never failed over.
+    heartbeat-timeout-seconds: 45
+
 redis:
   cache:
     prefix: msg

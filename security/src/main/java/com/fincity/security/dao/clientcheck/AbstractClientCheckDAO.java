@@ -37,5 +37,13 @@ public abstract class AbstractClientCheckDAO<
         return ClientCheckDAOHelper.applyClientFilter(condition);
     }
 
+    /**
+     * The caller supplied condition on its own, without any client scoping. For
+     * subclasses that override {@link #filter} to apply a different scoping rule.
+     */
+    protected Mono<Condition> baseFilter(AbstractCondition abstractCondition, SelectJoinStep<Record> selectJoinStep) {
+        return super.filter(abstractCondition, selectJoinStep);
+    }
+
     protected abstract Field<ULong> getClientIDField();
 }

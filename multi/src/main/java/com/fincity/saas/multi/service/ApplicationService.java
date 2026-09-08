@@ -369,7 +369,12 @@ public class ApplicationService {
                     forwardedHost, forwardedPort,
                     clientCode, headerAppCode, securityObj);
 
-            Mono<Boolean> core = this.uiService
+            // This posted the core bundle to the UI service. The ui service then
+            // matched only the folder names it recognises, so Function, Schema and
+            // Filler landed as UI objects while Template, Storage, EventAction and
+            // EventDefinition were silently dropped. startJSONTransport already
+            // used coreService here; the zip path did not.
+            Mono<Boolean> core = this.coreService
                     .createAndApplyTransport(accessToken, forwardedHost, forwardedPort, clientCode, headerAppCode,
                             false, isBaseApp, appCode, "core.cmodl",
                             this.makeAppCodeChanges(file.getParent(), zipfs.getPath("/core.cmodl"), appCode, cc))

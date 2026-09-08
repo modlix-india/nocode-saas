@@ -127,10 +127,18 @@ class ClientLifecycleIntegrationTest extends AbstractIntegrationTest {
 		assertThat(createdClientId).isNotNull();
 		assertThat(createdClientCode).isNotBlank();
 
-		// When SYSTEM client creates a child, ClientService.create() does NOT
-		// automatically insert the client hierarchy. We insert it manually so
-		// that hierarchy-dependent tests (6-8) work correctly.
-		insertClientHierarchy(createdClientId, ULong.valueOf(1), null, null, null).block();
+		// ClientService.create() now inserts the hierarchy row for every client,
+		// including one created by a SYSTEM caller, so the hierarchy-dependent
+		// tests (6-8) find it without this test inserting anything by hand.
+		Map<String, Object> hierarchy = databaseClient
+				.sql("SELECT MANAGE_CLIENT_LEVEL_0 FROM security_client_hierarchy WHERE CLIENT_ID = :clientId")
+				.bind("clientId", createdClientId.longValue())
+				.fetch()
+				.first()
+				.block();
+
+		assertThat(hierarchy).isNotNull();
+		assertThat(((Number) hierarchy.get("MANAGE_CLIENT_LEVEL_0")).longValue()).isEqualTo(1L);
 	}
 
 	@Test

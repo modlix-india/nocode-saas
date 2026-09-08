@@ -33,6 +33,7 @@ import com.fincity.security.jooq.tables.SecurityClientType.SecurityClientTypePat
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityDepartment.SecurityDepartmentPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
+import com.fincity.security.jooq.tables.SecurityDraftToken.SecurityDraftTokenPath;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
 import com.fincity.security.jooq.tables.SecurityInvoiceCounter.SecurityInvoiceCounterPath;
 import com.fincity.security.jooq.tables.SecurityPayment.SecurityPaymentPath;
@@ -189,6 +190,12 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * timezone for billing
      */
     public final TableField<SecurityClientRecord, String> BILLING_TIMEZONE = createField(DSL.name("BILLING_TIMEZONE"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.inline("Asia/Calcutta", SQLDataType.VARCHAR)), this, "IANA timezone for billing");
+
+    /**
+     * The column <code>security.security_client.TIME_ZONE</code>. IANA time
+     * zone the tenant operates on
+     */
+    public final TableField<SecurityClientRecord, String> TIME_ZONE = createField(DSL.name("TIME_ZONE"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.inline("Asia/Kolkata", SQLDataType.VARCHAR)), this, "IANA time zone the tenant operates on");
 
     private SecurityClient(Name alias, Table<SecurityClientRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -618,6 +625,19 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityDesignation = new SecurityDesignationPath(this, null, Keys.FK1_DESIGNATION_CLIENT_ID.getInverseKey());
 
         return _securityDesignation;
+    }
+
+    private transient SecurityDraftTokenPath _securityDraftToken;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_draft_token</code> table
+     */
+    public SecurityDraftTokenPath securityDraftToken() {
+        if (_securityDraftToken == null)
+            _securityDraftToken = new SecurityDraftTokenPath(this, null, Keys.FK1_DRAFT_TOKEN_CLIENT_ID.getInverseKey());
+
+        return _securityDraftToken;
     }
 
     private transient SecurityInvoiceCounterPath _securityInvoiceCounter;

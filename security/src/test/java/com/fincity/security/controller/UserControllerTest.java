@@ -42,6 +42,7 @@ import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.service.RecordAudienceService;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
@@ -71,6 +72,9 @@ class UserControllerTest {
 
     @MockBean
     private UserRequestService requestService;
+
+    @MockBean
+    private RecordAudienceService recordAudienceService;
 
     private User sampleUser;
     private Profile sampleProfile;
@@ -611,7 +615,7 @@ class UserControllerTest {
         @DisplayName("Should return 200 with true when invite is rejected/deleted")
         void rejectInvite_Success_Returns200() {
 
-            when(inviteService.deleteUserInvitation(eq("abc123")))
+            when(inviteService.revokeInvitation(eq("abc123")))
                     .thenReturn(Mono.just(Boolean.TRUE));
 
             webTestClient.delete()
@@ -620,7 +624,10 @@ class UserControllerTest {
                     .expectStatus().isOk()
                     .expectBody(Boolean.class).isEqualTo(true);
 
-            verify(inviteService).deleteUserInvitation(eq("abc123"));
+            // The exposed route must go through the guarded revoke, never the
+            // unchecked delete that the accept flow uses internally.
+            verify(inviteService).revokeInvitation(eq("abc123"));
+            verify(inviteService, never()).deleteUserInvitation(any());
         }
 
         @Test

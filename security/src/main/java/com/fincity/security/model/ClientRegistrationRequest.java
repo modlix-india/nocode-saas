@@ -19,6 +19,16 @@ public class ClientRegistrationRequest implements BasePassword<ClientRegistratio
 
     private String clientName;
     private String localeCode;
+
+    /**
+     * The IANA time zone the signup came from, e.g. {@code Asia/Kolkata}.
+     *
+     * <p>The browser is the only thing that knows this, so it is sent rather than inferred: a
+     * timestamp carries an offset and not a zone, and an offset cannot survive a daylight-saving
+     * boundary. Absent or unusable falls back to the column default rather than to UTC, because UTC
+     * is nobody's working day and would look like it worked.
+     */
+    private String timeZone;
     private ULong userId;
     private String userName;
     private String emailId;

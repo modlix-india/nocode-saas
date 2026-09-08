@@ -42,6 +42,7 @@ import com.fincity.security.service.appregistration.ClientRegistrationService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @RestController
@@ -141,6 +142,23 @@ public class ClientController
             @RequestParam String host, @RequestParam String port) {
         return this.service.getClientPattern(scheme, host, port).map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
                 .defaultIfEmpty(Tuples.of("SYSTEM", "nothing")).map(ResponseEntity::ok);
+    }
+
+    /**
+     * As getClientNAppCode, plus which surface the hostname serves.
+     *
+     * Added alongside rather than widening the existing endpoint: that one is on
+     * the gateway's hot path for every request, and changing its response arity
+     * would break an older gateway talking to a newer security mid-rollout.
+     */
+    @GetMapping("/internal/getClientNAppCodeNType")
+    public Mono<ResponseEntity<Tuple3<String, String, String>>> getClientNAppCodeNType(@RequestParam String scheme,
+            @RequestParam String host, @RequestParam String port) {
+        return this.service.getClientPattern(scheme, host, port)
+                .map(e -> Tuples.of(e.getClientCode(), e.getAppCode(),
+                        e.getUrlType() == null ? "LIVE" : e.getUrlType()))
+                .defaultIfEmpty(Tuples.of("SYSTEM", "nothing", "LIVE"))
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/makeClientActive")

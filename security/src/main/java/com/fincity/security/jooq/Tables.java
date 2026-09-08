@@ -34,6 +34,7 @@ import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
+import com.fincity.security.jooq.tables.SecurityDraftToken;
 import com.fincity.security.jooq.tables.SecurityInvoice;
 import com.fincity.security.jooq.tables.SecurityInvoiceCounter;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
@@ -218,6 +219,11 @@ public class Tables {
      * The table <code>security.security_designation</code>.
      */
     public static final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
+
+    /**
+     * The table <code>security.security_draft_token</code>.
+     */
+    public static final SecurityDraftToken SECURITY_DRAFT_TOKEN = SecurityDraftToken.SECURITY_DRAFT_TOKEN;
 
     /**
      * The table <code>security.security_invoice</code>.

@@ -11,6 +11,7 @@ import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientManager.SecurityClientManagerPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
+import com.fincity.security.jooq.tables.SecurityDraftToken.SecurityDraftTokenPath;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken.SecurityOneTimeTokenPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPastPasswords.SecurityPastPasswordsPath;
@@ -246,6 +247,12 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
      */
     public final TableField<SecurityUserRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_user.TIME_ZONE</code>. IANA time zone
+     * overriding the client default; NULL means inherit
+     */
+    public final TableField<SecurityUserRecord, String> TIME_ZONE = createField(DSL.name("TIME_ZONE"), SQLDataType.VARCHAR(64), this, "IANA time zone overriding the client default; NULL means inherit");
+
     private SecurityUser(Name alias, Table<SecurityUserRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -466,6 +473,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityClientManager = new SecurityClientManagerPath(this, null, Keys.FK2_CLIENT_MANAGER_USER_ID.getInverseKey());
 
         return _securityClientManager;
+    }
+
+    private transient SecurityDraftTokenPath _securityDraftToken;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_draft_token</code> table
+     */
+    public SecurityDraftTokenPath securityDraftToken() {
+        if (_securityDraftToken == null)
+            _securityDraftToken = new SecurityDraftTokenPath(this, null, Keys.FK2_DRAFT_TOKEN_USER_ID.getInverseKey());
+
+        return _securityDraftToken;
     }
 
     private transient SecurityOneTimeTokenPath _securityOneTimeToken;

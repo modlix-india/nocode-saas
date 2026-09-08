@@ -38,6 +38,16 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
     private String lastName;
     private String middleName;
     private String localeCode;
+
+    /**
+     * This person's IANA time zone, or null to take the client's.
+     *
+     * <p>Null is the meaningful value and not an oversight: it means "no opinion". Defaulting it
+     * would be indistinguishable from somebody who genuinely chose that zone, so a tenant moving its
+     * own zone would silently fail to move anybody who had never touched the setting.
+     */
+    private String timeZone;
+
     private String password;
     private boolean passwordHashed;
     private String pin;

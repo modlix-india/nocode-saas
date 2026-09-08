@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls.EntityProcessorCallsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionActionMapping.EntityProcessorConversionActionMappingPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents.EntityProcessorConversionEventsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
@@ -16,7 +17,9 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.Entit
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages.EntityProcessorWhatsappMessagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -149,6 +152,21 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(15), this, "Phone number related to this owner.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_DIAL_CODE</code>.
+     * Calling code for WHATSAPP_NUMBER. Null when the deal has no separate
+     * WhatsApp number.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Short> WHATSAPP_DIAL_CODE = createField(DSL.name("WHATSAPP_DIAL_CODE"), SQLDataType.SMALLINT, this, "Calling code for WHATSAPP_NUMBER. Null when the deal has no separate WhatsApp number.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_NUMBER</code>.
+     * The number this deal is messaged on. Null means use PHONE_NUMBER.
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_NUMBER = createField(DSL.name("WHATSAPP_NUMBER"), SQLDataType.CHAR(15), this, "The number this deal is messaged on. Null means use PHONE_NUMBER.");
+
+    /**
      * The column <code>entity_processor.entity_processor_tickets.EMAIL</code>.
      * Email related to this ticket.
      */
@@ -271,6 +289,15 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.LAST_MESSAGE_AT</code>.
+     * Time of the most recent WhatsApp message on this deal, inbound or
+     * outbound. Orders the conversation list. Null until the deal has any
+     * message.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> LAST_MESSAGE_AT = createField(DSL.name("LAST_MESSAGE_AT"), SQLDataType.LOCALDATETIME(0), this, "Time of the most recent WhatsApp message on this deal, inbound or outbound. Orders the conversation list. Null until the deal has any message.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
@@ -296,6 +323,44 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * when this row is updated.
      */
     public final TableField<EntityProcessorTicketsRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT</code>.
+     * Lead asked us to stop. Permanent, checked before every automated send,
+     * and unaffected by stage changes.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> WHATSAPP_OPTED_OUT = createField(DSL.name("WHATSAPP_OPTED_OUT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Lead asked us to stop. Permanent, checked before every automated send, and unaffected by stage changes.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_AT</code>.
+     * When the opt-out was seen, UTC.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> WHATSAPP_OPTED_OUT_AT = createField(DSL.name("WHATSAPP_OPTED_OUT_AT"), SQLDataType.LOCALDATETIME(0), this, "When the opt-out was seen, UTC.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_OPTED_OUT_TEXT</code>.
+     * The message that triggered it, kept so a false positive can be recognised
+     * and reversed by a person.
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_OPTED_OUT_TEXT = createField(DSL.name("WHATSAPP_OPTED_OUT_TEXT"), SQLDataType.VARCHAR(512), this, "The message that triggered it, kept so a false positive can be recognised and reversed by a person.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_FILE_DETAIL</code>.
+     * Stored WhatsApp avatar for this deal's phone number. Not subject to media
+     * retention.
+     */
+    public final TableField<EntityProcessorTicketsRecord, FileDetail> WHATSAPP_PROFILE_PIC_FILE_DETAIL = createField(DSL.name("WHATSAPP_PROFILE_PIC_FILE_DETAIL"), SQLDataType.JSON, this, "Stored WhatsApp avatar for this deal's phone number. Not subject to media retention.", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.WHATSAPP_PROFILE_PIC_ID</code>.
+     * WhatsApp picture id, so an unchanged avatar is never re-fetched
+     */
+    public final TableField<EntityProcessorTicketsRecord, String> WHATSAPP_PROFILE_PIC_ID = createField(DSL.name("WHATSAPP_PROFILE_PIC_ID"), SQLDataType.VARCHAR(255), this, "WhatsApp picture id, so an unchanged avatar is never re-fetched");
 
     private EntityProcessorTickets(Name alias, Table<EntityProcessorTicketsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -369,7 +434,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC, Indexes.ENTITY_PROCESSOR_TICKETS_IDX10_TICKETS_APP_CLIENT_WHATSAPP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX1_TICKETS_AC_CC_ASSIGNED_USER, Indexes.ENTITY_PROCESSOR_TICKETS_IDX2_TICKETS_AC_CC_CLIENT_ID, Indexes.ENTITY_PROCESSOR_TICKETS_IDX3_TICKETS_AC_CC_CREATED_BY, Indexes.ENTITY_PROCESSOR_TICKETS_IDX4_TICKETS_AC_CC_PRODUCT_ACTIVE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX5_TICKETS_AC_CC_CREATED_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX6_TICKETS_AC_CC_SRC_PID_EXP, Indexes.ENTITY_PROCESSOR_TICKETS_IDX7_TICKETS_AC_CC_PHONE, Indexes.ENTITY_PROCESSOR_TICKETS_IDX8_TICKETS_AC_CC_LAST_MESSAGE_AT, Indexes.ENTITY_PROCESSOR_TICKETS_IDX9_TICKETS_APP_CLIENT_PHONE);
     }
 
     @Override
@@ -459,6 +524,19 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
         return _entityProcessorActivities;
     }
 
+    private transient EntityProcessorCallsPath _entityProcessorCalls;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_calls</code> table
+     */
+    public EntityProcessorCallsPath entityProcessorCalls() {
+        if (_entityProcessorCalls == null)
+            _entityProcessorCalls = new EntityProcessorCallsPath(this, null, Keys.FK1_CALLS_TICKET_ID.getInverseKey());
+
+        return _entityProcessorCalls;
+    }
+
     private transient EntityProcessorConversionEventsPath _entityProcessorConversionEvents;
 
     /**
@@ -470,6 +548,19 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
             _entityProcessorConversionEvents = new EntityProcessorConversionEventsPath(this, null, Keys.FK1_CE_TICKET_ID.getInverseKey());
 
         return _entityProcessorConversionEvents;
+    }
+
+    private transient EntityProcessorWhatsappMessagesPath _entityProcessorWhatsappMessages;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_whatsapp_messages</code> table
+     */
+    public EntityProcessorWhatsappMessagesPath entityProcessorWhatsappMessages() {
+        if (_entityProcessorWhatsappMessages == null)
+            _entityProcessorWhatsappMessages = new EntityProcessorWhatsappMessagesPath(this, null, Keys.FK1_WA_MESSAGES_TICKET_ID.getInverseKey());
+
+        return _entityProcessorWhatsappMessages;
     }
 
     private transient EntityProcessorNotesPath _entityProcessorNotes;

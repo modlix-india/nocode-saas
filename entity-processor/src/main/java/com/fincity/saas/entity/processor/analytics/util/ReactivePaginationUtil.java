@@ -16,9 +16,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.util.CollectionUtils;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @UtilityClass
@@ -28,16 +26,6 @@ public class ReactivePaginationUtil {
     private static final ConcurrentHashMap<String, MethodHandle> getterCache = new ConcurrentHashMap<>();
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-
-    public static Mono<Integer> getLimit(Pageable pageable) {
-        return Mono.fromCallable(() -> {
-            int pageNumber = pageable.getPageNumber();
-            int pageSize = pageable.getPageSize();
-            // For the first page, the limit is the page size
-            // For subsequent pages, the limit is the product of page number and page size
-            return pageNumber == 0 ? pageSize : (pageNumber + 1) * pageSize;
-        });
-    }
 
     public static <T> Mono<Page<T>> toPage(List<T> list, Pageable pageable) {
 
@@ -58,19 +46,6 @@ public class ReactivePaginationUtil {
         });
     }
 
-    public static <T> Mono<Page<T>> toPage(List<T> list, Pageable pageable, long totalElements) {
-        return Mono.fromCallable(() -> {
-            if (pageable == null) return new PageImpl<>(list, PageRequest.of(0, list.size()), list.size());
-
-            List<T> sortedList = sortListInternal(list, pageable);
-            int start = Math.toIntExact(pageable.getOffset());
-            int end = Math.min((start + pageable.getPageSize()), sortedList.size());
-
-            List<T> pageContent = start >= sortedList.size() ? List.of() : sortedList.subList(start, end);
-            return new PageImpl<>(pageContent, pageable, totalElements);
-        });
-    }
-
     private static <T> List<T> sortListInternal(List<T> list, Pageable pageable) {
         List<T> copy = new ArrayList<>(list);
 
@@ -88,47 +63,7 @@ public class ReactivePaginationUtil {
         return copy;
     }
 
-    public static <T> Flux<T> sort(List<T> list, Pageable pageable) {
-        if (pageable.getSort().isUnsorted()) return Flux.fromIterable(list);
-
-        List<Sort.Order> orders = pageable.getSort().get().toList();
-
-        Comparator<T> comparator = createComparator(orders);
-
-        List<T> sortedList = new ArrayList<>(list);
-        sortedList.sort(comparator);
-        return Flux.fromIterable(sortedList);
-    }
-
-    public static Mono<Pageable> updatePageable(Pageable pageable, Map<String, String> sortMap, boolean keepAll) {
-        return Mono.fromCallable(() -> {
-            List<Sort.Order> orders = new ArrayList<>();
-            for (Sort.Order order : pageable.getSort()) {
-                String mappedSortField = sortMap.get(order.getProperty());
-                if (mappedSortField != null) {
-                    orders.add(new Sort.Order(order.getDirection(), mappedSortField));
-                    if (!keepAll)
-                        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(orders));
-                } else if (keepAll) {
-                    orders.add(order);
-                }
-            }
-            return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(orders));
-        });
-    }
-
-    public static Mono<Pageable> updatePageableJpaSort(Pageable pageable, Map<String, String> sortMap) {
-        return Mono.fromCallable(() -> {
-            Sort sort = Sort.unsorted();
-            for (Sort.Order order : pageable.getSort()) {
-                String mappedSortField = sortMap.get(order.getProperty());
-                if (mappedSortField != null) sort = sort.and(JpaSort.unsafe(order.getDirection(), mappedSortField));
-            }
-            return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-        });
-    }
-
-    public static <T> Comparator<T> createComparator(List<Sort.Order> orders) {
+    private static <T> Comparator<T> createComparator(List<Sort.Order> orders) {
         if (CollectionUtils.isEmpty(orders)) return Comparator.comparing(Object::hashCode); // no-op comparator
         return (o1, o2) -> compareObjects(o1, o2, orders);
     }

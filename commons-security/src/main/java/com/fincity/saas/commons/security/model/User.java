@@ -29,6 +29,9 @@ public class User implements Serializable, IClassConvertor {
     private String lastName;
     private String middleName;
     private String localeCode;
+
+    /** This person's IANA zone override, or null to take the client's. */
+    private String timeZone;
     private String statusCode;
 
     private List<Profile> profiles;

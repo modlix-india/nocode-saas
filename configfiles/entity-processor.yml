@@ -52,3 +52,22 @@ entity-processor:
   # regardless of the caller's session app. Override per-deployment if your
   # marketing app is named differently.
   marketing-app-code: marketingai
+
+  whatsapp:
+    # Connection names are tenant-authored, so the real lookup goes through
+    # ProductComm (product+source, then product default, then app default).
+    # This is only used when a tenant has no WhatsApp ProductComm rows at all.
+    fallback-connection-name: whatsapp_connection
+    mq:
+      # Templates published on ticket create land on a holding queue whose TTL
+      # staggers delivery, then dead-letter into the outbox for actual sending.
+      exchange: whatsapp.templates
+      outbox: whatsapp.outbox
+      dlx: whatsapp.dlx
+      holding:
+        # Number of hold.N queues. Must cover the largest expected asset pack;
+        # slot index is clamped to count-1 so a bigger pack tails into the last slot.
+        count: 5
+      delay:
+        step:
+          ms: 30000

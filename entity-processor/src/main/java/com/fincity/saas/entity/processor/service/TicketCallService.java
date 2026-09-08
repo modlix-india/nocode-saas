@@ -21,6 +21,7 @@ import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppl
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
+import com.fincity.saas.entity.processor.service.message.TicketCallLogService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
@@ -52,6 +53,7 @@ public class TicketCallService implements IRepositoryProvider {
     private final IFeignMessageService messageService;
     private final ProcessorMessageResourceService msgService;
     private final ActivityService activityService;
+    private final TicketCallLogService callLogService;
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
@@ -65,6 +67,7 @@ public class TicketCallService implements IRepositoryProvider {
             IFeignMessageService messageService,
             ProcessorMessageResourceService msgService,
             ActivityService activityService,
+            TicketCallLogService callLogService,
             Gson gson) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
@@ -72,6 +75,7 @@ public class TicketCallService implements IRepositoryProvider {
         this.messageService = messageService;
         this.msgService = msgService;
         this.activityService = activityService;
+        this.callLogService = callLogService;
         this.gson = gson;
     }
 
@@ -156,9 +160,24 @@ public class TicketCallService implements IRepositoryProvider {
                                             .setConnectionName(productComm.getConnectionName())
                                             .setUserId(ticket.getAssignedUserId()));
                         },
-                        (productComm, ticket, response) -> {
+                        (ProductComm productComm, Ticket ticket, ExotelConnectAppletResponse response) -> {
                             logger.info("Call connected successfully - ticketId: {}", ticket.getId());
-                            return this.logCall(access, ticket).thenReturn(response);
+                            // Written here rather than left to the first status callback, because
+                            // this is the only point at which the deal is known for certain. The
+                            // callback carries a provider call id and phone numbers, so deriving
+                            // the deal from it later would be the phone-number guess this whole
+                            // move exists to stop.
+                            return this.callLogService
+                                    .recordIncomingCall(
+                                            access,
+                                            ticket,
+                                            exotelRequest.getCallSid(),
+                                            productComm.getConnectionName(),
+                                            from,
+                                            callerId,
+                                            Map.copyOf(providerIncomingRequest))
+                                    .then(this.logCall(access, ticket))
+                                    .thenReturn(response);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallService.incomingExotelCall"));
     }

@@ -28,6 +28,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.TimeZoneUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
@@ -77,6 +78,15 @@ public class ClientRegistrationService {
     private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
     private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
     private static final int VALIDITY_MINUTES = 30;
+
+    /**
+     * Where a tenant is assumed to be when the browser did not say.
+     *
+     * <p>Matches the column default in V81. Kept in step with it deliberately: the two disagreeing
+     * would put tenants created through registration on a different clock from tenants created any
+     * other way, which is the sort of split nobody finds by reading.
+     */
+    private static final String DEFAULT_TIME_ZONE = "Asia/Kolkata";
     private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 
     private final ClientDAO dao;
@@ -490,6 +500,10 @@ public class ClientRegistrationService {
         client.setName(clientName);
         client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
         client.setLocaleCode(request.getLocaleCode());
+        // Never null: the column is NOT NULL, and more to the point a tenant with no clock has no
+        // business hours, which is a silent way for scheduled work to run at the wrong time. An
+        // unreadable value from the browser lands on the default rather than failing the signup.
+        client.setTimeZone(TimeZoneUtil.effective(request.getTimeZone(), DEFAULT_TIME_ZONE));
         client.setTokenValidityMinutes(VALIDITY_MINUTES);
         client.setBusinessSize(request.getBusinessSize());
         client.setIndustry(request.getIndustry());
@@ -600,6 +614,10 @@ public class ClientRegistrationService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setLocaleCode(request.getLocaleCode());
+        // No time zone on the owner, on purpose. Their override is left null so they inherit the
+        // client's, which was just set from this same browser. Copying it here would make the owner
+        // the one person who does not move when the tenant later changes its zone, and that is a
+        // difficult thing to notice and a worse one to explain.
         user.setUserName(request.getUserName());
         user.setPhoneNumber(request.getPhoneNumber());
 

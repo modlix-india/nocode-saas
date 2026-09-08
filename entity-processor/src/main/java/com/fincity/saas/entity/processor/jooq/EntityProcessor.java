@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
@@ -16,10 +17,12 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionAc
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorMessageTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
@@ -37,6 +40,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplic
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappOutbox;
 
 import java.util.Arrays;
 import java.util.List;
@@ -73,6 +78,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_adsets</code>.
      */
     public final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_calls</code>.
+     */
+    public final EntityProcessorCalls ENTITY_PROCESSOR_CALLS = EntityProcessorCalls.ENTITY_PROCESSOR_CALLS;
 
     /**
      * The table
@@ -125,6 +135,12 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorIntegrations ENTITY_PROCESSOR_INTEGRATIONS = EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS;
 
     /**
+     * Reusable message bodies with variants. Replaces Meta-approved templates,
+     * which do not exist on the linked-device protocol.
+     */
+    public final EntityProcessorMessageTemplates ENTITY_PROCESSOR_MESSAGE_TEMPLATES = EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES;
+
+    /**
      * The table <code>entity_processor.entity_processor_notes</code>.
      */
     public final EntityProcessorNotes ENTITY_PROCESSOR_NOTES = EntityProcessorNotes.ENTITY_PROCESSOR_NOTES;
@@ -143,6 +159,12 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_product_comms</code>.
      */
     public final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_message_configs</code>.
+     */
+    public final EntityProcessorProductMessageConfigs ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS = EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS;
 
     /**
      * The table
@@ -240,6 +262,18 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_whatsapp_messages</code>.
+     */
+    public final EntityProcessorWhatsappMessages ENTITY_PROCESSOR_WHATSAPP_MESSAGES = EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES;
+
+    /**
+     * Queued automated WhatsApp messages and the pacing decision for each. Not
+     * cleared on success: this is the audit trail.
+     */
+    public final EntityProcessorWhatsappOutbox ENTITY_PROCESSOR_WHATSAPP_OUTBOX = EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX;
+
+    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -258,6 +292,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorAds.ENTITY_PROCESSOR_ADS,
             EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS,
+            EntityProcessorCalls.ENTITY_PROCESSOR_CALLS,
             EntityProcessorCampaignMetrics.ENTITY_PROCESSOR_CAMPAIGN_METRICS,
             EntityProcessorCampaignProducts.ENTITY_PROCESSOR_CAMPAIGN_PRODUCTS,
             EntityProcessorCampaignSyncState.ENTITY_PROCESSOR_CAMPAIGN_SYNC_STATE,
@@ -267,10 +302,12 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorConversionEvents.ENTITY_PROCESSOR_CONVERSION_EVENTS,
             EntityProcessorDiagnostics.ENTITY_PROCESSOR_DIAGNOSTICS,
             EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS,
+            EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
             EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS,
+            EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS,
             EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
             EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES,
@@ -287,7 +324,9 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES,
             EntityProcessorTicketPeDuplicationRules.ENTITY_PROCESSOR_TICKET_PE_DUPLICATION_RULES,
             EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS,
-            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS
+            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS,
+            EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES,
+            EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX
         );
     }
 }

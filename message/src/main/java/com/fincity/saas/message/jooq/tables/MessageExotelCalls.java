@@ -6,6 +6,7 @@ package com.fincity.saas.message.jooq.tables;
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
+import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageCalls.MessageCallsPath;
@@ -24,6 +25,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
@@ -113,6 +115,13 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
      * account SID for this call.
      */
     public final TableField<MessageExotelCallsRecord, String> ACCOUNT_SID = createField(DSL.name("ACCOUNT_SID"), SQLDataType.CHAR(50).nullable(false), this, "Exotel account SID for this call.");
+
+    /**
+     * The column <code>message.message_exotel_calls.OWNER_SERVICE</code>.
+     * Eureka service id owning this call, e.g. entity-processor. Null is
+     * unrouted and must park loudly, never drop.
+     */
+    public final TableField<MessageExotelCallsRecord, String> OWNER_SERVICE = createField(DSL.name("OWNER_SERVICE"), SQLDataType.VARCHAR(64), this, "Eureka service id owning this call, e.g. entity-processor. Null is unrouted and must park loudly, never drop.");
 
     /**
      * The column <code>message.message_exotel_calls.FROM_DIAL_CODE</code>. Dial
@@ -341,6 +350,11 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.MESSAGE_EXOTEL_CALLS_IDX0_EXOTEL_CALLS_AC_CC);
     }
 
     @Override

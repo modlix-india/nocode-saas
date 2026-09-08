@@ -24,6 +24,16 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
 
     private Identity productId;
     private PhoneNumber phoneNumber;
+
+    /**
+     * A WhatsApp number that differs from {@link #phoneNumber}. Optional, and usually absent.
+     *
+     * <p>Not part of {@link #hasIdentifyInfo()} on purpose. That decides whether a request carries
+     * enough to identify a person at intake, and this number is typically learned later, from someone
+     * who rang the deal and was told to message a different number.
+     */
+    private PhoneNumber whatsappNumber;
+
     private Email email;
     private String source;
     private String subSource;

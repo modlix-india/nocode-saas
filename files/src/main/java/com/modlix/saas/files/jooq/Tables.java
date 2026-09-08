@@ -5,6 +5,7 @@ package com.modlix.saas.files.jooq;
 
 
 import com.modlix.saas.files.jooq.tables.FilesAccessPath;
+import com.modlix.saas.files.jooq.tables.FilesAccessPathBackup;
 import com.modlix.saas.files.jooq.tables.FilesFileSystem;
 import com.modlix.saas.files.jooq.tables.FilesSecuredAccessKeys;
 import com.modlix.saas.files.jooq.tables.FilesUploadDownload;
@@ -20,6 +21,11 @@ public class Tables {
      * The table <code>files.files_access_path</code>.
      */
     public static final FilesAccessPath FILES_ACCESS_PATH = FilesAccessPath.FILES_ACCESS_PATH;
+
+    /**
+     * The table <code>files.files_access_path_backup</code>.
+     */
+    public static final FilesAccessPathBackup FILES_ACCESS_PATH_BACKUP = FilesAccessPathBackup.FILES_ACCESS_PATH_BACKUP;
 
     /**
      * The table <code>files.files_file_system</code>.

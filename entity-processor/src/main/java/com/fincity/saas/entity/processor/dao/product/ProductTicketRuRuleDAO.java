@@ -68,4 +68,40 @@ public class ProductTicketRuRuleDAO
 
         return Flux.from(allRulesQuery.groupBy(this.idField)).map(rec -> rec.into(this.pojoClass));
     }
+
+    /**
+     * The distribution rows of every read rule covering a product or its template.
+     *
+     * <p>The inverse of {@link #getUserConditions}: that one starts from a user and finds the rules
+     * that match them, this starts from a product and finds who the rules point at. Same two tables,
+     * same join, read the other way round.
+     *
+     * <p>Returns the raw distribution rows rather than user ids, because a row can name a user, a
+     * role, a designation, a department or a profile, and expanding the last four takes a call to
+     * the security service that a DAO has no business making.
+     */
+    public Flux<TicketRuUserDistribution> getReadDistributions(
+            String appCode, String clientCode, ULong productId, ULong productTemplateId) {
+
+        var dist = EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS;
+
+        Condition covers = DSL.falseCondition();
+        if (productId != null)
+            covers = covers.or(ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.PRODUCT_ID.eq(productId));
+        if (productTemplateId != null)
+            covers = covers.or(
+                    ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.PRODUCT_TEMPLATE_ID.eq(productTemplateId));
+
+        if (productId == null && productTemplateId == null) return Flux.empty();
+
+        return Flux.from(super.dslContext
+                        .select(dist.fields())
+                        .from(dist)
+                        .join(ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES)
+                        .on(ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.ID.eq(dist.RULE_ID))
+                        .where(covers.and(super.isActiveTrue())
+                                .and(super.appCodeField.eq(appCode))
+                                .and(super.clientCodeField.eq(clientCode))))
+                .map(rec -> rec.into(TicketRuUserDistribution.class));
+    }
 }

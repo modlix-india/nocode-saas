@@ -37,6 +37,7 @@ import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.CollectionUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,7 +172,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         if (!mutableContext.containsKey("user"))
             mutableContext.put("user", IdAndValue.of(access.getUserId(), access.getUserName()));
 
-        LocalDateTime activityDate = createdOn != null ? createdOn : LocalDateTime.now();
+        // UTC, not the JVM default. Every other timestamp in this schema is UTC and the UI formats
+        // activityDate with UTC_TO_..., so a local wall clock here gets the offset applied a second
+        // time on the way out: a deal created at 13:35 IST was stored as 13:35 and displayed as
+        // 19:05. It looked right on a UTC server and wrong on every developer machine, which is the
+        // worst way for this to hide.
+        LocalDateTime activityDate = createdOn != null ? createdOn : LocalDateTime.now(ZoneOffset.UTC);
         if (!mutableContext.containsKey("dateTime")) mutableContext.put("dateTime", activityDate);
 
         return mutableContext;

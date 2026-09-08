@@ -69,6 +69,12 @@ import reactor.util.function.Tuples;
 
 @Service
 public class CoreFunctionService extends AbstractFunctionService<CoreFunction, CoreFunctionDocumentRepository> {
+    /** Draftable, like every other core object. See StorageService for why. */
+    @Override
+    protected boolean isDraftable() {
+        return true;
+    }
+
 
     private static final Logger logger = LoggerFactory.getLogger(CoreFunctionService.class);
 
@@ -215,8 +221,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
                     AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
 
+                    // this.coreFunctionRepository already leads with a
+                    // KIRunReactiveFunctionRepository, so there is no need to prepend another one.
                     ReactiveRepository<ReactiveFunction> execRepo = new ReactiveHybridRepository<>(
-                            new KIRunReactiveFunctionRepository(),
                             this.coreFunctionRepository,
                             remRepo);
 

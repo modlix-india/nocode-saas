@@ -42,6 +42,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.TimeZoneUtil;
 import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.OneTimeToken;
@@ -804,8 +805,23 @@ public class AuthenticationService implements IAuthenticationService {
                 claims -> this.userService.readInternal(tokenObject.getUserId())
                         .flatMap(this::checkUserStatus),
                 (claims, u) -> this.clientService.getClientTypeNCodeNClientLevel(u.getClientId()),
-                (claims, u, typ) -> Mono.just(new ContextAuthentication(
-                        u.toContextUser(),
+                // The client is read for one field: its time zone, which is the default a user's own
+                // override falls back to. Cached under the client id, like the type/code/level read
+                // above, so this is a map lookup on all but the first request for a tenant.
+                //
+                // defaultIfEmpty, and it is not decoration. This sits inside the chain that decides
+                // whether a request is authenticated, and an empty Mono here would collapse the whole
+                // chain and read as "not logged in". Nobody should be signed out because we could not
+                // work out what time it is where they are: an absent client yields an absent zone and
+                // authentication carries on.
+                (claims, u, typ) -> this.clientService.readInternal(u.getClientId())
+                        .defaultIfEmpty(new Client()),
+                (claims, u, typ, client) -> Mono.just(new ContextAuthentication(
+                        u.toContextUser()
+                                // Resolved here rather than downstream because this is the only
+                                // place holding both halves. Every service then reads one field and
+                                // no service reimplements the fallback.
+                                .setTimeZone(TimeZoneUtil.effective(u.getTimeZone(), client.getTimeZone())),
                         true,
                         claims.getLoggedInClientId(),
                         claims.getLoggedInClientCode(),

@@ -32,6 +32,16 @@ public class Product extends BaseProcessorDto<Product> {
     private FileDetail logoFileDetail;
     private FileDetail bannerFileDetail;
 
+    /**
+     * The linked WhatsApp number this product sends from, by session code.
+     *
+     * <p>Null means "no number of its own", which resolves to the tenant default rather than to
+     * nothing. The same is true of a code naming a number that has since been unlinked: the resolver
+     * cannot verify this against another service's table, so it treats anything it cannot place as
+     * unset. A product must not go silent because somebody unlinked a handset.
+     */
+    private String whatsappSessionCode;
+
     public Product() {
         super();
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
@@ -47,6 +57,7 @@ public class Product extends BaseProcessorDto<Product> {
         this.productWalkInFormId = product.productWalkInFormId;
         this.logoFileDetail = product.logoFileDetail;
         this.bannerFileDetail = product.bannerFileDetail;
+        this.whatsappSessionCode = product.whatsappSessionCode;
     }
 
     public static Product of(ProductRequest productRequest) {

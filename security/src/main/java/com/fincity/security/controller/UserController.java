@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
@@ -44,6 +43,8 @@ import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.model.RecordAudienceRequest;
+import com.fincity.security.service.RecordAudienceService;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
@@ -59,14 +60,17 @@ public class UserController
     private final UserInviteService inviteService;
     private final UserSubOrganizationService userSubOrgService;
     private final UserRequestService requestService;
+    private final RecordAudienceService recordAudienceService;
 
     public UserController(
             UserInviteService inviteService,
             UserSubOrganizationService userSubOrgService,
-            UserRequestService requestService) {
+            UserRequestService requestService,
+            RecordAudienceService recordAudienceService) {
         this.inviteService = inviteService;
         this.userSubOrgService = userSubOrgService;
         this.requestService = requestService;
+        this.recordAudienceService = recordAudienceService;
     }
 
     @GetMapping("{userId}/removeProfile/{profileId}")
@@ -177,13 +181,24 @@ public class UserController
 
     @DeleteMapping("/invite/{code}")
     public Mono<ResponseEntity<Boolean>> rejectInvite(@PathVariable String code) {
-        return this.inviteService.deleteUserInvitation(code).map(ResponseEntity::ok);
+        return this.inviteService.revokeInvitation(code).map(ResponseEntity::ok);
     }
 
     @GetMapping("/invites")
-    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(
-            Pageable pageable, @RequestParam(required = false) AbstractCondition condition) {
-        return this.inviteService.getAllInvitedUsers(pageable, condition).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, "createdAt") : pageable);
+        return this.inviteService
+                .getAllInvitedUsers(pageable,
+                        ConditionUtil.parameterMapToMap(request.getQueryParams(), "page", "size", "sort"))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/invites/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(@RequestBody Query query,
+            @RequestParam(required = false) ULong appId) {
+        return this.inviteService
+                .getAllInvitedUsers(query.getPageable(), query.getCondition(), appId)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal" + PATH_ID)
@@ -250,6 +265,22 @@ public class UserController
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * Who may see a record owned by a client and assigned to a person.
+     *
+     * <p>The inverse of the sub-organisation question above. That one expands downward from a
+     * caller and is answered on every read; this one collapses upward around a record and is
+     * answered when something needs to know who to tell. At eight or ten levels of hierarchy the
+     * difference is between a walk over the whole organisation and a walk up one chain.
+     *
+     * <p>Internal, like its neighbours: it takes a client id and user ids with no security context
+     * of its own, so it must never be reachable from outside the mesh.
+     */
+    @PostMapping("/internal/recordAudience")
+    public Mono<ResponseEntity<List<ULong>>> getRecordAudience(@RequestBody RecordAudienceRequest request) {
+        return this.recordAudienceService.resolve(request).map(ResponseEntity::ok);
+    }
+
     @PutMapping("/{userId}/reportingManager/{managerId}")
     public Mono<ResponseEntity<User>> updateReportingManager(
             @PathVariable ULong userId, @PathVariable ULong managerId) {
@@ -290,6 +321,23 @@ public class UserController
     @GetMapping("/requestUser/{requestId}")
     public Mono<ResponseEntity<User>> getUserFromRequestId(@PathVariable String requestId) {
         return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/requests")
+    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, "updatedAt") : pageable);
+        return this.requestService
+                .readPageFilter(pageable,
+                        ConditionUtil.parameterMapToMap(request.getQueryParams(), "page", "size", "sort"))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/requests/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<UserRequest>>> readUserRequests(@RequestBody Query query,
+            @RequestParam(required = false) String requesterSearch) {
+        return this.requestService
+                .readPageFilter(query.getPageable(), query.getCondition(), requesterSearch)
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/noMapping")

@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
@@ -44,6 +46,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
+import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -249,19 +252,66 @@ public class ClientService
                 uriPort);
     }
 
+    /**
+     * The appCode a hostname resolves to through the subdomain fallback, or null
+     * when the hostname is not one of the platform's own subdomain hosts.
+     *
+     * Public because it is also the guard. {@code ClientUrlService} has to refuse a
+     * CLIENT_URL row on a hostname that already belongs to an app by convention,
+     * and it has to decide that with exactly the arithmetic used here: a configured
+     * row is matched BEFORE this fallback, so a row on such a hostname silently
+     * takes an app's default host away from it. Two copies of this loop drifting
+     * apart is how leadzump.dev.modlix.com came to serve cxapp.
+     *
+     * A prefix spanning more than one label is not an app's host: an appCode cannot
+     * contain a dot, so {@code a.b.dev.modlix.com} would only ever have found
+     * nothing, and answering null saves the lookup.
+     */
+    public String subdomainAppCode(String uriHost) {
+
+        if (StringUtil.safeIsBlank(uriHost) || this.subDomainURLEndings == null
+                || this.subDomainURLEndings.length == 0)
+            return null;
+
+        String host = uriHost.trim()
+                .toLowerCase();
+
+        for (String eachEnding : this.subDomainURLEndings) {
+
+            if (!host.endsWith(eachEnding))
+                continue;
+
+            String code = host.substring(0, host.length() - eachEnding.length());
+
+            return code.isEmpty() || code.indexOf('.') >= 0 ? null : code;
+        }
+
+        return null;
+    }
+
+    /**
+     * Every hostname that resolves to this appCode through the subdomain fallback.
+     *
+     * The inverse of {@link #subdomainAppCode(String)}, for the guard that runs
+     * the other way round: app creation has to know whether anybody already holds
+     * the hostnames the new app would otherwise answer on.
+     */
+    public List<String> subdomainHostsOf(String appCode) {
+
+        if (StringUtil.safeIsBlank(appCode) || this.subDomainURLEndings == null)
+            return List.of();
+
+        String code = appCode.trim()
+                .toLowerCase();
+
+        return Arrays.stream(this.subDomainURLEndings)
+                .map(ending -> code + ending)
+                .toList();
+    }
+
     private Mono<? extends ClientUrlPattern> getClientPatternBySubdomain(String uriHost) {
 
-        if (this.subDomainURLEndings == null || this.subDomainURLEndings.length == 0)
-            return Mono.empty();
-
-        String code = null;
-        for (String eachEnding : this.subDomainURLEndings) {
-            if (uriHost.toLowerCase()
-                    .endsWith(eachEnding)) {
-                code = uriHost.substring(0, uriHost.length() - eachEnding.length());
-                break;
-            }
-        }
+        String code = this.subdomainAppCode(uriHost);
 
         if (code == null)
             return Mono.empty();
@@ -304,18 +354,46 @@ public class ClientService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> super.create(entity.setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))),
+                ca -> this.resolveParentClient(ca, entity.getParentClientId()),
 
-                (ca, client) -> {
-                    if (!ca.isSystemClient())
-                        return this.clientHierarchyService
-                                .create(ULongUtil.valueOf(ca.getUser().getClientId()), client.getId())
-                                .map(x -> client);
+                // The level is derived from the PARENT's level, not the caller's.
+                // With no parent chosen those are the same client, which is what
+                // creation always did.
+                //
+                // Status: the column defaults to ACTIVE, but the insert always
+                // writes the POJO's value, so a caller that omits it stores an
+                // explicit null - 1057 existing clients are in that state. A null
+                // status matches no status filter and hides the activate/deactivate
+                // control, so it is a bug rather than a state.
+                (ContextAuthentication ca, Client parent) -> {
 
-                    return Mono.just(client);
+                    SecurityClientLevelType childLevel = Client
+                            .getChildClientLevelType(parent.getLevelType());
+
+                    if (childLevel == null)
+                        return this.securityMessageResourceService.<Client>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.FORBIDDEN_CREATE,
+                                "Client under " + parent.getCode());
+
+                    return super.create(entity
+                            .setLevelType(childLevel)
+                            .setStatusCode(entity.getStatusCode() == null ? SecurityClientStatusCode.ACTIVE
+                                    : entity.getStatusCode()));
                 },
 
-                (ca, client, hClient) -> {
+                // Every client needs a hierarchy row, including one created by a
+                // SYSTEM administrator. Skipping it for SYSTEM callers left the new
+                // client with no recorded parent, invisible to every hierarchy walk
+                // (access checks, own-and-managed filters, duplicate rules) and able
+                // to turn a clients listing with ?fetchManagingClient=true into a
+                // 500, because getClientHierarchy errors when the row is absent.
+                (ca, parent, client) -> this.clientHierarchyService
+                        .create(parent.getId(), client.getId())
+                        .map(x -> client)
+                        .defaultIfEmpty(client),
+
+                (ca, parent, client, hClient) -> {
                     if (!SecurityContextUtil.hasAuthority("Authorities.ROLE_Owner",
                             ca.getAuthorities()))
                         return this.clientManagerService
@@ -333,6 +411,36 @@ public class ClientService
 
                     return Mono.just(hClient);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
+    }
+
+    /**
+     * The client a new client is created under.
+     * <p>
+     * Null means the caller's own client, which is the only thing creation ever
+     * supported. Anything else has to be a client the caller actually manages -
+     * the same gate {@code isUserClientManageClient} applies everywhere else - so
+     * a caller cannot graft a new tenant somewhere they have no authority over
+     * simply by naming its id in the payload.
+     */
+    private Mono<Client> resolveParentClient(ContextAuthentication ca, ULong parentClientId) {
+
+        ULong callerClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+        if (parentClientId == null || parentClientId.equals(callerClientId))
+            return this.readInternal(callerClientId);
+
+        return this.isUserClientManageClient(ca, parentClientId)
+                // An id that does not exist makes the hierarchy lookup throw rather
+                // than return false, which surfaced as a 500. A parent the caller
+                // cannot reach and a parent that is not there are the same answer to
+                // the caller, and saying so also avoids confirming which ids exist.
+                .onErrorResume(e -> Mono.empty())
+                .filter(BooleanUtil::safeValueOf)
+                .flatMap(managed -> this.readInternal(parentClientId))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_CREATE,
+                        "Client under the selected parent"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
@@ -433,9 +541,36 @@ public class ClientService
                 .map(e -> 1);
     }
 
+    /**
+     * A client's level and type are set when it is created and are not editable
+     * afterwards.
+     * <p>
+     * Neither is really the caller's to choose even at creation: {@link #create}
+     * derives {@code levelType} from the parent's level and overwrites whatever was
+     * sent, and {@code typeCode} is decided by the registration flow. Changing
+     * either later re-parents a tenant in the hierarchy and changes which duplicate
+     * and access rules apply to it, with nothing rebuilding the hierarchy to match.
+     * <p>
+     * This is the single hook both update paths pass through -
+     * {@code update(Client)} directly, and {@code update(key, Map)} because
+     * {@code AbstractJOOQUpdatableDataService} rebuilds the entity and then calls
+     * {@code update(D)} - so a PUT and a PATCH are both covered here.
+     * <p>
+     * The stored values are restored rather than the request refused, so a caller
+     * that round-trips the whole object still succeeds; the fields are simply not
+     * writable. {@code AbstractUpdatableDAO} treats {@code CREATED_BY} the same way.
+     */
     @Override
     protected Mono<Client> updatableEntity(Client entity) {
-        return Mono.just(entity);
+
+        if (entity == null || entity.getId() == null)
+            return Mono.justOrEmpty(entity);
+
+        return this.readInternal(entity.getId())
+                .map(existing -> entity
+                        .setLevelType(existing.getLevelType())
+                        .setTypeCode(existing.getTypeCode()))
+                .defaultIfEmpty(entity);
     }
 
     @Override
@@ -645,19 +780,38 @@ public class ClientService
 
         Mono<List<Client>> clientsMono = Mono.just(clients);
 
+        // Both of these enrich in place and must return the client either way. The
+        // previous shape - filter(), then flatMap() over a Mono that can be empty -
+        // silently removed a client from the returned list whenever there was
+        // nothing to attach: SYSTEM has no CREATED_BY, and a top-level client has no
+        // level-0 managing client. The page routes hide it because they
+        // .thenReturn(page) and discard this list, but readById and readByIds return
+        // it, so an internal caller was losing whole clients.
         if (fetchCreatedByUser)
             clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
-                    .filter(c -> c.getCreatedBy() != null)
-                    .flatMap(c -> this.userService.readInternal(c.getCreatedBy()).map(c::setCreatedByUser))
+                    .flatMap(c -> c.getCreatedBy() == null ? Mono.just(c)
+                            : this.userService.readInternal(c.getCreatedBy())
+                                    .map(c::setCreatedByUser)
+                                    .defaultIfEmpty(c))
                     .collectList();
 
         if (fetchApps)
             clientsMono = clientsMono.flatMap(c -> this.appService.fillApps(map));
 
+        // A client with no row in SECURITY_CLIENT_HIERARCHY makes
+        // getClientHierarchy THROW "No client hierarchy found", and because the
+        // controller chains .thenReturn(page) off this, that error took out the
+        // whole listing - one unparented client anywhere on the page turned
+        // ?fetchManagingClient=true into a 500. A missing parent is a data
+        // condition, not a reason to refuse the list, so it now leaves the field
+        // unset.
         if (fetchManagingClient)
             clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
                     .flatMap(c -> this.clientHierarchyService.getManagingClient(c.getId(), ClientHierarchy.Level.ZERO)
-                            .flatMap(this::getClientInfoById).map(c::setManagagingClient))
+                            .flatMap(this::getClientInfoById)
+                            .map(c::setManagagingClient)
+                            .onErrorResume(e -> Mono.just(c))
+                            .defaultIfEmpty(c))
                     .collectList();
 
         if (fetchUserCounts)

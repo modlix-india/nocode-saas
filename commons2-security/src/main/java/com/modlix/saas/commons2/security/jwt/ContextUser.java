@@ -41,6 +41,18 @@ public class ContextUser implements Serializable {
     private String lastName;
     private String middleName;
     private String localeCode;
+
+    /**
+     * The IANA zone this person is actually on, already resolved.
+     *
+     * <p>Their own override when they have one, the client's otherwise. Resolved before it gets here
+     * rather than after, because this is read by every service and a fallback rule reimplemented in
+     * each of them is how two screens end up disagreeing about what time something happened.
+     *
+     * <p>Mirrors the field on {@code com.fincity.saas.commons.security.jwt.ContextUser}. The two
+     * copies have already drifted once, so anything added to either belongs in both.
+     */
+    private String timeZone;
     private String password;
     private boolean passwordHashed;
     private String pin;

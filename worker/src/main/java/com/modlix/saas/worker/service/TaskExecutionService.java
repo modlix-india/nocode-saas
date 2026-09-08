@@ -3,6 +3,7 @@ package com.modlix.saas.worker.service;
 import com.modlix.saas.worker.dto.Task;
 import com.modlix.saas.worker.service.execution.CampaignSyncExecutionService;
 import com.modlix.saas.worker.service.execution.ConversionsDispatchExecutionService;
+import com.modlix.saas.worker.service.execution.FilesTtlCleanupService;
 import com.modlix.saas.worker.service.execution.MeteringExecutionService;
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
@@ -25,6 +26,7 @@ public class TaskExecutionService {
     private final CampaignSyncExecutionService campaignSyncExecutionService;
     private final ConversionsDispatchExecutionService conversionsDispatchExecutionService;
     private final MeteringExecutionService meteringExecutionService;
+    private final FilesTtlCleanupService filesTtlCleanupService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -33,7 +35,9 @@ public class TaskExecutionService {
             PartnerDenormExecutionService partnerDenormExecutionService,
             CampaignSyncExecutionService campaignSyncExecutionService,
             ConversionsDispatchExecutionService conversionsDispatchExecutionService,
-            MeteringExecutionService meteringExecutionService) {
+            MeteringExecutionService meteringExecutionService,
+            FilesTtlCleanupService filesTtlCleanupService) {
+        this.filesTtlCleanupService = filesTtlCleanupService;
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
@@ -86,6 +90,7 @@ public class TaskExecutionService {
             case CONVERSIONS_API_DISPATCH -> conversionsDispatchExecutionService.execute(task);
             case SECURITY_METERING, CORE_METERING, ENTITY_PROCESSOR_METERING, FILES_METERING, BILLING_RECONCILE ->
                 meteringExecutionService.execute(task);
+            case FILES_TTL_CLEANUP -> filesTtlCleanupService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);

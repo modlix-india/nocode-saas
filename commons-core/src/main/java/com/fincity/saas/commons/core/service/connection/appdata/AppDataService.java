@@ -18,12 +18,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -105,6 +107,20 @@ public class AppDataService {
     private static final String DATA_OBJECT_KEY = "dataObject";
     private static final String EXISTING_DATA_OBJECT_KEY = "existingDataObject";
     private final EnumMap<ConnectionSubType, IAppDataService> services = new EnumMap<>(ConnectionSubType.class);
+
+    /**
+     * Applications whose SESSIONS may read and write an {@code onlyThruKIRun} storage
+     * over the raw data API.
+     *
+     * Matched against {@code ContextAuthentication.verifiedAppCode}, which is the app
+     * the user actually authenticated into. NOT {@code urlAppCode}: that one is set by
+     * {@code JWTTokenFilter} from the {@code appCode} REQUEST HEADER, and the builder
+     * deliberately sends the code of the app being EDITED, so it reads `leadzump` while
+     * editing leadzump and would never match. {@code verifiedAppCode} is stamped at
+     * login and rides in the signed token, so a caller cannot claim it with a header.
+     */
+    @Value("${core.storage.onlyThruKIRun.builderAppCodes:appbuilder,sitezump}")
+    private Set<String> builderAppCodes;
 
     @Autowired
     private ConnectionService connectionService;
@@ -220,6 +236,223 @@ public class AppDataService {
      * resolution does not require an authenticated context, so this is safe from a
      * worker-triggered meter. Only the Mongo data service is implemented today.
      */
+    /**
+     * Drop an app's draft data when the app itself is being deleted.
+     *
+     * Draft rows are sandbox data: once the app is gone they mean nothing, and
+     * leaving them behind would keep an unreachable database on the cluster for
+     * good. The LIVE database is deliberately untouched, because orphaning it is
+     * long-standing behaviour and changing that is a separate decision.
+     */
+    public Mono<Boolean> dropDraftData(String appCode, String clientCode) {
+
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(conn -> this.mongoAppDataService.dropDraftDatabase(conn.orElse(null), appCode, clientCode))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftData"));
+    }
+
+    /**
+     * Drop one storage's draft collection when its definition is deleted.
+     *
+     * Called from StorageService.delete, which runs on the live surface, so the
+     * draft namespace has to be named rather than inferred from the ambient flag.
+     */
+    public Mono<Boolean> dropDraftStorageData(String appCode, String clientCode, Storage storage) {
+
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(conn -> this.mongoAppDataService.dropDraftStorage(clientCode, conn.orElse(null), storage))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftStorageData"));
+    }
+
+    /**
+     * Run one app-data operation against an explicitly named surface.
+     *
+     * Which surface a data call hits is normally ambient: {@code LogUtil.isDraft()},
+     * which the gateway sets from the resolved hostname and strips on the way in, so
+     * no caller can forge it. That is deliberate, and it stays the default -- with
+     * {@code draft == null} this returns the operation untouched.
+     *
+     * The builder is the case the ambient rule cannot serve. It runs on the live
+     * host, and still has to be able to read, seed and clear an app's draft sandbox.
+     * So it may name the surface, the same way a definition write already names its
+     * target with {@code ?draft=true}.
+     *
+     * Both values are gated, not just TRUE. Forcing {@code false} from the draft host
+     * is the mirror-image danger -- a draft-surface page writing into live data -- and
+     * one bar closes both. The bar is write access to the app, because otherwise
+     * anyone who can read a storage's rows could read its unpublished ones, and the
+     * draft hostname would stop being the credential that gates unpublished work.
+     */
+    public <T> Mono<T> onSurface(String appCode, Boolean draft, Mono<T> operation) {
+
+        if (draft == null)
+            return operation;
+
+        Mono<T> denied = this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, appCode);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                // Only the missing-context case falls through here. An empty result
+                // from the operation itself must stay empty, which is why this sits on
+                // the authentication step rather than on the whole chain.
+                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, appCode)))
+                .flatMap(ca -> this.securityService
+                        .hasWriteAccess(appCode == null ? ca.getUrlAppCode() : appCode, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE)
+                        .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                                ? operation.contextWrite(Context.of(LogUtil.DRAFT_KEY, draft))
+                                : denied))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.onSurface"));
+    }
+
+    /**
+     * Empty a storage from the BUILDER: every row, collection and history kept.
+     *
+     * Deliberately not {@link #deleteByFilter}, which is the same delete but gated on
+     * the storage's own {@code deleteAuth} because its caller is the running app
+     * through {@code CoreServices.Storage.DeleteByFilter}. That bar is right there and
+     * wrong here; see {@link #builderOrAuthorised}.
+     *
+     * @param dryRun count the rows instead of deleting them
+     */
+    public Mono<Long> clearAllRows(String appCode, String clientCode, String storageName, Boolean dryRun) {
+
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, conn, dataService, storage) -> this.<Long>builderOrAuthorised(
+                        storage, ac,
+                        () -> dataService.deleteByFilter(cc, conn, storage, new Query(), dryRun),
+                        Storage::getDeleteAuth,
+                        CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.clearAllRows"));
+    }
+
+    /**
+     * A storage operation a BUILDER may perform, on top of whoever the storage's own
+     * authority already admits.
+     *
+     * The storage's {@code createAuth} / {@code deleteAuth} answer a RUNTIME question:
+     * may this app's user create or delete rows. They are routinely written in the
+     * app's own role namespace -- {@code Authorities.CXAPP.ROLE_Super_Admin} on the
+     * `rim` app's Project storage, for one -- and a builder working on that app from
+     * the workspace holds none of it and never will. It is not a user of the app. So
+     * gating a builder action on those made the action unreachable for any app that
+     * sets them, which is most real apps.
+     *
+     * The bar that fits is write access to the APPLICATION. It is what definition
+     * writes already use (`AbstractOverridableDataService.accessCheck`) and what naming
+     * a data surface uses, so this makes the three consistent. It also grants nothing
+     * in substance: anyone with app write access can PUT the storage definition,
+     * including the very auth expression being checked here, so a bar the caller can
+     * rewrite in one call was never a bar.
+     *
+     * An OR rather than a replacement, because `DELETE {storage}?deleteAll=true` -- the
+     * DROP, which is strictly more destructive -- already admits a caller holding only
+     * `deleteAuth`. The stricter operation must not end up with the looser gate.
+     */
+    private <T> Mono<T> builderOrAuthorised(
+            Storage storage,
+            String appCode,
+            Supplier<Mono<T>> operation,
+            Function<Storage, String> authFun,
+            String msgString) {
+
+        if (storage == null)
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    CoreMessageResourceService.STORAGE_NOT_FOUND);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    if (SecurityContextUtil.hasAuthority(
+                            authFun.apply(storage), ca.getUser().getAuthorities()))
+                        return Mono.just(Boolean.TRUE);
+
+                    return this.securityService.hasWriteAccess(appCode, ca.getClientCode())
+                            .defaultIfEmpty(Boolean.FALSE);
+                })
+                // The refusal is raised HERE, not as a switchIfEmpty over the whole
+                // chain: an operation that legitimately answers nothing must not be
+                // reported as a denial. That mistake is already in genericOperation and
+                // has cost one debugging session.
+                .flatMap(allowed -> BooleanUtil.safeValueOf(allowed)
+                        ? operation.get()
+                        : this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                msgString, storage.getName()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.builderOrAuthorised"));
+    }
+
+    /**
+     * Seed one storage's draft rows from its live rows.
+     *
+     * Publish promotes definitions and never promotes data, so a draft surface starts
+     * empty and stays empty. This is how a sandbox gets realistic rows.
+     *
+     * Gated on write access to the app alone, NOT on the storage's `createAuth`: see
+     * {@link #builderOrAuthorised} for why that is the wrong question. There is no
+     * runtime path into this route to preserve, so unlike a clear it is not an OR.
+     *
+     * It runs with no ambient flag of its own: both namespaces are named explicitly,
+     * the same discipline dropDraftStorage and estimatedRowCount already follow.
+     */
+    public Mono<Long> copyLiveDataToDraft(String appCode, String clientCode, String storageName, Boolean replace) {
+
+        Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> this.securityService.hasWriteAccess(ac, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE)
+                        .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                                ? Mono.just(Boolean.TRUE)
+                                : this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, ac)),
+                (ca, ac, cc, canWrite) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, canWrite, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, canWrite, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, canWrite, conn, dataService, storage) ->
+                        dataService.copyLiveToDraft(cc, conn, storage, replace));
+
+        // A zero can only mean the live collection was empty, because the count is
+        // taken before anything is written, and in that case nothing was changed --
+        // the draft rows that were there are still there.
+        //
+        // Reported as a bad request rather than a successful copy of nothing, because
+        // "Copied 0 rows" reads as a bug in the copy.
+        return mono.flatMap(copied -> copied < 1
+                        ? this.msgService.<Long>throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                CoreMessageResourceService.DRAFT_COPY_SOURCE_EMPTY, storageName)
+                        // The 404 the dropped genericOperation used to raise. Safe as a
+                        // switchIfEmpty only because it sits AFTER this flatMap, which
+                        // either errors or emits: the sole way to arrive empty is a
+                        // storage that did not resolve, or an onlyThruKIRun one.
+                        : Mono.just(copied))
+                .switchIfEmpty(Mono.defer(() -> this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        CoreMessageResourceService.STORAGE_NOT_FOUND)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.copyLiveDataToDraft"));
+    }
+
     public Mono<Long> estimatedRowCount(String appCode, String clientCode) {
         return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
                 .flatMap(conn -> this.mongoAppDataService.estimatedRowCount(conn, appCode, clientCode))
@@ -341,7 +574,7 @@ public class AppDataService {
                     .setOperator(FilterConditionOperator.IN)
                     .setMultiValue(value));
             relationList.add(FlatMapUtil.flatMapMono(
-                    () -> this.getStorageWithKIRunValidation(relation.getStorageName(), appCode, clientCode)
+                    () -> this.getStorageForRelation(relation.getStorageName(), appCode, clientCode)
                             .map(ObjectWithUniqueID::getObject),
                     storageObj -> dataService
                             .readPageAsFlux(clientCode, conn, storageObj, query)
@@ -938,9 +1171,14 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(
                         storage,
+                        // ac/cc, NOT the raw method parameters. Every sibling method
+                        // uses the resolved values; these two did not, so a KIRun
+                        // Storage.Delete with a blank clientCode passed null through to
+                        // the collection resolver and produced the literal database
+                        // "null_<appCode>". The delete then silently 404d.
                         (contextAuth, hasAccess) -> FlatMapUtil.flatMapMono(
-                                () -> this.deleteRelatedObjects(appCode, clientCode, dataService, conn, storage, id),
-                                deleted -> this.deleteWithTriggers(appCode, clientCode, dataService, conn, storage, id),
+                                () -> this.deleteRelatedObjects(ac, cc, dataService, conn, storage, id),
+                                deleted -> this.deleteWithTriggers(ac, cc, dataService, conn, storage, id),
                                 (deleted, e) -> {
                                     if (e.getT2().isEmpty())
                                         return Mono.just(e.getT1());
@@ -1473,11 +1711,25 @@ public class AppDataService {
                 monoList.add(dataService
                         .create(clientCode, conn, storage, new DataObject().setData(job))
                         .map(v -> true));
+        } catch (GenericException ex) {
+            throw ex;
         } catch (Exception ex) {
-            logger.debug("Error while reading upload file. ", ex);
+            throw this.unreadableFile(fileType, ex);
         }
 
         return monoList;
+    }
+
+    /**
+     * The whole file is read before any row is written, so a read failure has inserted nothing and
+     * has to be answered as a failure. Swallowing it answered the upload with true for a file none
+     * of which was read.
+     */
+    private GenericException unreadableFile(DataFileType fileType, Exception ex) {
+        logger.error("Error while reading upload file. ", ex);
+
+        return new GenericException(
+                HttpStatus.BAD_REQUEST, "Unable to read the uploaded " + fileType + " file.", ex);
     }
 
     private List<Mono<Boolean>> flatFileToDB(
@@ -1511,8 +1763,10 @@ public class AppDataService {
                             .map(v -> true));
                 }
             } while (row != null && !row.isEmpty());
+        } catch (GenericException ex) {
+            throw ex;
         } catch (Exception ex) {
-            logger.debug("Error while reading upload file. ", ex);
+            throw this.unreadableFile(fileType, ex);
         }
 
         return monoList;
@@ -1551,7 +1805,9 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.genericOperation(
                         storage,
-                        (contextAuth, hasAccess) -> dataService.readPageVersion(clientCode, conn, storage, versionId,
+                        // cc, not the raw parameter: readVersion above already does
+                        // this and this one was inconsistent with it.
+                        (contextAuth, hasAccess) -> dataService.readPageVersion(cc, conn, storage, versionId,
                                 query),
                         Storage::getReadAuth,
                         CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
@@ -1577,16 +1833,82 @@ public class AppDataService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteStorage"));
     }
 
+    /**
+     * Resolve a storage, refusing an {@code onlyThruKIRun} one unless the caller is
+     * entitled to it. THROWS on refusal; see {@link #getStorageForRelation} for the
+     * lenient variant.
+     *
+     * Throwing rather than returning empty is load-bearing. Every public entry point
+     * here chains through {@code FlatMapUtil.flatMapMonoWithNull}, which is
+     * {@code .map(Optional::of).defaultIfEmpty(Optional.empty())} followed by
+     * {@code .orElse(null)}. So an empty does NOT short-circuit: it arrives as a null
+     * {@code storage} and the chain runs on. {@code readPage} then answered a
+     * misleading "Storage not found" 404 for a storage that plainly exists, and
+     * {@code copyLiveDataToDraft} handed the null straight to
+     * {@code MongoAppDataService.getCollection}, which NPE'd on
+     * {@code storage.getAppCode()} and surfaced as a 500 with a 31KB stack trace.
+     *
+     * That is the second time this deny path has been fixed. The previous attempt
+     * swapped a thrown {@code NoSuchElementException} (from {@code ContextView.get}
+     * on an absent key) for {@code Mono.empty()} so the intended 404 would be
+     * reachable. It never was, because WithNull swallows the empty. An explicit throw
+     * does not depend on emptiness surviving the chain.
+     */
     private Mono<ObjectWithUniqueID<Storage>> getStorageWithKIRunValidation(
             String name, String appCode, String clientCode) {
+        return this.resolveStorage(name, appCode, clientCode, true);
+    }
+
+    /**
+     * Resolve a storage for EAGER RELATION loading, skipping an {@code onlyThruKIRun}
+     * one instead of failing the parent read.
+     *
+     * {@code prepareMonosForPage} builds one mono per eager field with
+     * {@code FlatMapUtil.flatMapMono} (no WithNull), so an empty here short-circuits
+     * that relation alone and the parent row still comes back, just without it. The
+     * strict variant would turn a relation pointing at a KIRun-only storage into a 403
+     * on the whole read, which is a regression on every page doing that today.
+     */
+    private Mono<ObjectWithUniqueID<Storage>> getStorageForRelation(
+            String name, String appCode, String clientCode) {
+        return this.resolveStorage(name, appCode, clientCode, false);
+    }
+
+    private Mono<ObjectWithUniqueID<Storage>> resolveStorage(
+            String name, String appCode, String clientCode, boolean refuseLoudly) {
         return storageService.read(name, appCode, clientCode).flatMap(e -> {
             if (!BooleanUtil.safeValueOf(e.getObject().getOnlyThruKIRun()))
                 return Mono.just(e);
 
+            // ContextView.get(key) THROWS NoSuchElementException when the key is
+            // absent, which is the normal case for a non-KIRun caller, so this stays
+            // on getOrDefault.
             return Mono.deferContextual(cv -> {
-                if ("true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
+                if ("true".equals(cv.getOrDefault(DefinitionFunction.CONTEXT_KEY, null)))
                     return Mono.just(e);
-                return Mono.empty();
+
+                // A builder SESSION may reach these rows directly, on either surface.
+                // The flag says "route app traffic through a KIRun function"; it was
+                // never meant to hide the rows from whoever is building the app, and
+                // it did: the workspace data browser could not show them at all.
+                //
+                // Keyed on verifiedAppCode, stamped at login and carried in the signed
+                // token, so it cannot be claimed with a request header. An empty or
+                // unknown value falls through to the refusal, which is fail-safe.
+                return SecurityContextUtil.getUsersContextAuthentication()
+                        .map(ca -> StringUtil.safeIsBlank(ca.getVerifiedAppCode())
+                                ? ""
+                                : ca.getVerifiedAppCode())
+                        .defaultIfEmpty("")
+                        .flatMap(verifiedAppCode -> {
+                            if (this.builderAppCodes.contains(verifiedAppCode))
+                                return Mono.just(e);
+                            if (!refuseLoudly)
+                                return Mono.empty();
+                            return this.msgService.<ObjectWithUniqueID<Storage>>throwMessage(
+                                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                    CoreMessageResourceService.STORAGE_ONLY_THRU_KIRUN, name);
+                        });
             });
         });
     }

@@ -29,6 +29,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppDAO;
+import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -59,6 +60,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;
     private final AppRegistrationV2DAO appRegistrationDao;
+
+    /**
+     * The DAO and not {@code ClientUrlService}: that service already depends on
+     * this one, so taking the service here would close a cycle. Only one read is
+     * wanted anyway, and it is not access-controlled -- whether a hostname is
+     * spoken for is a fact about the platform, not about the caller.
+     */
+    private final ClientUrlDAO clientUrlDao;
 
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -91,12 +100,43 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public static final String THUMB_URL = "thumbUrl";
 
     public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
-            CacheService cacheService, AppRegistrationV2DAO appRegistrationDao) {
+            CacheService cacheService, AppRegistrationV2DAO appRegistrationDao, ClientUrlDAO clientUrlDao) {
 
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
         this.cacheService = cacheService;
         this.appRegistrationDao = appRegistrationDao;
+        this.clientUrlDao = clientUrlDao;
+    }
+
+    /**
+     * Refuse an appCode whose platform hostname somebody else already holds.
+     *
+     * The mirror of {@code ClientUrlService.checkNotAnAppSubdomain}. That one stops
+     * a URL being minted on an existing app's hostname; this one stops an app being
+     * created on a hostname a URL already took. Both are needed, because either
+     * order of events produces the same broken end state and the two objects are
+     * created months apart: the row for leadzump.dev.modlix.com was written in
+     * February 2025 and the `leadzump` app in April, so no check on the row could
+     * ever have caught it.
+     *
+     * A conflict fails the create rather than warning, which does mean an
+     * unrelated client holding `x.dev.modlix.com` blocks an app coded `x`. That is
+     * the intended trade: the alternative is an app that cannot be reached on its
+     * own address and gives no sign why.
+     */
+    private Mono<Boolean> checkSubdomainFreeForAppCode(String appCode) {
+
+        List<String> hosts = this.clientService.subdomainHostsOf(appCode);
+
+        if (hosts.isEmpty())
+            return Mono.just(Boolean.TRUE);
+
+        return this.clientUrlDao.firstTakenPattern(hosts)
+                .flatMap(taken -> this.messageResourceService.<Boolean>throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.APP_SUBDOMAIN_TAKEN, taken, appCode))
+                .defaultIfEmpty(Boolean.TRUE);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
@@ -131,7 +171,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 (ca, app) -> app.getAppCode() == null ? this.dao.generateAppCode(app)
                         .map(app::setAppCode) : Mono.just(app),
 
-                (ca, app, appCodeAddedApp) -> super.create(appCodeAddedApp));
+                // After the code is settled, never before: a generated code is as
+                // capable of colliding as a supplied one.
+                (ca, app, appCodeAddedApp) -> this.checkSubdomainFreeForAppCode(appCodeAddedApp.getAppCode()),
+
+                (ca, app, appCodeAddedApp, hostFree) -> super.create(appCodeAddedApp));
 
         Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
 
@@ -145,10 +189,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                         ? this.dao.generateAppCode(entity).map(entity::setAppCode)
                         : Mono.just(entity),
 
-                (ca, managedClientId, appCodeAddedApp) -> super.create(appCodeAddedApp.setClientId(managedClientId)),
+                (ca, managedClientId, appCodeAddedApp) -> this
+                        .checkSubdomainFreeForAppCode(appCodeAddedApp.getAppCode()),
 
-                (ca, mci, ac, created) -> this.dao.addClientAccess(created.getId(), ULongUtil.valueOf(ca.getUser()
-                        .getClientId()), true)
+                (ca, managedClientId, appCodeAddedApp, hostFree) -> super
+                        .create(appCodeAddedApp.setClientId(managedClientId)),
+
+                (ca, mci, ac, hostFree, created) -> this.dao.addClientAccess(created.getId(),
+                        ULongUtil.valueOf(ca.getUser()
+                                .getClientId()), true)
                         .flatMap(x -> Mono.just(created)));
 
         return (entity.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT ? explicitAppCreationFlow : normalFlow)

@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.product.ProductPartnerUpdateRequest;
 import com.fincity.saas.entity.processor.model.request.product.ProductRequest;
+import com.fincity.saas.entity.processor.model.request.product.ProductWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import java.util.List;
 import org.jooq.types.ULong;
@@ -34,6 +35,17 @@ public class ProductController
     @PostMapping("/for-partner")
     public Mono<ResponseEntity<Long>> updateForPartner(@RequestBody ProductPartnerUpdateRequest request) {
         return this.service.updateForPartner(request).map(ResponseEntity::ok);
+    }
+
+    /**
+     * Sets which products send from one linked WhatsApp number.
+     *
+     * <p>Authorized as a product edit, not as a phone-number administration action: the service
+     * reaches every row through the ordinary access-checked read.
+     */
+    @PostMapping("/whatsapp-number")
+    public Mono<ResponseEntity<Long>> assignWhatsappNumber(@RequestBody ProductWhatsappNumberRequest request) {
+        return this.service.assignWhatsappNumber(request).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal" + PATH_ID)

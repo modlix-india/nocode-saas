@@ -1,73 +1,108 @@
 package com.fincity.security.dao;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.model.condition.*;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dto.UserInvite;
-import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
-import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
+import static com.fincity.security.jooq.Tables.SECURITY_USER_INVITE;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
 
 import java.util.List;
 
-import static com.fincity.security.jooq.Tables.SECURITY_USER_INVITE;
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.SelectJoinStep;
+import org.jooq.impl.DSL;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
+
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.security.dao.clientcheck.AbstractClientCheckDAO;
+import com.fincity.security.dao.clientcheck.ClientCheckDAOHelper;
+import com.fincity.security.dto.UserInvite;
+import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Component
-public class UserInviteDAO extends AbstractDAO<SecurityUserInviteRecord, ULong, UserInvite> {
+public class UserInviteDAO extends AbstractClientCheckDAO<SecurityUserInviteRecord, ULong, UserInvite> {
 
     public UserInviteDAO() {
         super(UserInvite.class, SECURITY_USER_INVITE, SECURITY_USER_INVITE.ID);
     }
 
+    @Override
+    protected Field<ULong> getClientIDField() {
+        return SECURITY_USER_INVITE.CLIENT_ID;
+    }
+
+    /**
+     * An invite row carries a live {@code INVITE_CODE}, which is all anyone needs
+     * to accept the invite on the permitted {@code /acceptInvite} route. So every
+     * filtered read is restricted to the caller's own client and the clients they
+     * manage, the same rule the access-request listing uses.
+     */
+    @Override
+    public Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
+
+        return ClientCheckDAOHelper.applyOwnAndManagedClientFilter(
+                this.baseFilter(condition, selectJoinStep), SECURITY_USER_INVITE.CLIENT_ID);
+    }
+
+    /**
+     * Nested conditions must not each re-apply the client scoping - {@link #filter}
+     * already ANDs it in once, at the top.
+     */
+    @Override
+    protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
+
+        if (cc.getConditions() == null || cc.getConditions().isEmpty())
+            return Mono.just(DSL.noCondition());
+
+        return Flux.concat(cc.getConditions().stream()
+                .map(condition -> this.baseFilter(condition, selectJoinStep))
+                .toList())
+                .collectList()
+                .map(conditions -> cc.getOperator() == ComplexConditionOperator.AND
+                        ? DSL.and(conditions)
+                        : DSL.or(conditions));
+    }
+
     public Mono<UserInvite> getUserInvitation(String code) {
 
         return Mono.from(this.dslContext.selectFrom(SECURITY_USER_INVITE)
-                        .where(SECURITY_USER_INVITE.INVITE_CODE.eq(code))
-                        .limit(1))
+                .where(SECURITY_USER_INVITE.INVITE_CODE.eq(code))
+                .limit(1))
                 .map(e -> e.into(this.pojoClass));
+    }
+
+    /**
+     * Every profile of an app, ignoring who is asking.
+     * <p>
+     * This exists so the invites listing can be filtered by app. An invite row
+     * carries a {@code PROFILE_ID} and no app, so "invites into app X" means
+     * "invites whose profile belongs to app X" - and the profile set has to be the
+     * app's real one. {@code ProfileService.readAll} cannot be used here: it
+     * narrows profiles to the caller's own hierarchy and app access, so an
+     * administrator filtering a list of invites they can already see would get a
+     * quietly short answer.
+     * <p>
+     * Nothing about the profiles is returned to the caller - only invite ids are
+     * matched against them, and those invites are still scoped by {@link #filter}.
+     */
+    public Mono<List<ULong>> profileIdsOfApp(ULong appId) {
+
+        return Flux.from(this.dslContext.select(SECURITY_PROFILE.ID)
+                .from(SECURITY_PROFILE)
+                .where(SECURITY_PROFILE.APP_ID.eq(appId)))
+                .map(r -> r.get(SECURITY_PROFILE.ID))
+                .collectList();
     }
 
     public Mono<Boolean> deleteUserInvitation(String code) {
 
         return Mono.from(this.dslContext.deleteFrom(SECURITY_USER_INVITE)
-                        .where(SECURITY_USER_INVITE.INVITE_CODE.eq(code)))
+                .where(SECURITY_USER_INVITE.INVITE_CODE.eq(code)))
                 .map(e -> e == 1);
-    }
-
-    @Override
-    public Mono<Page<UserInvite>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-                    AbstractCondition newCondition;
-
-                    ULong clientId = ULong.valueOf(ca.getUser().getClientId());
-
-                    if (condition != null) {
-                        newCondition = new ComplexCondition()
-                                .setOperator(ComplexConditionOperator.AND)
-                                .setConditions(List.of(
-                                        new FilterCondition()
-                                                .setOperator(FilterConditionOperator.EQUALS)
-                                                .setField("clientId")
-                                                .setValue(clientId),
-                                        condition
-                                ));
-                    } else {
-                        newCondition = new FilterCondition()
-                                .setOperator(FilterConditionOperator.EQUALS)
-                                .setField("clientId")
-                                .setValue(clientId);
-                    }
-
-                    return super.readPageFilter(pageable, newCondition);
-                }
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteDAO.readPageFilter"));
     }
 }

@@ -29,6 +29,15 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String typeCode;
     private int tokenValidityMinutes;
     private String localeCode;
+
+    /**
+     * The IANA time zone this tenant operates on, e.g. {@code Asia/Kolkata}.
+     *
+     * <p>Distinct from {@code BILLING_TIMEZONE}, which V62 added for invoice periods and which
+     * nothing reads. A company can bill in one place and work in another.
+     */
+    private String timeZone;
+
     private SecurityClientStatusCode statusCode;
     private String businessType;
     private String businessSize;
@@ -47,6 +56,16 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private User createdByUser;
     private List<User> clientManagers;
     private ULong managerId;
+
+    /**
+     * Write-only, and only on create: the client the new one is parented under.
+     * <p>
+     * Not a column. Left null it means "my own client", which is what creation
+     * always did. Set, it has to be a client the caller manages - {@code create}
+     * checks that - and the new client's {@code levelType} is then derived from
+     * THAT parent's level rather than the caller's.
+     */
+    private ULong parentClientId;
 
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {

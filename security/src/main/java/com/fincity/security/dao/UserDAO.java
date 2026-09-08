@@ -26,6 +26,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.Record3;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectLimitPercentStep;
@@ -52,6 +53,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
@@ -523,8 +525,14 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
             conditions.add(SECURITY_USER.ID.eq(userId));
 
         if (appCode != null)
-            conditions.add(SECURITY_APP.CLIENT_ID
-                    .eq(SECURITY_USER.CLIENT_ID)
+            // An app declared ANY is open to every client's users by definition, which is the
+            // whole difference between ANY and EXPLICIT. Without this clause the enum value was
+            // inert here: a user could not be resolved for an ANY app unless their client
+            // happened to own it or hold an app_access row, which is exactly what OWN and
+            // EXPLICIT already mean. It matters for a broker app such as authzump, where every
+            // tenant's users must resolve but no tenant should need a grant.
+            conditions.add(SECURITY_APP.APP_ACCESS_TYPE.eq(SecurityAppAppAccessType.ANY)
+                    .or(SECURITY_APP.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
                     .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)));
 
         conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));
@@ -703,6 +711,28 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .from(SECURITY_USER)
                 .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
+    }
+
+    /**
+     * Every reporting edge in a client, in one query.
+     *
+     * <p>Feeds {@link com.fincity.security.service.OrgStructureService}, which caches the result and
+     * answers both "who reports to me, transitively" and "who do I report to, transitively" from it.
+     *
+     * <p>This replaces walking {@link #getLevel1SubOrg} once per node. That walk costs one round
+     * trip per person in the sub-tree, so a manager near the top of a ten-level organisation paid
+     * hundreds of them on every deal read. One scan of a client's users is cheaper than that at any
+     * size worth caching, and it is the only shape that can answer the upward question at all.
+     *
+     * <p>No status filter, deliberately: {@code getLevel1SubOrg} has none either, so a sub-org today
+     * includes deactivated people and a manager keeps seeing a departed report's deals. Status is
+     * carried on each row so callers that <i>do</i> care can filter, without changing what reads do.
+     */
+    public Flux<Record3<ULong, ULong, SecurityUserStatusCode>> getOrgEdges(ULong clientId) {
+        return Flux.from(this.dslContext
+                .select(SECURITY_USER.ID, SECURITY_USER.REPORTING_TO, SECURITY_USER.STATUS_CODE)
+                .from(SECURITY_USER)
+                .where(SECURITY_USER.CLIENT_ID.eq(clientId)));
     }
 
     /**
@@ -910,7 +940,7 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
             return Mono.just(List.of());
 
         var query = this.dslContext
-                .select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
+                .selectDistinct(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
                 .from(SECURITY_USER)
                 .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER)
                 .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))

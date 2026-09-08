@@ -1,6 +1,9 @@
 package com.fincity.saas.commons.configuration;
 
+import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -25,6 +28,9 @@ import org.springframework.web.reactive.result.method.annotation.ArgumentResolve
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
+import com.fasterxml.jackson.core.util.JsonGeneratorDelegate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
@@ -222,30 +228,178 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
                 Duration.ofMinutes(this.localCacheInstanceIdleMinutes));
     }
 
+    /**
+     * Approximate retained heap of a cache entry, in bytes.
+     *
+     * This used to count the entry's serialised JSON bytes, which badly
+     * under-counts: cached definitions are deeply nested LinkedHashMap trees with
+     * short String keys, and every one of those tiny JSON tokens costs tens of
+     * bytes of object header, hash table slot and String on the heap. Measured
+     * against a real 106 KB page definition from dev, the serialised length was
+     * 0.18x its actual retained heap — so a nominally 64 MiB cap was really
+     * letting a single cache instance hold several hundred MB, and could not
+     * bound a 2 GB heap.
+     *
+     * The payload is walked through a JsonGenerator so the estimate reacts to the
+     * SHAPE of the value, not just its length: a single long string weighs about
+     * what it costs, while a deep map of small keys is priced per node. On that
+     * same page this model lands at 1.45x the measured retained heap — deliberately
+     * a little conservative, since over-estimating costs some hit rate while
+     * under-estimating costs the whole service. Constants are 64-bit HotSpot with
+     * compressed oops and are approximate; this bounds a cache, it does not need
+     * to be exact.
+     */
     private int weighCacheEntry(Object key, Object value) {
-        long weight = key instanceof String s ? (long) s.length() * 2 : 16L;
-        // Stream the serialised payload through a counter (no buffer allocation); compact
-        // (non-indented) so the weight tracks payload size rather than pretty-print whitespace.
-        try (ByteCountingOutputStream counter = new ByteCountingOutputStream()) {
+        long weight = key instanceof String s ? HEAP_STRING_BASE + s.length() : HEAP_SCALAR;
+        try (HeapWeighingGenerator counter = new HeapWeighingGenerator(
+                this.objectMapper.getFactory().createGenerator(DISCARDING_STREAM))) {
             this.objectMapper.writer().without(SerializationFeature.INDENT_OUTPUT).writeValue(counter, value);
-            weight += counter.count;
+            weight += counter.weight;
         } catch (Exception e) {
-            weight += 4096L; // nominal weight when a value cannot be serialised
+            weight += HEAP_UNWEIGHABLE; // nominal weight when a value cannot be serialised
         }
         return (int) Math.min(weight, Integer.MAX_VALUE);
     }
 
-    private static final class ByteCountingOutputStream extends OutputStream {
-        private long count;
+    /** LinkedHashMap: object header and fields (~48) plus its smallest Node[] table (~80). */
+    private static final int HEAP_MAP_BASE = 128;
 
+    /** ArrayList: object header and fields (~40) plus its backing Object[] header (~24). */
+    private static final int HEAP_LIST_BASE = 64;
+
+    /** LinkedHashMap$Entry (~40) plus the table slot that points at it. */
+    private static final int HEAP_ENTRY = 48;
+
+    /** String object (~24) plus its byte[] header (~16); callers add the character count. */
+    private static final int HEAP_STRING_BASE = 40;
+
+    /** A boxed number, boolean, or null reference. */
+    private static final int HEAP_SCALAR = 16;
+
+    /** Charged when a value cannot be serialised at all, so it is never free. */
+    private static final int HEAP_UNWEIGHABLE = 4096;
+
+    private static final OutputStream DISCARDING_STREAM = new OutputStream() {
         @Override
         public void write(int b) {
-            this.count++;
+            // Weight comes from the generator callbacks; the bytes themselves are not needed.
         }
 
         @Override
         public void write(byte[] b, int off, int len) {
-            this.count += len;
+            // As above.
+        }
+    };
+
+    /**
+     * Counts the approximate heap cost of the value being serialised through it.
+     *
+     * Every write is still delegated so serialisation behaves exactly as it
+     * normally would (context validation included); the bytes land in
+     * {@link #DISCARDING_STREAM}. Only the structural callbacks are intercepted.
+     */
+    private static final class HeapWeighingGenerator extends JsonGeneratorDelegate {
+
+        private long weight;
+
+        private HeapWeighingGenerator(JsonGenerator delegate) {
+            super(delegate);
+        }
+
+        @Override
+        public void writeStartObject() throws IOException {
+            this.weight += HEAP_MAP_BASE;
+            super.writeStartObject();
+        }
+
+        @Override
+        public void writeStartObject(Object forValue) throws IOException {
+            this.weight += HEAP_MAP_BASE;
+            super.writeStartObject(forValue);
+        }
+
+        @Override
+        public void writeStartArray() throws IOException {
+            this.weight += HEAP_LIST_BASE;
+            super.writeStartArray();
+        }
+
+        @Override
+        public void writeStartArray(Object forValue) throws IOException {
+            this.weight += HEAP_LIST_BASE;
+            super.writeStartArray(forValue);
+        }
+
+        @Override
+        public void writeFieldName(String name) throws IOException {
+            this.weight += HEAP_ENTRY + HEAP_STRING_BASE + name.length();
+            super.writeFieldName(name);
+        }
+
+        @Override
+        public void writeFieldName(SerializableString name) throws IOException {
+            this.weight += HEAP_ENTRY + HEAP_STRING_BASE + name.getValue().length();
+            super.writeFieldName(name);
+        }
+
+        @Override
+        public void writeString(String text) throws IOException {
+            this.weight += HEAP_STRING_BASE + (text == null ? 0 : text.length());
+            super.writeString(text);
+        }
+
+        @Override
+        public void writeString(char[] text, int offset, int len) throws IOException {
+            this.weight += HEAP_STRING_BASE + len;
+            super.writeString(text, offset, len);
+        }
+
+        @Override
+        public void writeNumber(int v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeNumber(long v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeNumber(double v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeNumber(float v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeNumber(BigDecimal v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeNumber(BigInteger v) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNumber(v);
+        }
+
+        @Override
+        public void writeBoolean(boolean state) throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeBoolean(state);
+        }
+
+        @Override
+        public void writeNull() throws IOException {
+            this.weight += HEAP_SCALAR;
+            super.writeNull();
         }
     }
 }

@@ -25,6 +25,9 @@ public class Client implements Serializable, IClassConvertor {
     private String typeCode;
     private int tokenValidityMinutes;
     private String localeCode;
+
+    /** The IANA zone this tenant operates on. The default a user's own zone overrides. */
+    private String timeZone;
     private String statusCode;
     private String businessType;
     private String businessSize;

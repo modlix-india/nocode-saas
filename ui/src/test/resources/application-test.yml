@@ -1,0 +1,42 @@
+spring:
+  # The main application.yml does `config.import: configserver:...`, which is fatal
+  # if the config server is not up. Tests supply their own properties instead.
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+  data:
+    mongodb:
+      # Overridden by @DynamicPropertySource with the Testcontainers mapped port.
+      # Present here so the context still has a value if that ever stops firing.
+      uri: mongodb://localhost:27017/uitest
+      auto-index-creation: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# Blank redis.url makes AbstractBaseConfiguration.redisClient() return null, which
+# makes every downstream redis bean null. CacheService is null-safe on all of them
+# and degrades to the Caffeine L1 only, so tests need no Redis container.
+redis:
+  url:
+  cache:
+    prefix: uitest
+
+ui:
+  resourceCacheAge: 604800
+
+logging:
+  level:
+    org.springframework.data.mongodb: WARN
+    com.fincity: INFO

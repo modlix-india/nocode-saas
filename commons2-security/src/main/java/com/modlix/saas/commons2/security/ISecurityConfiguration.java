@@ -41,14 +41,17 @@ public interface ISecurityConfiguration {
 
                     authorize.anyRequest().authenticated();
                 })
-                .headers(headers -> {
-                    if (matcher == null)
-                        return;
-                    headers
-                            .frameOptions(frameOptions -> frameOptions
-                                    .sameOrigin())
-                            .contentSecurityPolicy(csp -> csp.policyDirectives("frame-ancestors 'self'"));
-                })
+                // Applied unconditionally. This used to return early when no matcher was passed,
+                // which was not a policy choice: matcher is read nowhere else in this method, so
+                // the only effect was that services calling the shorter overload silently fell
+                // back to Spring's X-Frame-Options: DENY default and lost the policy declared two
+                // lines below. That is what stopped the files service serving a PDF into an
+                // in-app preview frame, on the same origin, which frame-ancestors 'self' exists
+                // precisely to allow.
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions
+                                .sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("frame-ancestors 'self'")))
                 .addFilterBefore(new JWTTokenFilter(authService, om),
                         org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .formLogin(form -> form.disable())

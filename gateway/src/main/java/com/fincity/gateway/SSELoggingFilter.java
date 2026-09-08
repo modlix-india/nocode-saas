@@ -1,5 +1,7 @@
 package com.fincity.gateway;
 
+import java.util.List;
+
 import org.reactivestreams.Publisher;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -30,13 +32,30 @@ public class SSELoggingFilter implements GlobalFilter, Ordered {
         return -2;
     }
 
+    /**
+     * Decides which requests get the unbuffered treatment.
+     *
+     * <p>Deliberately the request's {@code Accept} header rather than a list of paths. The path list
+     * this replaced named {@code /api/ai/} alone, so every stream added afterwards silently missed
+     * out: the notification service's in-app stream and the message service's call stream were both
+     * already live and neither was covered. Adding a third path would have left the fourth to be
+     * discovered the same way.
+     *
+     * <p>A client asking for {@code text/event-stream} is asking for a stream, whichever service
+     * ends up serving it. The decorator is still a no-op unless the response actually comes back as
+     * one, so a wrong guess here costs nothing.
+     */
+    private static boolean wantsEventStream(ServerHttpRequest request) {
+        List<MediaType> accepted = request.getHeaders().getAccept();
+        return accepted.stream().anyMatch(MediaType.TEXT_EVENT_STREAM::isCompatibleWith);
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().toString();
 
-        // Only apply SSE handling to AI endpoints
-        if (path.contains("/api/ai/")) {
+        if (path.contains("/api/ai/") || wantsEventStream(request)) {
             ServerHttpResponse originalResponse = exchange.getResponse();
             ServerHttpResponseDecorator decoratedResponse = new SSEResponseDecorator(originalResponse);
             return chain.filter(exchange.mutate().response(decoratedResponse).build());

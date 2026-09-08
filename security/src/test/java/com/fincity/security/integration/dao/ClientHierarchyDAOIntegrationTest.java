@@ -25,10 +25,18 @@ class ClientHierarchyDAOIntegrationTest extends AbstractIntegrationTest {
 	@BeforeEach
 	void setUp() {
 		setupMockBeans();
+		// Also before, not just after. These tests assert exact counts of what SYSTEM manages, which
+		// is a global fact about a database the whole suite shares. Cleaning only on the way out
+		// leaves the first test in this class reading whatever the previous class left behind.
+		resetClientTables();
 	}
 
 	@AfterEach
 	void tearDown() {
+		resetClientTables();
+	}
+
+	private void resetClientTables() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_client_manager WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())

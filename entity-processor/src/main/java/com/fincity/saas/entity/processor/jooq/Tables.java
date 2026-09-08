@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAds;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorAdsets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCalls;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignMetrics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaignSyncState;
@@ -16,10 +17,12 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionAc
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorConversionEvents;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorDiagnostics;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorIntegrations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorMessageTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductMessageConfigs;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
@@ -37,6 +40,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplic
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketPeDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappMessages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorWhatsappOutbox;
 
 
 /**
@@ -59,6 +64,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_adsets</code>.
      */
     public static final EntityProcessorAdsets ENTITY_PROCESSOR_ADSETS = EntityProcessorAdsets.ENTITY_PROCESSOR_ADSETS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_calls</code>.
+     */
+    public static final EntityProcessorCalls ENTITY_PROCESSOR_CALLS = EntityProcessorCalls.ENTITY_PROCESSOR_CALLS;
 
     /**
      * The table
@@ -111,6 +121,12 @@ public class Tables {
     public static final EntityProcessorIntegrations ENTITY_PROCESSOR_INTEGRATIONS = EntityProcessorIntegrations.ENTITY_PROCESSOR_INTEGRATIONS;
 
     /**
+     * Reusable message bodies with variants. Replaces Meta-approved templates,
+     * which do not exist on the linked-device protocol.
+     */
+    public static final EntityProcessorMessageTemplates ENTITY_PROCESSOR_MESSAGE_TEMPLATES = EntityProcessorMessageTemplates.ENTITY_PROCESSOR_MESSAGE_TEMPLATES;
+
+    /**
      * The table <code>entity_processor.entity_processor_notes</code>.
      */
     public static final EntityProcessorNotes ENTITY_PROCESSOR_NOTES = EntityProcessorNotes.ENTITY_PROCESSOR_NOTES;
@@ -129,6 +145,12 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_product_comms</code>.
      */
     public static final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_message_configs</code>.
+     */
+    public static final EntityProcessorProductMessageConfigs ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS = EntityProcessorProductMessageConfigs.ENTITY_PROCESSOR_PRODUCT_MESSAGE_CONFIGS;
 
     /**
      * The table
@@ -224,4 +246,16 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_tickets</code>.
      */
     public static final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_whatsapp_messages</code>.
+     */
+    public static final EntityProcessorWhatsappMessages ENTITY_PROCESSOR_WHATSAPP_MESSAGES = EntityProcessorWhatsappMessages.ENTITY_PROCESSOR_WHATSAPP_MESSAGES;
+
+    /**
+     * Queued automated WhatsApp messages and the pacing decision for each. Not
+     * cleared on success: this is the audit trail.
+     */
+    public static final EntityProcessorWhatsappOutbox ENTITY_PROCESSOR_WHATSAPP_OUTBOX = EntityProcessorWhatsappOutbox.ENTITY_PROCESSOR_WHATSAPP_OUTBOX;
 }

@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
@@ -51,6 +56,7 @@ import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.response.WhatsappConversationResponse;
 import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
@@ -61,11 +67,13 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketWhatsappNumberRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.message.TicketMessageService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
@@ -76,6 +84,7 @@ import com.google.gson.Gson;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -89,6 +98,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String DIAG_LOG_FAILURE = "Failed to log diagnostics for ticket {}: {}";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
+    private static final String SOURCE_WHATSAPP = "WhatsApp";
+
+    /**
+     * How much of a customer's WhatsApp profile name may become a deal name.
+     *
+     * <p>Well under {@code NAME}'s 512 characters, and that is the point: the column's width is not
+     * the right bound for a value somebody else chooses. WhatsApp's own limit is 25, so anything past
+     * this is not a name and a 512-character one would wreck every list it appears in. Truncation is
+     * safe here because nothing matches on it.
+     */
+    private static final int MAX_INBOUND_NAME_LENGTH = 128;
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -109,6 +129,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final DiagnosticsService diagnosticsService;
     private final ConversionActionMappingService conversionActionMappingService;
     private final ConversionEventService conversionEventService;
+    private final TicketMessageService ticketMessageService;
 
     private ProductTicketExRuleService productTicketExRuleService;
 
@@ -139,6 +160,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             DiagnosticsService diagnosticsService,
             @Lazy ConversionActionMappingService conversionActionMappingService,
             @Lazy ConversionEventService conversionEventService,
+            TicketMessageService ticketMessageService,
             Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
@@ -156,6 +178,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.diagnosticsService = diagnosticsService;
         this.conversionActionMappingService = conversionActionMappingService;
         this.conversionEventService = conversionEventService;
+        this.ticketMessageService = ticketMessageService;
         this.gson = gson;
     }
 
@@ -166,6 +189,29 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<Ticket> findById(ULong id) {
         return this.dao.readById(id)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.findById"));
+    }
+
+    /**
+     * Records that a lead asked not to be contacted on WhatsApp.
+     *
+     * <p>No {@code hasAccess()}, like {@link #findById} above it and for the same reason: this is
+     * driven by an inbound message arriving from the bridge, where there is no user and never will
+     * be. Nothing here is caller-supplied except the message text we just stored ourselves.
+     *
+     * <p>Idempotent. A lead who writes "stop" three times should not have the original timestamp
+     * overwritten, because when they first asked is the fact that matters if this is ever questioned.
+     */
+    public Mono<Ticket> markWhatsappOptedOut(ULong ticketId, String triggeringText) {
+
+        return this.findById(ticketId)
+                .filter(ticket -> !Boolean.TRUE.equals(ticket.getWhatsappOptedOut()))
+                .flatMap(ticket -> this.dao.update(ticket.setWhatsappOptedOut(Boolean.TRUE)
+                        .setWhatsappOptedOutAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                        .setWhatsappOptedOutText(
+                                triggeringText == null
+                                        ? null
+                                        : triggeringText.substring(0, Math.min(triggeringText.length(), 512)))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.markWhatsappOptedOut"));
     }
 
     @PostConstruct
@@ -449,15 +495,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                 existing.setEmail(ticket.getEmail());
                 existing.setAssignedUserId(ticket.getAssignedUserId());
-                existing.setStage(ticket.getStage());
-                existing.setStatus(ticket.getStatus());
                 existing.setSubSource(ticket.getSubSource());
                 existing.setTag(ticket.getTag());
 
                 ProcessorAccess access = ProcessorAccess.of(ca.getUrlAppCode(), ca.getClientCode(), true,
                         ca.getUser(), null);
 
-                Mono<Ticket> result = this.computeAndSetExpiresOn(access, existing);
+                Mono<Ticket> result = this.applyStageStatus(access, existing, ticket)
+                        .flatMap(sTicket -> this.computeAndSetExpiresOn(access, sTicket));
 
                 if (newAssignedUserId != null
                         && !newAssignedUserId.equals(oldAssignedUserId)) {
@@ -483,6 +528,75 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             }
         )
         .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
+    }
+
+    /**
+     * Moves a deal's stage and status on the generic update path, refusing anything that does not
+     * belong to the deal's own product template.
+     *
+     * <p>These two were a plain assignment until now, so a payload could put any stage id at all on
+     * a deal - one from another product template, or from another tenant entirely - and it was
+     * written and answered 200. The dedicated {@code /stage} route has always checked through
+     * {@link #updateStageStatus}, but the kanban drag-drop and the deal profile form both come
+     * through here instead, so the check has to live here too.
+     *
+     * <p>A stage the payload does not carry leaves the deal where it is rather than clearing it.
+     * Nulling it is never a real operation - a deal with no stage falls out of every board - and a
+     * client that simply does not manage the field would otherwise erase it on an unrelated save,
+     * which is what a PUT omitting {@code stage} used to do.
+     *
+     * <p>Status follows its stage, because it has no meaning apart from one. A status that is not a
+     * child of the resolved stage is dropped rather than refused, which is exactly what
+     * {@link #updateStageStatus} does with one: the kanban sends the deal's existing status
+     * alongside the new stage on every drop, and refusing that would break dragging a card.
+     *
+     * <p>Validated against the deal's stored product, never the payload's. Product is not updatable
+     * here, so the payload's is either the same or an attempt to change it, and neither is the right
+     * thing to check a stage against.
+     */
+    private Mono<Ticket> applyStageStatus(ProcessorAccess access, Ticket existing, Ticket incoming) {
+
+        ULong newStage = incoming.getStage();
+
+        if (newStage == null) return Mono.just(existing);
+
+        if (newStage.equals(existing.getStage()) && Objects.equals(incoming.getStatus(), existing.getStatus()))
+            return Mono.just(existing);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.productService.readById(access, existing.getProductId()),
+                        product -> {
+                            if (product.getProductTemplateId() == null)
+                                return this.msgService.<Ticket>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_TYPE_MISSING,
+                                        product.getId());
+
+                            return this.stageService
+                                    .getParentChild(
+                                            access,
+                                            product.getProductTemplateId(),
+                                            Identity.of(newStage.toBigInteger()),
+                                            incoming.getStatus() == null
+                                                    ? null
+                                                    : Identity.of(incoming.getStatus().toBigInteger()))
+                                    .map(stageStatus -> {
+                                        existing.setStage(
+                                                stageStatus.getKey().getId());
+                                        existing.setStatus(
+                                                stageStatus.getValue().isEmpty()
+                                                        ? null
+                                                        : stageStatus
+                                                                .getValue()
+                                                                .getFirst()
+                                                                .getId());
+                                        return existing;
+                                    })
+                                    .switchIfEmpty(this.msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.STAGE_MISSING));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.applyStageStatus"));
     }
 
     @Override
@@ -542,8 +656,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, pTicket) -> this.create(access, pTicket),
                         (access, productIdentity, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
-                        (access, productIdentity, pTicket, created, noteCreated) ->
-                                this.activityService.acCreate(created).thenReturn(created))
+                        (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
+                                .acCreate(created)
+                                .then(this.ticketMessageService.enqueueForStage(access, created))
+                                .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 
@@ -1024,8 +1140,40 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 : Mono.just(fTicket),
                         (uTicket, cTask, fTicket, rTicket) -> this.enqueueConversionEventsForStageTransition(
                                         access, rTicket, oldStage, oldStatus)
+                                .then(this.enqueueStageMessages(access, rTicket, oldStage, oldStatus))
                                 .thenReturn(rTicket)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+    }
+
+    /**
+     * Queues whatever the new stage's rules say this deal is owed.
+     *
+     * <p>The stage-change half of the messaging trigger. Creation was already wired; a move was not,
+     * which meant every rule beyond the first stage was configurable and dead. A deal reaching "Site
+     * visit booked" is exactly when its confirmation should go out.
+     *
+     * <p>Skipped when neither stage nor status actually changed, so re-saving a deal does not re-run
+     * the rules. Even if it did, the per-rule check in the channel service would refuse the duplicate;
+     * this is the cheaper of the two guards, not the load-bearing one.
+     *
+     * <p>Best-effort, like the conversion hook above it. Failing a person's stage update because a
+     * message could not be queued would be the wrong trade, and the queue row is not the message: the
+     * sweeper decides whether anything is sent at all.
+     */
+    private Mono<Void> enqueueStageMessages(
+            ProcessorAccess access, Ticket ticket, ULong oldStage, ULong oldStatus) {
+
+        if (java.util.Objects.equals(oldStage, ticket.getStage())
+                && java.util.Objects.equals(oldStatus, ticket.getStatus())) return Mono.empty();
+
+        return this.ticketMessageService.enqueueForStage(access, ticket).onErrorResume(e -> {
+            logger.error(
+                    "Could not queue stage messages for ticket {} moving to stage {}.",
+                    ticket.getId(),
+                    ticket.getStage(),
+                    e);
+            return Mono.empty();
+        });
     }
 
     /**
@@ -1331,6 +1479,297 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return this.dao.readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
     }
 
+    /**
+     * The deals on a customer's number this caller may see. See {@link
+     * com.fincity.saas.entity.processor.dao.TicketDAO#readAccessibleTicketIdsByPhone}.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByPhone(
+            ProcessorAccess access, String phoneNumber, ULong productId) {
+        return this.dao.readAccessibleTicketIdsByPhone(access, phoneNumber, productId);
+    }
+
+    /**
+     * The same, for a WhatsApp thread, which matches either number a deal can be messaged on. See
+     * {@link com.fincity.saas.entity.processor.dao.TicketDAO#readAccessibleTicketIdsByWhatsappNumber}.
+     */
+    public Mono<List<ULong>> readAccessibleTicketIdsByWhatsappNumber(
+            ProcessorAccess access, String number, ULong productId) {
+        return this.dao.readAccessibleTicketIdsByWhatsappNumber(access, number, productId);
+    }
+
+    /**
+     * The WhatsApp inbox. See {@link
+     * com.fincity.saas.entity.processor.dao.TicketDAO#readConversations}.
+     */
+    public Mono<Page<WhatsappConversationResponse>> readConversations(
+            ProcessorAccess access, ULong productId, String search, Pageable pageable) {
+        return this.dao
+                .readConversations(access, productId, search, pageable)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.readConversations"));
+    }
+
+    /**
+     * Records that a WhatsApp message was exchanged with a customer, and answers which deal it
+     * belongs to.
+     *
+     * <p>Called by the message service on both directions. It knows the business number and the
+     * customer's number but nothing about deals, so everything below the phone number happens here.
+     *
+     * <p>Three things happen, in order:
+     *
+     * <ol>
+     *   <li><b>Match.</b> Every active deal on the customer's number, within the product scope. An
+     *       empty {@code productIds} means the business number is the tenant default and serves every
+     *       product, so the match is on the number alone.
+     *   <li><b>Create, when nothing matched and {@code createIfMissing}.</b> A stranger messaging
+     *       the advertised number is a lead, and with the inbox gated on deal access a message with
+     *       no deal would be visible to nobody. See {@link #createFromInboundWhatsapp}.
+     *   <li><b>Touch.</b> Every matched deal gets {@code LAST_MESSAGE_AT}, not just the newest, so a
+     *       customer holding several deals sees them all rise together. The thread is shared across
+     *       them, so anything else would leave stale rows below a live one.
+     * </ol>
+     *
+     * <p>Matching and creation take separate scopes because they are separate questions. A number can
+     * serve several products, so matching has to look across all of them or a customer's existing deal
+     * on a sibling product is missed and duplicated; creating a deal has to pick exactly one, and only
+     * the caller knows which of the mapped products that should be.
+     *
+     * <p>Returns the most recently updated match, which the caller stamps onto the message as its
+     * {@code TICKET_ID}. Empty only when nothing matched and creation was not asked for; the message
+     * is still stored, it simply has no deal.
+     */
+    public Mono<Ticket> registerWhatsappMessage(
+            String appCode,
+            String clientCode,
+            WhatsappOrigin origin,
+            PhoneNumber customerPhone,
+            LocalDateTime occurredAt,
+            boolean createIfMissing) {
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+        LocalDateTime messageAt = occurredAt != null ? occurredAt : LocalDateTime.now(ZoneOffset.UTC);
+        WhatsappOrigin from = origin == null ? WhatsappOrigin.unknown() : origin;
+
+        return this.dao
+                .readActiveByProductAndPhone(access, from.productIds(), customerPhone)
+                .flatMap(matched -> {
+                    if (!matched.isEmpty()) return Mono.just(matched);
+                    if (!createIfMissing) return Mono.just(List.<Ticket>of());
+                    return this.createFromInboundWhatsapp(
+                                    access, from.createUnderProductId(), customerPhone, from.customerName())
+                            .map(List::of)
+                            .defaultIfEmpty(List.of());
+                })
+                .flatMap(tickets -> {
+                    if (tickets.isEmpty()) return Mono.empty();
+                    return this.dao
+                            .touchLastMessageAt(
+                                    tickets.stream().map(Ticket::getId).toList(), messageAt)
+                            .thenReturn(tickets.getFirst());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.registerWhatsappMessage"));
+    }
+
+    /**
+     * Moves one deal up the conversation list, for a message whose deal was never in doubt.
+     *
+     * <p>The outbound counterpart to the fan-out in {@link #registerWhatsappMessage}. One deal rather
+     * than every deal on the number, because a message somebody sent went to a particular deal, and
+     * bumping its siblings would make them all look like live conversations.
+     */
+    public Mono<Integer> touchWhatsappConversation(ULong ticketId, LocalDateTime occurredAt) {
+
+        if (ticketId == null) return Mono.just(0);
+
+        return this.dao
+                .touchLastMessageAt(
+                        List.of(ticketId), occurredAt != null ? occurredAt : LocalDateTime.now(ZoneOffset.UTC))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.touchWhatsappConversation"));
+    }
+
+    /**
+     * Everything about where an inbound WhatsApp message came from that deal resolution cares about.
+     *
+     * <p>One record rather than three parameters because the three are read together and are easy to
+     * transpose at a call site: two of them are product ids that mean different things.
+     *
+     * @param productIds which products a match may be found in. Empty means the number serves
+     *     everything, so the match is on the customer's number alone.
+     * @param createUnderProductId the single product a brand-new deal is created in. Null falls back
+     *     to the tenant's oldest active product.
+     * @param customerName the name from the customer's own WhatsApp profile, or null. Names a new
+     *     deal; never matched on.
+     */
+    public record WhatsappOrigin(List<ULong> productIds, ULong createUnderProductId, String customerName) {
+
+        public WhatsappOrigin {
+            productIds = productIds == null ? List.of() : List.copyOf(productIds);
+        }
+
+        /** Nothing resolved: match on the number alone and create wherever the fallback lands. */
+        public static WhatsappOrigin unknown() {
+            return new WhatsappOrigin(List.of(), null, null);
+        }
+
+        /** One product for both scopes, which is what a caller holding a single product id means. */
+        public static WhatsappOrigin ofProduct(ULong productId) {
+            return new WhatsappOrigin(productId == null ? List.of() : List.of(productId), productId, null);
+        }
+    }
+
+    /**
+     * One product for both scopes and no name.
+     *
+     * <p>Kept for the {@code /internal/whatsapp/register} route, whose contract is one optional
+     * {@code productId} query parameter and is called from outside this service.
+     */
+    public Mono<Ticket> registerWhatsappMessage(
+            String appCode,
+            String clientCode,
+            ULong productId,
+            PhoneNumber customerPhone,
+            LocalDateTime occurredAt,
+            boolean createIfMissing) {
+
+        return this.registerWhatsappMessage(
+                appCode,
+                clientCode,
+                WhatsappOrigin.ofProduct(productId),
+                customerPhone,
+                occurredAt,
+                createIfMissing);
+    }
+
+    /**
+     * Creates a deal for a customer who messaged in without one.
+     *
+     * <p>The business number carries the routing information. Mapped to a product, the deal is
+     * created there. Unmapped (the tenant default number), there is nothing to disambiguate on, so
+     * it lands on the oldest active product and a sales agent moves it.
+     *
+     * <p>Named from the customer's own WhatsApp profile name when they have one, and from their phone
+     * number otherwise. The profile name is the only thing an inbound message carries that names the
+     * person, and it used to be discarded two services upstream, so every deal created this way was
+     * called after a phone number and a salesperson opening their pipeline saw a column of digits.
+     * Assignment, stage and owner are left to {@code checkEntity}, which runs the same distribution
+     * rules as any other intake. Source is {@code WhatsApp} so these are separable from form leads.
+     *
+     * <p>Note this is reachable by anyone who knows the business number. Rate limiting is not built
+     * yet, and the deliberate trade is that dropping the message instead would lose the highest
+     * intent lead the system can receive. The name is part of that exposure and is treated as such:
+     * see {@link #dealNameFrom}.
+     */
+    private Mono<Ticket> createFromInboundWhatsapp(
+            ProcessorAccess access, ULong productId, PhoneNumber customerPhone, String customerName) {
+
+        if (customerPhone == null || StringUtil.safeIsBlank(customerPhone.getNumber())) return Mono.empty();
+
+        Mono<Product> product = productId != null
+                ? this.productService.readById(access, productId)
+                : this.productService.readFirstActive(access);
+
+        return product.flatMap(p -> {
+                    if (!p.isActive()) {
+                        logger.warn(
+                                "Inbound WhatsApp from {} resolved to inactive product {}, no deal created.",
+                                customerPhone.getNumber(),
+                                p.getId());
+                        return Mono.<Ticket>empty();
+                    }
+
+                    Ticket ticket = new Ticket()
+                            .setDialCode(customerPhone.getCountryCode())
+                            .setPhoneNumber(customerPhone.getNumber())
+                            .setSource(SOURCE_WHATSAPP)
+                            .setProductId(p.getId());
+                    ticket.setName(dealNameFrom(customerName, customerPhone));
+
+                    return this.create(access, ticket)
+                            .flatMap(created -> this.logInboundWhatsappCreation(access, created));
+                })
+                .switchIfEmpty(Mono.fromRunnable(() -> logger.warn(
+                        "Inbound WhatsApp from {} has no deal and no product to create one on.",
+                        customerPhone.getNumber())))
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Could not create a deal for inbound WhatsApp from {}: {}",
+                            customerPhone.getNumber(),
+                            e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Records the creation in the deal's activity log.
+     *
+     * <p>Every other intake does this - {@code create[TicketRequest]}, {@code createForCampaign} and
+     * {@code createForWebsite} all call {@code acCreate} straight after {@code create} - and this path
+     * was the one that did not, so a deal that arrived over WhatsApp had an activity log that began
+     * mid-conversation with no record of where the lead came from. That is the first thing anybody
+     * looks at when asking how a deal got here.
+     *
+     * <p>A failure is swallowed. The deal exists and the customer's message is about to be filed
+     * against it; losing the audit line is worth a log entry, not a lost lead.
+     */
+    private Mono<Ticket> logInboundWhatsappCreation(ProcessorAccess access, Ticket created) {
+
+        return this.activityService
+                // The explicit-access overload, like createForWebsite and createForCampaign use. The
+                // single-argument one resolves the *caller's* security context, and there is no caller
+                // here: this runs on a machine-to-machine handoff from the message service, so it
+                // would find nothing and the activity would never be written - silently, because the
+                // failure is swallowed below.
+                .acCreate(access, created, null)
+                .thenReturn(created)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Created deal {} from an inbound WhatsApp message but could not write its"
+                                    + " creation activity.",
+                            created.getId(),
+                            e);
+                    return Mono.just(created);
+                });
+    }
+
+    /**
+     * What to call a deal created for a stranger who messaged in.
+     *
+     * <p>Their WhatsApp profile name when there is one, their number otherwise. The number is not a
+     * bad name so much as no name at all, and it is what every one of these deals was called.
+     *
+     * <p><b>The name is attacker-controlled and is handled accordingly.</b> Anyone who knows the
+     * business number can reach this by sending one message, and the value is whatever they typed on
+     * their own handset. So it is trimmed, bounded to the column's length, and stripped of the
+     * control characters that would let a name break the line it is rendered on or a CSV export it
+     * lands in. It is only ever a label: resolution stays on the phone number throughout, and nothing
+     * matches on this.
+     *
+     * <p>Package-private so {@code InboundWhatsappDealNameTest} can exercise the sanitising directly.
+     * It is the one part of this class that handles a value chosen by somebody outside the tenant, and
+     * testing it through the reactive create path would need the whole service mocked to assert on a
+     * string.
+     */
+    static String dealNameFrom(String customerName, PhoneNumber customerPhone) {
+
+        if (StringUtil.safeIsBlank(customerName)) return customerPhone.getNumber();
+
+        // Two passes, and the second is not tidiness. Stripping turns each control character into a
+        // space, so "Vishwas\r\nKumar" would otherwise keep a double space, and a name padded with
+        // twenty of them would read as two columns in a list.
+        String cleaned = customerName
+                .replaceAll("[\\p{Cntrl}\\p{Cf}]", " ")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
+
+        // A name that was nothing but control characters. Falling back is right: an empty deal name
+        // is unusable in a list and the number at least identifies the lead.
+        if (cleaned.isEmpty()) return customerPhone.getNumber();
+
+        return cleaned.length() > MAX_INBOUND_NAME_LENGTH
+                ? cleaned.substring(0, MAX_INBOUND_NAME_LENGTH)
+                : cleaned;
+    }
+
     private Mono<List<Ticket>> getTickets(
             AbstractCondition condition,
             ProcessorAccess access,
@@ -1393,6 +1832,61 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    /**
+     * Records the number this deal is messaged on.
+     *
+     * <p>Its own operation rather than part of the general ticket update, which replaces only the
+     * handful of fields it names and would either ignore this one or clear it on every save from a
+     * client that has not been taught about it.
+     *
+     * <p>A null or blank number clears the override and puts the deal back on its phone number.
+     * Logged as a field update either way, because this value comes from a phone call rather than
+     * from the lead's own submission, and when messages later go nowhere the first useful question is
+     * who typed it and when.
+     */
+    public Mono<Ticket> updateWhatsappNumber(Identity ticketId, TicketWhatsappNumberRequest request) {
+
+        if (request == null) return this.identityMissingError(Ticket.Fields.whatsappNumber);
+
+        PhoneNumber number = request.getWhatsappNumber();
+        boolean clearing = number == null || StringUtil.safeIsBlank(number.getNumber());
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> {
+                            String old = ticket.getWhatsappNumber();
+
+                            ticket.setWhatsappNumber(clearing ? null : number.getNumber());
+                            ticket.setWhatsappDialCode(clearing ? null : number.getCountryCode());
+
+                            // Straight to the two columns, not through update(): updatableEntity
+                            // re-reads the row and copies only the fields it names onto it, and these
+                            // two are deliberately not among them for the reason above. Sent through
+                            // the general path they are silently dropped and the call answers 200
+                            // with the old number.
+                            ULong contextUserId = access.getUserId();
+
+                            return this.dao.updateWhatsappNumber(
+                                            ticket.getId(),
+                                            ticket.getWhatsappDialCode(),
+                                            ticket.getWhatsappNumber(),
+                                            contextUserId != null && contextUserId.longValue() != 0L
+                                                    ? contextUserId
+                                                    : null)
+                                    .then(this.activityService.acFieldUpdate(
+                                            ticket.getId(),
+                                            request.getComment(),
+                                            Ticket.Fields.whatsappNumber + ": "
+                                                    + (old == null ? "-" : old) + " -> "
+                                                    + (ticket.getWhatsappNumber() == null
+                                                            ? "-"
+                                                            : ticket.getWhatsappNumber())))
+                                    .thenReturn(ticket);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappNumber"));
     }
 
     public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
@@ -1505,5 +1999,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
         return this.defaultSchemaRepositoryFor(Ticket.class, classSchema);
+    }
+
+    /**
+     * Records a customer's WhatsApp avatar on every deal that shares their number.
+     *
+     * <p>No access check, and that is correct rather than an omission: the caller is the inbound
+     * handoff from the message service, which runs with no user at all. Nothing here is readable by
+     * a caller who could not already read the deal, and the write is confined to two columns that
+     * hold a picture.
+     */
+    public Mono<Integer> updateWhatsappProfilePicture(
+            String appCode, String clientCode, String phoneNumber, FileDetail detail, String pictureId) {
+        return this.dao
+                .updateWhatsappProfilePicture(appCode, clientCode, phoneNumber, detail, pictureId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateWhatsappProfilePicture"));
     }
 }

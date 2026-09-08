@@ -29,6 +29,7 @@ import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
 import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.TokenService;
 import com.fincity.security.testutil.TestWebSecurityConfig;
 
@@ -49,6 +50,11 @@ class AuthenticationControllerTest {
 
     @MockitoBean
     private TokenService tokenService;
+
+    // Only for the token cleanup route, which sweeps draft-edit tokens alongside
+    // session ones. Nothing else in this controller touches it.
+    @MockitoBean
+    private ClientUrlService clientUrlService;
 
     private AuthenticationResponse sampleAuthResponse;
     private ContextUser sampleContextUser;
@@ -602,6 +608,7 @@ class AuthenticationControllerTest {
 
             when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(5));
             when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(3));
+            when(clientUrlService.cleanupExpiredDraftTokens()).thenReturn(Mono.just(7));
 
             webTestClient.post()
                     .uri("/api/security/internal/tokens/cleanup")
@@ -609,10 +616,12 @@ class AuthenticationControllerTest {
                     .expectStatus().isOk()
                     .expectBody()
                     .jsonPath("$.expiredTokensRemoved").isEqualTo(5)
-                    .jsonPath("$.unusedTokensRemoved").isEqualTo(3);
+                    .jsonPath("$.unusedTokensRemoved").isEqualTo(3)
+                    .jsonPath("$.expiredDraftTokensRemoved").isEqualTo(7);
 
             verify(tokenService).cleanupExpiredTokens();
             verify(tokenService).cleanupUnusedTokens(90);
+            verify(clientUrlService).cleanupExpiredDraftTokens();
         }
 
         @Test
@@ -621,6 +630,7 @@ class AuthenticationControllerTest {
 
             when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(2));
             when(tokenService.cleanupUnusedTokens(30)).thenReturn(Mono.just(10));
+            when(clientUrlService.cleanupExpiredDraftTokens()).thenReturn(Mono.just(0));
 
             webTestClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -642,6 +652,7 @@ class AuthenticationControllerTest {
 
             when(tokenService.cleanupExpiredTokens()).thenReturn(Mono.just(0));
             when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(0));
+            when(clientUrlService.cleanupExpiredDraftTokens()).thenReturn(Mono.just(0));
 
             webTestClient.post()
                     .uri("/api/security/internal/tokens/cleanup")
@@ -649,7 +660,8 @@ class AuthenticationControllerTest {
                     .expectStatus().isOk()
                     .expectBody()
                     .jsonPath("$.expiredTokensRemoved").isEqualTo(0)
-                    .jsonPath("$.unusedTokensRemoved").isEqualTo(0);
+                    .jsonPath("$.unusedTokensRemoved").isEqualTo(0)
+                    .jsonPath("$.expiredDraftTokensRemoved").isEqualTo(0);
         }
 
         @Test
@@ -659,6 +671,7 @@ class AuthenticationControllerTest {
             when(tokenService.cleanupExpiredTokens())
                     .thenReturn(Mono.error(new RuntimeException("DB connection failed")));
             when(tokenService.cleanupUnusedTokens(90)).thenReturn(Mono.just(0));
+            when(clientUrlService.cleanupExpiredDraftTokens()).thenReturn(Mono.just(0));
 
             webTestClient.post()
                     .uri("/api/security/internal/tokens/cleanup")

@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFie
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.model.common.RuleResult;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
@@ -48,6 +49,23 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong assignedUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
+
+    /**
+     * The number this deal is messaged on, when it differs from the one it is called on.
+     *
+     * <p>Null is the ordinary case, not missing data. Most leads are reachable on one number and
+     * copying it into a second column would only let the two drift. It fills in the other way round:
+     * a lead gives a number at intake, messaging it goes nowhere, someone rings them, and they name a
+     * different number to use on WhatsApp.
+     *
+     * <p>Read through {@link #whatsappOrPhoneNumber()} rather than directly, everywhere. A caller
+     * that reads this field raw sends nothing at all for the overwhelming majority of deals.
+     */
+    private String whatsappNumber;
+
+    /** Calling code for {@link #whatsappNumber}. Null exactly when that is. */
+    private Integer whatsappDialCode;
+
     private String email;
     private ULong productId;
     private ULong stage;
@@ -67,6 +85,48 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private LocalDateTime latestTaskDueDate;
     private LocalDateTime expiresOn;
     private String latestComment;
+
+    /**
+     * Most recent WhatsApp message on this deal, either direction. Orders the conversation list.
+     * Written only by {@code TicketDAO.touchLastMessageAt}, never through the normal update path,
+     * so that a message does not register as an edit in the deal's audit trail.
+     */
+    private LocalDateTime lastMessageAt;
+
+    /**
+     * The lead asked not to be contacted on WhatsApp.
+     *
+     * <p>Permanent, and deliberately on the deal rather than in a rule: a stage change re-runs the
+     * rules, and a rule set that re-enrols an opted-out lead is precisely the complaint that becomes
+     * a report against the number. Checked before every automated send.
+     */
+    private Boolean whatsappOptedOut = Boolean.FALSE;
+
+    private LocalDateTime whatsappOptedOutAt;
+
+    /**
+     * The inbound message that triggered it.
+     *
+     * <p>Kept because detection is a text match and text matches produce false positives. Without
+     * the original message nobody can tell an opt-out from a lead who happened to write "stop by
+     * tomorrow", and the flag is permanent, so a wrong one is unreversible in practice.
+     */
+    private String whatsappOptedOutText;
+
+    /**
+     * The customer's WhatsApp avatar.
+     *
+     * <p>On the deal rather than on a message, because it belongs to whoever is on the other end of
+     * the number and not to anything they said. Written to every deal sharing that number, so a
+     * customer holding several does not appear as several different people.
+     *
+     * <p>Outside attachment retention, deliberately. Media in a thread expires after thirty days and
+     * says so; an avatar vanishing on the same schedule would just look broken.
+     */
+    private FileDetail whatsappProfilePicFileDetail;
+
+    /** WhatsApp's id for that image, so an unchanged picture is never fetched twice. */
+    private String whatsappProfilePicId;
 
     @JsonIgnore
     private transient RuleResult assignmentRuleResult;
@@ -94,6 +154,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.assignedUserId = ticket.assignedUserId;
         this.dialCode = ticket.dialCode;
         this.phoneNumber = ticket.phoneNumber;
+        this.whatsappNumber = ticket.whatsappNumber;
+        this.whatsappDialCode = ticket.whatsappDialCode;
         this.email = ticket.email;
         this.productId = ticket.productId;
         this.stage = ticket.stage;
@@ -112,8 +174,43 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.latestTaskDueDate = ticket.latestTaskDueDate;
         this.expiresOn = ticket.expiresOn;
         this.latestComment = ticket.latestComment;
+        this.lastMessageAt = ticket.lastMessageAt;
+        this.whatsappOptedOut = ticket.whatsappOptedOut;
+        this.whatsappOptedOutAt = ticket.whatsappOptedOutAt;
+        this.whatsappOptedOutText = ticket.whatsappOptedOutText;
+        this.whatsappProfilePicFileDetail = ticket.whatsappProfilePicFileDetail;
+        this.whatsappProfilePicId = ticket.whatsappProfilePicId;
         this.assignmentRuleResult = ticket.assignmentRuleResult;
         this.evaluationTrace = ticket.evaluationTrace;
+    }
+
+    /**
+     * The number to message this deal on.
+     *
+     * <p>Every WhatsApp path goes through this and none of them reads {@link #whatsappNumber}
+     * directly. The separate number is the exception rather than the rule, so a caller that reads the
+     * field raw works on the handful of deals someone has corrected and silently sends nothing on all
+     * the rest - a failure that looks like the message never being written.
+     *
+     * <p>Blank counts as absent, not as a number. An empty string reaches here from a form that
+     * submitted a cleared field, and treating it as set would send to nowhere while looking correct
+     * in the database.
+     *
+     * <p>Deliberately not named {@code getX}: Jackson would serialise it, the client would post it
+     * back, and a derived value would start being stored as if someone had typed it.
+     */
+    public String whatsappOrPhoneNumber() {
+        return StringUtil.safeIsBlank(this.whatsappNumber) ? this.phoneNumber : this.whatsappNumber;
+    }
+
+    /** The calling code that goes with {@link #whatsappOrPhoneNumber()}, from the same source. */
+    public Integer whatsappOrPhoneDialCode() {
+        return StringUtil.safeIsBlank(this.whatsappNumber) ? this.dialCode : this.whatsappDialCode;
+    }
+
+    /** Whether someone has recorded a WhatsApp number that differs from the number on file. */
+    public boolean hasSeparateWhatsappNumber() {
+        return !StringUtil.safeIsBlank(this.whatsappNumber);
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
@@ -125,6 +222,14 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                 .setPhoneNumber(
                         ticketRequest.getPhoneNumber() != null
                                 ? ticketRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setWhatsappDialCode(
+                        ticketRequest.getWhatsappNumber() != null
+                                ? ticketRequest.getWhatsappNumber().getCountryCode()
+                                : null)
+                .setWhatsappNumber(
+                        ticketRequest.getWhatsappNumber() != null
+                                ? ticketRequest.getWhatsappNumber().getNumber()
                                 : null)
                 .setEmail(
                         ticketRequest.getEmail() != null
@@ -150,6 +255,24 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                                 ? campaignTicketRequest
                                         .getLeadDetails()
                                         .getPhone()
+                                        .getNumber()
+                                : null)
+                // Meta lead forms have had a WhatsApp-number field all along and the collector has
+                // always parsed it. Until this column existed the value could only be folded into the
+                // formData blob below, which nothing queries and no screen reads, so a lead who
+                // volunteered their WhatsApp number at intake was messaged on the other one anyway.
+                .setWhatsappDialCode(
+                        campaignTicketRequest.getLeadDetails().getWhatsappNumber() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getWhatsappNumber()
+                                        .getCountryCode()
+                                : null)
+                .setWhatsappNumber(
+                        campaignTicketRequest.getLeadDetails().getWhatsappNumber() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getWhatsappNumber()
                                         .getNumber()
                                 : null)
                 .setEmail(

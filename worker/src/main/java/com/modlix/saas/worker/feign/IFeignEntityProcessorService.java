@@ -31,4 +31,14 @@ public interface IFeignEntityProcessorService {
 
     @PostMapping("/api/entity/processor/internal/billing/reconcile")
     Boolean reconcileBilling();
+
+    /**
+     * Marks WhatsApp messages whose attachment has been collected by file retention.
+     *
+     * <p>Changes what the thread says, deletes nothing. The bytes go on the lifetime stamped on each
+     * file at upload, which the files service acts on separately.
+     */
+    @PostMapping("/api/entity/processor/whatsapp/internal/media/stampExpired")
+    Integer stampExpiredWhatsappMedia(
+            @RequestParam("retentionDays") int retentionDays, @RequestParam("limit") int limit);
 }

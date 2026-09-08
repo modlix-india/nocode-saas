@@ -66,7 +66,9 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 "/api/core/connections/internal",
                 "/api/core/connections/internal/**",
                 "/api/core/notifications/internal/**",
-                "/api/core/internal/billing/**");
+                "/api/core/internal/billing/**",
+                "/api/core/internal/data/**",
+                "/api/core/index/internal/**");
     }
 
     @Bean

@@ -2294,7 +2294,10 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			entity.setUserName("existinguser");
 			entity.setEmailId("existing@test.com");
 
-			when(dao.readById(USER_ID)).thenReturn(Mono.just(entity));
+			// The stored user keeps its original identifiers, so this edit changes them and the
+			// collision check runs.
+			when(dao.readById(USER_ID))
+					.thenReturn(Mono.just(TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID)));
 
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
@@ -2321,7 +2324,10 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			entity.setUserName("existinguser");
 
-			when(dao.readById(USER_ID)).thenReturn(Mono.just(entity));
+			// The stored user keeps its original userName, so this edit changes it and the
+			// collision check runs.
+			when(dao.readById(USER_ID))
+					.thenReturn(Mono.just(TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID)));
 
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("INDV", CLIENT_CODE, "CLIENT")));
@@ -2338,6 +2344,45 @@ class UserServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
 					.verify();
+		}
+
+		@Test
+		void update_ByEntity_NonIdentifierEdit_SkipsCollisionCheck() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString(),
+						ArgumentMatchers.<List<String>>any()))
+					.thenReturn(true);
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setFirstName("Renamed");
+
+			// The stored user carries the same userName, email and phone, so this edit changes no
+			// identifier and must not be refused over a collision it did not create.
+			when(dao.readById(USER_ID))
+					.thenReturn(Mono.just(TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID)));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.update(any(User.class))).thenReturn(Mono.just(entity));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.update(entity))
+					.assertNext(user -> assertEquals("Renamed", user.getFirstName()))
+					.verifyComplete();
+
+			verify(dao, never()).checkUserExists(any(), any(), any(), any(), any());
+			verify(dao, never()).checkUserExistsExclude(any(), any(), any(), any(), any(), any());
 		}
 
 		@Test

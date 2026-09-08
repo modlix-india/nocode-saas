@@ -94,10 +94,4 @@ public class URIPath extends AbstractOverridableDTO<URIPath> {
                     return Mono.just(obj);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
     }
-
-    @Override
-    @JsonIgnore
-    public String getTransportName() {
-        return this.getId();
-    }
 }

@@ -29,6 +29,14 @@ public abstract class AbstractMongoUpdatableDataService<I extends Serializable, 
 						ovd.setDescription(evd.getDescription());
 						ovd.setPermission(evd.getPermission());
 						ovd.setMessage(evd.getMessage());
+
+						// `published` is deliberately NOT copied here. It is server
+						// state, not caller state: copying it meant an ordinary PUT
+						// that omitted the field nulled it, and a body carrying
+						// "published": false hid a live object from the live surface
+						// with no draft involved. updatableEntity rebuilds from the
+						// stored document, so leaving it alone preserves it, and
+						// publish() flips it through its own path.
 					}
 
 					return ue;

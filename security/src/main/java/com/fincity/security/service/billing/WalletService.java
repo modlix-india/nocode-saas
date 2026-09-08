@@ -437,11 +437,21 @@ public class WalletService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.chargeAi"));
     }
 
-    /** Find a config(C, app) where C directly manages the billed client M. */
+    /**
+     * The config(C, app) governing the billed client M: M's own config, else the
+     * nearest ANCESTOR up its hierarchy. `getClientHierarchyIdInOrder` returns
+     * [self, level0-manager, level1-manager, ...] - at most five ids, from one
+     * cached hierarchy row.
+     * <p>
+     * Do NOT use `getManagingClientIds` here: it is the wrong direction (it
+     * returns the clients M manages, i.e. descendants) and it is unbounded - for a
+     * SYSTEM caller it returns every client in the system and this concatMap then
+     * fires one sequential config query per client.
+     */
     private Mono<AppBillingConfig> resolveConfigForBilledClient(ULong appId, ULong billedClientId) {
-        return this.clientHierarchyService.getManagingClientIds(billedClientId)
+        return this.clientHierarchyService.getClientHierarchyIdInOrder(billedClientId)
                 .flatMapMany(Flux::fromIterable)
-                .concatMap(managerId -> this.configService.readByAppAndClientId(appId, managerId))
+                .concatMap(ancestorId -> this.configService.readByAppAndClientId(appId, ancestorId))
                 .next();
     }
 
