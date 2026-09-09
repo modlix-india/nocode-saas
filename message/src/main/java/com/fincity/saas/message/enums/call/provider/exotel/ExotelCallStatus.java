@@ -1,5 +1,6 @@
 package com.fincity.saas.message.enums.call.provider.exotel;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fincity.saas.message.enums.call.CallStatus;
 import com.fincity.saas.message.enums.call.ICallStatus;
@@ -24,7 +25,16 @@ public enum ExotelCallStatus implements EnumType, ICallStatus {
         this.displayName = displayName;
     }
 
+    @JsonCreator
     public static ExotelCallStatus lookupLiteral(String literal) {
+        if (literal == null || literal.isBlank()) return null;
+        for (ExotelCallStatus status : values()) {
+            if (status.name().equalsIgnoreCase(literal)
+                    || status.displayName.equalsIgnoreCase(literal)
+                    || status.literal.equalsIgnoreCase(literal)) {
+                return status;
+            }
+        }
         return EnumType.lookupLiteral(ExotelCallStatus.class, literal);
     }
 

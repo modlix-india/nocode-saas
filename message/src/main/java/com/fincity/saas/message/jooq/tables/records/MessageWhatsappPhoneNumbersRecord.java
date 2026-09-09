@@ -157,9 +157,9 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Setter for
      * <code>message.message_whatsapp_phone_numbers.SESSION_STATE</code>.
      * Lifecycle state as the bridge reports it, surfaced verbatim to the UI.
-     * COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only
-     * failure here a customer can fix themselves in seconds, and only if told
-     * what it is.
+     * COUNTRY_MISMATCH and NUMBER_MISMATCH are separate from LOGGED_OUT because
+     * they are the only failures here a customer can fix themselves in seconds,
+     * and only if told which one it is.
      */
     public MessageWhatsappPhoneNumbersRecord setSessionState(WhatsappSessionState value) {
         set(7, value);
@@ -170,9 +170,9 @@ public class MessageWhatsappPhoneNumbersRecord extends UpdatableRecordImpl<Messa
      * Getter for
      * <code>message.message_whatsapp_phone_numbers.SESSION_STATE</code>.
      * Lifecycle state as the bridge reports it, surfaced verbatim to the UI.
-     * COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only
-     * failure here a customer can fix themselves in seconds, and only if told
-     * what it is.
+     * COUNTRY_MISMATCH and NUMBER_MISMATCH are separate from LOGGED_OUT because
+     * they are the only failures here a customer can fix themselves in seconds,
+     * and only if told which one it is.
      */
     public WhatsappSessionState getSessionState() {
         return (WhatsappSessionState) get(7);

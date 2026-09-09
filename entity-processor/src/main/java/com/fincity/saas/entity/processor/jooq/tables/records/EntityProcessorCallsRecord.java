@@ -291,7 +291,8 @@ public class EntityProcessorCallsRecord extends UpdatableRecordImpl<EntityProces
 
     /**
      * Setter for <code>entity_processor.entity_processor_calls.FROM</code>.
-     * Phone number of the caller.
+     * Caller. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
     public EntityProcessorCallsRecord setFrom(String value) {
         set(14, value);
@@ -300,7 +301,8 @@ public class EntityProcessorCallsRecord extends UpdatableRecordImpl<EntityProces
 
     /**
      * Getter for <code>entity_processor.entity_processor_calls.FROM</code>.
-     * Phone number of the caller.
+     * Caller. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
     public String getFrom() {
         return (String) get(14);
@@ -326,8 +328,9 @@ public class EntityProcessorCallsRecord extends UpdatableRecordImpl<EntityProces
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_calls.TO</code>. Phone
-     * number of the receiver.
+     * Setter for <code>entity_processor.entity_processor_calls.TO</code>.
+     * Callee. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
     public EntityProcessorCallsRecord setTo(String value) {
         set(16, value);
@@ -335,8 +338,9 @@ public class EntityProcessorCallsRecord extends UpdatableRecordImpl<EntityProces
     }
 
     /**
-     * Getter for <code>entity_processor.entity_processor_calls.TO</code>. Phone
-     * number of the receiver.
+     * Getter for <code>entity_processor.entity_processor_calls.TO</code>.
+     * Callee. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
     public String getTo() {
         return (String) get(16);
