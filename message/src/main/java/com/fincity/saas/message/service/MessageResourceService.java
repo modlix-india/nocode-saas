@@ -20,9 +20,6 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String UKNOWN_ERROR = "unknown_error";
 
     public static final String EXOTEL_REQUEST_FAILED = "exotel_request_failed";
-    public static final String EXOTEL_RECOVERY_APP_NOT_FOUND = "exotel_recovery_app_not_found";
-    public static final String EXOTEL_APPS_UNCLAIMED = "exotel_apps_unclaimed";
-    public static final String EXOTEL_APP_SECRET_UNKNOWN = "exotel_app_secret_unknown";
     public static final String EXOTEL_APP_NOT_RETURNED = "exotel_app_not_returned";
     public static final String EXOTEL_APP_NOT_DELETED = "exotel_app_not_deleted";
     public static final String EXOTEL_IDENTITY_CLAIMED = "exotel_identity_claimed";

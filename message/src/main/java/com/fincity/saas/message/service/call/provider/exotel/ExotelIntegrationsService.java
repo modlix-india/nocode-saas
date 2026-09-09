@@ -310,31 +310,35 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Brings a brand-new app into existence, or refuses to.
+     * Brings a brand-new app into existence for a tenant that has none.
      *
-     * <p>Three rules, and each exists because breaking it costs a customer something irreversible.
-     *
-     * <p><b>Never create blindly.</b> The provider keeps every app ever made and happily accepts a
-     * second one with the same name. If our row is the only guard and the row is lost — a restore,
-     * a purge, a renamed client — every run adds another app to the customer's account. That is how
-     * five orphans appeared on this account before any of this was written.
+     * <p>Our own row is the authority on whether this tenant has an app, and it is the only
+     * authority there is. The provider's listing carries nothing that identifies a tenant —
+     * {@code AppID}, {@code AppName}, {@code CustomerID}, {@code ExotelAccountSid},
+     * {@code ExotelDomain}, {@code IsActive} — and the name cannot stand in for one, because the
+     * name that comes back is not always the name that was sent. So other apps on the account are
+     * none of this tenant's business. One Exotel account is meant to hold many: one per tenant, and
+     * one per environment, each environment having its own database and so its own row.
      *
      * <p><b>Persist the secret before doing anything else.</b> The provider returns it exactly
      * once, at creation. Every network call placed between creating the app and writing that secret
      * down is another chance to end up with an app nobody can ever authenticate as, and therefore
-     * nobody can ever delete.
+     * nobody can ever delete. {@link #teardownApp} needs it too, which is why a row lost without a
+     * teardown strands its app at the provider for good. Tear down before wiping a database.
      *
-     * <p><b>Refuse rather than guess.</b> If an app already exists under this name but we hold no
-     * secret for it, there is no safe move: creating a duplicate is unbounded growth, and adopting
-     * it is impossible without credentials. Say so, and name the two ways out.
+     * <p><b>Adopt only when told which app to adopt.</b> A missing row means either that this
+     * tenant never had an app or that its row was lost, and nothing distinguishes the two — not
+     * here, where teardown purges rather than tombstones, and not at the provider. Guessing either
+     * way is wrong, so the operator decides: {@code appId} and {@code appSecret} on the connection
+     * name an existing app to re-link instead of creating one. They are for recovery only, are
+     * never written by this service, and should be taken off once the row exists.
      */
     private Mono<CallProviderApp> registerNewApp(
             MessageAccess access, Connection connection, String appName, String accountSid) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.customerToken(connection),
-                        masterToken -> this.findAppAtProvider(connection, masterToken, accountSid)
-                                .flatMap(existing -> this.adoptOrRefuse(connection, existing))
+                        masterToken -> this.adoptFromConnection(connection)
                                 .switchIfEmpty(
                                         Mono.defer(() -> this.createApp(connection, masterToken, appName, accountSid))),
                         // Straight to the database, before the token call and the callback
@@ -384,84 +388,30 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * The app already registered under this name on this account, if there is one.
+     * Re-links an app the operator has named on the connection, if they have named one.
      *
-     * <p>Refuses on more than one match rather than picking. Duplicate names are possible at the
-     * provider, and choosing silently would bind to whichever the listing returned first — whose
-     * secret we would almost certainly not hold, failing later and a long way from the cause.
-     */
-    private Mono<ExotelAppData> findAppAtProvider(Connection connection, String masterToken, String accountSid) {
-
-        return this.webClientConfig
-                .createExotelIntegrationsWebClient(connection, masterToken, ReactiveAuthenticationScheme.NONE)
-                .flatMap(client -> client.get()
-                        .uri(uri -> uri.path(ExotelIntegrationsApiConfig.appUrl())
-                                .queryParam(
-                                        ExotelIntegrationsApiConfig.PARAM_ENTITY,
-                                        ExotelIntegrationsApiConfig.ENTITY_CUSTOMER)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(APP_JSON_TYPE))
-                .flatMap(response -> this.unwrap(response, OPERATION_APP_LISTING))
-                .flatMapMany(data -> this.toList(data, ExotelAppData.class, OPERATION_APP_LISTING))
-                // Matched on the account, never on the name. The name sent is not the
-                // name that comes back — Exotel has returned an app under a name other
-                // than the one it was given — so a name-equality filter never matches
-                // the app it just created. That silently defeats the whole guard: the
-                // next run finds nothing, creates a duplicate, and the account grows
-                // another app whose secret nobody holds. The account is ours to know;
-                // the name is the provider's to change, which is also why the name is
-                // an operator's label on the connection rather than something derived.
-                .filter(app -> accountSid.equalsIgnoreCase(app.getExotelAccountSid())
-                        && !Boolean.FALSE.equals(app.getIsActive()))
-                .collectList()
-                .flatMap(matches -> {
-                    if (matches.isEmpty()) return Mono.empty();
-                    if (matches.size() == 1) return Mono.just(matches.getFirst());
-
-                    // More than one app already lives on this account and our row
-                    // is gone, so nothing here identifies which one was ours.
-                    // The operator has to say, and they need the secret anyway.
-                    String recoveryAppId = this.detail(connection, ExotelIntegrationsApiConfig.APP_ID);
-
-                    if (recoveryAppId != null && !recoveryAppId.isBlank())
-                        return Flux.fromIterable(matches)
-                                .filter(app -> recoveryAppId.equalsIgnoreCase(app.getAppId()))
-                                .next()
-                                .switchIfEmpty(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
-                                        MessageResourceService.EXOTEL_RECOVERY_APP_NOT_FOUND,
-                                        recoveryAppId,
-                                        accountSid));
-
-                    return this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.CONFLICT, msg),
-                            MessageResourceService.EXOTEL_APPS_UNCLAIMED,
-                            accountSid,
-                            matches.size());
-                });
-    }
-
-    /**
-     * Re-links an app that exists at the provider but not here, when that is possible at all.
+     * <p>For a database loss or an app made by hand, and nothing else. The provider never re-reveals
+     * a secret, so both halves have to be supplied: {@code appId} says which app, {@code appSecret}
+     * proves it is ours to use. Empty when either is absent — the normal case, and the one that
+     * means create.
      *
-     * <p>Only reachable when our row is missing and the app is not: a database loss, or an app made
-     * by hand. The provider never re-reveals a secret, so the operator has to supply the one they
-     * were given. {@code appSecret} on the connection exists purely for this recovery — it is not
-     * part of normal setup, is never written by this service, and should not be left there.
+     * <p>Verified before it is written down, which is the opposite of the created path and
+     * deliberately so. A created app's secret exists nowhere but the response, so its row has to be
+     * written first; an adopted pair was typed in and can be typed again, so the row is worth
+     * nothing until the pair is known to work. Persisting an unverified pair would leave a row that
+     * blocks its own retry on {@code UK2_CALL_PROVIDER_APPS_TENANT} and that no teardown can clear,
+     * because teardown needs a working secret. A pair the provider rejects fails the whole
+     * initialize rather than falling through to creation, so a typo cannot quietly make a new app.
      */
-    private Mono<ExotelAppData> adoptOrRefuse(Connection connection, ExotelAppData existing) {
+    private Mono<ExotelAppData> adoptFromConnection(Connection connection) {
 
-        String recoverySecret = this.detail(connection, ExotelIntegrationsApiConfig.APP_SECRET);
+        String appId = this.detail(connection, ExotelIntegrationsApiConfig.APP_ID);
+        String appSecret = this.detail(connection, ExotelIntegrationsApiConfig.APP_SECRET);
 
-        if (recoverySecret != null && !recoverySecret.isBlank())
-            return Mono.just(existing.setAppSecret(recoverySecret));
+        if (appId == null || appId.isBlank() || appSecret == null || appSecret.isBlank()) return Mono.empty();
 
-        return this.msgService.throwMessage(
-                msg -> new GenericException(HttpStatus.CONFLICT, msg),
-                MessageResourceService.EXOTEL_APP_SECRET_UNKNOWN,
-                existing.getAppName(),
-                existing.getAppId());
+        return this.appToken(connection, appId, appSecret)
+                .thenReturn(new ExotelAppData().setAppId(appId).setAppSecret(appSecret));
     }
 
     private Mono<ExotelAppData> createApp(
@@ -547,10 +497,10 @@ public class ExotelIntegrationsService {
 
         try {
             if (node.isArray())
-                return Flux.fromIterable(this.objectMapper.convertValue(
-                        node, this.objectMapper.getTypeFactory().constructCollectionType(List.class, type)));
+                return Flux.fromIterable(STATIC_MAPPER.convertValue(
+                        node, STATIC_MAPPER.getTypeFactory().constructCollectionType(List.class, type)));
 
-            return Flux.just(this.objectMapper.convertValue(node, type));
+            return Flux.just(STATIC_MAPPER.convertValue(node, type));
         } catch (IllegalArgumentException e) {
             return this.msgService
                     .<T>throwMessage(
