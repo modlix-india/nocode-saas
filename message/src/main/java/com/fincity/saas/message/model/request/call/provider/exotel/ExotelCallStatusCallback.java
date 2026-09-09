@@ -1,5 +1,6 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,31 +32,48 @@ public class ExotelCallStatusCallback implements Serializable {
     @Serial
     private static final long serialVersionUID = 3500927590328043740L;
 
+    // The aliases below carry exactly the keys the WebRTC callback was observed to send, and
+    // nothing else. That payload names several fields differently from the telephony API this class
+    // was written for — Status/CallStatus, RecordingUrl/CallRecordings,
+    // ConversationDuration/TotalDuration — and an unmapped key is dropped in silence, which is how a
+    // completed call sat at IN_PROGRESS with no duration and no recording.
+    //
+    // Speculative spellings were removed. An alias for a key no provider sends cannot be verified,
+    // cannot fail visibly, and quietly suggests the payload is less settled than it is. Add one when
+    // a live payload shows it, not before.
     @JsonProperty("CallSid")
     private String callSid;
 
     @JsonProperty("DateUpdated")
+    @JsonAlias("UpdatedAt")
     private String dateUpdated;
 
     @JsonProperty("Status")
+    @JsonAlias("CallStatus")
     private ExotelCallStatus status;
 
     @JsonProperty("RecordingUrl")
+    @JsonAlias("CallRecordings")
     private String recordingUrl;
 
     @JsonProperty("EventType")
+    @JsonAlias("CallDetail")
     private String eventType;
 
     @JsonProperty("DateCreated")
+    @JsonAlias("CreatedAt")
     private String dateCreated;
 
     @JsonProperty("To")
+    @JsonAlias("ToNumber")
     private String to;
 
     @JsonProperty("From")
+    @JsonAlias("FromNumber")
     private String from;
 
     @JsonProperty("PhoneNumberSid")
+    @JsonAlias("VirtualNumber")
     private String phoneNumberSid;
 
     @JsonProperty("StartTime")
@@ -65,6 +83,7 @@ public class ExotelCallStatusCallback implements Serializable {
     private String endTime;
 
     @JsonProperty("ConversationDuration")
+    @JsonAlias("TotalDuration")
     private Long conversationDuration;
 
     @JsonProperty("Direction")

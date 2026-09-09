@@ -6,6 +6,8 @@ import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
@@ -117,6 +119,8 @@ public class ExotelPassThruCallback implements Serializable {
                 status -> status.getDisplayName().equals(formData.getFirst("DialCallStatus")),
                 callback::setDialCallStatus);
 
+        callback.setLegs(legsFrom(formData));
+
         String digits = formData.getFirst("digits");
         if (digits != null) {
             digits = digits.trim();
@@ -125,5 +129,40 @@ public class ExotelPassThruCallback implements Serializable {
         }
 
         return callback;
+    }
+
+    /**
+     * Reads the indexed leg entries out of the form body.
+     *
+     * <p>The provider flattens them as {@code Legs[0][OnCallDuration]}, {@code Legs[1][Number]} and
+     * so on, which no form binder reassembles on its own — so without this the legs list is always
+     * empty and the answered leg's talk time is invisible. That matters because the dial duration
+     * beside it includes ringing, and the two get conflated when only one is available.
+     *
+     * <p>Indices are read in order until one is missing, rather than scanned across the whole body:
+     * the keys are dense by construction, and stopping at the first gap avoids walking a payload
+     * whose size the provider controls.
+     */
+    private static List<Map<String, Object>> legsFrom(MultiValueMap<String, String> formData) {
+
+        List<Map<String, Object>> legs = new ArrayList<>();
+
+        for (int index = 0; ; index++) {
+
+            String prefix = "Legs[" + index + "][";
+            Map<String, Object> leg = new LinkedHashMap<>();
+
+            for (Map.Entry<String, List<String>> entry : formData.entrySet()) {
+                String key = entry.getKey();
+                if (!key.startsWith(prefix) || !key.endsWith("]")) continue;
+                leg.put(
+                        key.substring(prefix.length(), key.length() - 1),
+                        entry.getValue().getFirst());
+            }
+
+            if (leg.isEmpty()) return legs;
+
+            legs.add(leg);
+        }
     }
 }

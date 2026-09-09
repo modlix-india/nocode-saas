@@ -56,7 +56,13 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 this.objectMapper,
                 "/api/message/call/callback",
                 "/api/message/call/callback/**",
-                "/api/message/call/exotel/connect",
+                // The Exotel Connect applet route is deliberately absent. It used to be listed here,
+                // which made it unauthenticated, but Exotel never calls it: the provider posts to
+                // /api/entity/processor/open/call and entity-processor calls us over Feign. It now
+                // lives at /api/message/call/exotel/internal/connect and is covered by the
+                // "/call/exotel/internal/**" entry below. Public, it resolved any userId on the
+                // platform with no client scoping and returned that user's phone number.
+                //
                 // Meta's webhook, the Graph-backed message and template routes and the phone-number
                 // sync all went with the Cloud API, and their permit-all entries went with them. A
                 // permitAll for a path no controller serves is not harmless: it is a standing
@@ -74,6 +80,12 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "/api/message/whatsapp/sessions/internal",
                 "/api/message/whatsapp/sessions/internal/**",
                 "/api/message/call/exotel/internal/**",
+                // Do not re-add "/api/message/call/exotel/connect" here. It was listed once, and a
+                // 401 from entity-processor looks like the reason to put it back — it is not. That
+                // 401 means entity-processor is running a build older than the move to
+                // /internal/connect; restart it. Public, this route resolves any userId on the
+                // platform with no client scoping and returns that user's phone number.
+                //
                 // Bridge control plane. Named one route at a time rather than as
                 // "/api/message/bridges/**", because these carry their own credentials (an HMAC over
                 // the raw body, plus a bootstrap secret on the two that need it) while the fleet
