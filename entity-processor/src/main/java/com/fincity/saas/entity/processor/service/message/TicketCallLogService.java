@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.service.message;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -14,11 +16,11 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.message.CallEventRequest;
 import com.fincity.saas.entity.processor.oserver.message.enums.call.CallStatus;
 import com.fincity.saas.entity.processor.oserver.message.enums.call.ExotelCallStatus;
+import com.fincity.saas.entity.processor.oserver.message.model.BrowserDialRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
@@ -133,6 +135,86 @@ public class TicketCallLogService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallLogService.makeCall"));
     }
 
+    /**
+     * Places a call to a deal's customer from the agent's browser softphone.
+     *
+     * <p>Deliberately the same shape as {@link #makeCall}: access is established first, the ticket
+     * is read under that access, and only then is the number taken from it. The softphone sends
+     * nothing but a ticket id, so an agent can ring the customers of deals they can see and no
+     * others.
+     *
+     * <p>The reason this lives here rather than in the message service is that the check above is
+     * only possible here. That service's sole ticket lookup is an internal one with no user
+     * scoping, so a browser-facing dial route there would resolve any ticket in the tenant —
+     * restoring exactly the gap this method exists to close.
+     *
+     * <p>Worth being honest about the limit: the agent's browser holds a provider token that can
+     * reach the dial API directly, so this constrains the sanctioned path rather than making
+     * arbitrary dialling impossible. What it does guarantee is that every call placed through the
+     * UI is recorded against a deal the agent could see, which is what makes the call log worth
+     * reading.
+     */
+    public Mono<Call> makeBrowserCall(Identity ticketId, String connectionName) {
+
+        return FlatMapUtil.flatMapMono(
+                        this.ticketService::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, ticketId),
+                        (ProcessorAccess access, Ticket ticket) ->
+                                this.placeFromBrowser(access, ticket, connectionName),
+                        (ProcessorAccess access, Ticket ticket, Map<String, Object> placed) ->
+                                this.recordPlacedCall(access, ticket, connectionName, placed))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallLogService.makeBrowserCall"));
+    }
+
+    /**
+     * Hands the dial to the message service, with the destination taken from the deal.
+     *
+     * <p>The agent comes from {@code access}, not from the request: the message service mints and
+     * uses that agent's own provider token, so a userId carried in from outside would let one agent
+     * dial as another.
+     */
+    private Mono<Map<String, Object>> placeFromBrowser(ProcessorAccess access, Ticket ticket, String connectionName) {
+
+        if (ticket.getPhoneNumber() == null || ticket.getPhoneNumber().isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "phoneNumber");
+
+        if (connectionName == null || connectionName.isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "connectionName");
+
+        if (access.getUserId() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "userId");
+
+        // Null when the stored number will not parse, which the blank check above does not catch.
+        // Left unchecked, that surfaced as a 500 from a NullPointerException on the next line, where
+        // the truth is simply that the deal holds a number nobody can ring.
+        PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
+
+        if (to == null || to.getNumber() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    Ticket.Fields.phoneNumber);
+
+        // The provider's browser dial API takes a single E.164 string, where click-to-call takes the
+        // country code and number as separate fields. PhoneUtil.parse already formats to E.164 —
+        // country code and leading plus included — so there is nothing to assemble here.
+        BrowserDialRequest request = new BrowserDialRequest()
+                .setConnectionName(connectionName)
+                .setUserId(access.getUserId().toBigInteger())
+                .setToNumber(to.getNumber());
+
+        return this.feignMessageService.browserDialInternal(access.getAppCode(), access.getClientCode(), request);
+    }
+
     private Mono<Map<String, Object>> place(
             ProcessorAccess access, Ticket ticket, String connectionName, String callerId) {
 
@@ -144,7 +226,7 @@ public class TicketCallLogService {
 
         PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
 
-        Map<String, Object> request = new java.util.HashMap<>();
+        Map<String, Object> request = new HashMap<>();
         request.put("toNumber", Map.of("countryCode", to.getCountryCode(), "number", to.getNumber()));
         if (connectionName != null && !connectionName.isBlank()) request.put("connectionName", connectionName);
         if (callerId != null && !callerId.isBlank()) request.put("callerId", callerId);
@@ -238,7 +320,8 @@ public class TicketCallLogService {
      */
     public Mono<Call> accept(String appCode, String clientCode, CallEventRequest request) {
 
-        if (request == null || request.getProviderCallId() == null
+        if (request == null
+                || request.getProviderCallId() == null
                 || request.getProviderCallId().isBlank())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
