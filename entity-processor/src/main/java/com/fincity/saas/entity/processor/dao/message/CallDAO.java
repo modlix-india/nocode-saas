@@ -151,27 +151,6 @@ public class CallDAO extends BaseUpdatableDAO<EntityProcessorCallsRecord, Call> 
     }
 
     /**
-     * Historic calls for a customer number that were never filed against a deal.
-     *
-     * <p>Used only by the backfill, which matches by number because that is the sole signal old
-     * rows carry. Deliberately not used at read time: matching a live call to a deal by number is
-     * exactly the heuristic this table exists to replace.
-     */
-    public Mono<Integer> attachTicketByCustomerNumber(
-            String appCode, String clientCode, String customerPhoneNumber, ULong ticketId) {
-
-        if (customerPhoneNumber == null || customerPhoneNumber.isBlank() || ticketId == null)
-            return Mono.just(0);
-
-        return Mono.from(this.dslContext
-                .update(ENTITY_PROCESSOR_CALLS)
-                .set(ENTITY_PROCESSOR_CALLS.TICKET_ID, ticketId)
-                .where(tenant(appCode, clientCode))
-                .and(ENTITY_PROCESSOR_CALLS.CUSTOMER_PHONE_NUMBER.eq(customerPhoneNumber))
-                .and(ENTITY_PROCESSOR_CALLS.TICKET_ID.isNull()));
-    }
-
-    /**
      * The most recent call time per deal, for the conversation list's ordering.
      *
      * <p>Batched over the visible page rather than denormalised onto the ticket, following the

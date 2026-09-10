@@ -1,11 +1,15 @@
 package com.fincity.saas.message.enums;
 
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_CALLS;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_CALL_PROVIDER_APPS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_EXOTEL_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_MESSAGES;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_PROVIDER_USER_ENDPOINTS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBERS;
 
 import com.fincity.saas.message.dto.call.Call;
+import com.fincity.saas.message.dto.call.CallProviderApp;
+import com.fincity.saas.message.dto.call.ProviderUserEndpoint;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.MessageWebhook;
@@ -26,7 +30,14 @@ public enum MessageSeries implements EnumType {
             "Whatsapp Phone Number",
             4,
             "whatsapp_phone_number",
-            MESSAGE_WHATSAPP_PHONE_NUMBERS);
+            MESSAGE_WHATSAPP_PHONE_NUMBERS),
+    CALL_PROVIDER_APP("CALL_PROVIDER_APP", "Call Provider App", 8, "call_provider_app", MESSAGE_CALL_PROVIDER_APPS),
+    PROVIDER_USER_ENDPOINT(
+            "PROVIDER_USER_ENDPOINT",
+            "Provider User Endpoint",
+            9,
+            "provider_user_endpoint",
+            MESSAGE_PROVIDER_USER_ENDPOINTS);
 
     // WHATSAPP_MESSAGE (5), WHATSAPP_TEMPLATE (6) and WHATSAPP_BUSINESS_ACCOUNT (7) retired with the
     // Cloud API. Their ordinals are deliberately not reused: existing rows in the retired tables
@@ -69,6 +80,8 @@ public enum MessageSeries implements EnumType {
             case MESSAGE -> Message.class;
             case MESSAGE_WEBHOOKS -> MessageWebhook.class;
             case WHATSAPP_PHONE_NUMBER -> WhatsappPhoneNumber.class;
+            case CALL_PROVIDER_APP -> CallProviderApp.class;
+            case PROVIDER_USER_ENDPOINT -> ProviderUserEndpoint.class;
         };
     }
 }

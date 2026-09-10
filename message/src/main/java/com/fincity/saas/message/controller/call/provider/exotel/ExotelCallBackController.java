@@ -7,6 +7,7 @@ import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallSta
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,10 +45,21 @@ public class ExotelCallBackController {
         MediaType contentType = exchange.getRequest().getHeaders().getContentType();
 
         if (contentType != null && MediaType.APPLICATION_JSON.isCompatibleWith(contentType)) {
-            return exchange.getRequest()
-                    .getBody()
-                    .next()
-                    .map(dataBuffer -> ExotelCallStatusCallback.of(dataBuffer, objectMapper))
+            // Joined, not .next(): a body split across chunks — which a long recording URL is enough
+            // to cause — would otherwise be parsed from its first chunk alone and silently truncated.
+            //
+            // Released in a finally, and that is not optional. join() hands back a composite buffer
+            // the caller owns, of() can throw on an empty body or malformed JSON, and the default
+            // allocator is pooled: without this, every callback leaks a body-sized buffer of native
+            // memory and the service degrades over days rather than failing where the bug is.
+            return DataBufferUtils.join(exchange.getRequest().getBody())
+                    .map(dataBuffer -> {
+                        try {
+                            return ExotelCallStatusCallback.of(dataBuffer, objectMapper);
+                        } finally {
+                            DataBufferUtils.release(dataBuffer);
+                        }
+                    })
                     .flatMap(callback -> exotelCallService.processCallStatusCallback(access, callback))
                     .map(result -> ExotelCallStatusCallbackResponse.success());
         }
