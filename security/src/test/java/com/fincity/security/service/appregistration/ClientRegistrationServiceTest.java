@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +24,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
@@ -976,6 +978,152 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
 					.verify();
+		}
+	}
+
+	/**
+	 * Where the browser is sent after the provider verified the identity. The callback hangs
+	 * the user's email, their name and a spendable state off this URL, so it has to be the
+	 * calling app's own address and nowhere else.
+	 */
+	@Nested
+	@DisplayName("socialCallbackDestination()")
+	class SocialCallbackDestinationTests {
+
+		private static final String BROKER_PREFIX = "https://dev.authzump.ai";
+		private static final String APP_URL = "https://dev.sitezump.ai";
+
+		private Mono<String> destination(Map<String, Object> requestParam) throws Exception {
+
+			Method method = ClientRegistrationService.class.getDeclaredMethod(
+					"socialCallbackDestination",
+					com.fincity.security.dto.AppRegistrationIntegrationToken.class,
+					com.fincity.security.dto.AppRegistrationIntegration.class,
+					String.class);
+			method.setAccessible(true);
+
+			com.fincity.security.dto.AppRegistrationIntegrationToken token =
+					new com.fincity.security.dto.AppRegistrationIntegrationToken();
+			token.setRequestParam(requestParam);
+
+			com.fincity.security.dto.AppRegistrationIntegration integration =
+					new com.fincity.security.dto.AppRegistrationIntegration();
+			integration.setLoginUri("/appLogin");
+			integration.setSignupUri("/appSignUp");
+
+			@SuppressWarnings("unchecked")
+			Mono<String> result = (Mono<String>) method.invoke(service, token, integration, BROKER_PREFIX);
+			return result;
+		}
+
+		private Map<String, Object> params(String redirectUrl) {
+			return Map.of("appCode", "sitezump", "clientCode", "SYSTEM", "platform", "GOOGLE",
+					"redirectUrl", redirectUrl);
+		}
+
+		/**
+		 * The bug this whole change exists for. A page writes "/accountHome", and this used to
+		 * be refused for having no scheme, sending the user to the OAuth broker's own login
+		 * page on the broker's own domain, where the state means nothing.
+		 */
+		@Test
+		@DisplayName("relative path resolves against the calling app's own URL")
+		void relativePath_ResolvesAgainstTheApp() throws Exception {
+			when(clientUrlService.getAppUrl("sitezump", "SYSTEM")).thenReturn(Mono.just(APP_URL));
+
+			StepVerifier.create(destination(params("/accountHome")))
+					.expectNext(APP_URL + "/accountHome")
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("relative path with no app URL on record falls back to the broker")
+		void relativePath_NoAppUrl_FallsBack() throws Exception {
+			when(clientUrlService.getAppUrl("sitezump", "SYSTEM")).thenReturn(Mono.just(""));
+
+			StepVerifier.create(destination(params("/accountHome")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("absolute URL on one of the app's own hosts is honoured")
+		void absoluteUrl_AppsOwnHost_Honoured() throws Exception {
+			when(clientService.getClientPattern("https", "dev.sitezump.ai", ""))
+					.thenReturn(Mono.just(new ClientUrlPattern("1", "SYSTEM", "dev.sitezump.ai", "sitezump")));
+
+			StepVerifier.create(destination(params(APP_URL + "/accountHome")))
+					.expectNext(APP_URL + "/accountHome")
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("absolute URL on a host belonging to another app is refused")
+		void absoluteUrl_OtherAppsHost_Refused() throws Exception {
+			when(clientService.getClientPattern("https", "dev.leadzump.ai", ""))
+					.thenReturn(Mono.just(new ClientUrlPattern("2", "SYSTEM", "dev.leadzump.ai", "leadzump")));
+
+			StepVerifier.create(destination(params("https://dev.leadzump.ai/steal")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+		}
+
+		/** A host the platform has never heard of resolves to nothing, and nothing is refused. */
+		@Test
+		@DisplayName("absolute URL on an unknown host is refused")
+		void absoluteUrl_UnknownHost_Refused() throws Exception {
+			when(clientService.getClientPattern("https", "evil.example", ""))
+					.thenReturn(Mono.empty());
+
+			StepVerifier.create(destination(params("https://evil.example/harvest")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+		}
+
+		/** "https://evil.example@dev.sitezump.ai" has host dev.sitezump.ai and lands elsewhere. */
+		@Test
+		@DisplayName("userinfo in the authority is refused without asking anyone")
+		void absoluteUrl_WithUserInfo_Refused() throws Exception {
+			StepVerifier.create(destination(params("https://evil.example@dev.sitezump.ai/x")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+
+			verify(clientService, never()).getClientPattern(anyString(), anyString(), anyString());
+		}
+
+		@Test
+		@DisplayName("the mobile wrapper's own scheme still passes")
+		void customScheme_MatchingTheApp_Honoured() throws Exception {
+			String deepLink = "modlix.SYSTEM.sitezump://callback";
+
+			StepVerifier.create(destination(params(deepLink)))
+					.expectNext(deepLink)
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("another app's scheme does not")
+		void customScheme_OtherApp_Refused() throws Exception {
+			StepVerifier.create(destination(params("modlix.SYSTEM.leadzump://callback")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("no redirectUrl at all keeps the old behaviour")
+		void noRedirectUrl_FallsBack() throws Exception {
+			StepVerifier.create(destination(Map.of("appCode", "sitezump", "clientCode", "SYSTEM")))
+					.expectNext(BROKER_PREFIX + "/appLogin")
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a signup flow with no redirectUrl falls back to the signup page")
+		void noRedirectUrl_Signup_FallsBackToSignupUri() throws Exception {
+			StepVerifier.create(destination(
+					Map.of("appCode", "sitezump", "clientCode", "SYSTEM", "signup", "true")))
+					.expectNext(BROKER_PREFIX + "/appSignUp")
+					.verifyComplete();
 		}
 	}
 }

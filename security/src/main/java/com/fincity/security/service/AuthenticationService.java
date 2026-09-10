@@ -43,7 +43,6 @@ import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.commons.util.TimeZoneUtil;
-import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.OneTimeToken;
 import com.fincity.security.dto.TokenObject;
@@ -78,6 +77,10 @@ public class AuthenticationService implements IAuthenticationService {
 
     private static final String AUTHZUMP_APP_CODE = "authzump";
 
+    /** How a one-time token's redeemed session is carried. See {@link MakeOneTimeTimeTokenRequest}. */
+    private static final String AUTH_MODE_COOKIE = "COOKIE";
+    private static final String AUTH_MODE_BEARER = "BEARER";
+
     private final UserService userService;
 
     private final ClientService clientService;
@@ -98,7 +101,6 @@ public class AuthenticationService implements IAuthenticationService {
 
     private final ProfileService profileService;
 
-    private final AppRegistrationIntegrationTokenDao integrationTokenDao;
 
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
@@ -117,7 +119,6 @@ public class AuthenticationService implements IAuthenticationService {
             SoxLogService soxLogService,
             PasswordEncoder pwdEncoder,
             CacheService cacheService,
-            AppRegistrationIntegrationTokenDao integrationTokenDao,
             AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
             ProfileService profileService,
             OneTimeTokenService oneTimeTokenService) {
@@ -130,7 +131,6 @@ public class AuthenticationService implements IAuthenticationService {
         this.soxLogService = soxLogService;
         this.pwdEncoder = pwdEncoder;
         this.cacheService = cacheService;
-        this.integrationTokenDao = integrationTokenDao;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
         this.profileService = profileService;
         this.oneTimeTokenService = oneTimeTokenService;
@@ -362,25 +362,52 @@ public class AuthenticationService implements IAuthenticationService {
                         (tup, hasProfile, linCCheck, user) -> this.appRegistrationIntegrationTokenService
                                 .verifyIntegrationState(
                                         authRequest.getSocialRegisterState()),
-                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken) -> Mono.just(
-                                appRegIntegrationToken.getUsername().equals(authRequest.getUserName()))
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken, usernameChecked) -> {
-                            appRegIntegrationToken.setCreatedBy(user.getId());
-                            appRegIntegrationToken.setUpdatedBy(user.getId());
+                        // An explicit refusal, not an empty Mono. Completing empty here fell
+                        // through to the switchIfEmpty below, which called back into this same
+                        // method with the same state and recursed without bound: a public
+                        // endpoint that anyone could spin by posting a state they minted
+                        // against somebody else's email. Null-safe because a state whose
+                        // consent screen was never completed carries no username at all.
+                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken) -> {
 
-                            return this.integrationTokenDao.update(appRegIntegrationToken);
+                            String verifiedUsername = appRegIntegrationToken.getUsername();
+
+                            if (StringUtil.safeIsBlank(verifiedUsername)
+                                    || !verifiedUsername.equals(authRequest.getUserName()))
+                                return this.authError(SecurityMessageResourceService.SOCIAL_LOGIN_FAILED,
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg));
+
+                            // The provider proved this identity when the callback wrote the
+                            // username onto the row. A state that has been sitting around
+                            // since then is not evidence of anybody being present now.
+                            if (AppRegistrationIntegrationTokenService.isStateExpired(appRegIntegrationToken))
+                                return this.authError(SecurityMessageResourceService.SESSION_EXPIRED,
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg));
+
+                            return Mono.just(Boolean.TRUE);
                         },
-                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken, usernameChecked,
-                                updatedToken) -> logAndMakeToken(authRequest, hasProfile,
-                                        request, response, appCode, user, tup.getT2(), tup.getT1()))
-                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate")))
-                .switchIfEmpty(
-                        // If findNonDeletedUserNClient returns empty, try authenticateUserForHavingApp
-                        Mono.defer(() -> this.authenticateUserForHavingApp(authRequest, clientCode, request, response))
-                                .switchIfEmpty(Mono.defer(() -> this
-                                        .authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED,
-                                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg)))));
+                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken, usernameChecked) -> logAndMakeToken(
+                                authRequest, hasProfile, request, response, appCode, user, tup.getT2(), tup.getT1()),
+                        // Spend the state only now that a session exists behind it. There used
+                        // to be a row update here instead, setting createdBy/updatedBy, which
+                        // updatableEntity discards: it changed nothing except UPDATED_AT, and
+                        // bumping that on every attempt turned the expiry above into a window
+                        // a replay could hold open forever.
+                        (tup, hasProfile, linCCheck, user, appRegIntegrationToken, usernameChecked, auth) -> this
+                                .appRegistrationIntegrationTokenService
+                                .consumeState(appRegIntegrationToken.getState())
+                                .thenReturn(auth))
+                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWSocial")))
+                .switchIfEmpty(Mono.defer(() -> this
+                        // Deliberately NOT authenticateUserForHavingApp. That looks for any app
+                        // the user has a profile in and signs them into THAT one, so a social
+                        // sign-in on an app the user has never used answered 200 with a token
+                        // minted for a different app: the caller banks it, the browser sits on
+                        // this app's origin, and the authorities belong somewhere else. The
+                        // honest answer is that this app does not know this user, which is what
+                        // tells the caller to register them here.
+                        .authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED,
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg))));
     }
 
     private Mono<User> checkUserStatus(User user) {
@@ -1029,8 +1056,23 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<Map<String, String>> makeOneTimeToken(MakeOneTimeTimeTokenRequest request,
             ServerHttpRequest httpRequest) {
 
-        boolean cookieAuth = httpRequest.getCookies().getFirst(HttpHeaders.AUTHORIZATION) != null;
-        String authMode = cookieAuth ? "COOKIE" : "BEARER";
+        String authMode;
+        if (StringUtil.safeIsBlank(request.getAuthMode())) {
+            // Nobody said, so fall back to how this very call authenticated. Kept because it is
+            // what every existing caller relies on, but it is a guess: see the field's javadoc.
+            authMode = httpRequest.getCookies().getFirst(HttpHeaders.AUTHORIZATION) != null
+                    ? AUTH_MODE_COOKIE
+                    : AUTH_MODE_BEARER;
+        } else {
+            authMode = request.getAuthMode().trim().toUpperCase();
+            // Refused rather than quietly falling back to the inference. A typo that silently
+            // inherits cookie mode is precisely the failure this field exists to end.
+            if (!AUTH_MODE_COOKIE.equals(authMode) && !AUTH_MODE_BEARER.equals(authMode))
+                return this.resourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.UNSUPPORTED_AUTH_MODE);
+        }
+
         String targetAppCode = request.getTargetAppCode();
 
         return FlatMapUtil.flatMapMono(
@@ -1108,7 +1150,7 @@ public class AuthenticationService implements IAuthenticationService {
                     else
                         effectiveAppCode = requestAppCode;
 
-                    boolean cookieMode = "COOKIE".equals(oneTimeToken.getAuthMode());
+                    boolean cookieMode = AUTH_MODE_COOKIE.equals(oneTimeToken.getAuthMode());
 
                     return FlatMapUtil.<Tuple3<Client, Client, User>, Boolean, Boolean, User, AuthenticationResponse>flatMapMono(
 

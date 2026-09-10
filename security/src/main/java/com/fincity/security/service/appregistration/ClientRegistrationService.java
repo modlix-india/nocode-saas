@@ -3,7 +3,6 @@ package com.fincity.security.service.appregistration;
 import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +32,7 @@ import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
+import com.fincity.security.dto.AppRegistrationIntegration;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
@@ -771,23 +771,38 @@ public class ClientRegistrationService {
                                 .verifyIntegrationState(registrationRequest.getSocialRegisterState()),
 
                         (ca, appRegIntegrationToken) -> {
-                            if (!appRegIntegrationToken.getUsername().equals(registrationRequest.getUserName())
-                                    && !appRegIntegrationToken.getUsername().equals(registrationRequest.getEmailId()))
+                            // A state the provider never came back for has no username on it,
+                            // so this has to be null-safe: comparing the other way round was
+                            // an NPE, and a 500, for any state minted by evoke and posted here
+                            // without completing the consent screen.
+                            String verifiedUsername = appRegIntegrationToken.getUsername();
+
+                            if (safeIsBlank(verifiedUsername))
+                                return this.regError("Social login was not completed");
+
+                            if (!verifiedUsername.equals(registrationRequest.getUserName())
+                                    && !verifiedUsername.equals(registrationRequest.getEmailId()))
                                 return this.regError("Username and EmailId should not be changed");
 
                             return Mono.just(Boolean.TRUE);
                         },
                         (ca, appRegIntegrationToken, emailChecked) -> {
 
-                            LocalDateTime twoMinutesAgo = LocalDateTime.now().minusMinutes(2);
-
-                            if (appRegIntegrationToken.getCreatedAt().isBefore(twoMinutesAgo))
+                            if (AppRegistrationIntegrationTokenService.isStateExpired(appRegIntegrationToken))
                                 return this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.SESSION_EXPIRED);
 
                             return this.register(registrationRequest, request, response);
-                        })
+                        },
+                        // Only once a session exists. The caller reaches here by being told
+                        // "no such user on this app", so the state has to survive that failed
+                        // sign-in attempt, and a registration that itself failed must leave it
+                        // spendable too.
+                        (ca, appRegIntegrationToken, emailChecked, registered) -> this
+                                .appRegistrationIntegrationTokenService
+                                .consumeState(appRegIntegrationToken.getState())
+                                .thenReturn(registered))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
     }
 
@@ -861,72 +876,132 @@ public class ClientRegistrationService {
                             };
                         },
 
-                        (ca, app, appRegIntegrationToken, appRegIntegration, registerRequest) -> {
+                        (ca, app, appRegIntegrationToken, appRegIntegration, registerRequest) -> this
+                                .socialCallbackDestination(appRegIntegrationToken, appRegIntegration, urlPrefix)
+                                .flatMap(destination -> {
 
-                            Map<String, Object> rp = appRegIntegrationToken.getRequestParam();
-                            String customerRedirectUrl = rp == null ? null : (String) rp.get("redirectUrl");
+                                    UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                                            .fromUri(URI.create(destination))
+                                            .queryParam("sessionId", appRegIntegrationToken.getState())
+                                            .queryParam("userName", registerRequest.getUserName())
+                                            .queryParam("emailId", registerRequest.getEmailId())
+                                            .queryParamIfPresent("phoneNumber", Optional.ofNullable(registerRequest.getPhoneNumber()))
+                                            .queryParamIfPresent("firstName", Optional.ofNullable(registerRequest.getFirstName()))
+                                            .queryParamIfPresent("lastName", Optional.ofNullable(registerRequest.getLastName()))
+                                            .queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
+                                            .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
 
-                            // If the customer app passed a redirectUrl when invoking
-                            // /socialRegister/evoke, send the user back there with the
-                            // social profile as query params. The customer's login page
-                            // is responsible for deciding login vs signup. Otherwise
-                            // fall back to the integration's configured loginUri/signupUri.
-                            String destination;
-                            if (!safeIsBlank(customerRedirectUrl) && isAllowedSocialRedirect(customerRedirectUrl, rp)) {
-                                destination = customerRedirectUrl;
-                            } else {
-                                String legacyUri = "true".equals(rp == null ? null
-                                        : String.valueOf(rp.getOrDefault("signup", "false")))
-                                        ? appRegIntegration.getSignupUri()
-                                        : appRegIntegration.getLoginUri();
-                                destination = urlPrefix + legacyUri;
-                            }
-
-                            UriComponentsBuilder uriBuilder = UriComponentsBuilder
-                                    .fromUri(URI.create(destination))
-                                    .queryParam("sessionId", appRegIntegrationToken.getState())
-                                    .queryParam("userName", registerRequest.getUserName())
-                                    .queryParam("emailId", registerRequest.getEmailId())
-                                    .queryParamIfPresent("phoneNumber", Optional.ofNullable(registerRequest.getPhoneNumber()))
-                                    .queryParamIfPresent("firstName", Optional.ofNullable(registerRequest.getFirstName()))
-                                    .queryParamIfPresent("lastName", Optional.ofNullable(registerRequest.getLastName()))
-                                    .queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
-                                    .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
-
-                            return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
-                        })
+                                    return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
+                                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
     }
 
     /**
-     * Guards the social-profile redirect against open-redirect abuse. The
-     * callback appends the user's email, name and the session token as query
-     * params, so the destination must be trusted.
+     * Where to send the browser once the provider has verified the identity.
      * <p>
-     * Web callers redirect over http(s) (the app is served from the same
-     * platform), which we continue to allow. Mobile wrappers cannot receive an
-     * https redirect into their embedded WebView, so they pass a custom URL
-     * scheme; we only honour it when it matches the
-     * {@code modlix.<clientCode>.<appCode>} convention for the very app that
-     * initiated this flow, so only that app's installed build can capture the
-     * callback. Anything else falls back to the configured loginUri.
+     * The calling app asked to be returned to when it invoked
+     * {@code /socialRegister/evoke}, and that is where this goes: the app's own origin, where
+     * the client bootstrap can spend the state against the app the user actually clicked from.
+     * A path is resolved against that app's own URL rather than against the callback host,
+     * which is always the broker holding the OAuth credentials and is a different app on a
+     * different domain. Getting that wrong is not a redirect nuisance: the browser arrives on
+     * an app that knows nothing about the state, and the sign-in silently ends there.
+     * <p>
+     * Falls back to the integration's configured loginUri/signupUri on the callback host, which
+     * is the old behaviour, only when there is nothing better: no redirectUrl, an untrusted
+     * one, or an app whose own URL cannot be resolved.
      */
-    private static boolean isAllowedSocialRedirect(String redirectUrl, Map<String, Object> rp) {
+    private Mono<String> socialCallbackDestination(AppRegistrationIntegrationToken appRegIntegrationToken,
+                                                   AppRegistrationIntegration appRegIntegration, String urlPrefix) {
 
-        String scheme;
+        Map<String, Object> rp = appRegIntegrationToken.getRequestParam();
+        String fallback = urlPrefix + legacySocialUri(appRegIntegration, rp);
+
+        if (rp == null)
+            return Mono.just(fallback);
+
+        String customerRedirectUrl = (String) rp.get("redirectUrl");
+        if (safeIsBlank(customerRedirectUrl))
+            return Mono.just(fallback);
+
+        URI uri;
         try {
-            scheme = URI.create(redirectUrl).getScheme();
+            uri = URI.create(customerRedirectUrl);
         } catch (IllegalArgumentException e) {
-            return false;
+            return Mono.just(fallback);
         }
 
-        if (scheme == null)
-            return false;
+        String scheme = uri.getScheme() == null ? null : uri.getScheme().toLowerCase();
 
-        scheme = scheme.toLowerCase();
+        // A mobile wrapper cannot receive an https redirect into its embedded WebView, so it
+        // passes a custom scheme. Only the app that started this flow can claim it.
+        if (scheme != null && !scheme.equals("http") && !scheme.equals("https"))
+            return Mono.just(isAllowedCustomScheme(scheme, rp) ? customerRedirectUrl : fallback);
 
-        if (scheme.equals("http") || scheme.equals("https"))
-            return true;
+        Object appCode = rp.get("appCode");
+        if (appCode == null)
+            return Mono.just(fallback);
+
+        // No scheme means a path, e.g. "/accountHome". Resolve it against the app's own URL.
+        if (scheme == null) {
+            String path = customerRedirectUrl.startsWith("/") ? customerRedirectUrl : "/" + customerRedirectUrl;
+            return this.clientUrlService.getAppUrl(appCode.toString(), (String) rp.get("clientCode"))
+                    .filter(appUrl -> !safeIsBlank(appUrl))
+                    .map(appUrl -> appUrl + path)
+                    .defaultIfEmpty(fallback);
+        }
+
+        return this.isAppsOwnHost(uri, appCode.toString())
+                .map(allowed -> Boolean.TRUE.equals(allowed) ? customerRedirectUrl : fallback);
+    }
+
+    /**
+     * The pre-redirect behaviour: the integration's own configured login or signup page, on the
+     * callback host. Only reached when the calling app gave us nothing usable to return to.
+     */
+    private static String legacySocialUri(AppRegistrationIntegration appRegIntegration, Map<String, Object> rp) {
+
+        Object signup = rp == null ? null : rp.getOrDefault("signup", "false");
+        boolean isSignup = "true".equals(String.valueOf(signup));
+
+        return isSignup ? appRegIntegration.getSignupUri() : appRegIntegration.getLoginUri();
+    }
+
+    /**
+     * Whether an absolute redirect names a host the platform already records for the app that
+     * started this flow.
+     * <p>
+     * This has to be checked, because the callback appends the user's email, their name and a
+     * spendable state to the destination, and every input to it came from whoever called evoke.
+     * Accepting any https URL, which is what this used to do, hands all of that to any host
+     * that asks for it.
+     * <p>
+     * The host is resolved the same way the gateway resolves an incoming request, so a tenant's
+     * mapped domain and an app's platform subdomain both pass without listing them anywhere.
+     * Only appCode is compared, not clientCode: the caller's clientCode is conventionally
+     * SYSTEM while a mapped domain belongs to the tenant's own client, and requiring both to
+     * agree would refuse every domain-mapped tenant. This is the same test, for the same
+     * reason, as the beacon's returnUrl check in the ui service's UniversalController.
+     * <p>
+     * Note what this does NOT do: an attacker who owns an app on this platform can name their
+     * own app and their own host, and harvest a state for an account they themselves signed in
+     * with. What keeps that from becoming a session in somebody else's app is that the state is
+     * short-lived, single-use, and only ever redeemed against the app that owns it.
+     */
+    private Mono<Boolean> isAppsOwnHost(URI uri, String appCode) {
+
+        // "https://evil.example@app.host/" has host app.host and lands on evil.example.
+        if (uri.getUserInfo() != null || safeIsBlank(uri.getHost()))
+            return Mono.just(Boolean.FALSE);
+
+        return this.clientService
+                .getClientPattern(uri.getScheme().toLowerCase(), uri.getHost(),
+                        uri.getPort() < 0 ? "" : String.valueOf(uri.getPort()))
+                .map(pattern -> appCode.equalsIgnoreCase(pattern.getAppCode()))
+                .defaultIfEmpty(Boolean.FALSE);
+    }
+
+    private static boolean isAllowedCustomScheme(String scheme, Map<String, Object> rp) {
 
         if (rp == null)
             return false;
@@ -969,20 +1044,20 @@ public class ClientRegistrationService {
                                 request.getQueryParams().getFirst("state")),
                         appRegIntegrationToken -> this.appRegistrationIntegrationService
                                 .read(appRegIntegrationToken.getIntegrationId()),
-                        (appRegIntegrationToken, appRegIntegration) -> {
+                        // Somebody who clicks Cancel on the consent screen belongs back on the
+                        // app they started from, the same as somebody who completed it. Sending
+                        // them to the broker's own login page instead stranded them on a
+                        // different app, which reads as the cancel having broken something.
+                        (appRegIntegrationToken, appRegIntegration) -> this
+                                .socialCallbackDestination(appRegIntegrationToken, appRegIntegration, urlPrefix)
+                                .flatMap(destination -> {
 
-                            String redirectUrl = appRegIntegrationToken
-                                    .getRequestParam()
-                                    .getOrDefault("signup", "false")
-                                    .equals("true")
-                                    ? appRegIntegration.getSignupUri()
-                                    : appRegIntegration.getLoginUri();
+                                    UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                                            .fromUri(URI.create(destination))
+                                            .queryParam("error", "access_denied");
 
-                            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(URI.create(urlPrefix + redirectUrl))
-                                    .queryParam("error", "access_denied");
-
-                            return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
-                        })
+                                    return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
+                                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.invalidSocialCallback"));
     }
 
