@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -912,6 +914,83 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 						assertTrue(result.get("url").contains("generatedToken123"));
 					})
 					.verifyComplete();
+		}
+
+		/**
+		 * How the redeemed session is carried used to be inferred from how the minting call
+		 * itself authenticated, which meant an app that sets an auth cookie at login minted
+		 * COOKIE tokens forever after, with nobody having chosen it and no way to say otherwise.
+		 */
+		@Nested
+		class AuthModeTests {
+
+			private ServerHttpRequest requestWithAuthCookie() {
+				ServerHttpRequest request = mockRequest();
+				MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
+				cookies.add(HttpHeaders.AUTHORIZATION, new HttpCookie(HttpHeaders.AUTHORIZATION, "tok"));
+				lenient().when(request.getCookies()).thenReturn(cookies);
+				return request;
+			}
+
+			private String modeFor(MakeOneTimeTimeTokenRequest req, ServerHttpRequest request) {
+				ContextAuthentication ca = TestDataFactory.createSystemAuth();
+				setupSecurityContext(ca);
+
+				ArgumentCaptor<OneTimeToken> captor = ArgumentCaptor.forClass(OneTimeToken.class);
+				when(oneTimeTokenService.create(captor.capture()))
+						.thenReturn(Mono.just(new OneTimeToken().setToken("t")));
+
+				StepVerifier.create(service.makeOneTimeToken(req, request)).expectNextCount(1).verifyComplete();
+				return captor.getValue().getAuthMode();
+			}
+
+			@Test
+			@DisplayName("unset: still inferred from the minting call, so existing callers are unaffected")
+			void unset_InfersFromTheCall() {
+				assertEquals("BEARER", modeFor(new MakeOneTimeTimeTokenRequest(), mockRequest()));
+				assertEquals("COOKIE", modeFor(new MakeOneTimeTimeTokenRequest(), requestWithAuthCookie()));
+			}
+
+			@Test
+			@DisplayName("asked for: honoured over the inference, in both directions")
+			void explicit_BeatsTheInference() {
+				var wantsCookie = new MakeOneTimeTimeTokenRequest();
+				wantsCookie.setAuthMode("COOKIE");
+				// No cookie on the call, so the inference would have said BEARER.
+				assertEquals("COOKIE", modeFor(wantsCookie, mockRequest()));
+
+				var wantsBearer = new MakeOneTimeTimeTokenRequest();
+				wantsBearer.setAuthMode("BEARER");
+				// This is the case that was impossible before: a cookie-authenticated caller
+				// asking for a bearer-only session on the target.
+				assertEquals("BEARER", modeFor(wantsBearer, requestWithAuthCookie()));
+			}
+
+			@Test
+			@DisplayName("case and padding do not matter")
+			void explicit_IsNormalised() {
+				var req = new MakeOneTimeTimeTokenRequest();
+				req.setAuthMode("  cookie ");
+				assertEquals("COOKIE", modeFor(req, mockRequest()));
+			}
+
+			/** Falling back to the inference on a typo is how you get a cookie nobody asked for. */
+			@Test
+			@DisplayName("anything else is refused, not quietly inferred")
+			void invalid_IsRefused() {
+				ContextAuthentication ca = TestDataFactory.createSystemAuth();
+				setupSecurityContext(ca);
+
+				var req = new MakeOneTimeTimeTokenRequest();
+				req.setAuthMode("COOKIES");
+
+				StepVerifier.create(service.makeOneTimeToken(req, mockRequest()))
+						.expectErrorMatches(e -> e instanceof GenericException
+								&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+						.verify();
+
+				verify(oneTimeTokenService, never()).create(any(OneTimeToken.class));
+			}
 		}
 	}
 

@@ -77,6 +77,10 @@ public class AuthenticationService implements IAuthenticationService {
 
     private static final String AUTHZUMP_APP_CODE = "authzump";
 
+    /** How a one-time token's redeemed session is carried. See {@link MakeOneTimeTimeTokenRequest}. */
+    private static final String AUTH_MODE_COOKIE = "COOKIE";
+    private static final String AUTH_MODE_BEARER = "BEARER";
+
     private final UserService userService;
 
     private final ClientService clientService;
@@ -1052,8 +1056,23 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<Map<String, String>> makeOneTimeToken(MakeOneTimeTimeTokenRequest request,
             ServerHttpRequest httpRequest) {
 
-        boolean cookieAuth = httpRequest.getCookies().getFirst(HttpHeaders.AUTHORIZATION) != null;
-        String authMode = cookieAuth ? "COOKIE" : "BEARER";
+        String authMode;
+        if (StringUtil.safeIsBlank(request.getAuthMode())) {
+            // Nobody said, so fall back to how this very call authenticated. Kept because it is
+            // what every existing caller relies on, but it is a guess: see the field's javadoc.
+            authMode = httpRequest.getCookies().getFirst(HttpHeaders.AUTHORIZATION) != null
+                    ? AUTH_MODE_COOKIE
+                    : AUTH_MODE_BEARER;
+        } else {
+            authMode = request.getAuthMode().trim().toUpperCase();
+            // Refused rather than quietly falling back to the inference. A typo that silently
+            // inherits cookie mode is precisely the failure this field exists to end.
+            if (!AUTH_MODE_COOKIE.equals(authMode) && !AUTH_MODE_BEARER.equals(authMode))
+                return this.resourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.UNSUPPORTED_AUTH_MODE);
+        }
+
         String targetAppCode = request.getTargetAppCode();
 
         return FlatMapUtil.flatMapMono(
@@ -1131,7 +1150,7 @@ public class AuthenticationService implements IAuthenticationService {
                     else
                         effectiveAppCode = requestAppCode;
 
-                    boolean cookieMode = "COOKIE".equals(oneTimeToken.getAuthMode());
+                    boolean cookieMode = AUTH_MODE_COOKIE.equals(oneTimeToken.getAuthMode());
 
                     return FlatMapUtil.<Tuple3<Client, Client, User>, Boolean, Boolean, User, AuthenticationResponse>flatMapMono(
 
