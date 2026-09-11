@@ -48,6 +48,8 @@ class WhatsappPacingServiceTest {
         // depending on what time the suite happens to run.
         ReflectionTestUtils.setField(this.pacing, "quietHoursStart", "00:00");
         ReflectionTestUtils.setField(this.pacing, "quietHoursEnd", "00:00");
+        ReflectionTestUtils.setField(this.pacing, "failureCooldownMinutes", 60);
+        ReflectionTestUtils.setField(this.pacing, "maxSendFailures", 1);
     }
 
     private WhatsappSessionHealth healthy() {
@@ -65,6 +67,94 @@ class WhatsappPacingServiceTest {
     @DisplayName("a healthy number with nothing outstanding may send")
     void allowsHealthy() {
         assertTrue(this.pacing.evaluate(this.healthy(), false, true, 0, List.of()).allowed());
+    }
+
+    /**
+     * The production incident, reduced to one assertion.
+     *
+     * <p>On 2026-09-11 WhatsApp refused a send at 05:00 and three more went out at 05:32, 05:34 and
+     * 05:35, because no row recorded the first refusal and so the gate evaluated a number that
+     * looked untouched. With the refusal recorded, the second attempt must not get through.
+     */
+    @Test
+    @DisplayName("one refusal from WhatsApp rests the number")
+    void holdsAfterARefusal() {
+
+        WhatsappSessionHealth refused = this.healthy()
+                .setRecentFailures(1)
+                .setLastFailureAt(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
+
+        Decision decision = this.pacing.evaluate(refused, false, true, 0, List.of());
+
+        assertFalse(decision.allowed(), "a number WhatsApp just refused must not send again");
+        assertEquals(WhatsappHoldReason.SEND_REJECTED, decision.reason());
+    }
+
+    @Test
+    @DisplayName("the hold names when it lifts, counted from the last refusal")
+    void refusalHoldReleasesAfterTheCooldown() {
+
+        LocalDateTime refusedAt = LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5);
+
+        Decision decision = this.pacing.evaluate(
+                this.healthy().setRecentFailures(1).setLastFailureAt(refusedAt), false, true, 0, List.of());
+
+        assertNotNull(decision.retryAt(), "a rest with no end is indistinguishable from a dead number");
+        assertEquals(refusedAt.plusMinutes(60), decision.retryAt());
+    }
+
+    /**
+     * The window is applied by the query, not here, so a count of zero means nothing recent was
+     * refused. Holding on a stale {@code lastFailureAt} would rest a number for an hour after a
+     * refusal it has already recovered from.
+     */
+    @Test
+    @DisplayName("a refusal older than the cooldown does not hold")
+    void oldRefusalDoesNotHold() {
+
+        WhatsappSessionHealth recovered = this.healthy()
+                .setRecentFailures(0)
+                .setLastFailureAt(LocalDateTime.now(ZoneOffset.UTC).minusHours(6));
+
+        assertTrue(this.pacing.evaluate(recovered, false, true, 0, List.of()).allowed());
+    }
+
+    /**
+     * Order matters: a disconnected number must say so rather than report a refusal from before it
+     * was unlinked, which would send somebody to appeal a restriction instead of pressing connect.
+     */
+    @Test
+    @DisplayName("a disconnected number reports that, not a stale refusal")
+    void sessionNotReadyOutranksARefusal() {
+
+        WhatsappSessionHealth refused = this.healthy()
+                .setRecentFailures(1)
+                .setLastFailureAt(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
+
+        assertEquals(
+                WhatsappHoldReason.SESSION_NOT_READY,
+                this.pacing.evaluate(refused, false, false, 0, List.of()).reason());
+    }
+
+    /**
+     * A refusal outranks every cap below it. Those hold a message we could still send; this one
+     * reports that WhatsApp will not carry it, and reporting a cap instead would invite an override
+     * that cannot work.
+     */
+    @Test
+    @DisplayName("a refusal outranks the 24-hour rule")
+    void refusalOutranksWaiting() {
+
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+
+        WhatsappSessionHealth both = this.healthy()
+                .setRecentFailures(1)
+                .setLastFailureAt(now.minusMinutes(5))
+                .setLastOutboundAt(now.minusHours(1));
+
+        assertEquals(
+                WhatsappHoldReason.SEND_REJECTED,
+                this.pacing.evaluate(both, false, true, 0, List.of()).reason());
     }
 
     @Test

@@ -81,6 +81,27 @@ public class WhatsappPacingService {
     private double replyRateCritical;
 
     /** Consecutive unanswered messages before a sequence stops and a person is asked to look. */
+    /**
+     * How long a number stops sending after WhatsApp refuses one of its messages.
+     *
+     * <p>An hour is a guess, and deliberately a conservative one: WhatsApp publishes nothing about
+     * how long a restriction lasts. The observed case ran from 05:00 to about 12:05 UTC, so an hour
+     * will sometimes release into a restriction that is still in force. That is the right way round
+     * to be wrong - the next send either succeeds or re-arms the hold - whereas guessing seven hours
+     * would strand a number whose refusal was transient.
+     */
+    @Value("${processor.whatsapp.pacing.failure-cooldown-minutes:60}")
+    private int failureCooldownMinutes;
+
+    /**
+     * Refusals inside that window before the number stops.
+     *
+     * <p>One, because the second attempt is already the mistake. Production sent four in thirty-five
+     * minutes, and retrying into a restriction is the documented way to deepen it.
+     */
+    @Value("${processor.whatsapp.pacing.max-send-failures:1}")
+    private int maxSendFailures;
+
     @Value("${processor.whatsapp.pacing.max-unanswered:3}")
     private int maxUnanswered;
 
@@ -140,11 +161,15 @@ public class WhatsappPacingService {
         LocalDateTime hourAgo = now.minusHours(1);
         LocalDateTime rateWindow = now.minusDays(this.replyRateWindowDays);
 
+        // Every one of these is asked of the NUMBER, not of the session it is currently linked
+        // through. A re-link mints a new session code, so asking by session made all of them reset
+        // three times a day in production while WhatsApp went on judging the number.
         return Mono.zip(
-                        this.messageDao.replyRate(appCode, clientCode, sessionId, rateWindow),
-                        this.messageDao.firstContactsSince(appCode, clientCode, sessionId, dayStart),
-                        this.messageDao.sentSince(appCode, clientCode, sessionId, hourAgo),
-                        this.messageDao.recentFailures(appCode, clientCode, sessionId, now.minusHours(6)),
+                        this.messageDao.replyRate(appCode, clientCode, phoneNumber, rateWindow),
+                        this.messageDao.firstContactsSince(appCode, clientCode, phoneNumber, dayStart),
+                        this.messageDao.sentSince(appCode, clientCode, phoneNumber, hourAgo),
+                        this.messageDao.recentFailures(
+                                appCode, clientCode, phoneNumber, now.minusMinutes(this.failureCooldownMinutes)),
                         this.messageDao
                                 .lastOutboundAt(appCode, clientCode, ticketIds)
                                 .map(Maybe::of)
@@ -156,12 +181,12 @@ public class WhatsappPacingService {
                         this.messageDao.consecutiveUnanswered(appCode, clientCode, ticketIds),
                         // Total sends today, which is a different quantity from first contacts and
                         // is what the warm-up ramp actually bounds.
-                        this.messageDao.sentSince(appCode, clientCode, sessionId, dayStart))
+                        this.messageDao.sentSince(appCode, clientCode, phoneNumber, dayStart))
                 .map(t -> {
                     double replyRate = t.getT1();
                     int firstContacts = t.getT2();
                     int sentLastHour = t.getT3();
-                    int failures = t.getT4();
+                    WhatsappMessageDAO.SendFailures failures = t.getT4();
                     LocalDateTime lastOutbound = t.getT5().value();
                     LocalDateTime lastInbound = t.getT6().value();
                     int unanswered = t.getT7();
@@ -184,7 +209,8 @@ public class WhatsappPacingService {
                             .setReplyRate(replyRate)
                             .setReplyRateBand(this.band(replyRate))
                             .setUnansweredRolling30d(unanswered)
-                            .setRecentFailures(failures)
+                            .setRecentFailures(failures.count())
+                            .setLastFailureAt(failures.lastAt())
                             .setLastOutboundAt(lastOutbound)
                             .setLastInboundAt(lastInbound)
                             .setHeldUntil(this.heldUntil(lastOutbound, lastInbound))
@@ -213,6 +239,22 @@ public class WhatsappPacingService {
         if (optedOut) return Decision.hold(WhatsappHoldReason.OPTED_OUT);
 
         if (!sessionSendable) return Decision.hold(WhatsappHoldReason.SESSION_NOT_READY);
+
+        // Before every one of our own rules, because this is not one of them: WhatsApp has already
+        // refused this number, so the next send will fail whatever our caps say. Sending anyway is
+        // not merely useless, it is the documented way to make a restriction last longer, which is
+        // why this hold sits with SESSION_NOT_READY on the non-overridable side.
+        //
+        // It is placed after the sendable check on purpose: a number that is not connected should
+        // say so rather than report a stale refusal from before it was unlinked.
+        if (health.getRecentFailures() != null && health.getRecentFailures() >= this.maxSendFailures) {
+            LocalDateTime lastFailure = health.getLastFailureAt();
+            return lastFailure == null
+                    ? Decision.hold(WhatsappHoldReason.SEND_REJECTED)
+                    : Decision.holdUntil(
+                            WhatsappHoldReason.SEND_REJECTED,
+                            lastFailure.plusMinutes(this.failureCooldownMinutes));
+        }
 
         // Stop chasing. Continuing is not merely useless: unanswered messages accumulate and are
         // themselves part of what throttles the number.
