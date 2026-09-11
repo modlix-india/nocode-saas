@@ -79,12 +79,16 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
 
     public ReportOptions toReportOptions() {
 
-        LocalDateTime startInTimezone = DatePair.convertUtcToTimezone(this.startDate, this.timezone);
-        LocalDateTime endInTimezone = DatePair.convertUtcToTimezone(this.endDate, this.timezone);
+        DatePair datePair = (this.startDate == null || this.endDate == null)
+                ? DatePair.defaultWindow(this.timePeriod, this.startDate, this.endDate, this.timezone)
+                : DatePair.of(
+                        DatePair.convertUtcToTimezone(this.startDate, this.timezone),
+                        DatePair.convertUtcToTimezone(this.endDate, this.timezone),
+                        this.timezone);
 
         return new ReportOptions(
-                DatePair.of(startInTimezone, endInTimezone, this.timezone),
-                this.timePeriod,
+                datePair,
+                this.timePeriod == null ? TimePeriod.WEEKS : this.timePeriod,
                 this.includeZero,
                 this.includePercentage,
                 this.includeTotal,
