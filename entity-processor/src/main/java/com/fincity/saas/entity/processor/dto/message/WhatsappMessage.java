@@ -31,6 +31,20 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
+    /**
+     * How a {@code FAILURE_REASON} says WhatsApp refused the send, rather than anything of ours.
+     *
+     * <p>A prefix on a text column rather than a new enum, because the distinction is only needed by
+     * one query and a migration to record it would be a schema change for a string we already write.
+     * Written by {@code WhatsappSessionService.recordFailedSend} and read back by
+     * {@code WhatsappMessageDAO.recentFailures}, which are the only two places that may know it.
+     *
+     * <p>The distinction matters: a bridge timeout and WhatsApp declining to carry the message are
+     * both failures worth seeing in the thread, but holding a number for an hour over the first
+     * would turn a blip into an outage.
+     */
+    public static final String REJECTED_REASON_PREFIX = "WHATSAPP_REJECTED";
+
     /** Meta's message id, and the idempotency key every write path upserts on. */
     private String messageId;
 
@@ -47,13 +61,13 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     /**
      * The linked session that carried this message.
      *
-     * <p>The column arrived with the bridge pivot and stayed unmapped, so nothing wrote it. That was
-     * not merely untidy: {@code WhatsappMessageDAO.sessionWindow} filters on it, so the query behind
-     * a number's recent-failure count matched nothing and always answered zero, and the pacing that
-     * is supposed to back a number off when it starts being rejected never saw a reason to.
+     * <p>Audit only. Pacing used to be counted on this column and no longer is: re-linking a number
+     * mints a new session code, so every counter reset each time somebody relinked - three times a
+     * day in production - while WhatsApp went on judging the number, which does not change. The
+     * counters moved to {@link #whatsappPhoneNumber}; see {@code WhatsappMessageDAO.numberWindow}.
      *
-     * <p>Kept alongside {@link #whatsappPhoneNumber} rather than derived from it: a number can be
-     * unlinked and relinked under a new session, and pacing is a question about the session.
+     * <p>Still worth storing, because it is how a message is tied back to the particular link that
+     * carried it when reconstructing what a number was doing on a given day.
      */
     private String bridgeSessionId;
 

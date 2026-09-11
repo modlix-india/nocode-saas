@@ -372,16 +372,16 @@ public class WhatsappMessageDAO
      * penalise a number for following up properly. What the metric is really detecting is a number
      * writing to people who never write back at all.
      */
-    public Mono<Double> replyRate(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+    public Mono<Double> replyRate(String appCode, String clientCode, String phoneNumber, LocalDateTime since) {
 
-        if (sessionId == null || sessionId.isBlank()) return Mono.just(1.0d);
+        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(1.0d);
 
         Field<ULong> ticket = ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID;
 
         Mono<Integer> contacted = Mono.from(this.dslContext
                         .select(DSL.countDistinct(ticket))
                         .from(this.table)
-                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .where(numberWindow(appCode, clientCode, phoneNumber, since))
                         .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
                 .map(Record1::value1)
                 .defaultIfEmpty(0);
@@ -389,7 +389,7 @@ public class WhatsappMessageDAO
         Mono<Integer> replied = Mono.from(this.dslContext
                         .select(DSL.countDistinct(ticket))
                         .from(this.table)
-                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .where(numberWindow(appCode, clientCode, phoneNumber, since))
                         .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isFalse()))
                 .map(Record1::value1)
                 .defaultIfEmpty(0);
@@ -409,9 +409,9 @@ public class WhatsappMessageDAO
      * for genuine outreach.
      */
     public Mono<Integer> firstContactsSince(
-            String appCode, String clientCode, String sessionId, LocalDateTime since) {
+            String appCode, String clientCode, String phoneNumber, LocalDateTime since) {
 
-        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(0);
 
         Table<?> earlier = this.table.as("earlier");
         Field<ULong> earlierTicket = earlier.field(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID);
@@ -420,7 +420,7 @@ public class WhatsappMessageDAO
         return Mono.from(this.dslContext
                         .select(DSL.countDistinct(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.TICKET_ID))
                         .from(this.table)
-                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .where(numberWindow(appCode, clientCode, phoneNumber, since))
                         .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue())
                         .andNotExists(this.dslContext
                                 .selectOne()
@@ -431,15 +431,15 @@ public class WhatsappMessageDAO
                 .defaultIfEmpty(0);
     }
 
-    /** Messages this session has sent in the last hour, so a pointless call to a capped session is avoided. */
-    public Mono<Integer> sentSince(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+    /** Messages this number has sent in the last hour, so a pointless call to a capped session is avoided. */
+    public Mono<Integer> sentSince(String appCode, String clientCode, String phoneNumber, LocalDateTime since) {
 
-        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(0);
 
         return Mono.from(this.dslContext
                         .selectCount()
                         .from(this.table)
-                        .where(sessionWindow(appCode, clientCode, sessionId, since))
+                        .where(numberWindow(appCode, clientCode, phoneNumber, since))
                         .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.IS_OUTBOUND.isTrue()))
                 .map(Record1::value1)
                 .defaultIfEmpty(0);
@@ -470,26 +470,95 @@ public class WhatsappMessageDAO
                         .defaultIfEmpty(0));
     }
 
-    /** Failed sends on this session recently, because repeated failures usually mean something is already wrong. */
-    public Mono<Integer> recentFailures(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+    /**
+     * How many sends this number has had refused recently, and when the most recent one was.
+     *
+     * <p>Both in one query because the gate needs both and they are answers about the same rows: the
+     * count decides whether to hold, the time decides when the hold lifts. Asking separately would
+     * let the two disagree across a window boundary and produce a hold with no end.
+     *
+     * <p>Counted per number rather than per session for the reason in {@link #numberWindow}, and
+     * that matters most here: re-linking is the very thing somebody does when sends start failing,
+     * and a session-scoped count would forget every rejection at exactly that moment.
+     */
+    public Mono<SendFailures> recentFailures(
+            String appCode, String clientCode, String phoneNumber, LocalDateTime since) {
 
-        if (sessionId == null || sessionId.isBlank()) return Mono.just(0);
+        if (phoneNumber == null || phoneNumber.isBlank()) return Mono.just(SendFailures.none());
 
         return Mono.from(this.dslContext
-                        .selectCount()
+                        .select(DSL.count(), DSL.max(orderKey()))
                         .from(this.table)
-                        .where(sessionWindow(appCode, clientCode, sessionId, since))
-                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_STATUS.eq(WhatsappMessageStatus.FAILED)))
-                .map(Record1::value1)
-                .defaultIfEmpty(0);
+                        .where(numberWindow(appCode, clientCode, phoneNumber, since))
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.MESSAGE_STATUS.eq(WhatsappMessageStatus.FAILED))
+                        // Only refusals, not every failure. A bridge timeout belongs in the thread
+                        // but is no reason to rest the number, and holding an hour on one would
+                        // turn a momentary blip into an outage of our own making.
+                        .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.FAILURE_REASON.startsWith(
+                                WhatsappMessage.REJECTED_REASON_PREFIX)))
+                .map(r -> new SendFailures(r.value1() == null ? 0 : r.value1(), r.value2()))
+                .defaultIfEmpty(SendFailures.none());
     }
 
-    private Condition sessionWindow(String appCode, String clientCode, String sessionId, LocalDateTime since) {
+    /**
+     * Refused sends in a window, and the latest of them.
+     *
+     * @param lastAt null exactly when {@code count} is zero, so a caller that forgets to check the
+     *     count gets a null it has to handle rather than an epoch that quietly reads as "long ago".
+     */
+    public record SendFailures(int count, LocalDateTime lastAt) {
+
+        public static SendFailures none() {
+            return new SendFailures(0, null);
+        }
+    }
+
+    /**
+     * Every message this <em>number</em> has exchanged in a window, across all of its sessions.
+     *
+     * <p><b>Deliberately not scoped to the bridge session.</b> It was, and that made every pacing
+     * counter reset each time a number was unlinked and linked again, because a re-link mints a new
+     * session code. Production relinked the same three numbers three times a day, so the gate saw a
+     * brand new number every few hours: reply rate synthesised to 100%, warm-up back to day one,
+     * everything sent today forgotten. WhatsApp, meanwhile, was judging the number, which does not
+     * change. Pacing is a question about the number and has to be counted the same way.
+     *
+     * <p>Matched on digits rather than on the stored string. The same number reaches this table as
+     * {@code +919035898884} from one path and {@code +91 90358 98884} from another - both forms are
+     * in production - and an equality test silently matches neither, which looks exactly like a
+     * number with no history rather than like a bug.
+     */
+    private Condition numberWindow(String appCode, String clientCode, String phoneNumber, LocalDateTime since) {
         return tenant(appCode, clientCode)
-                .and(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.BRIDGE_SESSION_ID.eq(sessionId))
+                .and(digitsOf(ENTITY_PROCESSOR_WHATSAPP_MESSAGES.WHATSAPP_PHONE_NUMBER).eq(digitsOf(phoneNumber)))
                 .and(orderKey().ge(since))
                 .and(this.isActiveTrue());
     }
+
+    /**
+     * Strips everything a person might type between the digits, so the two stored forms compare equal.
+     *
+     * <p>The character set is spelled out rather than "everything that is not a digit" so that the
+     * SQL side and {@link #digitsOf(String)} cannot drift: a regex here would have to be a different
+     * expression in SQL, and a normaliser that disagrees with itself matches nothing while looking
+     * entirely reasonable in both halves.
+     */
+    private static Field<String> digitsOf(Field<String> phone) {
+        Field<String> stripped = phone;
+        for (String junk : PHONE_PUNCTUATION) stripped = DSL.replace(stripped, junk, "");
+        return stripped;
+    }
+
+    /** The same normalisation for the value being compared against, so both sides agree. */
+    static String digitsOf(String phone) {
+        if (phone == null) return null;
+
+        String stripped = phone;
+        for (String junk : PHONE_PUNCTUATION) stripped = stripped.replace(junk, "");
+        return stripped;
+    }
+
+    private static final String[] PHONE_PUNCTUATION = {" ", "+", "-", "(", ")", "."};
 
     /**
      * Rows that actually have something for a reader to look at.
