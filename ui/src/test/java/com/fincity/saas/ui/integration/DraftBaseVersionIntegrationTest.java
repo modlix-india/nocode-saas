@@ -25,15 +25,20 @@ import reactor.core.publisher.Mono;
 /**
  * A draft records the live version it was taken FROM, and keeps it.
  *
- * That frozen number is the entire mechanism behind limitation 2 in the handoff:
- * nothing reconciles a draft with a live edit made after the draft was taken, so
- * the publish has to fail rather than merge. Re-stamping baseVersion on every save
+ * That frozen number is the whole mechanism. Re-stamping baseVersion on every save
  * made the optimistic-lock check compare a version against itself, so it always
  * passed and a publish silently overwrote newer live content with work derived
  * from an older copy. The check existed and could never fire.
  *
- * Deliberately recoverable rather than terminal: discard and save again takes the
- * current live version as a fresh base.
+ * It is also what publish reconciliation reads: baseVersion names the version
+ * history record the three-way merge starts from, so a re-stamped base would make
+ * the merge diff the draft against content the author never saw. What the number
+ * means is tested here; what publish then does with it is in
+ * DraftReconciliationIntegrationTest.
+ *
+ * Where there is no snapshot of that version the drift cannot be reconciled and
+ * the publish is refused, which stays recoverable rather than terminal: discard and
+ * save again takes the current live version as a fresh base.
  */
 @DisplayName("Draft baseVersion")
 class DraftBaseVersionIntegrationTest extends AbstractIntegrationTest {
@@ -114,7 +119,7 @@ class DraftBaseVersionIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     @Timeout(60)
-    @DisplayName("a live change under a draft makes the publish fail rather than clobber")
+    @DisplayName("an unreconcilable live change makes the publish fail rather than clobber")
     void publishFailsAfterALiveChange() {
 
         setInheritance(List.of(SYSTEM));
@@ -131,6 +136,10 @@ class DraftBaseVersionIntegrationTest extends AbstractIntegrationTest {
         // them. With baseVersion re-stamped on every save, this second save silently
         // rebased onto 9 and the publish below then succeeded and clobbered.
         saveDraft(page, "draftTwo");
+
+        // The fixture never went through create()/update(), so there is no version
+        // history to merge from and reconciliation has nothing to work with. This is
+        // the residual refusal, not the common case.
 
         assertThrows(Exception.class, () -> asClient(this.pageService.publish(page.getId(), null)),
                 "the publish went through and overwrote a newer live document");
