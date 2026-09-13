@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.AppDAO;
@@ -202,6 +203,21 @@ public class AppController
     public Mono<ResponseEntity<Tuple2<String, Boolean>>> findBaseClientCodeForOverride(
             @PathVariable("applicationCode") String applicationCode) {
         return this.service.findBaseClientCodeForOverride(applicationCode)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Same shape as POST /query, but listing every app the client can reach - owned,
+     * write access or read-only access - instead of only the ones it can edit. Use it
+     * where the app is being picked to act on its users or profiles rather than to
+     * edit the app itself.
+     */
+    @PostMapping("/accessible/query")
+    public Mono<ResponseEntity<Page<App>>> readAccessiblePageFilter(@RequestBody Query query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service.readAccessiblePageFilter(pageable, query.getCondition())
                 .map(ResponseEntity::ok);
     }
 

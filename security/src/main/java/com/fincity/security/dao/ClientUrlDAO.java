@@ -155,6 +155,25 @@ public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClient
     }
 
     /**
+     * Drop an app's DRAFT rows, for every client that holds one.
+     *
+     * Hard-deleting an app has to clear these first. FK1_CLIENT_URL_APP_CODE is ON
+     * DELETE RESTRICT, and an app is given a draft hostname the moment it is
+     * created, so without this no app could ever be hard deleted at all.
+     *
+     * DRAFT only, deliberately. A LIVE row is an address somebody chose and may
+     * still be pointing DNS at, and the constraint refusing a delete while one
+     * exists is the behaviour that was already there. Only rows the platform
+     * minted by itself are cleared here.
+     */
+    public Mono<Integer> deleteDraftUrls(String appCode) {
+
+        return Mono.from(this.dslContext.deleteFrom(SECURITY_CLIENT_URL)
+                .where(SECURITY_CLIENT_URL.APP_CODE.eq(appCode)
+                        .and(SECURITY_CLIENT_URL.URL_TYPE.eq(SecurityClientUrlUrlType.DRAFT))));
+    }
+
+    /**
      * The character that escapes a literal {@code %} or {@code _} in the two
      * substring filters below. Any character not otherwise special will do; a
      * backslash would need doubling through both JOOQ and MySQL, so this is one
