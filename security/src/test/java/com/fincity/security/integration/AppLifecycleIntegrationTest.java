@@ -3,11 +3,13 @@ package com.fincity.security.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -315,9 +317,57 @@ class AppLifecycleIntegrationTest extends AbstractIntegrationTest {
 				.verify();
 	}
 
+	@Test
+	@Order(15)
+	@DisplayName("a new app is given a draft URL, and a hard delete takes it away again")
+	void createApp_MintsDraftUrl_AndHardDeleteClearsIt() {
+
+		App app = new App();
+		app.setAppCode("draftapp");
+		app.setAppName("Draft URL App");
+		app.setAppType(SecurityAppAppType.APP);
+
+		App created = appService.create(app)
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth))
+				.block();
+
+		assertThat(created).isNotNull();
+
+		// Read through SQL rather than the service: the point is that the row is
+		// really there, written by the create itself and not by anyone asking.
+		Map<String, Object> draft = databaseClient
+				.sql("SELECT URL_PATTERN, URL_TYPE, CLIENT_ID FROM security_client_url WHERE APP_CODE = :appCode")
+				.bind("appCode", "draftapp")
+				.fetch().one().block();
+
+		assertThat(draft).isNotNull();
+		assertThat(draft.get("URL_TYPE")).hasToString("DRAFT");
+		assertThat(draft.get("URL_PATTERN").toString()).matches("^d[0-9a-f]{32}.*\\.modlix\\.com$");
+		assertThat(((Number) draft.get("CLIENT_ID")).longValue()).isEqualTo(created.getClientId().longValue());
+
+		// Archive, then hard delete. FK1_CLIENT_URL_APP_CODE is ON DELETE RESTRICT,
+		// so the second call only succeeds because the delete path clears the draft
+		// row first. Before it did, giving every app a draft URL made every app
+		// undeletable.
+		appService.delete(created.getId())
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)).block();
+		appService.delete(created.getId())
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)).block();
+
+		Long remaining = databaseClient
+				.sql("SELECT COUNT(*) AS cnt FROM security_client_url WHERE APP_CODE = :appCode")
+				.bind("appCode", "draftapp")
+				.map(row -> row.get("cnt", Long.class)).one().block();
+
+		assertThat(remaining).isZero();
+	}
+
 	@AfterAll
 	void cleanup() {
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
+				// Every app created above was given one of these, and the container
+				// database is shared with every other integration test class.
+				.then(databaseClient.sql("DELETE FROM security_client_url WHERE URL_TYPE = 'DRAFT'").then())
 				.then(databaseClient.sql("DELETE FROM security_app_dependency WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_app_access WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_app_property WHERE ID > 0").then())
