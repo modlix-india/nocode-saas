@@ -217,10 +217,16 @@ class DraftPublishIntegrationTest extends AbstractIntegrationTest {
             assertEquals(1L, after, "publish must snapshot, which it gets for free from update()");
         }
 
+        /**
+         * The fixture is insertRaw, so there is no version snapshot of the base, so
+         * nothing can say what the draft changed and the drift cannot be reconciled.
+         * That is the case this test is about; the reconcilable one, which is now the
+         * common case, lives in DraftReconciliationIntegrationTest.
+         */
         @Test
         @Timeout(30)
-        @DisplayName("is rejected when the live document moved on underneath the draft")
-        void rejectsStalePublish() {
+        @DisplayName("is rejected when the live document moved on and the base cannot be recovered")
+        void rejectsUnreconcilableStalePublish() {
 
             Page live = storedPage(SYSTEM, null, props("title", "original"));
 
