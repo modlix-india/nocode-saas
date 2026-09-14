@@ -79,6 +79,32 @@ public abstract class AbstractTransportController
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * Drops import receipts older than the retention window.
+     *
+     * <p>Driven by the worker, which is the only thing here that can run a job
+     * once across several instances. A {@code @Scheduled} in this service would
+     * fire on every replica at the same moment and have them racing to delete the
+     * same documents.
+     *
+     * <p>On the internal path, which in this service means unauthenticated: the ui
+     * service passes {@code "/**"} to springSecurityFilterChain, so nothing here
+     * is gated at the filter chain and nginx is the boundary. That is the same
+     * posture as {@code /api/files/internal/{type}/cleanupExpired}, which deletes
+     * files. What keeps it defensible is that the damage an unexpected caller
+     * could do is bounded by construction rather than by who they are: this can
+     * only ever remove Transport documents, never a definition, and the retention
+     * floor and per-run cap live in the service, so the worst an arbitrary caller
+     * achieves is running the sweep early.
+     */
+    @PostMapping("/internal/cleanupOlderThan")
+    public Mono<ResponseEntity<Map<String, Integer>>> internalCleanupOlderThan(
+            @RequestParam(required = false, defaultValue = "90") int retentionDays,
+            @RequestParam(required = false, defaultValue = "200") int limit) {
+
+        return this.service.cleanupOlderThan(retentionDays, limit).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/transportTypes")
     public Mono<ResponseEntity<List<String>>> transportTypes() {
         return Mono.just(ResponseEntity.ok(this.service.getServieMap()
