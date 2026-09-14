@@ -8,6 +8,7 @@ import com.modlix.saas.worker.service.execution.MeteringExecutionService;
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
+import com.modlix.saas.worker.service.execution.TransportCleanupService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ public class TaskExecutionService {
     private final ConversionsDispatchExecutionService conversionsDispatchExecutionService;
     private final MeteringExecutionService meteringExecutionService;
     private final FilesTtlCleanupService filesTtlCleanupService;
+    private final TransportCleanupService transportCleanupService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -36,8 +38,10 @@ public class TaskExecutionService {
             CampaignSyncExecutionService campaignSyncExecutionService,
             ConversionsDispatchExecutionService conversionsDispatchExecutionService,
             MeteringExecutionService meteringExecutionService,
-            FilesTtlCleanupService filesTtlCleanupService) {
+            FilesTtlCleanupService filesTtlCleanupService,
+            TransportCleanupService transportCleanupService) {
         this.filesTtlCleanupService = filesTtlCleanupService;
+        this.transportCleanupService = transportCleanupService;
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
@@ -91,6 +95,7 @@ public class TaskExecutionService {
             case SECURITY_METERING, CORE_METERING, ENTITY_PROCESSOR_METERING, FILES_METERING, BILLING_RECONCILE ->
                 meteringExecutionService.execute(task);
             case FILES_TTL_CLEANUP -> filesTtlCleanupService.execute(task);
+            case TRANSPORT_CLEANUP -> transportCleanupService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);
