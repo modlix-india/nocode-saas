@@ -6,6 +6,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
@@ -29,6 +33,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.document.Transport;
+import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.mongo.enums.TransportFileType;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
@@ -55,6 +60,24 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
     private static final String TRANSPORT = "Transport";
     private static final String SLASH_ESCAPE = "__slash__";
+
+    private static final String CREATED_AT = "createdAt";
+    private static final String CLIENT_CODE = "clientCode";
+    private static final String OBJECT_NAME = "objectName";
+
+    /**
+     * The youngest a transport may be and still be swept.
+     *
+     * A clamp rather than a validation, and it lives here rather than in the
+     * controller on purpose: applyTransport reads the document back by id right
+     * after createAndApply stored it, so a caller that could ask for a zero-day
+     * retention could delete an import out from under itself mid-apply. No
+     * caller, and no job data, can get below this.
+     */
+    private static final int MIN_RETENTION_DAYS = 7;
+
+    /** Bounds one sweep. See cleanupOlderThan for why a sweep has to stay small. */
+    private static final int MAX_CLEANUP_LIMIT = 500;
 
     private final IFeignSecurityService feignSecurityService;
 
@@ -89,6 +112,121 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                         AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, TRANSPORT, transportCode)
                         : this.applyTransport(forwardedHost, forwardedPort, e.get(0).getId(), null, false));
 
+    }
+
+    // ── Retention ──────────────────────────────────────────────
+    //
+    // A transport document is an import receipt, not an artifact anyone reads
+    // again. createAndApply stores the uploaded zip base64'd into encodedModl,
+    // applyTransport reads it back once by id, and from that moment nothing ever
+    // looks at it. Until now nothing deleted them either: DeletionService drops an
+    // app's transports when the app goes, and there is no other path.
+    //
+    // They are not small. Measured on stage 2026-09-14, ui.transport held 955
+    // documents totalling 2.1 GB, averaging 2.25 MB each, against a WiredTiger
+    // cache of 2.3 GB. That has a cost well beyond disk, because create() looks a
+    // transport up by uniqueTransportCode before inserting and that field is not
+    // indexed: every import does a COLLSCAN of the whole collection, and the scan
+    // evicts the rest of the working set on its way through. The same measurement
+    // put one such lookup at 265 seconds and a single Application object at 113
+    // seconds to import, against 2 seconds on a smaller environment.
+    //
+    // Sweeping the receipts keeps that scan bounded. It does not make it an index
+    // lookup - that needs an index on uniqueTransportCode, which is a separate
+    // change and the real fix.
+
+    /**
+     * Removes import receipts older than the retention window, and the version
+     * rows they wrote.
+     *
+     * <h2>Versions first</h2>
+     *
+     * <p>isVersionable() is true for every overridable service, so creating a
+     * transport also writes a full second copy of the same base64 zip into the
+     * version collection - on stage that is most of why ui.version is 8.3 GB. Those
+     * rows are addressed by the transport's name, so they go first: interrupted
+     * between the two deletes, the transport document survives and the next sweep
+     * finds it again. The other order strands version rows nothing can name.
+     *
+     * <h2>Why a sweep is bounded and unsorted</h2>
+     *
+     * <p>There is no index on createdAt, so this is a collection scan whichever way
+     * it is written. Asking Mongo to sort it as well would put multi-megabyte
+     * documents through an in-memory sort stage and hit the 32 MB limit long before
+     * it finished. Which old receipts go first does not matter - the next run takes
+     * the rest - so it does not sort, and it takes at most MAX_CLEANUP_LIMIT per
+     * run so one pass can never turn into an hours-long delete against a live
+     * database.
+     */
+    public Mono<Map<String, Integer>> cleanupOlderThan(int retentionDays, int limit) {
+
+        int days = Math.max(retentionDays, MIN_RETENTION_DAYS);
+        int cap = Math.clamp(limit, 1, MAX_CLEANUP_LIMIT);
+
+        // UTC, because that is the clock AbstractMongoDataService.create stamps
+        // createdAt with. Comparing a UTC column against a local now() would move
+        // the retention window by the host's offset.
+        LocalDateTime cutoff = LocalDateTime.now(ZoneId.of("UTC")).minusDays(days);
+
+        Query stale = new Query(Criteria.where(CREATED_AT).lt(cutoff)).limit(cap);
+
+        // The projection is not an optimisation, it is what makes this runnable at
+        // all. Without it every candidate arrives with its encodedModl attached and
+        // a 500-document sweep pulls a gigabyte of base64 into heap to read 500
+        // names off it.
+        stale.fields().include("_id").include("name").include("appCode").include(CLIENT_CODE);
+
+        return this.mongoTemplate.find(stale, Transport.class)
+                .collectList()
+                .flatMap(candidates -> {
+
+                    if (candidates.isEmpty())
+                        return Mono.just(Map.of("transportsRemoved", 0, "versionsRemoved", 0));
+
+                    return this.deleteVersionsOf(candidates)
+                            .flatMap(versions -> this.deleteTransports(candidates)
+                                    .map(transports -> {
+                                        logger.info(
+                                                "Removed {} {} transports older than {} days and {} of their versions",
+                                                transports, this.getTransportType(), days, versions);
+                                        return Map.of("transportsRemoved", transports, "versionsRemoved", versions);
+                                    }));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.cleanupOlderThan"));
+    }
+
+    /** appCode and clientCode of the transports whose versions are being removed. */
+    private record Owner(String appCode, String clientCode) {
+    }
+
+    private Mono<Integer> deleteVersionsOf(List<Transport> candidates) {
+
+        // Grouped by owner so each delete can lead with objectAppCode and
+        // clientCode. Those are the first two fields of the index the version
+        // collection actually carries, and a flat objectName-in query would ignore
+        // it and scan instead.
+        Map<Owner, List<String>> byOwner = candidates.stream()
+                .collect(Collectors.groupingBy(e -> new Owner(e.getAppCode(), e.getClientCode()),
+                        Collectors.mapping(Transport::getName, Collectors.toList())));
+
+        return Flux.fromIterable(byOwner.entrySet())
+                .concatMap(e -> this.mongoTemplate.remove(
+                        new Query(new Criteria().andOperator(
+                                Criteria.where("objectAppCode").is(e.getKey().appCode()),
+                                Criteria.where(CLIENT_CODE).is(e.getKey().clientCode()),
+                                Criteria.where("objectType").is(TRANSPORT.toUpperCase()),
+                                Criteria.where(OBJECT_NAME).in(e.getValue()))),
+                        Version.class)
+                        .map(result -> (int) result.getDeletedCount()))
+                .reduce(0, Integer::sum);
+    }
+
+    private Mono<Integer> deleteTransports(List<Transport> candidates) {
+
+        return this.mongoTemplate.remove(
+                new Query(Criteria.where("_id").in(candidates.stream().map(Transport::getId).toList())),
+                Transport.class)
+                .map(result -> (int) result.getDeletedCount());
     }
 
     public Mono<Boolean> applyTransport(String forwardedHost, String forwardedPort, String id,
