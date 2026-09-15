@@ -1,11 +1,11 @@
 package com.fincity.saas.entity.processor.controller.open;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorIntegrationsInSourceType;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.service.EntityIntegrationService;
 import com.fincity.saas.entity.processor.service.TicketService;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +24,12 @@ public class TicketOpenController {
     private static final String SUBSCRIBE = "subscribe";
     private static final String MISMATCH_BODY = "Verification token mismatch";
 
+    /**
+     * Body of a duplicate acknowledgement. Deliberately not empty: the collector forward reads the
+     * reply with {@code bodyToMono(Map)}, and a zero-length body completes empty there.
+     */
+    private static final Map<String, Object> DUPLICATE_ACK = Map.of("duplicate", Boolean.TRUE);
+
     private final TicketService ticketService;
     private final EntityIntegrationService entityIntegrationService;
 
@@ -37,10 +43,10 @@ public class TicketOpenController {
     }
 
     @PostMapping(CAMPAIGN_REQ_PATH)
-    public Mono<ResponseEntity<Ticket>> createFromCampaigns(@RequestBody CampaignTicketRequest campaignTicketRequest) {
+    public Mono<ResponseEntity<Object>> createFromCampaigns(@RequestBody CampaignTicketRequest campaignTicketRequest) {
         return this.ticketService
                 .createForCampaign(campaignTicketRequest)
-                .map(ResponseEntity::ok)
+                .<ResponseEntity<Object>>map(ResponseEntity::ok)
                 .onErrorResume(GenericException.class, TicketOpenController::acknowledgeDuplicate);
     }
 
@@ -53,37 +59,50 @@ public class TicketOpenController {
     }
 
     @PostMapping(WEBSITE_REQ_PATH)
-    public Mono<ResponseEntity<Ticket>> createFromWebsite(
+    public Mono<ResponseEntity<Object>> createFromWebsite(
             @PathVariable(PATH_VARIABLE_CODE) String code, @RequestBody CampaignTicketRequest ticketRequest) {
         return this.ticketService
                 .createForWebsite(ticketRequest, code)
-                .map(ResponseEntity::ok)
+                .<ResponseEntity<Object>>map(ResponseEntity::ok)
                 .onErrorResume(GenericException.class, TicketOpenController::acknowledgeDuplicate);
     }
 
     /**
-     * Acknowledges a duplicate lead with 200 so Meta and Google stop redelivering it.
+     * Acknowledges a duplicate lead with 200 so the caller stops redelivering it.
      *
      * <p>By the time a 409 reaches here the processor has already committed the re-inquiry activity
-     * against the existing ticket, so the intake succeeded and only the response was wrong.
-     * Providers read any non-2xx as a failed webhook delivery and redeliver the same lead with
-     * backoff, and each redelivery committed another re-inquiry row before failing again - so the
-     * error response, not the dedup logic, is what turned one lead into a storm of re-inquiries.
+     * against the existing ticket, so the intake succeeded and only the response was wrong. A caller
+     * that reads any non-2xx as a failed delivery redelivers the same lead with backoff, and each
+     * redelivery committed another re-inquiry row before failing again, so the error response rather
+     * than the dedup logic is what turned one lead into a storm of re-inquiries.
+     *
+     * <p>Who actually calls this matters, because it is not Meta directly. Meta and Google post to
+     * {@code EntityCollectorController} ({@code /collector/social/facebook}, {@code /collector/website}),
+     * and {@code EntityCollectorService} forwards the normalised lead here through
+     * {@code EntityUtil.sendEntityToTarget}. That forward reads the reply with {@code bodyToMono(Map)},
+     * which completes empty on a zero-length body and left the forward chain holding a null, so the
+     * acknowledgement carries a small marker object rather than no body at all.
+     *
+     * <p>The other intake surface, the leadzump URIPath {@code /api/open/tickets/req/campaigns},
+     * never reaches this controller: it runs the KIRun function {@code leadzump.createFromCampaignsAndSN},
+     * whose step binds straight to {@code TicketService.createForCampaign} through
+     * {@code AbstractServiceFunction}. A duplicate surfaces there as a step error, not as this
+     * response, so nothing here changes that path.
      *
      * <p>Only 409 is acknowledged. Everything else still propagates, deliberately: a 404 keeps a
      * mis-pointed campaign visible, an inactive product or missing identity info stays a real
      * error instead of a silently dropped lead, and a 5xx stays an error precisely because
      * retrying it may succeed.
      *
-     * <p>The re-inquiry activity row is the durable record of this outcome, so nothing is logged
-     * here. Returning an empty body also keeps the internal ticket id and stack trace out of a
-     * third party's hands.
+     * <p>The marker deliberately carries no ticket id or stack trace, so an unauthenticated caller
+     * learns that the lead was already known and nothing more. The re-inquiry activity row remains
+     * the durable record of the outcome.
      */
-    private static Mono<ResponseEntity<Ticket>> acknowledgeDuplicate(GenericException e) {
+    private static Mono<ResponseEntity<Object>> acknowledgeDuplicate(GenericException e) {
 
         if (e.getStatusCode() != HttpStatus.CONFLICT) return Mono.error(e);
 
-        return Mono.just(ResponseEntity.ok().build());
+        return Mono.just(ResponseEntity.ok(DUPLICATE_ACK));
     }
 
     @GetMapping(WEBSITE_REQ_PATH)

@@ -1,8 +1,9 @@
 package com.fincity.saas.entity.processor.controller.open;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -14,6 +15,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.service.EntityIntegrationService;
 import com.fincity.saas.entity.processor.service.TicketService;
+import java.util.Map;
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,41 +63,50 @@ class TicketOpenControllerTest {
     void newCampaignLead() {
         when(ticketService.createForCampaign(any())).thenReturn(Mono.just(ticketWithId(101)));
 
-        ResponseEntity<Ticket> response =
+        ResponseEntity<Object> response =
                 controller.createFromCampaigns(new CampaignTicketRequest()).block();
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(ULong.valueOf(101), response.getBody().getId());
+        assertInstanceOf(Ticket.class, response.getBody());
+        assertEquals(ULong.valueOf(101), ((Ticket) response.getBody()).getId());
     }
 
+    /**
+     * The body has to be non-empty, and that is not cosmetic. The collector forwards the lead here
+     * and reads the reply with {@code bodyToMono(Map)}, which completes empty on a zero-length body;
+     * the forward chain then held a null and threw, so a duplicate the processor had already
+     * recorded still came back to the caller as a 500.
+     */
     @Test
-    @DisplayName("A duplicate campaign lead is acknowledged with 200 and an empty body")
+    @DisplayName("A duplicate campaign lead is acknowledged with 200 and a non-empty marker body")
     void duplicateCampaignLeadIsAcknowledged() {
         campaignIntakeFailsWith(HttpStatus.CONFLICT);
 
-        ResponseEntity<Ticket> response =
+        ResponseEntity<Object> response =
                 controller.createFromCampaigns(new CampaignTicketRequest()).block();
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNull(response.getBody(), "the existing ticket id must not be handed to a third party");
+        assertEquals(Map.of("duplicate", Boolean.TRUE), response.getBody());
+        assertFalse(
+                response.getBody().toString().contains("id"),
+                "the existing ticket id must not be handed to a third party");
     }
 
     @Test
-    @DisplayName("A duplicate website lead is acknowledged with 200 and an empty body")
+    @DisplayName("A duplicate website lead is acknowledged with 200 and a non-empty marker body")
     void duplicateWebsiteLeadIsAcknowledged() {
         when(ticketService.createForWebsite(any(), eq(PRODUCT_CODE)))
                 .thenReturn(Mono.error(new GenericException(HttpStatus.CONFLICT, "duplicate")));
 
-        ResponseEntity<Ticket> response = controller
+        ResponseEntity<Object> response = controller
                 .createFromWebsite(PRODUCT_CODE, new CampaignTicketRequest())
                 .block();
 
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNull(response.getBody());
+        assertEquals(Map.of("duplicate", Boolean.TRUE), response.getBody());
     }
 
     /**

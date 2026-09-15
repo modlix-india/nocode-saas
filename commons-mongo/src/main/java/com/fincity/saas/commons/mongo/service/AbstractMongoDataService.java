@@ -26,6 +26,7 @@ import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FieldExpression;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.LogUtil;
 
 import reactor.core.publisher.Flux;
@@ -49,8 +50,34 @@ public abstract class AbstractMongoDataService<I extends Serializable, D extends
 
 	public Mono<D> create(D entity) {
 
+		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+
 		entity.setCreatedBy(null);
-		entity.setCreatedAt(LocalDateTime.now(ZoneId.of("UTC")));
+		entity.setCreatedAt(now);
+
+		// What a never-updated row looks like is already settled on the MySQL side,
+		// and Mongo had no equivalent: UPDATED_AT there is NOT NULL DEFAULT
+		// CURRENT_TIMESTAMP so a fresh row carries updatedAt equal to createdAt,
+		// while UPDATED_BY is DEFAULT NULL and nothing copies createdBy into it.
+		// Checked against local security_client, security_user and security_app:
+		// not one null UPDATED_AT in 9668 rows, and UPDATED_BY null on every row
+		// that has never been updated.
+		//
+		// Here both fields arrived on the wire like any other and nothing cleared
+		// them, so whatever the caller sent was stored verbatim. For an object
+		// created by a transport that is the SOURCE environment's pair: an
+		// updatedAt that can predate the createdAt stamped a moment later, and an
+		// updatedBy pointing into another environment's user table, where it means
+		// a different person or nobody. Seen on stage after a sitezump promotion,
+		// where core.storage/blogs read createdAt 2026-09-14, updatedAt 2026-09-05.
+		//
+		// The same `now` rather than a second call, so the two timestamps agree
+		// exactly the way one MySQL CURRENT_TIMESTAMP default makes them agree.
+		if (entity instanceof AbstractUpdatableDTO<?, ?> updatable) {
+			updatable.setUpdatedAt(now);
+			updatable.setUpdatedBy(null);
+		}
+
 		return this.getLoggedInUserId()
 				.map(e -> {
 					entity.setCreatedBy(e);
