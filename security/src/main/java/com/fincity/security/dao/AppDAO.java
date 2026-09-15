@@ -98,6 +98,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 });
     }
 
+    /**
+     * Reactor context key that widens {@link #filter} from "apps this client can edit"
+     * to "apps this client can reach at all", read-only access included. Written by
+     * {@code AppService.readAccessiblePageFilter} and by nothing else, so the default
+     * listing keeps requiring EDIT_ACCESS.
+     *
+     * It has to travel in the context rather than as an argument: the base filter
+     * recurses through {@code this.filter} for every leaf of a complex condition, so
+     * the access clause is added once per leaf and there is no call site to pass a
+     * flag through.
+     */
+    public static final String CONTEXT_INCLUDE_READ_ACCESS = "appListingIncludesReadAccess";
+
     @Override
     public Mono<Condition> filter(AbstractCondition acond, SelectJoinStep<Record> selectJoinStep) {
 
@@ -111,9 +124,18 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                     ULong clientId = ULong.valueOf(ca.getUser()
                             .getClientId());
 
-                    return condition.map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId)
-                            .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)
-                                    .and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf((byte) 1))))));
+                    return Mono.deferContextual(ctx -> {
+
+                        Condition access = SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId);
+
+                        if (!ctx.getOrDefault(CONTEXT_INCLUDE_READ_ACCESS, Boolean.FALSE))
+                            access = access.and(SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf((byte) 1)));
+
+                        final Condition accessCondition = access;
+
+                        return condition
+                                .map(c -> DSL.and(c, SECURITY_APP.CLIENT_ID.eq(clientId).or(accessCondition)));
+                    });
                 })
                 .switchIfEmpty(condition);
     }

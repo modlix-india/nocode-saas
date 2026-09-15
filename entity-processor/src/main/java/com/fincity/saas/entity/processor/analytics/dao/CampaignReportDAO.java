@@ -9,9 +9,12 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampa
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport.Level;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
+import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
+import com.fincity.saas.entity.processor.analytics.util.PeriodBucketUtil;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.FunnelStage;
@@ -99,6 +102,43 @@ public class CampaignReportDAO {
                 })
                 .collectList()
                 .map(this::nest);
+    }
+
+    /**
+     * Same as {@link #getStageTreeForProductTemplate(ULong)} but for several templates in
+     * one round trip, returning the union of their root stages.
+     *
+     * <p>Stage ids are unique across templates, so nesting stays per-template even though
+     * the rows arrive interleaved; templates are kept adjacent in the output by ordering on
+     * the template id first. Callers report across a set of products whose templates they
+     * cannot know in advance, and issuing one query per template put the round-trip count
+     * on the product count.
+     */
+    public Mono<List<StageNode>> getStageTreeForProductTemplates(List<ULong> productTemplateIds) {
+
+        if (productTemplateIds == null || productTemplateIds.isEmpty()) return Mono.just(List.of());
+
+        return Flux.from(dslContext
+                        .select(STAGES.ID, STAGES.NAME, STAGES.PARENT_LEVEL_0, STAGES.ORDER, STAGES.FUNNEL_STAGE)
+                        .from(STAGES)
+                        .where(STAGES.PRODUCT_TEMPLATE_ID.in(productTemplateIds).and(STAGES.IS_ACTIVE.isTrue()))
+                        .orderBy(
+                                STAGES.PRODUCT_TEMPLATE_ID.asc(),
+                                DSL.coalesce(STAGES.PARENT_LEVEL_0, STAGES.ID).asc(),
+                                STAGES.ORDER.asc()))
+                .map(this::toIdParentNode)
+                .collectList()
+                .map(this::nest);
+    }
+
+    private IdParentNode toIdParentNode(Record r) {
+        StageNode n = new StageNode();
+        n.setId(r.get(STAGES.ID));
+        n.setName(r.get(STAGES.NAME));
+        n.setOrder(r.get(STAGES.ORDER) == null ? 0 : r.get(STAGES.ORDER));
+        FunnelStage fs = r.get(STAGES.FUNNEL_STAGE);
+        n.setFunnelStage(fs == null ? null : fs.getLiteral());
+        return new IdParentNode(r.get(STAGES.PARENT_LEVEL_0), n);
     }
 
     private record IdParentNode(ULong parent, StageNode node) {}
@@ -500,6 +540,73 @@ public class CampaignReportDAO {
                                 .put(r.get(ACTIVITIES.STAGE_ID), r.get("cnt", Long.class));
                     }
                     return result;
+                });
+    }
+
+    /* ---------------- Campaign Trend stage counts by period ---------------- */
+
+    /**
+     * Group ticket stage counts by period bucket (DAYS, WEEKS, MONTHS, QUARTERS,
+     * YEARS).
+     *
+     * <p>
+     * Buckets are computed on the caller's local calendar — CREATED_AT is
+     * converted from UTC to {@code timezone} before date extraction via
+     * {@link PeriodBucketUtil}, so leads land in the same period as
+     * the spend rows they belong to. Range filters stay raw UTC instants.
+     */
+    public Mono<List<PerDateCount>> getStageCountsByPeriod(
+            ProcessorAccess access,
+            List<ULong> campaignIds,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            TimePeriod timePeriod,
+            String timezone) {
+
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+
+        Field<Integer> distinctTicketCount = DSL.countDistinct(ACTIVITIES.TICKET_ID).as("distinctTicketCount");
+
+        Condition baseCondition = TICKETS.APP_CODE
+                .eq(access.getAppCode())
+                .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
+                .and(TICKETS.CAMPAIGN_ID.in(campaignIds))
+                .and(TICKETS.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.IS_ACTIVE.isTrue())
+                .and(ACTIVITIES.STAGE_ID.isNotNull())
+                .and(ACTIVITIES.ACTIVITY_ACTION.in(STAGE_BEARING_ACTIONS));
+
+        if (startDate != null && endDate != null) {
+            baseCondition = baseCondition.and(TICKETS.CREATED_AT.between(startDate, endDate));
+        }
+
+        Field<LocalDateTime> periodStartField =
+                PeriodBucketUtil.toDateBucketGroupKeyField(timePeriod, TICKETS.CREATED_AT, timezone)
+                        .as("periodStart");
+
+        return Flux.from(dslContext
+                .select(periodStartField, ACTIVITIES.STAGE_ID, distinctTicketCount)
+                .from(ACTIVITIES)
+                .join(TICKETS).on(TICKETS.ID.eq(ACTIVITIES.TICKET_ID))
+                .where(baseCondition)
+                .groupBy(periodStartField, ACTIVITIES.STAGE_ID))
+                .collectList()
+                .map(records -> {
+                    List<PerDateCount> stageRows = new ArrayList<>();
+                    for (Record record : records) {
+                        LocalDateTime periodStartTimestamp = record.get("periodStart", LocalDateTime.class);
+                        ULong stageId = record.get(ACTIVITIES.STAGE_ID);
+                        long ticketCount = record.get("distinctTicketCount", Long.class);
+                        if (periodStartTimestamp != null && stageId != null) {
+                            stageRows.add(new PerDateCount()
+                                    .setDate(periodStartTimestamp)
+                                    .setGroupedId(stageId)
+                                    .setCount(ticketCount));
+                        }
+                    }
+                    return stageRows;
                 });
     }
 

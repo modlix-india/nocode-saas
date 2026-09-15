@@ -64,6 +64,28 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return new DatePair(start, end, timezone);
     }
 
+    public static DatePair defaultWindow(
+            TimePeriod timePeriod, LocalDateTime startUtc, LocalDateTime endUtc, String timezone) {
+        LocalDateTime end = endUtc != null ? endUtc : LocalDateTime.now(ZoneOffset.UTC);
+        TimePeriod period = timePeriod != null ? timePeriod : TimePeriod.WEEKS;
+        LocalDateTime start = startUtc != null ? startUtc : switch (period) {
+            case DAYS -> end.minusDays(30);
+            case WEEKS -> end.minusWeeks(12);
+            case MONTHS -> end.minusMonths(12);
+            case QUARTERS -> end.minusMonths(12);
+            case YEARS -> end.minusYears(3);
+            default -> end.minusWeeks(12);
+        };
+        return DatePair.of(
+                convertUtcToTimezone(start, timezone),
+                convertUtcToTimezone(end, timezone),
+                timezone);
+    }
+
+    public static DatePair defaultWindow(TimePeriod timePeriod, LocalDateTime now, String timezone) {
+        return defaultWindow(timePeriod, null, now, timezone);
+    }
+
     public static ZoneId resolveZoneId(String timezone) {
         if (StringUtil.safeIsBlank(timezone)) return ZoneOffset.UTC;
 
@@ -124,7 +146,10 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
-            case DAYS -> date.plusDays(1).atTime(LocalTime.MAX);
+            // End of THIS day. `plusDays(1)` made every daily bucket span two calendar
+            // days, so a 7-day range produced 4 rows, each labelled with the first of the
+            // two days it silently merged.
+            case DAYS -> date.atTime(LocalTime.MAX);
             case WEEKS ->
                 date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
             case MONTHS -> getMonthEnd(date);

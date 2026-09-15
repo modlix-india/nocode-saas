@@ -8,6 +8,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -62,12 +63,25 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     private final AppRegistrationV2DAO appRegistrationDao;
 
     /**
-     * The DAO and not {@code ClientUrlService}: that service already depends on
-     * this one, so taking the service here would close a cycle. Only one read is
-     * wanted anyway, and it is not access-controlled -- whether a hostname is
-     * spoken for is a fact about the platform, not about the caller.
+     * The DAO, for the two things that are facts about the table rather than
+     * operations on it: whether a hostname is already spoken for, and clearing an
+     * app's draft rows out of the way of a hard delete. Neither is
+     * access-controlled -- both sit inside calls this service has already
+     * authorized.
      */
     private final ClientUrlDAO clientUrlDao;
+
+    /**
+     * Minting an app's draft URL goes through the service, not the DAO: it owns
+     * the hostname's shape, the one-row-per-(client, app) invariant and the cache
+     * evictions a new hostname needs.
+     *
+     * {@code @Lazy} because ClientUrlService takes this service in its own
+     * constructor, so the two form a cycle. Lazy on this side breaks it: Spring
+     * injects a proxy here and resolves the real bean on first call, by which time
+     * both are built.
+     */
+    private final ClientUrlService clientUrlService;
 
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -100,13 +114,15 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public static final String THUMB_URL = "thumbUrl";
 
     public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
-            CacheService cacheService, AppRegistrationV2DAO appRegistrationDao, ClientUrlDAO clientUrlDao) {
+            CacheService cacheService, AppRegistrationV2DAO appRegistrationDao, ClientUrlDAO clientUrlDao,
+            @Lazy ClientUrlService clientUrlService) {
 
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
         this.cacheService = cacheService;
         this.appRegistrationDao = appRegistrationDao;
         this.clientUrlDao = clientUrlDao;
+        this.clientUrlService = clientUrlService;
     }
 
     /**
@@ -175,7 +191,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 // capable of colliding as a supplied one.
                 (ca, app, appCodeAddedApp) -> this.checkSubdomainFreeForAppCode(appCodeAddedApp.getAppCode()),
 
-                (ca, app, appCodeAddedApp, hostFree) -> super.create(appCodeAddedApp));
+                (ca, app, appCodeAddedApp, hostFree) -> super.create(appCodeAddedApp),
+
+                (ca, app, appCodeAddedApp, hostFree, created) -> this.createDefaultDraftUrl(created));
 
         Mono<App> explicitAppCreationFlow = FlatMapUtil.flatMapMono(
 
@@ -197,8 +215,11 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 (ca, mci, ac, hostFree, created) -> this.dao.addClientAccess(created.getId(),
                         ULongUtil.valueOf(ca.getUser()
-                                .getClientId()), true)
-                        .flatMap(x -> Mono.just(created)));
+                                .getClientId()), true),
+
+                // After the access grant, not before: minting re-checks write access
+                // to the app, and for an EXPLICIT app that grant is what provides it.
+                (ca, mci, ac, hostFree, created, access) -> this.createDefaultDraftUrl(created));
 
         return (entity.getAppAccessType() == SecurityAppAppAccessType.EXPLICIT ? explicitAppCreationFlow : normalFlow)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.create"))
@@ -208,7 +229,42 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 APPLICATION))
 
                 .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+
+                // The CLIENT_URL and gateway caches that the new draft hostname needs
+                // are deliberately absent from this list: mintDraftUrl evicts those
+                // itself, for the same reason it does on a rotation.
                 .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI));
+    }
+
+    /**
+     * Give a newly created app its draft hostname, so the draft surface answers
+     * from the moment the app exists.
+     *
+     * Every app gets one, rather than the first person to open the builder minting
+     * it. Minting is a ROTATION -- mintDraftUrl replaces the existing row's pattern
+     * to keep one draft surface per (client, app) and to give revocation for free
+     * -- so a caller that mints rather than reads first silently kills every draft
+     * link already shared. A row that exists from creation means the read always
+     * finds one and rotation stays a deliberate act.
+     *
+     * Against the logged-in client, which is mintDraftUrl's own rule and therefore
+     * the client whose draft row the builder will later read. For an EXPLICIT app
+     * that is deliberately NOT the app's owner: such an app is owned upward, by the
+     * managed or system client, while the caller's client is the one that just got
+     * write access and will do the editing.
+     *
+     * mintDraftUrl re-checks write access to the app. That cannot fail here -- it
+     * reads the row this create just wrote, uncached -- so it costs one query and
+     * keeps this path honest rather than privileged.
+     *
+     * A failure propagates rather than being swallowed. The hostname carries 128
+     * bits of entropy, so a unique-key collision is not a real failure mode; what is
+     * left is the database being unreachable, and reporting an app as created while
+     * its draft surface quietly does not exist is the worse of the two answers.
+     */
+    private Mono<App> createDefaultDraftUrl(App app) {
+
+        return this.clientUrlService.mintDraftUrl(app.getAppCode()).thenReturn(app);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -259,6 +315,23 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
         return super.readPageFilter(pageable, condition);
     }
 
+    /**
+     * The same listing as {@link #readPageFilter}, widened to every app the client can
+     * reach rather than only the ones it can edit.
+     *
+     * Read-only access is enough to assign a profile: the profile chain
+     * (ProfileDAO.getAppProfiles, hasAccessToProfiles) only ever asks for a
+     * SECURITY_APP_ACCESS row. Requiring EDIT_ACCESS to merely LIST the app therefore
+     * hid apps whose profiles were assignable anyway - and hid every app from a tenant
+     * that owns none, which is what registration produces.
+     */
+    @PreAuthorize("hasAuthority('Authorities.Application_READ')")
+    public Mono<Page<App>> readAccessiblePageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition)
+                .contextWrite(Context.of(AppDAO.CONTEXT_INCLUDE_READ_ACCESS, Boolean.TRUE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.readAccessiblePageFilter"));
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     @Override
     public Mono<Integer> delete(ULong id) {
@@ -291,7 +364,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (SecurityAppStatus.ACTIVE.equals(app.getStatus()))
                         return this.update(app.setStatus(SecurityAppStatus.ARCHIVED)).map(a -> 1);
 
-                    return super.delete(app.getId())
+                    // The app's draft hostname has to go first.
+                    // FK1_CLIENT_URL_APP_CODE is ON DELETE RESTRICT and every app is
+                    // given a draft URL as it is created, so without this no app
+                    // could ever be hard deleted. LIVE rows are left alone and go on
+                    // refusing the delete exactly as they did before draft URLs
+                    // existed; deleteEverything is the route that clears those.
+                    return this.clientUrlDao.deleteDraftUrls(app.getAppCode())
+                            .then(super.delete(app.getId()))
                             .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
                             .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
                                     .flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))

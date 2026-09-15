@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -31,6 +32,7 @@ import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.model.AppDependency;
@@ -59,13 +61,25 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	private AppRegistrationV2DAO appRegistrationDao;
 
 	/**
-	 * Only reached when {@code clientService.subdomainHostsOf} returns a non-empty
-	 * list, which a bare mock does not, so every create test below leaves the
-	 * hostname guard short-circuited. The subdomain collision itself is covered in
-	 * {@code AppSubdomainGuardTest}.
+	 * Two unrelated uses. {@code firstTakenPattern} is only reached when
+	 * {@code clientService.subdomainHostsOf} returns a non-empty list, which a bare
+	 * mock does not, so every create test below leaves the hostname guard
+	 * short-circuited; the collision itself is covered in
+	 * {@code AppSubdomainGuardTest}. {@code deleteDraftUrls} is reached by every
+	 * hard delete and is stubbed in {@link #setUp()} for that reason.
 	 */
 	@Mock
 	private ClientUrlDAO clientUrlDao;
+
+	/**
+	 * Reached by EVERY successful create, because an app is given a draft URL as it
+	 * is made. What the minted hostname looks like and which client holds it are
+	 * that service's business, covered in {@code DraftHostNameTest} and
+	 * {@code ClientUrlServiceTest}; all that is checked here is that the create
+	 * asks for one.
+	 */
+	@Mock
+	private ClientUrlService clientUrlService;
 
 	@Mock
 	private ObjectMapper objectMapper;
@@ -83,7 +97,7 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new AppService(clientService, messageResourceService, cacheService, appRegistrationDao,
-				clientUrlDao);
+				clientUrlDao, clientUrlService);
 
 		// Inject the mocked DAO using reflection
 		// AppService -> AbstractJOOQUpdatableDataService -> AbstractJOOQDataService (has dao)
@@ -105,6 +119,15 @@ class AppServiceTest extends AbstractServiceUnitTest {
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to inject ObjectMapper", e);
 		}
+
+		// Every successful create mints a draft URL, so this is not optional
+		// scaffolding for the draft tests -- without it every create test below
+		// dereferences a null Mono.
+		lenient().when(clientUrlService.mintDraftUrl(anyString())).thenReturn(Mono.just(new ClientUrl()));
+
+		// And every hard delete clears it again, because the app's own draft row
+		// would otherwise hold the ON DELETE RESTRICT foreign key against it.
+		lenient().when(clientUrlDao.deleteDraftUrls(anyString())).thenReturn(Mono.just(1));
 
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
@@ -416,6 +439,98 @@ class AppServiceTest extends AbstractServiceUnitTest {
 
 			verify(cacheService).evictAllFunction("appInheritance");
 			verify(cacheService).evictAllFunction("uri");
+		}
+
+		@Test
+		@DisplayName("a new app is given a draft URL without anyone asking for one")
+		void create_MintsDraftUrl() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App entity = TestDataFactory.createOwnApp(null, SYSTEM_CLIENT_ID, "testapp");
+			App created = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, "testapp");
+
+			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(app -> assertEquals(APP_ID, app.getId()))
+					.verifyComplete();
+
+			// Against the app code the create SETTLED on, which for a generated code
+			// is not the one the caller sent.
+			verify(clientUrlService).mintDraftUrl("testapp");
+		}
+
+		@Test
+		@DisplayName("a generated app code is the one the draft URL is minted against")
+		void create_MintsDraftUrlForGeneratedAppCode() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App entity = TestDataFactory.createOwnApp(null, SYSTEM_CLIENT_ID, null);
+			entity.setAppCode(null);
+
+			App created = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, "generatedcode");
+
+			when(dao.generateAppCode(any(App.class))).thenReturn(Mono.just("generatedcode"));
+			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.expectNextCount(1)
+					.verifyComplete();
+
+			verify(clientUrlService).mintDraftUrl("generatedcode");
+		}
+
+		@Test
+		@DisplayName("an EXPLICIT app gets its draft URL after the access grant, not before")
+		void create_ExplicitApp_MintsDraftUrlAfterAccessGrant() {
+			// Minting re-checks write access to the app, and for an EXPLICIT app the
+			// grant that provides it is the one this flow has just made.
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
+					List.of("Authorities.Application_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			Client managedClient = TestDataFactory.createBusinessClient(MANAGED_CLIENT_ID, "MANAGED");
+
+			App entity = TestDataFactory.createExplicitApp(null, null, "explicitapp");
+			App created = TestDataFactory.createExplicitApp(APP_ID, MANAGED_CLIENT_ID, "explicitapp");
+
+			when(clientService.getManagedClientOfClientById(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(managedClient));
+			when(clientService.getSystemClientId())
+					.thenReturn(Mono.just(SYSTEM_CLIENT_ID));
+			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
+			when(dao.addClientAccess(APP_ID, BUS_CLIENT_ID, true))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(app -> assertEquals(APP_ID, app.getId()))
+					.verifyComplete();
+
+			InOrder order = inOrder(dao, clientUrlService);
+			order.verify(dao).addClientAccess(APP_ID, BUS_CLIENT_ID, true);
+			order.verify(clientUrlService).mintDraftUrl("explicitapp");
+		}
+
+		@Test
+		@DisplayName("a refused create mints no draft URL")
+		void create_Forbidden_MintsNoDraftUrl() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
+					List.of("Authorities.Application_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			App entity = TestDataFactory.createOwnApp(null, MANAGED_CLIENT_ID, "testapp");
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(MANAGED_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(clientUrlService, never()).mintDraftUrl(anyString());
 		}
 	}
 
