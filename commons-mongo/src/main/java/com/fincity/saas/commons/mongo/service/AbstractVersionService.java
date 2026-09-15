@@ -2,6 +2,7 @@ package com.fincity.saas.commons.mongo.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -219,5 +220,27 @@ public abstract class AbstractVersionService extends AbstractMongoDataService<St
 
     public Mono<Long> deleteBy(String appCode, String clientCode, String objectType) {
         return this.repo.deleteByObjectAppCodeAndClientCodeAndObjectType(appCode, clientCode, objectType);
+    }
+
+    /**
+     * The object exactly as it stood at one live version, or empty when no snapshot
+     * of that version was kept.
+     *
+     * Deliberately has no authorization of its own, like the draft store: the one
+     * caller is AbstractOverridableDataService.publish, which has already run
+     * accessCheck for the object in question. read(id) above is the authorized,
+     * caller-facing route and stays the only one exposed over HTTP.
+     *
+     * Empty is a normal answer rather than an error. Versioning is opt-out per
+     * service, history is deletable, and objects predate the feature; every caller
+     * has to have something sensible to do when there is no snapshot.
+     */
+    public Mono<Map<String, Object>> contentAt(String objectType, String objectAppCode, String objectName,
+        String clientCode, int versionNumber) {
+
+        return this.repo
+            .findFirstByObjectTypeAndObjectAppCodeAndObjectNameAndClientCodeAndVersionNumberOrderByCreatedAtDesc(
+                objectType, objectAppCode, objectName, clientCode, versionNumber)
+            .flatMap(v -> Mono.justOrEmpty(v.getObject()));
     }
 }

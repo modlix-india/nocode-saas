@@ -641,9 +641,15 @@ public class TicketWhatsappConversationService {
      * override on the send button is exactly how that becomes a report against the number. Clearing
      * an opt-out is a separate, recorded act ({@link #clearOptOut}), which is the right amount of
      * friction: still possible when a lead changes their mind, never accidental.
+     *
+     * <p>{@code SEND_REJECTED} joined them for the same reason as the first: it is not our rule, it
+     * is WhatsApp's, and the message will not go regardless of what anyone ticks. An override here
+     * would buy nothing and cost something, since retrying into a live restriction extends it.
      */
     private static boolean isForceable(String reason) {
-        return !WhatsappHoldReason.SESSION_NOT_READY.equals(reason) && !WhatsappHoldReason.OPTED_OUT.equals(reason);
+        return !WhatsappHoldReason.SESSION_NOT_READY.equals(reason)
+                && !WhatsappHoldReason.OPTED_OUT.equals(reason)
+                && !WhatsappHoldReason.SEND_REJECTED.equals(reason);
     }
 
     /**

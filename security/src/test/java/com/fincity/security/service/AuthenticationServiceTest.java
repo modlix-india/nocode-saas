@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -28,11 +30,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.time.ZoneOffset;
+
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
 import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.OneTimeToken;
 import com.fincity.security.dto.TokenObject;
@@ -76,8 +80,6 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ProfileService profileService;
 	@Mock
-	private AppRegistrationIntegrationTokenDao integrationTokenDao;
-	@Mock
 	private AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 	@Mock
 	private OneTimeTokenService oneTimeTokenService;
@@ -94,7 +96,7 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 		service = new AuthenticationService(
 				userService, clientService, appService, tokenService, otpService,
 				resourceService, soxLogService, pwdEncoder, cacheService,
-				integrationTokenDao, appRegistrationIntegrationTokenService,
+				appRegistrationIntegrationTokenService,
 				profileService, oneTimeTokenService);
 
 		setupMessageResourceService(resourceService);
@@ -632,8 +634,12 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 					.verify();
 		}
 
+		/**
+		 * A user this app does not know must be refused, NOT signed into some other app the
+		 * user happens to have a profile in. The caller reads this 403 as "register them here".
+		 */
 		@Test
-		void authenticateWSocial_UserNotFound_FallsBack() {
+		void authenticateWSocial_UserNotOnThisApp_Forbidden() {
 			AuthenticationRequest authRequest = new AuthenticationRequest();
 			authRequest.setUserName("social@test.com");
 			authRequest.setSocialRegisterState("validState123");
@@ -648,6 +654,154 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
 					.verify();
+
+			// The whole point: no detour through another app.
+			verify(profileService, never()).getUserAppHavingProfile(any(ULong.class));
+		}
+
+		/**
+		 * The state belongs to whoever the provider verified. Posting somebody else's email
+		 * with it used to complete empty, fall through to the app-switching fallback, and
+		 * recurse into this same method without bound on a public endpoint.
+		 */
+		@Test
+		void authenticateWSocial_UsernameNotTheVerifiedOne_ForbiddenWithoutRecursing() {
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("victim@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			socialChainUpToStateCheck();
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState("validState123");
+			token.setUsername("attacker@test.com");
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("validState123"))
+					.thenReturn(Mono.just(token));
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(appRegistrationIntegrationTokenService, never()).consumeState(anyString());
+		}
+
+		/** A state minted by evoke but never carried through consent has no verified identity. */
+		@Test
+		void authenticateWSocial_StateNeverCompleted_Forbidden() {
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			socialChainUpToStateCheck();
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState("validState123");
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("validState123"))
+					.thenReturn(Mono.just(token));
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		/** Identity proven long enough ago is not evidence that anybody is present now. */
+		@Test
+		void authenticateWSocial_StateTooOld_Forbidden() {
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("staleState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			socialChainUpToStateCheck();
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState("staleState123");
+			token.setUsername("social@test.com");
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC).minusHours(2));
+
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("staleState123"))
+					.thenReturn(Mono.just(token));
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(appRegistrationIntegrationTokenService, never()).consumeState(anyString());
+		}
+
+		/** The happy path, and the state must be spent by the end of it. */
+		@Test
+		void authenticateWSocial_VerifiedUser_SignsInAndSpendsTheState() {
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			socialChainUpToStateCheck();
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState("validState123");
+			token.setUsername("social@test.com");
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("validState123"))
+					.thenReturn(Mono.just(token));
+			when(appRegistrationIntegrationTokenService.consumeState("validState123"))
+					.thenReturn(Mono.just(true));
+
+			when(tokenService.create(any(TokenObject.class)))
+					.thenAnswer(inv -> {
+						TokenObject t = inv.getArgument(0);
+						t.setId(ULong.valueOf(100));
+						return Mono.just(t);
+					});
+
+			Client managedClient = new Client();
+			managedClient.setCode("MANAGED");
+			when(clientService.getManagedClientOfClientById(any(ULong.class)))
+					.thenReturn(Mono.just(managedClient));
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.assertNext(authResponse -> {
+						assertNotNull(authResponse);
+						assertNotNull(authResponse.getAccessToken());
+						assertEquals(APP_CODE, authResponse.getVerifiedAppCode());
+					})
+					.verifyComplete();
+
+			verify(appRegistrationIntegrationTokenService).consumeState("validState123");
+		}
+
+		/** Everything before the state checks, which is not what any of these tests are about. */
+		private void socialChainUpToStateCheck() {
+
+			Client linClient = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
+			Client client = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
+			User user = TestDataFactory.createActiveUser(USER_ID, CLIENT_ID);
+
+			when(userService.findNonDeletedUserNClient(anyString(), any(), anyString(), any(), any()))
+					.thenReturn(Mono.just(Tuples.of(linClient, client, user)));
+			when(profileService.checkIfUserHasAnyProfile(any(ULong.class), anyString()))
+					.thenReturn(Mono.just(true));
+			when(userService.checkUserAndClient(any(), anyString()))
+					.thenReturn(Mono.just(true));
 		}
 	}
 
@@ -760,6 +914,83 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 						assertTrue(result.get("url").contains("generatedToken123"));
 					})
 					.verifyComplete();
+		}
+
+		/**
+		 * How the redeemed session is carried used to be inferred from how the minting call
+		 * itself authenticated, which meant an app that sets an auth cookie at login minted
+		 * COOKIE tokens forever after, with nobody having chosen it and no way to say otherwise.
+		 */
+		@Nested
+		class AuthModeTests {
+
+			private ServerHttpRequest requestWithAuthCookie() {
+				ServerHttpRequest request = mockRequest();
+				MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
+				cookies.add(HttpHeaders.AUTHORIZATION, new HttpCookie(HttpHeaders.AUTHORIZATION, "tok"));
+				lenient().when(request.getCookies()).thenReturn(cookies);
+				return request;
+			}
+
+			private String modeFor(MakeOneTimeTimeTokenRequest req, ServerHttpRequest request) {
+				ContextAuthentication ca = TestDataFactory.createSystemAuth();
+				setupSecurityContext(ca);
+
+				ArgumentCaptor<OneTimeToken> captor = ArgumentCaptor.forClass(OneTimeToken.class);
+				when(oneTimeTokenService.create(captor.capture()))
+						.thenReturn(Mono.just(new OneTimeToken().setToken("t")));
+
+				StepVerifier.create(service.makeOneTimeToken(req, request)).expectNextCount(1).verifyComplete();
+				return captor.getValue().getAuthMode();
+			}
+
+			@Test
+			@DisplayName("unset: still inferred from the minting call, so existing callers are unaffected")
+			void unset_InfersFromTheCall() {
+				assertEquals("BEARER", modeFor(new MakeOneTimeTimeTokenRequest(), mockRequest()));
+				assertEquals("COOKIE", modeFor(new MakeOneTimeTimeTokenRequest(), requestWithAuthCookie()));
+			}
+
+			@Test
+			@DisplayName("asked for: honoured over the inference, in both directions")
+			void explicit_BeatsTheInference() {
+				var wantsCookie = new MakeOneTimeTimeTokenRequest();
+				wantsCookie.setAuthMode("COOKIE");
+				// No cookie on the call, so the inference would have said BEARER.
+				assertEquals("COOKIE", modeFor(wantsCookie, mockRequest()));
+
+				var wantsBearer = new MakeOneTimeTimeTokenRequest();
+				wantsBearer.setAuthMode("BEARER");
+				// This is the case that was impossible before: a cookie-authenticated caller
+				// asking for a bearer-only session on the target.
+				assertEquals("BEARER", modeFor(wantsBearer, requestWithAuthCookie()));
+			}
+
+			@Test
+			@DisplayName("case and padding do not matter")
+			void explicit_IsNormalised() {
+				var req = new MakeOneTimeTimeTokenRequest();
+				req.setAuthMode("  cookie ");
+				assertEquals("COOKIE", modeFor(req, mockRequest()));
+			}
+
+			/** Falling back to the inference on a typo is how you get a cookie nobody asked for. */
+			@Test
+			@DisplayName("anything else is refused, not quietly inferred")
+			void invalid_IsRefused() {
+				ContextAuthentication ca = TestDataFactory.createSystemAuth();
+				setupSecurityContext(ca);
+
+				var req = new MakeOneTimeTimeTokenRequest();
+				req.setAuthMode("COOKIES");
+
+				StepVerifier.create(service.makeOneTimeToken(req, mockRequest()))
+						.expectErrorMatches(e -> e instanceof GenericException
+								&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+						.verify();
+
+				verify(oneTimeTokenService, never()).create(any(OneTimeToken.class));
+			}
 		}
 	}
 

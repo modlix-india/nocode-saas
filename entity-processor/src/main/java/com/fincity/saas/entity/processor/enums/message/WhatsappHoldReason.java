@@ -50,6 +50,17 @@ public final class WhatsappHoldReason {
     /** No linked session for this product, or the session is not connected. */
     public static final String SESSION_NOT_READY = "SESSION_NOT_READY";
 
+    /**
+     * WhatsApp refused a send from this number recently, so the number is resting.
+     *
+     * <p>Not one of our pacing rules and not overridable, which is what separates it from every
+     * other reason here. The others hold a message we could send; this one reports that WhatsApp has
+     * already declined to carry it. Retrying does not merely fail again, it is what turns a short
+     * restriction into a long one - production sent four refused messages in thirty-five minutes,
+     * because nothing recorded the first refusal and so nothing knew to stop.
+     */
+    public static final String SEND_REJECTED = "SEND_REJECTED";
+
     /** The hourly ceiling on the session. Layer 1 also enforces this; here it avoids a pointless call. */
     public static final String HOURLY_CAP = "HOURLY_CAP";
 
@@ -72,6 +83,9 @@ public final class WhatsappHoldReason {
             case OPTED_OUT -> "This lead asked not to be contacted on WhatsApp.";
             case PREVIOUS_FAILED -> "An earlier message in this sequence failed to send.";
             case SESSION_NOT_READY -> "The WhatsApp number for this product is not connected.";
+            case SEND_REJECTED -> "WhatsApp refused the last message from this number, so it is resting."
+                    + " Replies in existing chats still work. Sending again before the restriction lifts"
+                    + " makes it last longer.";
             case HOURLY_CAP -> "This number has sent its maximum for the hour.";
             default -> reason;
         };

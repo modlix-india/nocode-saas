@@ -1,6 +1,7 @@
 package com.fincity.saas.message.service.bridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.model.request.bridge.BridgeSessionSnapshot;
 import java.time.Duration;
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -222,12 +224,34 @@ public class BridgeClient {
     }
 
     /**
+     * The status to answer the caller with, given the one the bridge answered us with.
+     *
+     * <p>Passed through rather than flattened. The bridge distinguishes a number WhatsApp is
+     * restricting (409) from an unreachable recipient (404) from an upstream refusal (502), and all
+     * of that was being thrown away one hop later.
+     *
+     * <p>Falls back to 502 for anything that is not a status this platform can represent. WhatsApp
+     * uses codes of its own and the bridge is not the only thing that can answer here, so a value
+     * HttpStatus does not know must not take the whole response down with it.
+     */
+    private static HttpStatus passThrough(int bridgeStatus) {
+        HttpStatus status = HttpStatus.resolve(bridgeStatus);
+        return status == null ? HttpStatus.BAD_GATEWAY : status;
+    }
+
+    /**
      * Turns a bridge error into something a person can act on.
      *
-     * <p>The bridge answers with a machine code and a written reason, and both are worth keeping. A
-     * country mismatch in particular is fixable by the customer in seconds if they are told which
-     * country the instance serves and which number they scanned, and unfixable if they are shown
-     * "something went wrong".
+     * <p><b>A GenericException specifically, and that is the whole point.</b> The platform's
+     * ControllerAdvice passes a GenericException's status and message through untouched, and
+     * replaces the message of anything else with "Please try again. A server error-&lt;id&gt;".
+     * This used to return a plain RuntimeException carrying a perfectly good status and sentence,
+     * so every bridge failure reached the browser as an anonymous 500. In production that showed a
+     * person "Please try again" against a WhatsApp restriction that retrying could not clear, and
+     * the real reason existed only in a log line on the host.
+     *
+     * <p>The original is kept as the cause, so the machine code and the parsed detail are still in
+     * the log even though the response carries the sentence.
      */
     private Throwable translate(String path, WebClientResponseException e) {
 
@@ -237,13 +261,23 @@ public class BridgeClient {
         try {
             Map<String, Object> parsed = this.readMap(body);
             Object message = parsed.get("message");
-            if (message != null) return new BridgeCallException(e.getStatusCode().value(),
-                    String.valueOf(parsed.get("error")), String.valueOf(message), parsed);
+            if (message != null)
+                return new GenericException(
+                        passThrough(e.getStatusCode().value()),
+                        String.valueOf(message),
+                        new BridgeCallException(
+                                e.getStatusCode().value(),
+                                String.valueOf(parsed.get("error")),
+                                String.valueOf(message),
+                                parsed));
         } catch (Exception ignored) {
             // Fall through to the raw body: an unparseable error is still better than none.
         }
 
-        return new BridgeCallException(e.getStatusCode().value(), "bridge_error", body, Map.of());
+        return new GenericException(
+                passThrough(e.getStatusCode().value()),
+                body,
+                new BridgeCallException(e.getStatusCode().value(), "bridge_error", body, Map.of()));
     }
 
     private String write(Object body) {

@@ -1,9 +1,14 @@
 package com.fincity.saas.entity.processor.service.message;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.message.WhatsappMessageDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.message.WhatsappMessage;
+import feign.FeignException;
+import java.util.UUID;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import com.fincity.saas.entity.processor.enums.message.WhatsappMessageType;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import com.fincity.saas.entity.processor.enums.message.WhatsappHoldReason;
@@ -41,6 +46,16 @@ import reactor.util.context.Context;
 public class WhatsappSessionService {
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsappSessionService.class);
+
+    /**
+     * The status the bridge answers with when WhatsApp itself refused to carry the message.
+     *
+     * <p>423 rather than a 409 shared with {@code not_sendable} and {@code country_mismatch}, which
+     * is what it used to be: three unrelated conditions behind one status meant nothing downstream
+     * could tell "WhatsApp is restricting this number" from "you are pointed at the wrong shard",
+     * and only the first is a reason to stop the number sending.
+     */
+    private static final int WHATSAPP_REFUSED_STATUS = 423;
 
     private static final String KEY_ID = "code";
     private static final String KEY_STATE = "sessionState";
@@ -339,6 +354,9 @@ public class WhatsappSessionService {
                 .flatMap(response -> this.recordOutbound(
                                 appCode, clientCode, ticketId, session, toPhone, text, response)
                         .thenReturn(response))
+                .onErrorResume(e -> this.recordFailedSend(
+                                appCode, clientCode, ticketId, session, toPhone, text, WhatsappMessageType.TEXT, e)
+                        .then(Mono.error(e)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendQueued"));
     }
 
@@ -465,6 +483,111 @@ public class WhatsappSessionService {
                 .then();
     }
 
+    /**
+     * Files a send that never left, so the gate and the thread both know it happened.
+     *
+     * <p><b>Nothing recorded a failed send at all, and that is not merely an observability gap.</b>
+     * Every pacing counter is derived from these rows, so a refusal left the number looking exactly
+     * as it had a moment earlier. Production shows the consequence: WhatsApp refused a send at
+     * 05:00, and because no row was written, 05:32, 05:34 and 05:35 each evaluated against a number
+     * that had, as far as this service could tell, never had anything go wrong. Four refusals, four
+     * allows, and retrying into a live restriction is what extends it.
+     *
+     * <p>Deliberately swallows its own errors. This runs on the failure path of a send that has
+     * already failed, and replacing the caller's real error with a recording error would hide the
+     * only thing they can act on.
+     */
+    private Mono<Void> recordFailedSend(
+            String appCode,
+            String clientCode,
+            ULong ticketId,
+            Map<String, Object> session,
+            String toPhone,
+            String text,
+            WhatsappMessageType type,
+            Throwable error) {
+
+        Integer status = statusOf(error);
+        boolean refused = status != null && status == WHATSAPP_REFUSED_STATUS;
+
+        // The marker rather than the sentence, because the count that holds the number reads this
+        // column back. A transport hiccup and WhatsApp declining to carry the message are both
+        // failures worth seeing in the thread, but only the second is a reason to stop the number:
+        // holding for an hour every time the bridge blips would be its own outage.
+        String reason = (refused ? WhatsappMessage.REJECTED_REASON_PREFIX : "SEND_FAILED")
+                + ": "
+                + (status == null ? "no status" : status)
+                + " "
+                + rootMessageOf(error);
+
+        WhatsappInboundRequest failed = new WhatsappInboundRequest()
+                // Synthetic, and never a provider id. accept() upserts on this column, so reusing
+                // anything real would merge the failure into a message that did go out.
+                .setMetaMessageId("failed:" + UUID.randomUUID())
+                .setTicketId(ticketId)
+                .setEventType("MESSAGE")
+                .setMessageType((type == null ? WhatsappMessageType.TEXT : type).getValue())
+                .setMessageStatus("failed")
+                .setFailureReason(reason)
+                .setOutbound(Boolean.TRUE)
+                .setBodyText(text)
+                .setCustomerPhoneNumber(toPhone)
+                .setCustomerWaId(digitsOf(toPhone))
+                .setWhatsappPhoneNumber(string(session, KEY_PHONE))
+                .setBridgeSessionId(string(session, KEY_ID))
+                .setTo(digitsOf(toPhone))
+                .setFrom(digitsOf(string(session, KEY_PHONE)))
+                .setOccurredAt(LocalDateTime.now(ZoneOffset.UTC));
+
+        logger.error(
+                "A WhatsApp send on deal {} failed through session {} ({}). Recorded so the number"
+                        + " backs off; WhatsApp refusal={}.",
+                ticketId,
+                string(session, KEY_ID),
+                reason,
+                refused);
+
+        return this.inboundService
+                .accept(appCode, clientCode, failed)
+                .onErrorResume(e -> {
+                    logger.error(
+                            "Could not record a failed WhatsApp send on deal {}. The pacing gate will"
+                                    + " not see this refusal and may allow another one.",
+                            ticketId,
+                            e);
+                    return Mono.empty();
+                })
+                .then();
+    }
+
+    /**
+     * The HTTP status behind a failed send, whatever shape the failure arrived in.
+     *
+     * <p>Reactive feign raises {@link FeignException} for a status the message service answered
+     * with, but the same call can fail as a {@link WebClientResponseException} or arrive already
+     * wrapped, and a classifier that understood only one of them would quietly file every WhatsApp
+     * refusal as an ordinary error.
+     */
+    static Integer statusOf(Throwable error) {
+
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof FeignException fe) return fe.status();
+            if (t instanceof WebClientResponseException we) return we.getStatusCode().value();
+            if (t instanceof GenericException ge) return ge.getStatusCode().value();
+        }
+
+        return null;
+    }
+
+    /** The innermost message, which is where the bridge's sentence ends up after two wrappings. */
+    private static String rootMessageOf(Throwable error) {
+
+        Throwable root = error;
+        while (root.getCause() != null) root = root.getCause();
+
+        return root.getMessage() == null ? root.getClass().getSimpleName() : root.getMessage();
+    }
+
     /** JID user parts are digits only; numbers reach us in E.164 or display form. */
     private static String digitsOf(String phone) {
         if (phone == null) return null;
@@ -552,6 +675,16 @@ public class WhatsappSessionService {
                                 asset,
                                 mimeType)
                         .thenReturn(response))
+                .onErrorResume(e -> this.recordFailedSend(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                ticket.getId(),
+                                session,
+                                to,
+                                caption,
+                                type,
+                                e)
+                        .then(Mono.error(e)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendMedia"));
     }
 
@@ -699,6 +832,19 @@ public class WhatsappSessionService {
                                 text,
                                 response)
                         .thenReturn(response))
+                // Record, then re-raise unchanged. The caller still gets the bridge's own sentence,
+                // which is the only thing the person at the keyboard can act on; the row exists so
+                // that the next evaluation of this number knows a refusal happened.
+                .onErrorResume(e -> this.recordFailedSend(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                ticket.getId(),
+                                session,
+                                to,
+                                text,
+                                WhatsappMessageType.TEXT,
+                                e)
+                        .then(Mono.error(e)))
                 .map(response -> withDecision(response, outcome, decision, userId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSessionService.sendInteractive"));
     }
