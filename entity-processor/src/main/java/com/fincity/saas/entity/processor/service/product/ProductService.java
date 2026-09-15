@@ -274,7 +274,11 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     }
 
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
-        return this.dao.getAllProducts(access, productIds);
+        return this.getAllProducts(access, productIds, null);
+    }
+
+    public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds, Boolean isActive) {
+        return this.dao.getAllProducts(access, productIds, isActive);
     }
 
     /** Every product sending from one linked number. See the DAO method for why it is not filtered on active. */
