@@ -524,6 +524,114 @@ class UserControllerTest {
 
             verify(userService).findUserClients(any(AuthenticationRequest.class), eq(true), any());
         }
+
+        private UserClient active(long userId, String name) {
+
+            Client c = new Client();
+            c.setCode(name.replaceAll("\\s+", "").toUpperCase());
+            c.setName(name);
+            c.setStatusCode(SecurityClientStatusCode.ACTIVE);
+
+            return new UserClient().setUserId(ULong.valueOf(userId)).setClient(c);
+        }
+
+        @Test
+        @DisplayName("Should return clients ordered by client name, not in service order")
+        void findUserClients_OrdersByClientName() {
+
+            // Deliberately the order the service actually emits: it fans out per client
+            // through flatMap, so this arrives in lookup-completion order and shifts
+            // between calls. The picker has to render the same order every time.
+            when(userService.findUserClients(any(AuthenticationRequest.class), eq(true), any()))
+                    .thenReturn(Mono.just(List.of(
+                            active(1, "Fincity 2"),
+                            active(2, "Buy Next"),
+                            active(3, "Interns of Fincity"),
+                            active(4, "Fincity"),
+                            active(5, "System Internal"))));
+
+            webTestClient.post()
+                    .uri(BASE_PATH + "/findUserClients")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(new AuthenticationRequest().setUserName("testuser"))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(5)
+                    .jsonPath("$[0].client.name").isEqualTo("Buy Next")
+                    .jsonPath("$[1].client.name").isEqualTo("Fincity")
+                    .jsonPath("$[2].client.name").isEqualTo("Fincity 2")
+                    .jsonPath("$[3].client.name").isEqualTo("Interns of Fincity")
+                    .jsonPath("$[4].client.name").isEqualTo("System Internal");
+        }
+
+        @Test
+        @DisplayName("Should order case-insensitively")
+        void findUserClients_OrdersCaseInsensitively() {
+
+            when(userService.findUserClients(any(AuthenticationRequest.class), eq(true), any()))
+                    .thenReturn(Mono.just(List.of(
+                            active(1, "zebra works"),
+                            active(2, "Apple Inc"),
+                            active(3, "banana co"))));
+
+            webTestClient.post()
+                    .uri(BASE_PATH + "/findUserClients")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(new AuthenticationRequest().setUserName("testuser"))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$[0].client.name").isEqualTo("Apple Inc")
+                    .jsonPath("$[1].client.name").isEqualTo("banana co")
+                    .jsonPath("$[2].client.name").isEqualTo("zebra works");
+        }
+
+        @Test
+        @DisplayName("Sorting must not resurrect the inactive/null entries the filter drops")
+        void findUserClients_SortRunsAfterFiltering() {
+
+            Client inactive = new Client();
+            inactive.setCode("AAA");
+            inactive.setName("Aaa Inactive");  // would sort first if it survived
+            inactive.setStatusCode(SecurityClientStatusCode.INACTIVE);
+
+            when(userService.findUserClients(any(AuthenticationRequest.class), eq(true), any()))
+                    .thenReturn(Mono.just(List.of(
+                            active(1, "Zulu"),
+                            new UserClient().setUserId(ULong.valueOf(2)).setClient(inactive),
+                            new UserClient().setUserId(ULong.valueOf(3)).setClient(null),
+                            active(4, "Alpha"))));
+
+            webTestClient.post()
+                    .uri(BASE_PATH + "/findUserClients")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(new AuthenticationRequest().setUserName("testuser"))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(2)
+                    .jsonPath("$[0].client.name").isEqualTo("Alpha")
+                    .jsonPath("$[1].client.name").isEqualTo("Zulu");
+        }
+
+        @Test
+        @DisplayName("A single client still comes back")
+        void findUserClients_SingleClient() {
+
+            when(userService.findUserClients(any(AuthenticationRequest.class), eq(true), any()))
+                    .thenReturn(Mono.just(List.of(active(1, "Only One"))));
+
+            webTestClient.post()
+                    .uri(BASE_PATH + "/findUserClients")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(new AuthenticationRequest().setUserName("testuser"))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(1)
+                    .jsonPath("$[0].client.name").isEqualTo("Only One");
+        }
     }
 
     // ==================== User Invite ====================
