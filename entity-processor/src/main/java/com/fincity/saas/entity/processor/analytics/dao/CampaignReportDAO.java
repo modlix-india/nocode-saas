@@ -104,6 +104,43 @@ public class CampaignReportDAO {
                 .map(this::nest);
     }
 
+    /**
+     * Same as {@link #getStageTreeForProductTemplate(ULong)} but for several templates in
+     * one round trip, returning the union of their root stages.
+     *
+     * <p>Stage ids are unique across templates, so nesting stays per-template even though
+     * the rows arrive interleaved; templates are kept adjacent in the output by ordering on
+     * the template id first. Callers report across a set of products whose templates they
+     * cannot know in advance, and issuing one query per template put the round-trip count
+     * on the product count.
+     */
+    public Mono<List<StageNode>> getStageTreeForProductTemplates(List<ULong> productTemplateIds) {
+
+        if (productTemplateIds == null || productTemplateIds.isEmpty()) return Mono.just(List.of());
+
+        return Flux.from(dslContext
+                        .select(STAGES.ID, STAGES.NAME, STAGES.PARENT_LEVEL_0, STAGES.ORDER, STAGES.FUNNEL_STAGE)
+                        .from(STAGES)
+                        .where(STAGES.PRODUCT_TEMPLATE_ID.in(productTemplateIds).and(STAGES.IS_ACTIVE.isTrue()))
+                        .orderBy(
+                                STAGES.PRODUCT_TEMPLATE_ID.asc(),
+                                DSL.coalesce(STAGES.PARENT_LEVEL_0, STAGES.ID).asc(),
+                                STAGES.ORDER.asc()))
+                .map(this::toIdParentNode)
+                .collectList()
+                .map(this::nest);
+    }
+
+    private IdParentNode toIdParentNode(Record r) {
+        StageNode n = new StageNode();
+        n.setId(r.get(STAGES.ID));
+        n.setName(r.get(STAGES.NAME));
+        n.setOrder(r.get(STAGES.ORDER) == null ? 0 : r.get(STAGES.ORDER));
+        FunnelStage fs = r.get(STAGES.FUNNEL_STAGE);
+        n.setFunnelStage(fs == null ? null : fs.getLiteral());
+        return new IdParentNode(r.get(STAGES.PARENT_LEVEL_0), n);
+    }
+
     private record IdParentNode(ULong parent, StageNode node) {}
 
     private List<StageNode> nest(List<IdParentNode> rows) {
@@ -522,7 +559,7 @@ public class CampaignReportDAO {
             ProcessorAccess access,
             List<ULong> campaignIds,
             LocalDateTime startDate,
-                    LocalDateTime endDate,
+            LocalDateTime endDate,
             TimePeriod timePeriod,
             String timezone) {
 

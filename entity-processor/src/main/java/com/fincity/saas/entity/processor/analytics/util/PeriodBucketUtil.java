@@ -33,9 +33,11 @@ public class PeriodBucketUtil {
         // Validate before handing the zone to MySQL: an invalid IANA name makes
         // CONVERT_TZ return NULL (rows silently vanish from buckets), so fall back
         // to unconverted timestamps — same graceful UTC behavior as DatePair.resolveZoneId.
+        // Bound, not inlined: ZoneId.of() above already rejects anything that is not a
+        // real IANA name, but a bind parameter keeps the caller's string out of the SQL
+        // text entirely and lets MySQL reuse one plan across timezones.
         Field<LocalDateTime> effectiveDateField = isValidZone(timezone)
-                ? DSL.field(
-                        "convert_tz({0}, 'UTC', {1})", SQLDataType.LOCALDATETIME, dateTimeField, DSL.inline(timezone))
+                ? DSL.field("convert_tz({0}, 'UTC', {1})", SQLDataType.LOCALDATETIME, dateTimeField, DSL.val(timezone))
                 : dateTimeField;
 
         if (timePeriod == null)

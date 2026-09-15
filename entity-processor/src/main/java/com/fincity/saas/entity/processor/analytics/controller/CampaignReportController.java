@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.analytics.model.CampaignTrendRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse;
 import com.fincity.saas.entity.processor.analytics.service.CampaignReportService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,13 +23,11 @@ public class CampaignReportController {
     }
 
     @PostMapping("/tree")
-    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     public Mono<ResponseEntity<CampaignTreeResponse>> getCampaignTree(@RequestBody CampaignTreeRequest request) {
         return campaignReportService.getCampaignTree(request).map(ResponseEntity::ok);
     }
 
     @PostMapping("/trend")
-    @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     public Mono<ResponseEntity<CampaignTrendResponse>> getCampaignTrend(
             @RequestBody(required = false) CampaignTrendRequest request) {
         CampaignTrendRequest effectiveRequest = request == null ? new CampaignTrendRequest() : request;

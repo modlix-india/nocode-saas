@@ -102,6 +102,32 @@ public class CampaignMetricDAO {
                 .map(this::mapToCampaignMetric);
     }
 
+    /**
+     * Campaign-level metric rows only — those with no adset and no ad.
+     *
+     * <p>A campaign's spend is stored three times at three grains (campaign, adset, ad),
+     * so any caller totalling spend must pick exactly one grain or it triple-counts.
+     * The predicate belongs in SQL: the ad-level rows outnumber the campaign-level ones
+     * by however many ads the tenant runs, and fetching them only to drop them makes the
+     * cost of a wide date range scale with ad count instead of campaign count.
+     */
+    public Flux<CampaignMetric> findCampaignLevelByFilters(
+            String appCode, String clientCode, List<ULong> campaignIds, LocalDate from, LocalDate to) {
+
+        Condition condition = METRICS.APP_CODE
+                .eq(appCode)
+                .and(METRICS.CLIENT_CODE.eq(clientCode))
+                .and(METRICS.METRIC_DATE.between(from, to))
+                .and(METRICS.ADSET_ID.isNull())
+                .and(METRICS.AD_ID.isNull());
+
+        if (campaignIds != null && !campaignIds.isEmpty()) {
+            condition = condition.and(METRICS.CAMPAIGN_ID.in(campaignIds));
+        }
+
+        return Flux.from(dslContext.selectFrom(METRICS).where(condition)).map(this::mapToCampaignMetric);
+    }
+
     private CampaignMetric mapToCampaignMetric(org.jooq.Record r) {
         CampaignMetric m = new CampaignMetric();
         m.setId(r.get(METRICS.ID));

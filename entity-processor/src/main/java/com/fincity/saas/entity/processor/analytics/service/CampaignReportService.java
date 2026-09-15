@@ -16,6 +16,7 @@ import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse.C
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.dao.CampaignMetricDAO;
 import com.fincity.saas.entity.processor.dto.CampaignMetric;
@@ -29,9 +30,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
@@ -39,8 +43,8 @@ import java.util.Set;
 import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -53,6 +57,21 @@ public class CampaignReportService implements IProcessorAccessService {
             TimePeriod.MONTHS,
             TimePeriod.QUARTERS,
             TimePeriod.YEARS);
+
+    /**
+     * Upper bound on time-series rows a single trend request may materialise.
+     * {@code DatePair.toTimePeriodMap} builds one row object per bucket before any
+     * {@code includeZero} filtering, so an unbounded range is a cheap way to make the
+     * service allocate itself to death. 1500 covers ~4 years of daily buckets.
+     */
+    private static final int MAX_TREND_BUCKETS = 1500;
+
+    private static final LocalDateTime MAX_LOCAL_DATE_TIME = LocalDateTime.MAX;
+
+    private static final DateTimeFormatter WEEK_LABEL_FORMAT =
+            DateTimeFormatter.ofPattern("MMM dd", Locale.ENGLISH);
+    private static final DateTimeFormatter MONTH_LABEL_FORMAT =
+            DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
@@ -90,12 +109,22 @@ public class CampaignReportService implements IProcessorAccessService {
      * <p>{@code productIds} present → those active products. Absent → every active product the
      * caller's access allows.
      */
+    @PreAuthorize("hasAuthority('" + BusinessPartnerConstant.OWNER_ROLE + "')")
     public Mono<CampaignTrendResponse> getCampaignTrend(CampaignTrendRequest request) {
 
         if (request.getTimePeriod() != null && !SUPPORTED_TIME_PERIODS.contains(request.getTimePeriod())) {
             return Mono.error(new GenericException(HttpStatus.BAD_REQUEST,
                     "Unsupported time period: " + request.getTimePeriod()
                             + ". Supported periods are: DAYS, WEEKS, MONTHS, QUARTERS, YEARS"));
+        }
+
+        BaseFilter.ReportOptions options = request.toReportOptions();
+        long bucketCount = estimateBucketCount(options);
+        if (bucketCount > MAX_TREND_BUCKETS) {
+            return Mono.error(new GenericException(HttpStatus.BAD_REQUEST,
+                    "Requested range spans " + bucketCount + " " + options.timePeriod()
+                            + " buckets, which exceeds the limit of " + MAX_TREND_BUCKETS
+                            + ". Narrow the date range or use a coarser time period."));
         }
 
         return FlatMapUtil.flatMapMono(
@@ -105,7 +134,7 @@ public class CampaignReportService implements IProcessorAccessService {
                     if (products.isEmpty()) {
                         return Mono.just(new CampaignTrendResponse(List.of(), List.of()));
                     }
-                    return buildTrendReport(access, products, request);
+                    return buildTrendReport(access, products, request, options);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignReportService.getCampaignTrend"));
     }
@@ -113,17 +142,24 @@ public class CampaignReportService implements IProcessorAccessService {
     private Mono<CampaignTrendResponse> buildTrendReport(
             ProcessorAccess access,
             List<Product> products,
-            CampaignTrendRequest request) {
+            CampaignTrendRequest request,
+            BaseFilter.ReportOptions options) {
 
-        BaseFilter.ReportOptions options = request.toReportOptions();
-        DatePair datePair = options.totalDatePair();
         TimePeriod timePeriod = options.timePeriod();
+        String timezone = options.timezone();
 
-        LocalDate metricFromDate = datePair.getFirst().toLocalDate();
-        LocalDate metricToDate = datePair.getSecond().toLocalDate();
+        // One window drives both series. Widening to whole local days here and then
+        // deriving every bound from it is what keeps spend (bucketed on the DATE-only
+        // METRIC_DATE) and leads (bucketed on the UTC TIMESTAMP CREATED_AT) over the
+        // same calendar span — deriving them separately silently gives the boundary
+        // buckets spend without the leads that earned it.
+        DatePair window = dayAlignedWindow(options.totalDatePair(), timezone);
 
-        LocalDateTime startUtcTimestamp = DatePair.convertToUtc(datePair.getFirst(), request.getTimezone());
-        LocalDateTime endUtcTimestamp = DatePair.convertToUtc(datePair.getSecond(), request.getTimezone());
+        LocalDate metricFromDate = window.getFirst().toLocalDate();
+        LocalDate metricToDate = window.getSecond().toLocalDate();
+
+        LocalDateTime startUtcTimestamp = DatePair.convertToUtc(window.getFirst(), timezone);
+        LocalDateTime endUtcTimestamp = DatePair.convertToUtc(window.getSecond(), timezone);
 
         List<ULong> productIds = products.stream().map(Product::getId).toList();
 
@@ -142,15 +178,17 @@ public class CampaignReportService implements IProcessorAccessService {
                     }
 
                     return Mono.zip(
-                            campaignMetricDAO.findByFilters(
-                                    access.getAppCode(),
-                                    access.getClientCode(),
-                                    campaignIds,
-                                    null,
-                                    metricFromDate,
-                                    metricToDate)
-                                    // Campaign-level rows only (avoids triple-counting with adset/ad rows)
-                                    .filter(metric -> metric.getAdsetId() == null && metric.getAdId() == null)
+                            // Campaign-level rows only: the adset and ad rows carry the same
+                            // spend broken down finer, so summing all three triple-counts.
+                            // Filtered in SQL, not after collection — a year of ad-level rows
+                            // for a busy tenant is orders of magnitude more than we keep.
+                            campaignMetricDAO
+                                    .findCampaignLevelByFilters(
+                                            access.getAppCode(),
+                                            access.getClientCode(),
+                                            campaignIds,
+                                            metricFromDate,
+                                            metricToDate)
                                     .collectList(),
                             campaignReportDAO.getStageCountsByPeriod(
                                     access,
@@ -158,15 +196,15 @@ public class CampaignReportService implements IProcessorAccessService {
                                     startUtcTimestamp,
                                     endUtcTimestamp,
                                     timePeriod,
-                                    request.getTimezone()))
+                                    timezone))
                             .map(data -> new CampaignTrendResponse(
                                     stageTree,
                                     this.assembleTrendRows(
                                             data.getT1(),
                                             data.getT2(),
-                                            options,
-                                            request.isIncludeZero(),
-                                            request.getTimezone())));
+                                            window,
+                                            timePeriod,
+                                            request.isIncludeZero())));
                 });
     }
 
@@ -177,53 +215,43 @@ public class CampaignReportService implements IProcessorAccessService {
                 .distinct()
                 .toList();
 
-        if (templateIds.isEmpty()) {
-            return Mono.just(List.of());
-        }
-
-        return Flux.fromIterable(templateIds)
-                .concatMap(campaignReportDAO::getStageTreeForProductTemplate)
-                .flatMapIterable(list -> list)
-                .distinct(StageNode::getId)
-                .collectList();
+        return campaignReportDAO.getStageTreeForProductTemplates(templateIds);
     }
 
+    /**
+     * Fold both series into the period buckets of {@code window}.
+     *
+     * <p>Everything here is in the caller's local calendar: {@code window} is built from
+     * local bounds, {@code CampaignMetric#getMetricDate()} is a local DATE, and the stage
+     * rows carry a period start the DAO already converted out of UTC. No value is
+     * round-tripped through UTC on the way in — doing so only to convert straight back
+     * inside the lookup was what made the original version so hard to reason about.
+     */
     private List<CampaignTrendRow> assembleTrendRows(
             List<CampaignMetric> metrics,
             List<PerDateCount> stageRows,
-            BaseFilter.ReportOptions options,
-            boolean includeZero,
-            String timezone) {
+            DatePair window,
+            TimePeriod timePeriod,
+            boolean includeZero) {
 
-        DatePair datePair = options.totalDatePair();
-        DatePair alignedDatePair = DatePair.of(
-                datePair.getFirst().toLocalDate().atStartOfDay(),
-                datePair.getSecond().toLocalDate().atTime(java.time.LocalTime.MAX),
-                timezone);
+        NavigableMap<DatePair, CampaignTrendRow> rows = window.toTimePeriodMap(timePeriod, CampaignTrendRow::new);
 
-        NavigableMap<DatePair, CampaignTrendRow> rows = alignedDatePair
-                .toTimePeriodMap(options.timePeriod(), CampaignTrendRow::new);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
 
         for (CampaignMetric m : metrics) {
             if (m.getMetricDate() == null) {
                 continue;
             }
-            LocalDateTime utcDt = DatePair.convertToUtc(m.getMetricDate().atStartOfDay(), timezone);
-            DatePair bucket = DatePair.findContainingDate(utcDt, rows);
-            if (bucket != null) {
-                rows.get(bucket).addMetric(m);
-            }
+            bucketFor(m.getMetricDate().atStartOfDay(), rows).addMetric(m);
         }
 
         for (PerDateCount s : stageRows) {
-            if (s.getDate() == null) {
+            if (s.getDate() == null || s.getGroupedId() == null || s.getCount() == null) {
                 continue;
             }
-            LocalDateTime utcDt = DatePair.convertToUtc(s.getDate(), timezone);
-            DatePair bucket = DatePair.findContainingDate(utcDt, rows);
-            if (bucket != null && s.getGroupedId() != null && s.getCount() != null) {
-                rows.get(bucket).addStageCount(s.getGroupedId().toString(), s.getCount());
-            }
+            bucketFor(s.getDate(), rows).addStageCount(s.getGroupedId().toString(), s.getCount());
         }
 
         BigDecimal grandTotalSpend = rows.values().stream()
@@ -232,7 +260,7 @@ public class CampaignReportService implements IProcessorAccessService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         rows.forEach((bucket, row) -> row.setPeriodBounds(bucket)
-                .setPeriod(formatPeriodLabel(bucket.getFirst().toLocalDate(), options.timePeriod()))
+                .setPeriod(formatPeriodLabel(bucket.getFirst().toLocalDate(), timePeriod))
                 .applyRatios(grandTotalSpend));
 
         return rows.values().stream()
@@ -240,11 +268,51 @@ public class CampaignReportService implements IProcessorAccessService {
                 .toList();
     }
 
+    /**
+     * Bucket for a local timestamp, clamped to the first bucket when it falls short.
+     *
+     * <p>The DAO groups on the true period start, so a range that opens mid-period
+     * (a Wednesday, say) gets stage rows stamped with that period's Monday — earlier
+     * than any bucket. Those rows only ever counted tickets inside the window, so the
+     * first bucket is where they belong; the previous code looked for an exact
+     * containing bucket, found none, and dropped the opening period's leads on the
+     * floor while still reporting its spend.
+     */
+    private static CampaignTrendRow bucketFor(LocalDateTime localDateTime, NavigableMap<DatePair, CampaignTrendRow> rows) {
+        Map.Entry<DatePair, CampaignTrendRow> entry = rows.floorEntry(DatePair.of(localDateTime, MAX_LOCAL_DATE_TIME));
+        return entry == null ? rows.firstEntry().getValue() : entry.getValue();
+    }
+
+    /**
+     * Widen to whole local days so the first and last buckets are backed by a full
+     * day of both spend and leads rather than a partial one.
+     */
+    private static DatePair dayAlignedWindow(DatePair datePair, String timezone) {
+        return DatePair.of(
+                datePair.getFirst().toLocalDate().atStartOfDay(),
+                datePair.getSecond().toLocalDate().atTime(LocalTime.MAX),
+                timezone);
+    }
+
+    /** Bucket count the request would materialise, without actually building the map. */
+    private static long estimateBucketCount(BaseFilter.ReportOptions options) {
+        DatePair datePair = options.totalDatePair();
+        long days = ChronoUnit.DAYS.between(datePair.getFirst().toLocalDate(), datePair.getSecond().toLocalDate()) + 1;
+        return switch (options.timePeriod()) {
+            case DAYS -> days;
+            case WEEKS -> (days / 7) + 2;
+            case MONTHS -> (days / 28) + 2;
+            case QUARTERS -> (days / 90) + 2;
+            case YEARS -> (days / 365) + 2;
+            default -> days;
+        };
+    }
+
     private static String formatPeriodLabel(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
             case DAYS -> date.toString();
-            case WEEKS -> "Wk of " + date.format(DateTimeFormatter.ofPattern("MMM dd"));
-            case MONTHS -> date.format(DateTimeFormatter.ofPattern("MMM yyyy"));
+            case WEEKS -> "Wk of " + date.format(WEEK_LABEL_FORMAT);
+            case MONTHS -> date.format(MONTH_LABEL_FORMAT);
             case QUARTERS -> "Q" + ((date.getMonthValue() - 1) / 3 + 1) + " " + date.getYear();
             case YEARS -> String.valueOf(date.getYear());
             default -> date.toString();
@@ -252,15 +320,17 @@ public class CampaignReportService implements IProcessorAccessService {
     }
 
     /**
-     * Build the campaign report tree for a product. Access is gated by
-     * {@code productService.readByIdentity} — the caller must be able to see
-     * the product, and the controller layer enforces {@code ROLE_Owner}.
+     * Build the campaign report tree for a product. Access is gated twice: the
+     * {@code ROLE_Owner} authority on this method, and
+     * {@code productService.readByIdentity} — the caller must also be able to see
+     * the product itself.
      *
      * <p>This iteration only fills {@link CampaignReport.Level#CAMPAIGN} rows
      * (one per active campaign linked to the product). Adset and ad expansion
      * are pending — when implemented they'll populate {@link CampaignReport#getChildren()}
      * on the campaign rows based on {@link CampaignTreeRequest#getDepth()}.
      */
+    @PreAuthorize("hasAuthority('" + BusinessPartnerConstant.OWNER_ROLE + "')")
     public Mono<CampaignTreeResponse> getCampaignTree(CampaignTreeRequest request) {
 
         if (request == null || request.getProductId() == null) {

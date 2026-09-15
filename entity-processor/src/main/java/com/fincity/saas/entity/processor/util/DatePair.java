@@ -146,7 +146,10 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
-            case DAYS -> date.plusDays(1).atTime(LocalTime.MAX);
+            // End of THIS day. `plusDays(1)` made every daily bucket span two calendar
+            // days, so a 7-day range produced 4 rows, each labelled with the first of the
+            // two days it silently merged.
+            case DAYS -> date.atTime(LocalTime.MAX);
             case WEEKS ->
                 date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
             case MONTHS -> getMonthEnd(date);
