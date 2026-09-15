@@ -332,6 +332,13 @@
                                             <includeExpression>.*\.PAYLOAD</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.PROVIDER_METADATA</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.dispatch.DispatchEventType</userType>
                                             <includeExpression>.*\.EVENT_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

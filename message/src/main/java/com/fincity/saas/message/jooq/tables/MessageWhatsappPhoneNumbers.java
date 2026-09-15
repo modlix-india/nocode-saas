@@ -111,11 +111,11 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      * The column
      * <code>message.message_whatsapp_phone_numbers.SESSION_STATE</code>.
      * Lifecycle state as the bridge reports it, surfaced verbatim to the UI.
-     * COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only
-     * failure here a customer can fix themselves in seconds, and only if told
-     * what it is.
+     * COUNTRY_MISMATCH and NUMBER_MISMATCH are separate from LOGGED_OUT because
+     * they are the only failures here a customer can fix themselves in seconds,
+     * and only if told which one it is.
      */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, WhatsappSessionState> SESSION_STATE = createField(DSL.name("SESSION_STATE"), SQLDataType.VARCHAR(16), this, "Lifecycle state as the bridge reports it, surfaced verbatim to the UI. COUNTRY_MISMATCH is separate from LOGGED_OUT because it is the only failure here a customer can fix themselves in seconds, and only if told what it is.", new EnumConverter<String, WhatsappSessionState>(String.class, WhatsappSessionState.class));
+    public final TableField<MessageWhatsappPhoneNumbersRecord, WhatsappSessionState> SESSION_STATE = createField(DSL.name("SESSION_STATE"), SQLDataType.VARCHAR(16), this, "Lifecycle state as the bridge reports it, surfaced verbatim to the UI. COUNTRY_MISMATCH and NUMBER_MISMATCH are separate from LOGGED_OUT because they are the only failures here a customer can fix themselves in seconds, and only if told which one it is.", new EnumConverter<String, WhatsappSessionState>(String.class, WhatsappSessionState.class));
 
     /**
      * The column

@@ -5,11 +5,13 @@ package com.fincity.saas.message.jooq;
 
 
 import com.fincity.saas.message.jooq.tables.MessageBridgeInstances;
+import com.fincity.saas.message.jooq.tables.MessageCallProviderApps;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageDispatchOutbox;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageProviderUserEndpoints;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 
 
@@ -24,6 +26,12 @@ public class Tables {
      * data.
      */
     public static final MessageBridgeInstances MESSAGE_BRIDGE_INSTANCES = MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES;
+
+    /**
+     * Provider-side integration app registrations for browser calling, one per
+     * tenant.
+     */
+    public static final MessageCallProviderApps MESSAGE_CALL_PROVIDER_APPS = MessageCallProviderApps.MESSAGE_CALL_PROVIDER_APPS;
 
     /**
      * The table <code>message.message_calls</code>.
@@ -49,6 +57,12 @@ public class Tables {
      * The table <code>message.message_messages</code>.
      */
     public static final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
+
+    /**
+     * Where a given agent can be reached, in ringing order. Read on every
+     * inbound connect applet.
+     */
+    public static final MessageProviderUserEndpoints MESSAGE_PROVIDER_USER_ENDPOINTS = MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS;
 
     /**
      * WhatsApp Business phone numbers

@@ -64,6 +64,29 @@ public class TicketCallLogController {
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * Places a call to the deal's customer from the agent's browser softphone.
+     *
+     * <p>Takes a ticket and nothing else. The number comes from the deal and the agent comes from the
+     * authenticated token, so neither can be chosen by the caller — the softphone cannot name a
+     * number to dial, nor dial as somebody else.
+     *
+     * <p>Separate from {@code /make} because the two ring different things: that one calls the
+     * agent's phone and bridges it, this one rings their registered browser. Same authorisation, same
+     * resulting row.
+     */
+    @PostMapping("/{ticketId}/browser-dial")
+    public Mono<ResponseEntity<Call>> makeBrowserCall(
+            @PathVariable("ticketId") Identity ticketId,
+            @RequestBody(required = false) Map<String, Object> request) {
+
+        Map<String, Object> body = request == null ? Map.of() : request;
+
+        return this.service
+                .makeBrowserCall(ticketId, asString(body.get("connectionName")))
+                .map(ResponseEntity::ok);
+    }
+
     private static String asString(Object value) {
         return value == null ? null : value.toString();
     }

@@ -15,9 +15,13 @@ import com.fincity.saas.message.model.response.call.provider.exotel.ExotelLeg;
 import com.fincity.saas.message.util.PhoneUtil;
 import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -35,7 +39,17 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     @Serial
     private static final long serialVersionUID = 6195102404059168734L;
 
-    private static final String EXOTEL_DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";
+    /**
+     * The space-separated form, with the offset optional.
+     *
+     * <p>Optional because the provider sends both: {@code 2026-09-04 18:49:45} from the telephony
+     * API, and {@code 2026-09-08 18:06:59+05:30} from the integrations engine — a third shape
+     * alongside the ISO {@code T} form, and the one that arrives on browser calls. A strict pattern
+     * rejected it, and the caller then assigned the resulting null over a start time the dial had
+     * already recorded correctly.
+     */
+    private static final String EXOTEL_DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss[XXX]";
+
     private static final DateTimeFormatter EXOTEL_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern(EXOTEL_DATE_TIME_PATTERN);
 
@@ -46,9 +60,12 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     private String accountSid;
 
     /**
-     * Which service owns this call, the call-side twin of {@code OWNER_SERVICE} on a WhatsApp phone
-     * number. Stamped when the call is created, because both entry points are initiated by the
-     * owning service, and read back when a status callback arrives carrying nothing but a Sid.
+     * Which service owns this call, the call-side twin of {@code OWNER_SERVICE} on
+     * a WhatsApp phone
+     * number. Stamped when the call is created, because both entry points are
+     * initiated by the
+     * owning service, and read back when a status callback arrives carrying nothing
+     * but a Sid.
      */
     private String ownerService;
 
@@ -96,32 +113,115 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
 
     public static ExotelCall ofInbound(ExotelConnectAppletRequest request, PhoneNumber to, String accountSid) {
 
-        PhoneNumber from = PhoneNumber.of(request.getFrom());
-        PhoneNumber callerId = PhoneNumber.of(request.getCallTo());
+        String fromRaw = request.getFrom() != null ? request.getFrom() : request.getCallFrom();
+        String toRaw = request.getCallTo() != null ? request.getCallTo() : request.getTo();
+
+        PhoneNumber from = PhoneNumber.of(fromRaw);
+        PhoneNumber callerId = PhoneNumber.of(toRaw);
 
         return new ExotelCall()
                 .setSid(request.getCallSid())
                 .setAccountSid(accountSid)
                 .setDirection(ExotelDirection.INBOUND.name())
-                .setFromDialCode(from.getCountryCode())
-                .setFrom(from.getNumber())
-                .setToDialCode(to.getCountryCode())
-                .setTo(to.getNumber())
-                .setCustomerDialCode(from.getCountryCode())
-                .setCustomerPhoneNumber(from.getNumber())
-                .setCallerId(callerId.getLandlineNumber())
+                .setFromDialCode(from != null ? from.getCountryCode() : null)
+                .setFrom(from != null ? from.getNumber() : fromRaw)
+                .setToDialCode(to != null ? to.getCountryCode() : null)
+                .setTo(to != null ? to.getNumber() : null)
+                .setCustomerDialCode(from != null ? from.getCountryCode() : null)
+                .setCustomerPhoneNumber(from != null ? from.getNumber() : fromRaw)
+                .setCallerId(callerIdOf(callerId, toRaw))
                 .setStartTime(parseDate(request.getStartTime()))
                 .setDateCreated(parseDate(request.getCreated()))
                 .setRecordingUrl(request.getRecordingUrl())
                 .setExotelConnectAppletRequest(request);
     }
 
+    /**
+     * The number the customer dialled to reach us.
+     *
+     * <p>Prefers the landline form, because an Exotel virtual number is one and that is the shape
+     * the rest of the tenant's configuration records it in. Falls back to the plain number, and
+     * then to the raw value: {@link PhoneNumber#of} returns null for anything it cannot parse as a
+     * phone number, and on a browser leg this field can carry a SIP URI. Storing that raw beats
+     * storing nothing, since it is the only record of where the call arrived.
+     */
+    private static String callerIdOf(PhoneNumber callerId, String raw) {
+
+        if (callerId == null) return raw;
+
+        return callerId.getLandlineNumber() != null ? callerId.getLandlineNumber() : callerId.getNumber();
+    }
+
+    /**
+     * Reads either timestamp shape the provider sends.
+     *
+     * <p>Two, and they arrive on different callbacks. The telephony API reports local time with no
+     * zone — {@code 2026-09-04 16:49:20} — while the WebRTC callback reports an offset,
+     * {@code 2026-09-04T19:21:01+05:30}. Parsing only the first leaves every browser call with null
+     * start and end times, which is invisible until someone asks how long a call took.
+     *
+     * <p>The offset is discarded rather than converted: every other timestamp in these tables is
+     * local, and mixing the two silently would shift durations by the offset. Both observed forms
+     * carry the same wall-clock time the provider's own dashboard shows.
+     *
+     * <p>An unparseable value returns null and says so. Returning null quietly was how a
+     * format change would present as calls with no times and nothing to explain it.
+     */
     private static LocalDateTime parseDate(String date) {
+
+        if (date == null || date.isBlank()) return null;
+
+        LocalDateTime parsed = parseTimestamp(date);
+        return isEpochPlaceholder(parsed) ? null : parsed;
+    }
+
+    private static LocalDateTime parseTimestamp(String date) {
+
         try {
-            return date == null ? null : LocalDateTime.parse(date, EXOTEL_DATE_TIME_FORMATTER);
-        } catch (Exception e) {
-            return null;
+            return LocalDateTime.parse(date, EXOTEL_DATE_TIME_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            // Not the telephony API's format; try the WebRTC callback's.
         }
+
+        try {
+            return OffsetDateTime.parse(date).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            // Neither form matched.
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a parsed timestamp is the provider's way of saying "not set".
+     *
+     * <p>The passthru callback sends {@code 1970-01-01 05:30:00} and {@code 0001-01-01T00:00:00Z}
+     * for times it does not have, and both parse perfectly well into a date nobody meant. Stored,
+     * they turn any duration computed from a start and an end into nonsense — including a negative
+     * one, once the end predates the start.
+     */
+    private static boolean isEpochPlaceholder(LocalDateTime value) {
+        return value != null && value.getYear() <= 1970;
+    }
+
+    /**
+     * Discards an end time that precedes its own start.
+     *
+     * <p>Observed on a live WebRTC callback: a call reported as starting 22:51:24 and ending
+     * 22:51:16. One of the two is wrong and the payload gives no way to tell which, so the pair is
+     * not a span — it is a signal that the provider's clocks disagree.
+     *
+     * <p>The end is dropped rather than the start, because the start is corroborated: it is close to
+     * when this service asked for the call. Keeping the pair would mean storing a call that ended
+     * before it began, and any duration later derived from it would be negative. Duration itself is
+     * unaffected — it falls back to the reported talk time, which is why this shows up as a
+     * questionable timestamp rather than a questionable call.
+     */
+    private void dropEndBeforeStart() {
+
+        if (this.startTime == null || this.endTime == null || !this.endTime.isBefore(this.startTime)) return;
+
+        this.endTime = null;
     }
 
     private static Double parseDouble(String value) {
@@ -175,9 +275,28 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
         SetterUtil.setIfPresent(callback.getStatus(), this::setExotelCallStatus);
         SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
         SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
-        if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
-        if (callback.getEndTime() != null) this.endTime = parseDate(callback.getEndTime());
+        // Assigned only when the value parses. A failed parse used to be written as null, which
+        // erased the start time the dial recorded and left the total duration to fall back to talk
+        // time — a call reported as shorter than it was, from a callback that looked fine.
+        SetterUtil.setIfPresent(parseDate(callback.getStartTime()), this::setStartTime);
+        SetterUtil.setIfPresent(parseDate(callback.getEndTime()), this::setEndTime);
+
+        this.dropEndBeforeStart();
         SetterUtil.setIfPresent(callback.getConversationDuration(), this::setConversationDuration);
+
+        // Total duration is derived, not copied from conversation duration. The WebRTC callback
+        // reports only the connected time — a call from 19:21:01 to 19:21:27 came back as 13 — so
+        // taking that as the total silently halves how long the call actually occupied the agent.
+        // The two are different measures and the schema keeps both: total includes ringing,
+        // conversation is talk time.
+        //
+        // Falls back to the conversation duration only when there is nothing to derive from, since
+        // an under-reported total still beats a null one.
+        if (this.duration == null || this.duration == 0) {
+            if (this.startTime != null && this.endTime != null && !this.endTime.isBefore(this.startTime))
+                this.setDuration(Duration.between(this.startTime, this.endTime).toSeconds());
+            else SetterUtil.setIfPresent(callback.getConversationDuration(), this::setDuration);
+        }
 
         if (callback.getLegs() != null && !callback.getLegs().isEmpty()) this.legs = callback.getLegs();
 
@@ -189,24 +308,68 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
 
         if (this.sid == null) SetterUtil.setIfPresent(callback.getCallSid(), this::setSid);
 
+        // CallStatus first, DialCallStatus second. The flow-builder passthru reports the outcome of
+        // the dial rather than of the call — an inbound answered by the agent arrives with
+        // DialCallStatus "completed" and no CallStatus at all, which left every inbound call sitting
+        // at the status it was created with.
         SetterUtil.setIfPresent(callback.getCallStatus(), this::setExotelCallStatus);
+        if (this.exotelCallStatus == null || ExotelCallStatus.IN_PROGRESS.equals(this.exotelCallStatus))
+            SetterUtil.setIfPresent(callback.getDialCallStatus(), this::setExotelCallStatus);
+
         SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
         SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
+
+        // Where the call actually landed, which for a browser agent is their SIP endpoint rather
+        // than the number the connect applet was originally answered with.
+        SetterUtil.setIfPresent(callback.getDialWhomNumber(), this::setTo);
 
         if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
 
         if (callback.getEndTime() != null) this.endTime = parseDate(callback.getEndTime());
 
+        this.dropEndBeforeStart();
+
         if (callback.getCreated() != null) this.dateCreated = parseDate(callback.getCreated());
 
-        Long dialDuration = callback.getDialCallDuration();
-        if (dialDuration != null) {
-            this.duration = dialDuration;
-            this.conversationDuration = dialDuration;
-        }
+        // Two different measures, and this callback reports both. DialCallDuration covers the whole
+        // dial including ringing; the answered leg's OnCallDuration is the time anyone actually
+        // spoke. Copying the first into both — as this did — over-reports talk time by however long
+        // the phone rang.
+        SetterUtil.setIfPresent(callback.getDialCallDuration(), this::setDuration);
+
+        Long talkTime = answeredLegDuration(callback.getLegs());
+        this.conversationDuration = talkTime != null ? talkTime : callback.getDialCallDuration();
 
         SetterUtil.setIfPresent(callback.getOutgoingPhoneNumber(), this::setCallerId);
 
         return this;
+    }
+
+    /**
+     * The longest leg's on-call time, which is the one that was answered.
+     *
+     * <p>A sequential dial reports a leg per destination tried, and the ones that were not answered
+     * carry a zero. Taking the maximum picks the answered leg without needing to know which position
+     * it occupied, and returns null when nothing was answered at all rather than a misleading zero.
+     */
+    private static Long answeredLegDuration(List<Map<String, Object>> legs) {
+
+        if (legs == null || legs.isEmpty()) return null;
+
+        Long longest = null;
+
+        for (Map<String, Object> leg : legs) {
+            if (leg == null) continue;
+            Object value = leg.get("OnCallDuration");
+            if (value == null) continue;
+            try {
+                long seconds = Long.parseLong(value.toString().trim());
+                if (seconds > 0 && (longest == null || seconds > longest)) longest = seconds;
+            } catch (NumberFormatException ignored) {
+                // A leg without a readable duration tells us nothing; the others still might.
+            }
+        }
+
+        return longest;
     }
 }

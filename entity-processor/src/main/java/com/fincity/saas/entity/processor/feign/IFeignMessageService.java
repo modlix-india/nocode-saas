@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.feign;
 
+import com.fincity.saas.entity.processor.oserver.message.model.BrowserDialRequest;
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
 import java.math.BigInteger;
@@ -23,7 +24,7 @@ public interface IFeignMessageService {
     String WHATSAPP_PATH = MESSAGE_PATH + "/whatsapp";
     String WHATSAPP_TICKET_PATH = WHATSAPP_PATH + "/ticket";
 
-    @PostMapping(EXOTEL_CALL_PATH + "/connect")
+    @PostMapping(EXOTEL_CALL_PATH + "/internal/connect")
     Mono<ExotelConnectAppletResponse> connectCall(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
@@ -44,6 +45,25 @@ public interface IFeignMessageService {
     @PostMapping(EXOTEL_CALL_PATH + "/internal/make")
     Mono<Map<String, Object>> makeCallInternal(
             @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
+
+    /**
+     * Places a call from the agent's browser softphone to a deal's customer.
+     *
+     * <p>Same contract as {@link #makeCallInternal}, and the same obligation: call it only after
+     * confirming the caller may act on the deal, and pass the number taken from that deal. The
+     * message service checks neither, and for browser calls it cannot — it has no view of deals at
+     * all, which is exactly why this call originates here rather than from the softphone.
+     *
+     * <p>{@code userId} is the agent whose browser should ring, not the caller's choice of agent.
+     * The message service resolves it to that agent's provisioned SIP identity and refuses if they
+     * have none.
+     *
+     * <p>Untyped, like its sibling, for the same reason: the response is the message service's own
+     * call representation and this service maps it straight onto its own row.
+     */
+    @PostMapping(EXOTEL_CALL_PATH + "/internal/browser-dial")
+    Mono<Map<String, Object>> browserDialInternal(
+            @RequestParam String appCode, @RequestParam String clientCode, @RequestBody BrowserDialRequest request);
 
     /**
      * A deal's WhatsApp thread. Only call this after confirming the caller may see the ticket; the
