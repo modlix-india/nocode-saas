@@ -44,16 +44,26 @@ public abstract class BaseProcessorService<
                 uEntity -> super.create(access, uEntity));
     }
 
+    /**
+     * Raised as 409 CONFLICT rather than 400, matching how the rest of the platform already reports
+     * "this already exists" - see {@code UserInviteService} (USER_ALREADY_EXISTS) and
+     * {@code AppService} (APP_SUBDOMAIN_TAKEN) in the security service.
+     *
+     * <p>The distinct status is also what lets the provider-facing open intakes single this outcome
+     * out: a duplicate lead has already had its re-inquiry committed, so it needs a 200
+     * acknowledgement to stop Meta and Google redelivering it, while every other rejection on that
+     * path must stay a visible error. The message body is unchanged.
+     */
     protected <T> Mono<T> throwDuplicateError(ProcessorAccess access, D existing) {
 
         if (access.isOutsideUser())
             return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    msg -> new GenericException(HttpStatus.CONFLICT, msg),
                     ProcessorMessageResourceService.DUPLICATE_ENTITY_OUTSIDE_USER,
                     this.getEntityPrefix(access.getAppCode()));
 
         return this.msgService.throwMessage(
-                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                msg -> new GenericException(HttpStatus.CONFLICT, msg),
                 ProcessorMessageResourceService.DUPLICATE_ENTITY,
                 this.getEntityPrefix(access.getAppCode()),
                 existing.getId(),
