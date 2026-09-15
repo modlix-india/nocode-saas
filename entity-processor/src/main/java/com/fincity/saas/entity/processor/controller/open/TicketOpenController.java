@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.controller.open;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorIntegrationsInSourceType;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
@@ -37,7 +38,10 @@ public class TicketOpenController {
 
     @PostMapping(CAMPAIGN_REQ_PATH)
     public Mono<ResponseEntity<Ticket>> createFromCampaigns(@RequestBody CampaignTicketRequest campaignTicketRequest) {
-        return this.ticketService.createForCampaign(campaignTicketRequest).map(ResponseEntity::ok);
+        return this.ticketService
+                .createForCampaign(campaignTicketRequest)
+                .map(ResponseEntity::ok)
+                .onErrorResume(GenericException.class, TicketOpenController::acknowledgeDuplicate);
     }
 
     @GetMapping(CAMPAIGN_REQ_PATH)
@@ -51,7 +55,35 @@ public class TicketOpenController {
     @PostMapping(WEBSITE_REQ_PATH)
     public Mono<ResponseEntity<Ticket>> createFromWebsite(
             @PathVariable(PATH_VARIABLE_CODE) String code, @RequestBody CampaignTicketRequest ticketRequest) {
-        return this.ticketService.createForWebsite(ticketRequest, code).map(ResponseEntity::ok);
+        return this.ticketService
+                .createForWebsite(ticketRequest, code)
+                .map(ResponseEntity::ok)
+                .onErrorResume(GenericException.class, TicketOpenController::acknowledgeDuplicate);
+    }
+
+    /**
+     * Acknowledges a duplicate lead with 200 so Meta and Google stop redelivering it.
+     *
+     * <p>By the time a 409 reaches here the processor has already committed the re-inquiry activity
+     * against the existing ticket, so the intake succeeded and only the response was wrong.
+     * Providers read any non-2xx as a failed webhook delivery and redeliver the same lead with
+     * backoff, and each redelivery committed another re-inquiry row before failing again - so the
+     * error response, not the dedup logic, is what turned one lead into a storm of re-inquiries.
+     *
+     * <p>Only 409 is acknowledged. Everything else still propagates, deliberately: a 404 keeps a
+     * mis-pointed campaign visible, an inactive product or missing identity info stays a real
+     * error instead of a silently dropped lead, and a 5xx stays an error precisely because
+     * retrying it may succeed.
+     *
+     * <p>The re-inquiry activity row is the durable record of this outcome, so nothing is logged
+     * here. Returning an empty body also keeps the internal ticket id and stack trace out of a
+     * third party's hands.
+     */
+    private static Mono<ResponseEntity<Ticket>> acknowledgeDuplicate(GenericException e) {
+
+        if (e.getStatusCode() != HttpStatus.CONFLICT) return Mono.error(e);
+
+        return Mono.just(ResponseEntity.ok().build());
     }
 
     @GetMapping(WEBSITE_REQ_PATH)
