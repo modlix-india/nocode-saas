@@ -291,7 +291,15 @@ public class UniversalController {
                 "fetch('/api/security/makeOneTimeToken',{method:'POST',credentials:'omit',"
                 + "headers:{'Content-Type':'application/json',"
                 + "'Authorization':bearer,'appCode':'authzump','clientCode':'SYSTEM'},"
-                + "body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode})})" +
+                // authMode is stated, never left to be inferred. makeOneTimeToken's fallback
+                // guesses the mode from whether THIS call carried an Authorization cookie, and
+                // `credentials:'omit'` above guarantees it did not - so the guess is always
+                // BEARER and the arriving app sets no cookie, leaving the session in
+                // localStorage only. An SSO session must also be a cookie session: a cold start
+                // on another domain reads the cookie, and so does anything that cannot attach an
+                // Authorization header (SSE/EventSource, plain document navigations).
+                + "body:JSON.stringify({targetAppCode:targetAppCode,targetClientCode:targetClientCode,"
+                + "authMode:'COOKIE'})})" +
                 // A rejected token is dead: drop it, or every later bounce repeats this round
                 // trip and answers "no session" the slow way.
                 ".then(function(r){if(!r.ok){if(r.status===401||r.status===403){forget();}return null;}return r.json();})" +
