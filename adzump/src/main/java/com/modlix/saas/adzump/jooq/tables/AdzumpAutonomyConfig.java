@@ -67,7 +67,7 @@ public class AdzumpAutonomyConfig extends TableImpl<AdzumpAutonomyConfigRecord> 
      * The column <code>adzump.adzump_autonomy_config.client_code</code>. Client
      * code
      */
-    public final TableField<AdzumpAutonomyConfigRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpAutonomyConfigRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>adzump.adzump_autonomy_config.scope</code>. Config scope

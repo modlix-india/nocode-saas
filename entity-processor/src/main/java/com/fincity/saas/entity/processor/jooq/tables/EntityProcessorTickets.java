@@ -93,7 +93,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * <code>entity_processor.entity_processor_tickets.CLIENT_CODE</code>.
      * Client Code to whom this notification we sent.
      */
-    public final TableField<EntityProcessorTicketsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom this notification we sent.");
+    public final TableField<EntityProcessorTicketsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code to whom this notification we sent.");
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.CODE</code>.

@@ -78,7 +78,7 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
      * <code>entity_processor.entity_processor_partners.CLIENT_CODE</code>.
      * Client Code who added this partner.
      */
-    public final TableField<EntityProcessorPartnersRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who added this partner.");
+    public final TableField<EntityProcessorPartnersRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who added this partner.");
 
     /**
      * The column <code>entity_processor.entity_processor_partners.CODE</code>.

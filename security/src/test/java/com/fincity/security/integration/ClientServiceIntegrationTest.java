@@ -105,7 +105,10 @@ class ClientServiceIntegrationTest extends AbstractIntegrationTest {
 			StepVerifier.create(result)
 					.assertNext(code -> {
 						assertThat(code).isNotNull();
-						assertThat(code).hasSizeLessThanOrEqualTo(8);
+						// CHAR(12) since V84. Was 8, which is what ran out:
+						// the stem is five characters and the counter had only
+						// three digits left, so a popular name stem died at 999.
+						assertThat(code).hasSizeLessThanOrEqualTo(12);
 						assertThat(code).isUpperCase();
 					})
 					.verifyComplete();
@@ -122,6 +125,89 @@ class ClientServiceIntegrationTest extends AbstractIntegrationTest {
 						assertThat(code).isUpperCase();
 						assertThat(code).doesNotContain("@", "!", "#");
 					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("stem already taken - appends the first counter")
+		void stemTaken_AppendsCounter() {
+			Mono<String> result = insertTestClient("WIDEN", "Widen Co", "BUS")
+					.then(clientDAO.getValidClientCode("WidenCo"));
+
+			StepVerifier.create(result)
+					.assertNext(code -> assertThat(code).isEqualTo("WIDEN1"))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("counter continues from the highest, and does not refill gaps")
+		void counterContinuesFromHighest() {
+			// The old implementation walked the counter from the bottom and
+			// stopped at the first code that was free, so deleting a client
+			// handed its code to whoever registered next. A client code
+			// prefixes that tenant's objects in file storage and outlives the
+			// row in issued tokens, so reissuing one is a way to hand somebody
+			// another tenant's history.
+			Mono<String> result = insertTestClient("WIDEN", "Widen Co", "BUS")
+					.then(insertTestClient("WIDEN1", "Widen One", "BUS"))
+					.then(insertTestClient("WIDEN3", "Widen Three", "BUS"))
+					.then(clientDAO.getValidClientCode("WidenCo"));
+
+			StepVerifier.create(result)
+					// Not WIDEN2, even though that gap is free.
+					.assertNext(code -> assertThat(code).isEqualTo("WIDEN4"))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a longer code sharing the stem is not read as a counter")
+		void longerCodeSharingStem_Ignored() {
+			// KAILASH shares its first five characters with KAILA but its tail
+			// is "SH", not a number. Reading that as a counter would either
+			// throw or produce a nonsense code, so only an all-digit tail
+			// counts.
+			Mono<String> result = insertTestClient("WIDEN", "Widen Co", "BUS")
+					.then(insertTestClient("WIDENSH", "Widen Ash", "BUS"))
+					.then(clientDAO.getValidClientCode("WidenCo"));
+
+			StepVerifier.create(result)
+					.assertNext(code -> assertThat(code).isEqualTo("WIDEN1"))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("counter can now pass the old three-digit ceiling")
+		void counterPassesOldCeiling() {
+			// WIDEN999 was the last code CHAR(8) could hold. The next one is
+			// nine characters, and under strict mode the insert used to fail
+			// with ERROR 1406 rather than producing a code at all.
+			Mono<String> result = insertTestClient("WIDEN", "Widen Co", "BUS")
+					.then(insertTestClient("WIDEN999", "Widen Many", "BUS"))
+					.then(clientDAO.getValidClientCode("WidenCo"));
+
+			StepVerifier.create(result)
+					.assertNext(code -> {
+						assertThat(code).isEqualTo("WIDEN1000");
+						assertThat(code).hasSizeLessThanOrEqualTo(12);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a full-width code stores, and is not misread as a counter")
+		void twelveCharCodeStores() {
+			// Twelve characters is what the column now holds, and also the most
+			// the files service can take: its secured read-access check stops
+			// matching the `_withInClient` folder at fourteen characters, which
+			// is why the column is 12 and not 64. This insert fails outright on
+			// the old CHAR(8).
+			Mono<String> result = insertTestClient("WIDENABCDEFG", "Widen Max", "BUS")
+					.then(clientDAO.getValidClientCode("WidenAbcdefg"));
+
+			StepVerifier.create(result)
+					// The stem itself is still free, and WIDENABCDEFG's tail is
+					// letters rather than a counter, so it does not interfere.
+					.assertNext(code -> assertThat(code).isEqualTo("WIDEN"))
 					.verifyComplete();
 		}
 	}

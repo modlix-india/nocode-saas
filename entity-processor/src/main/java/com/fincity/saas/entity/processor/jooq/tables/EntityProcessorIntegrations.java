@@ -78,7 +78,7 @@ public class EntityProcessorIntegrations extends TableImpl<EntityProcessorIntegr
      * <code>entity_processor.entity_processor_integrations.CLIENT_CODE</code>.
      * Client Code.
      */
-    public final TableField<EntityProcessorIntegrationsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code.");
+    public final TableField<EntityProcessorIntegrationsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code.");
 
     /**
      * The column

@@ -87,7 +87,7 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CLIENT_CODE</code>.
      * Client Code who created this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this Rule Config.");
 
     /**
      * The column
