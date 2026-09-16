@@ -67,7 +67,7 @@ public class AdzumpExperiment extends TableImpl<AdzumpExperimentRecord> {
      * The column <code>adzump.adzump_experiment.client_code</code>. Client code
      * (tenant-private)
      */
-    public final TableField<AdzumpExperimentRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code (tenant-private)");
+    public final TableField<AdzumpExperimentRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code (tenant-private)");
 
     /**
      * The column <code>adzump.adzump_experiment.campaign_plan_id</code>.

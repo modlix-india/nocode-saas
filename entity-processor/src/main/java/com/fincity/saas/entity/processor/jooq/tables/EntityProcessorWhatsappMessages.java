@@ -89,7 +89,7 @@ public class EntityProcessorWhatsappMessages extends TableImpl<EntityProcessorWh
      * <code>entity_processor.entity_processor_whatsapp_messages.CLIENT_CODE</code>.
      * Client Code related to this WhatsApp message.
      */
-    public final TableField<EntityProcessorWhatsappMessagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this WhatsApp message.");
+    public final TableField<EntityProcessorWhatsappMessagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this WhatsApp message.");
 
     /**
      * The column

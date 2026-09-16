@@ -59,7 +59,7 @@ public class FilesAccessPathBackup extends TableImpl<FilesAccessPathBackupRecord
      * The column <code>files.files_access_path_backup.CLIENT_CODE</code>.
      * Client code
      */
-    public final TableField<FilesAccessPathBackupRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<FilesAccessPathBackupRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>files.files_access_path_backup.USER_ID</code>. USER ID

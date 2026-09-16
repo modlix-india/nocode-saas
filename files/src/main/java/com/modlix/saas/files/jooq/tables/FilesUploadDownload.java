@@ -75,7 +75,7 @@ public class FilesUploadDownload extends TableImpl<FilesUploadDownloadRecord> {
      * The column <code>files.files_upload_download.CLIENT_CODE</code>. Client
      * Code to whom the folder belongs to
      */
-    public final TableField<FilesUploadDownloadRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom the folder belongs to");
+    public final TableField<FilesUploadDownloadRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code to whom the folder belongs to");
 
     /**
      * The column <code>files.files_upload_download.PATH</code>. Path of the

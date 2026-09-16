@@ -86,7 +86,7 @@ public class EntityProcessorProductMessageConfigs extends TableImpl<EntityProces
      * <code>entity_processor.entity_processor_product_message_configs.CLIENT_CODE</code>.
      * Client Code who created this config.
      */
-    public final TableField<EntityProcessorProductMessageConfigsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this config.");
+    public final TableField<EntityProcessorProductMessageConfigsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this config.");
 
     /**
      * The column

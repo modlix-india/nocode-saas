@@ -67,7 +67,7 @@ public class AdzumpPerformancePolicy extends TableImpl<AdzumpPerformancePolicyRe
      * The column <code>adzump.adzump_performance_policy.client_code</code>.
      * Client code
      */
-    public final TableField<AdzumpPerformancePolicyRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpPerformancePolicyRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>adzump.adzump_performance_policy.scope</code>. Config

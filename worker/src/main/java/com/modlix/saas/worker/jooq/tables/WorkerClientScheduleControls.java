@@ -79,7 +79,7 @@ public class WorkerClientScheduleControls extends TableImpl<WorkerClientSchedule
      * <code>worker.worker_client_schedule_controls.CLIENT_CODE</code>. Client
      * code; scheduling is controlled per app and client.
      */
-    public final TableField<WorkerClientScheduleControlsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code; scheduling is controlled per app and client.");
+    public final TableField<WorkerClientScheduleControlsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code; scheduling is controlled per app and client.");
 
     /**
      * The column <code>worker.worker_client_schedule_controls.NAME</code>.

@@ -60,6 +60,16 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
+    /**
+     * How much of a client's name becomes the stem of its code, before the collision counter.
+     *
+     * <p>Five, and the column is CHAR(12), so the counter has seven digits: ten million clients may
+     * share a name stem. That headroom is the point -- at CHAR(8) the counter had three digits, and
+     * KAILA was 294 of its 999 before the column was widened. Raising this shortens the counter by
+     * the same amount it lengthens the stem, so do not raise it without widening the column too.
+     */
+    private static final int CLIENT_CODE_PREFIX_LENGTH = 5;
+
     @Lazy
     @Autowired
     private ClientManagerDAO clientManagerDAO;
@@ -245,29 +255,60 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(ClientUrlPattern::makeHostnPort);
     }
 
+    /**
+     * A free client code for a new client, built from its name.
+     *
+     * <p>At most the first {@link #CLIENT_CODE_PREFIX_LENGTH} characters of the name, uppercased,
+     * then a counter if that is taken: KAILA, KAILA1, KAILA2, and so on.
+     *
+     * <h2>One query, not one per code already taken</h2>
+     *
+     * <p>This used to walk the counter from the bottom, asking the database about every code in
+     * turn until one came back free. That is fine for a name nobody shares and quadratic for one
+     * everybody does: KAILA had 294 clients when this was rewritten, so registering the next one
+     * cost 294 sequential round trips, and the cost grew with every client that registered. The
+     * highest counter in use answers the same question in a single statement, whatever the prefix
+     * holds.
+     *
+     * <h2>Gaps are not reused</h2>
+     *
+     * <p>The old walk stopped at the first free code, so deleting a client handed its code to the
+     * next registration. This takes the highest and adds one, which deliberately leaves holes. A
+     * client code is not just a key: it prefixes every object that client owns in file storage and
+     * appears in tokens that outlive the row, so handing a retired one to somebody new is a way to
+     * give them another tenant's history.
+     *
+     * <p>Two registrations racing still produce the same code and one insert loses to the unique
+     * key, exactly as before; this changes how the candidate is found, not how it is claimed.
+     */
     public Mono<String> getValidClientCode(String name) {
 
-        name = removeSpecialCharacters(name);
+        String prefix = removeSpecialCharacters(name);
+        prefix = prefix.substring(0, Math.min(prefix.length(), CLIENT_CODE_PREFIX_LENGTH)).toUpperCase();
 
-        String clientCode = name.substring(0, Math.min(name.length(), 5)).toUpperCase();
+        final String codePrefix = prefix;
 
-        return Flux.just(clientCode)
-                .expand(e -> Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
-                        .from(SECURITY_CLIENT)
-                        .where(SECURITY_CLIENT.CODE.eq(e))
-                        .limit(1))
-                        .map(Record1::value1)
-                        .map(x -> {
-                            if (x.length() == clientCode.length())
-                                return clientCode + "1";
+        // Everything after the prefix. Empty for the bare prefix itself, and non-numeric for a
+        // longer name that happens to start with the same letters -- a client coded KAILASH is
+        // matched by the LIKE below but must not be read as counter "SH".
+        Field<String> tail = DSL.substring(SECURITY_CLIENT.CODE, codePrefix.length() + 1);
 
-                            int num = Integer.parseInt(x.substring(clientCode.length()))
-                                    + 1;
-                            return clientCode + num;
-                        }))
-                .collectList()
-                .map(List::getLast);
+        Field<Integer> bareTaken = DSL.count(DSL.when(SECURITY_CLIENT.CODE.eq(codePrefix), DSL.inline(1)));
+        Field<Integer> highestCounter = DSL.max(
+                DSL.when(tail.likeRegex("^[0-9]+$"), tail.cast(Integer.class)));
 
+        return Mono.from(this.dslContext
+                .select(bareTaken, highestCounter)
+                .from(SECURITY_CLIENT)
+                .where(SECURITY_CLIENT.CODE.startsWith(codePrefix)))
+                .map(r -> {
+                    if (r.value1() == null || r.value1() == 0)
+                        return codePrefix;
+                    Integer highest = r.value2();
+                    return codePrefix + (highest == null ? 1 : highest + 1);
+                })
+                // No rows at all: nothing shares this prefix, so the bare code is free.
+                .defaultIfEmpty(codePrefix);
     }
 
     public Mono<ULong> getSystemClientId() {

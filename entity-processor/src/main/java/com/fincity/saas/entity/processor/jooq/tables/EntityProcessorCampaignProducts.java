@@ -88,7 +88,7 @@ public class EntityProcessorCampaignProducts extends TableImpl<EntityProcessorCa
      * <code>entity_processor.entity_processor_campaign_products.CLIENT_CODE</code>.
      * ClientCode on which this link was created.
      */
-    public final TableField<EntityProcessorCampaignProductsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode on which this link was created.");
+    public final TableField<EntityProcessorCampaignProductsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode on which this link was created.");
 
     /**
      * The column

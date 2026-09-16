@@ -106,7 +106,7 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
     /**
      * The column <code>security.security_client.CODE</code>. Client code
      */
-    public final TableField<SecurityClientRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<SecurityClientRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>security.security_client.NAME</code>. Name of the client

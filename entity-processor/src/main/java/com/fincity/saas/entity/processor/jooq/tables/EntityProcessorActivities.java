@@ -90,7 +90,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.CLIENT_CODE</code>.
      * Client Code who created this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this Activity.");
 
     /**
      * The column
