@@ -87,7 +87,7 @@ public class EntityProcessorAdsets extends TableImpl<EntityProcessorAdsetsRecord
      * <code>entity_processor.entity_processor_adsets.CLIENT_CODE</code>.
      * ClientCode on which this adset created.
      */
-    public final TableField<EntityProcessorAdsetsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode on which this adset created.");
+    public final TableField<EntityProcessorAdsetsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode on which this adset created.");
 
     /**
      * The column

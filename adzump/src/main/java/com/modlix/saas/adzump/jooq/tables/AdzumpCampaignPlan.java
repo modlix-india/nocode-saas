@@ -69,7 +69,7 @@ public class AdzumpCampaignPlan extends TableImpl<AdzumpCampaignPlanRecord> {
      * The column <code>adzump.adzump_campaign_plan.client_code</code>. Client
      * code
      */
-    public final TableField<AdzumpCampaignPlanRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpCampaignPlanRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>adzump.adzump_campaign_plan.schema_version</code>. Plan

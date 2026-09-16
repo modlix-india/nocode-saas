@@ -86,7 +86,7 @@ public class EntityProcessorAds extends TableImpl<EntityProcessorAdsRecord> {
      * <code>entity_processor.entity_processor_ads.CLIENT_CODE</code>.
      * ClientCode on which this ad created.
      */
-    public final TableField<EntityProcessorAdsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode on which this ad created.");
+    public final TableField<EntityProcessorAdsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode on which this ad created.");
 
     /**
      * The column <code>entity_processor.entity_processor_ads.AD_ID</code>.

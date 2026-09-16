@@ -79,7 +79,7 @@ public class EntityProcessorDiagnostics extends TableImpl<EntityProcessorDiagnos
      * <code>entity_processor.entity_processor_diagnostics.CLIENT_CODE</code>.
      * Client Code.
      */
-    public final TableField<EntityProcessorDiagnosticsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code.");
+    public final TableField<EntityProcessorDiagnosticsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code.");
 
     /**
      * The column

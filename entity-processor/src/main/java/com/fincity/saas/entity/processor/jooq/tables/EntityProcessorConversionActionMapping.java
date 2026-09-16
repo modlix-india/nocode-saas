@@ -94,7 +94,7 @@ public class EntityProcessorConversionActionMapping extends TableImpl<EntityProc
      * <code>entity_processor.entity_processor_conversion_action_mapping.CLIENT_CODE</code>.
      * ClientCode this mapping belongs to.
      */
-    public final TableField<EntityProcessorConversionActionMappingRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode this mapping belongs to.");
+    public final TableField<EntityProcessorConversionActionMappingRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode this mapping belongs to.");
 
     /**
      * The column
