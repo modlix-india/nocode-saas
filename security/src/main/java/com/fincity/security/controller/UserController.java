@@ -111,7 +111,13 @@ public class UserController
         return this.service.findUserClients(authRequest, appLevel, request)
                 .flatMapIterable(e -> e)
                 .filter(e -> e.getClient() != null && SecurityClientStatusCode.ACTIVE == e.getClient().getStatusCode())
-                .collectList()
+                // Sorted, because the service fans out per client through flatMap and so
+                // emits in whatever order the lookups happen to resolve — which shifts
+                // between calls on the same account. This list is the sign-in client
+                // picker: a person reads it and clicks a name, so the same workspace has
+                // to sit in the same place every time. UserClient.compareTo orders by
+                // client name, case-insensitively.
+                .collectSortedList()
                 .map(ResponseEntity::ok);
     }
 

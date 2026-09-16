@@ -167,7 +167,12 @@ public class EntityCollectorService extends AbstractConnectionService {
                         mapper.convertValue(response, new TypeReference<>() {}),
                         EntityProcessorCollectorLogStatus.SUCCESS,
                         sMessage),
-                (host, integration, logId, response, responseLog, sMessage, result, uLog) -> Mono.just(result));
+                // justOrEmpty, not just: flatMapMonoWithNull hands this step a null whenever the
+                // forward above completed empty, and a target that answers 2xx with a zero-length
+                // body does exactly that. Mono.just(null) threw an NPE out of the whole intake, so
+                // a lead the target had already accepted still came back to the site as a 500.
+                (host, integration, logId, response, responseLog, sMessage, result, uLog) ->
+                        Mono.justOrEmpty(result));
     }
 
     /**
