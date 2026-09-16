@@ -82,7 +82,7 @@ public class EntityProcessorTaskTypes extends TableImpl<EntityProcessorTaskTypes
      * <code>entity_processor.entity_processor_task_types.CLIENT_CODE</code>.
      * Client Code who created this task type.
      */
-    public final TableField<EntityProcessorTaskTypesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this task type.");
+    public final TableField<EntityProcessorTaskTypesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this task type.");
 
     /**
      * The column

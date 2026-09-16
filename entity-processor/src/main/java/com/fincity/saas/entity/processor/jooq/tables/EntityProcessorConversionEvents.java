@@ -96,7 +96,7 @@ public class EntityProcessorConversionEvents extends TableImpl<EntityProcessorCo
      * <code>entity_processor.entity_processor_conversion_events.CLIENT_CODE</code>.
      * ClientCode this event belongs to.
      */
-    public final TableField<EntityProcessorConversionEventsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode this event belongs to.");
+    public final TableField<EntityProcessorConversionEventsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode this event belongs to.");
 
     /**
      * The column

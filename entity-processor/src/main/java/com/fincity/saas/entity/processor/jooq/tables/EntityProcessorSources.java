@@ -80,7 +80,7 @@ public class EntityProcessorSources extends TableImpl<EntityProcessorSourcesReco
      * <code>entity_processor.entity_processor_sources.CLIENT_CODE</code>.
      * Client Code.
      */
-    public final TableField<EntityProcessorSourcesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code.");
+    public final TableField<EntityProcessorSourcesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code.");
 
     /**
      * The column <code>entity_processor.entity_processor_sources.NAME</code>.

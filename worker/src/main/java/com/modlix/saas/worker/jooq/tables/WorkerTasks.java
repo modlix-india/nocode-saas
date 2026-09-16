@@ -84,7 +84,7 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
      * The column <code>worker.worker_tasks.CLIENT_CODE</code>. Client code for
      * the client who created this task.
      */
-    public final TableField<WorkerTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code for the client who created this task.");
+    public final TableField<WorkerTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code for the client who created this task.");
 
     /**
      * The column <code>worker.worker_tasks.NAME</code>. Name of the job.

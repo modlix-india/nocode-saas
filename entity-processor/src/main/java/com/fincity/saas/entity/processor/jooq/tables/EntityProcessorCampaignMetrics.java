@@ -92,7 +92,7 @@ public class EntityProcessorCampaignMetrics extends TableImpl<EntityProcessorCam
      * <code>entity_processor.entity_processor_campaign_metrics.CLIENT_CODE</code>.
      * Client Code.
      */
-    public final TableField<EntityProcessorCampaignMetricsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code.");
+    public final TableField<EntityProcessorCampaignMetricsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code.");
 
     /**
      * The column

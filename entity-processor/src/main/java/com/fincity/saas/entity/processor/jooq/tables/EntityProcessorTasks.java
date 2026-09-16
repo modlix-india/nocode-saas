@@ -85,7 +85,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.CLIENT_CODE</code>. Client
      * Code who created this task.
      */
-    public final TableField<EntityProcessorTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this task.");
+    public final TableField<EntityProcessorTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this task.");
 
     /**
      * The column <code>entity_processor.entity_processor_tasks.CODE</code>.

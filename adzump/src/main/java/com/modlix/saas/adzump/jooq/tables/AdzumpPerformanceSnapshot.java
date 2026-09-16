@@ -68,7 +68,7 @@ public class AdzumpPerformanceSnapshot extends TableImpl<AdzumpPerformanceSnapsh
      * The column <code>adzump.adzump_performance_snapshot.client_code</code>.
      * Client code
      */
-    public final TableField<AdzumpPerformanceSnapshotRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpPerformanceSnapshotRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column
