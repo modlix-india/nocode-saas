@@ -31,6 +31,49 @@ public class EngineService {
     @Value("${ui.resourceCacheAge:604800}")
     private int cacheAge;
 
+    /**
+     * The plan never leaves the builder.
+     *
+     * `blueprint` is what an object is MEANT to be — the reasoning behind it, the
+     * wording somebody chose, and the record of what was asked for and turned
+     * down. The engine routes serve a live site to whoever loads it, so anything
+     * on the document reaches every visitor: without this, opening a customer's
+     * home page and reading the network panel hands you the argument for why
+     * their pricing section says what it says, plus every request they made that
+     * the product refused.
+     *
+     * It is also dead weight on the hot path. The runtime draws pages from the
+     * component tree and has never had a use for the plan.
+     *
+     * Stripped BEFORE the engine cache is written, not on the way out of it: a
+     * plan that reaches the cache is a plan sitting in Redis for a week, and one
+     * missed seam on the read side then serves it for that whole week.
+     *
+     * A copy, never the object itself. These reads come out of the definition
+     * cache, which hands the same instance to the override machinery and to
+     * transports; nulling the field in place would blank the plan for those too,
+     * everywhere, until the next eviction — and nothing would report it. The
+     * copy is only taken when there is a plan to remove, so every object that
+     * has never been planned costs one null check.
+     */
+    private static <D extends com.fincity.saas.commons.model.dto.AbstractOverridableDTO<D>>
+            ObjectWithUniqueID<D> withoutPlan(
+                    ObjectWithUniqueID<D> wrapped, java.util.function.UnaryOperator<D> copy) {
+
+        if (wrapped == null)
+            return null;
+
+        D object = wrapped.getObject();
+        if (object == null || object.getBlueprint() == null)
+            return wrapped;
+
+        D stripped = copy.apply(object);
+        stripped.setBlueprint(null);
+
+        return new ObjectWithUniqueID<>(stripped, wrapped.getUniqueId())
+                .setHeaders(wrapped.getHeaders());
+    }
+
     public static final String CACHE_NAME_APPLICATION = "applicationOUICache";
     public static final String CACHE_NAME_PAGE = "pageOUICache";
     public static final String CACHE_NAME_STYLE = "styleOUICache";
@@ -85,6 +128,7 @@ public class EngineService {
 
         if (eTag == null || eTag.isEmpty()) {
             return this.appService.read(appCode, appCode, clientCode)
+                    .map(e -> withoutPlan(e, Application::new))
                 .map(e -> {e.getObject().setUrlClientCode(clientCode); return e;})
                     .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)))
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, clientCode,
@@ -101,7 +145,9 @@ public class EngineService {
 
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_APPLICATION + "-" + appCode,
-                        () -> this.appService.read(appCode, appCode, clientCode), clientCode, uid)
+                        () -> this.appService.read(appCode, appCode, clientCode)
+                                .map(e -> withoutPlan(e, Application::new)),
+                        clientCode, uid)
                 .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
                         : ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
                 .defaultIfEmpty(APPLICATION_NOT_FOUND);
@@ -182,6 +228,7 @@ public class EngineService {
                             SecurityContextUtil::getUsersContextAuthentication,
 
                             ca -> this.pageService.read(pageName, appCode, clientCode)
+                                    .map(e -> withoutPlan(e, Page::new))
                                     .map(e -> new ObjectWithUniqueID<>(e.getObject(),
                                             uniqueIdPrefix(ca.isAuthenticated(), draft) + e.getUniqueId())),
 
@@ -205,7 +252,9 @@ public class EngineService {
 
                         (ca, nUid) -> this.cacheService
                                 .cacheValueOrGet(pageCacheName(appCode),
-                                        () -> this.pageService.read(pageName, appCode, clientCode), clientCode, pageName, nUid)
+                                        () -> this.pageService.read(pageName, appCode, clientCode)
+                                                .map(e -> withoutPlan(e, Page::new)),
+                                        clientCode, pageName, nUid)
                                 .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, nUid)
                                         : ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
 

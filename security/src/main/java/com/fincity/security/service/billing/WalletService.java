@@ -423,18 +423,94 @@ public class WalletService
                     BigDecimal rate = config.getAiTokensPerMillion();
                     if (rate == null || rate.signum() <= 0)
                         return noCharge();
-                    BigDecimal tokens = req.weightedTokens().multiply(rate)
-                            .divide(ONE_MILLION, 0, RoundingMode.DOWN);
-                    if (tokens.signum() <= 0)
-                        return noCharge();
-                    String idemKey = "ai:" + req.requestId();
-                    String reason = "AI usage " + req.model();
                     return this.getOrCreateWallet(client.getId(), app.getId())
-                            .flatMap(wallet -> this.applyDebit(wallet, tokens, config, BillingActionKeys.AI_LLM_TOKENS,
-                                    req.weightedTokens(), LocalDate.now(), null, idemKey, reason, null));
+                            .flatMap(wallet -> this.chargeAiOnWallet(wallet, config, rate, req));
                 })
-                .switchIfEmpty(noCharge())
+                // Empty here means the app code, the client code, or - far more often -
+                // the billing config did not resolve, so real AI usage goes unbilled. It
+                // answers 200/charged:false, which is indistinguishable from "covered by
+                // the grant" at the caller, so say so loudly on this side instead.
+                .switchIfEmpty(Mono.defer(() -> {
+                    logger.warn(
+                            "AI usage UNBILLED: no billing config resolved for app={} client={} (tokens={}, model={}, requestId={}). "
+                                    + "Add a security_app_billing_config row with AI_TOKENS_PER_MILLION for this app.",
+                            req.appCode(), req.clientCode(), req.weightedTokens(), req.model(), req.requestId());
+                    return noCharge();
+                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.chargeAi"));
+    }
+
+    /**
+     * Price one AI call against the wallet, spending the monthly free grant first.
+     * <p>
+     * Unlike the 15-minute rent actions - where {@link #charge(ChargeRequest)} is
+     * handed a whole period's quantity and can subtract the grant in one go - AI
+     * arrives one call at a time, so the grant has to be depleted across calls.
+     * Month-to-date consumption is the sum of QUANTITY on this wallet's AI txns for
+     * the current calendar month, which is why a call fully covered by the grant
+     * still writes a zero-token row: without it the grant would never deplete and
+     * AI would be free forever.
+     * <p>
+     * Only the portion of THIS call above the remaining grant is priced, so a call
+     * straddling the boundary is split rather than billed whole or waived whole.
+     * Two concurrent calls can both read the same month-to-date figure and so
+     * over-grant slightly; that favours the customer and is not worth a lock.
+     */
+    private Mono<ChargeResult> chargeAiOnWallet(Wallet wallet, AppBillingConfig config, BigDecimal rate,
+            AiChargeRequest req) {
+
+        LocalDate today = LocalDate.now();
+        String idemKey = "ai:" + req.requestId();
+        String reason = "AI usage " + req.model();
+        BigDecimal used = req.weightedTokens() == null ? BigDecimal.ZERO : req.weightedTokens();
+        BigDecimal grant = config.getFreeAiTokensPerMonth();
+
+        Mono<BigDecimal> consumed = grant == null || grant.signum() <= 0
+                ? Mono.just(BigDecimal.ZERO)
+                : this.txnDAO.sumQuantityBetween(wallet.getId(), BillingActionKeys.AI_LLM_TOKENS,
+                        today.withDayOfMonth(1), YearMonth.from(today).atEndOfMonth());
+
+        return consumed.flatMap(mtd -> {
+            BigDecimal free = grant == null ? BigDecimal.ZERO : grant.max(BigDecimal.ZERO);
+            // Billable slice of this call = what crosses the grant line now, i.e. the
+            // over-grant total after this call minus the over-grant total before it.
+            BigDecimal billable = mtd.add(used).subtract(free).max(BigDecimal.ZERO)
+                    .subtract(mtd.subtract(free).max(BigDecimal.ZERO));
+            BigDecimal tokens = billable.multiply(rate).divide(ONE_MILLION, 0, RoundingMode.DOWN);
+
+            if (tokens.signum() <= 0)
+                return this.recordUnbilledAiUsage(wallet, used, today, idemKey, reason);
+
+            return this.applyDebit(wallet, tokens, config, BillingActionKeys.AI_LLM_TOKENS,
+                    used, today, null, idemKey, reason, null);
+        });
+    }
+
+    /**
+     * Record AI usage that costs nothing this call - covered by the monthly free
+     * grant, or priced below one token and rounded down. The row carries the full
+     * weighted-token count as QUANTITY so it still depletes the grant and still
+     * shows up in usage reporting; TOKENS is zero, so no debit is applied and the
+     * balance is untouched. Idempotent on the same key as a real charge.
+     */
+    private Mono<ChargeResult> recordUnbilledAiUsage(Wallet wallet, BigDecimal quantity, LocalDate day,
+            String idemKey, String reason) {
+
+        WalletTransaction txn = new WalletTransaction()
+                .setWalletId(wallet.getId())
+                .setType(SecurityWalletTransactionType.DEBIT)
+                .setTokens(BigDecimal.ZERO)
+                .setBalanceAfter(wallet.getBalance())
+                .setActionKey(BillingActionKeys.AI_LLM_TOKENS)
+                .setAppId(wallet.getAppId())
+                .setQuantity(quantity)
+                .setChargeDate(day)
+                .setIdempotencyKey(idemKey)
+                .setReason(reason);
+
+        return this.txnDAO.recordTxn(txn)
+                .thenReturn(new ChargeResult(false, wallet.getStatus() == SecurityWalletStatus.SUSPENDED, false,
+                        wallet.getBalance()));
     }
 
     /**
