@@ -67,7 +67,7 @@ public class AdzumpMilestoneMapping extends TableImpl<AdzumpMilestoneMappingReco
      * The column <code>adzump.adzump_milestone_mapping.client_code</code>.
      * Client code
      */
-    public final TableField<AdzumpMilestoneMappingRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpMilestoneMappingRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>adzump.adzump_milestone_mapping.scope</code>. Config

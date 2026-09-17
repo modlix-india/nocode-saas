@@ -74,7 +74,7 @@ public class EntityProcessorTags extends TableImpl<EntityProcessorTagsRecord> {
      * <code>entity_processor.entity_processor_tags.CLIENT_CODE</code>. Client
      * Code.
      */
-    public final TableField<EntityProcessorTagsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code.");
+    public final TableField<EntityProcessorTagsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code.");
 
     /**
      * The column <code>entity_processor.entity_processor_tags.NAME</code>.

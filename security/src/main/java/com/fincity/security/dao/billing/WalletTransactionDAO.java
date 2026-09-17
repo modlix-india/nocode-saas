@@ -2,10 +2,12 @@ package com.fincity.security.dao.billing;
 
 import static com.fincity.security.jooq.Tables.SECURITY_WALLET_TRANSACTION;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 import org.jooq.Record1;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
@@ -47,6 +49,24 @@ public class WalletTransactionDAO
                 .set(SECURITY_WALLET_TRANSACTION.CREATED_BY, t.getCreatedBy())
                 .onDuplicateKeyIgnore())
                 .map(rows -> rows > 0);
+    }
+
+    /**
+     * Total {@code QUANTITY} recorded for a wallet+action between two dates, both
+     * inclusive. Used by the AI path to deplete the monthly free grant: every AI
+     * txn carries the call's full weighted-token count as QUANTITY, including the
+     * zero-token rows written while the grant still covers the usage, so summing
+     * QUANTITY over the month is the month-to-date consumption.
+     */
+    public Mono<BigDecimal> sumQuantityBetween(ULong walletId, String actionKey, LocalDate from, LocalDate to) {
+        return Mono.from(this.dslContext
+                .select(DSL.coalesce(DSL.sum(SECURITY_WALLET_TRANSACTION.QUANTITY), BigDecimal.ZERO))
+                .from(SECURITY_WALLET_TRANSACTION)
+                .where(SECURITY_WALLET_TRANSACTION.WALLET_ID.eq(walletId))
+                .and(SECURITY_WALLET_TRANSACTION.ACTION_KEY.eq(actionKey))
+                .and(SECURITY_WALLET_TRANSACTION.CHARGE_DATE.between(from, to)))
+                .map(Record1::value1)
+                .defaultIfEmpty(BigDecimal.ZERO);
     }
 
     /** Window indices (0..95) already charged for a wallet+action on a day. */

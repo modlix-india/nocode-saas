@@ -83,7 +83,7 @@ public class EntityProcessorWhatsappOutbox extends TableImpl<EntityProcessorWhat
      * <code>entity_processor.entity_processor_whatsapp_outbox.CLIENT_CODE</code>.
      * Client Code this queued message belongs to.
      */
-    public final TableField<EntityProcessorWhatsappOutboxRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code this queued message belongs to.");
+    public final TableField<EntityProcessorWhatsappOutboxRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code this queued message belongs to.");
 
     /**
      * The column

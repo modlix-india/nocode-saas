@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -19,6 +20,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.billing.WalletDAO;
+import com.fincity.security.model.billing.AiChargeRequest;
 import com.fincity.security.model.billing.BillingActionKeys;
 import com.fincity.security.model.billing.ChargeRequest;
 
@@ -129,6 +131,104 @@ class InternalBillingControllerIntegrationTest extends AbstractIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$.status").isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("POST /charge-ai inside the monthly free grant debits nothing but records the usage")
+    void aiChargeWithinGrantIsFreeButRecorded() {
+        seedAiRates(new BigDecimal("1000"), new BigDecimal("1000000"));
+
+        chargeAi("ai-free-1", new BigDecimal("600000"))
+                .jsonPath("$.charged").isEqualTo(false);
+
+        // Nothing debited...
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(1000)));
+        // ...but the call is on the ledger at zero tokens, so the grant depletes.
+        assertEquals(0, aiQuantityThisMonth().compareTo(new BigDecimal("600000")));
+        assertEquals(0, aiTokensThisMonth().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    @DisplayName("POST /charge-ai splits the call that straddles the grant boundary")
+    void aiChargeStraddlingGrantBillsOnlyTheExcess() {
+        seedAiRates(new BigDecimal("1000"), new BigDecimal("1000000"));
+
+        chargeAi("ai-split-1", new BigDecimal("600000")).jsonPath("$.charged").isEqualTo(false);
+        // 600k already used, 400k of grant left: only the last 200k of this call is billable.
+        chargeAi("ai-split-2", new BigDecimal("600000")).jsonPath("$.charged").isEqualTo(true);
+
+        // 200,000 weighted * 1000 / 1M = 200 tokens.
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(800)));
+
+        // Grant spent, so the next call is billed whole: 500k * 1000 / 1M = 500.
+        chargeAi("ai-split-3", new BigDecimal("500000")).jsonPath("$.charged").isEqualTo(true);
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(300)));
+    }
+
+    @Test
+    @DisplayName("POST /charge-ai is idempotent per requestId on both the billed and the free path")
+    void aiChargeIsIdempotent() {
+        seedAiRates(new BigDecimal("1000"), new BigDecimal("100000"));
+
+        // Free path replayed: the second call must not add a second usage row, or the
+        // grant would deplete twice as fast on any retry.
+        chargeAi("ai-idem-free", new BigDecimal("50000"));
+        chargeAi("ai-idem-free", new BigDecimal("50000"));
+        assertEquals(0, aiQuantityThisMonth().compareTo(new BigDecimal("50000")));
+
+        // Billed path replayed: 150k used total, 100k granted -> 50k billable -> 50 tokens.
+        chargeAi("ai-idem-paid", new BigDecimal("100000"));
+        chargeAi("ai-idem-paid", new BigDecimal("100000"));
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(950)));
+    }
+
+    @Test
+    @DisplayName("POST /charge-ai with no billing config for the app charges nothing")
+    void aiChargeWithoutConfigIsNoCharge() {
+        // The app has a config row, but no AI rate on it: the AI dimension is simply
+        // not sold, so usage is free rather than an error.
+        chargeAi("ai-norate-1", new BigDecimal("5000000"))
+                .jsonPath("$.charged").isEqualTo(false);
+        assertEquals(0, balance().compareTo(BigDecimal.valueOf(1000)));
+    }
+
+    private org.springframework.test.web.reactive.server.WebTestClient.BodyContentSpec chargeAi(
+            String requestId, BigDecimal weightedTokens) {
+        return client.post().uri(BASE + "/charge-ai")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new AiChargeRequest("MINT", "intapp", "claude-opus-5", weightedTokens, requestId, "sess"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody();
+    }
+
+    /** Put AI pricing on the (cClient, appId) config row seeded in setUp. */
+    private void seedAiRates(BigDecimal ratePerMillion, BigDecimal freePerMonth) {
+        databaseClient.sql("UPDATE security_app_billing_config "
+                + "SET AI_TOKENS_PER_MILLION = :rate, FREE_AI_TOKENS_PER_MONTH = :free "
+                + "WHERE CLIENT_ID = :c AND APP_ID = :app")
+                .bind("rate", ratePerMillion).bind("free", freePerMonth)
+                .bind("c", cClient.longValue()).bind("app", appId.longValue())
+                .then().block();
+    }
+
+    private BigDecimal aiSumThisMonth(String column) {
+        LocalDate today = LocalDate.now();
+        return databaseClient.sql("SELECT COALESCE(SUM(" + column + "), 0) AS total "
+                + "FROM security_wallet_transaction WHERE ACTION_KEY = :key AND CHARGE_DATE BETWEEN :from AND :to")
+                .bind("key", BillingActionKeys.AI_LLM_TOKENS)
+                .bind("from", today.withDayOfMonth(1))
+                .bind("to", YearMonth.from(today).atEndOfMonth())
+                .map(row -> row.get("total", BigDecimal.class))
+                .one().block();
+    }
+
+    private BigDecimal aiQuantityThisMonth() {
+        return aiSumThisMonth("QUANTITY");
+    }
+
+    private BigDecimal aiTokensThisMonth() {
+        return aiSumThisMonth("TOKENS");
     }
 
     private BigDecimal balance() {

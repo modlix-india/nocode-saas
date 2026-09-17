@@ -74,7 +74,7 @@ public class MessageMessageWebhooks extends TableImpl<MessageMessageWebhooksReco
      * The column <code>message.message_message_webhooks.CLIENT_CODE</code>.
      * Client Code related to this message.
      */
-    public final TableField<MessageMessageWebhooksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this message.");
+    public final TableField<MessageMessageWebhooksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this message.");
 
     /**
      * The column <code>message.message_message_webhooks.USER_ID</code>. ID of

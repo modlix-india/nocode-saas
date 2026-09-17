@@ -67,7 +67,7 @@ public class AdzumpAsset extends TableImpl<AdzumpAssetRecord> {
      * The column <code>adzump.adzump_asset.client_code</code>. Client code
      * (tenant-private)
      */
-    public final TableField<AdzumpAssetRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code (tenant-private)");
+    public final TableField<AdzumpAssetRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code (tenant-private)");
 
     /**
      * The column <code>adzump.adzump_asset.kind</code>. Asset medium kind

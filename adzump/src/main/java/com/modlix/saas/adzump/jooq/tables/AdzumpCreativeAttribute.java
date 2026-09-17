@@ -64,7 +64,7 @@ public class AdzumpCreativeAttribute extends TableImpl<AdzumpCreativeAttributeRe
      * The column <code>adzump.adzump_creative_attribute.client_code</code>.
      * Client code
      */
-    public final TableField<AdzumpCreativeAttributeRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<AdzumpCreativeAttributeRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>adzump.adzump_creative_attribute.creative_id</code>.

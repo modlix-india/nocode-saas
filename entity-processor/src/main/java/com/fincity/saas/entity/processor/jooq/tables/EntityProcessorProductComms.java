@@ -81,7 +81,7 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
      * <code>entity_processor.entity_processor_product_comms.CLIENT_CODE</code>.
      * Client Code who added this Product Comm.
      */
-    public final TableField<EntityProcessorProductCommsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who added this Product Comm.");
+    public final TableField<EntityProcessorProductCommsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who added this Product Comm.");
 
     /**
      * The column

@@ -6,6 +6,7 @@ import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.dto.RestRequest;
 import com.fincity.saas.commons.core.dto.RestResponse;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
+import com.fincity.saas.commons.core.util.OutboundUrlUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.webclient.CustomUriBuilderFactory;
@@ -21,6 +22,9 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -34,6 +38,7 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
@@ -55,6 +60,40 @@ public class BasicRestService extends AbstractRestService {
         }
     }
 
+    /**
+     * Refuse an outbound call whose target resolves inside our own network.
+     *
+     * <b>Every REST subtype funnels through here.</b> {@code RestAuthService} and
+     * {@code OAuth2RestService} both fetch a token and then delegate the actual
+     * call to {@code basicRestService.call}, so this one place covers all three.
+     *
+     * Switchable because it is on the hot path of every REST call in every app.
+     * A census of the 43 connections in this environment found every target to
+     * be a public host name, so nothing legitimate is expected to trip it -- but
+     * a developer pointing a connection at their own machine will, and that is
+     * what the property is for.
+     */
+    @Value("${core.rest.blockPrivateTargets:true}")
+    private boolean blockPrivateTargets;
+
+    private static final Logger logger = LoggerFactory.getLogger(BasicRestService.class);
+
+    private Mono<Void> guardTarget(String url) {
+        if (!blockPrivateTargets) return Mono.empty();
+
+        // `validateResolved` does a DNS lookup, which blocks. Running it on the
+        // event loop would stall every other request sharing that thread.
+        return Mono.<Void>fromRunnable(() -> OutboundUrlUtil.validateResolved(url))
+                .subscribeOn(Schedulers.boundedElastic())
+                // A refusal here reaches the caller as a KIRun step error, which
+                // is swallowed by any function without an error branch -- so
+                // without this line a blocked call is indistinguishable from a
+                // call that simply returned nothing, in the logs and on screen.
+                .doOnError(GenericException.class,
+                        e -> logger.warn("Outbound call refused: {}", e.getMessage()))
+                .then();
+    }
+
     @Override
     public Mono<RestResponse> call(Connection connection, RestRequest request, final boolean fileDownload) {
         return FlatMapUtil.flatMapMono(
@@ -66,7 +105,11 @@ public class BasicRestService extends AbstractRestService {
                                 .switchIfEmpty(msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                                        connection.getName())),
+                                        connection.getName()))
+                                // The composed URL, which is the only place the
+                                // real target is known: a connection with no
+                                // baseUrl takes it verbatim from the request.
+                                .flatMap(tup -> this.guardTarget(tup.getT1()).thenReturn(tup)),
                         tup -> {
                             HttpHeaders headers = tup.getT2();
 

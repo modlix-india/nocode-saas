@@ -86,7 +86,7 @@ public class EntityProcessorCalls extends TableImpl<EntityProcessorCallsRecord> 
      * <code>entity_processor.entity_processor_calls.CLIENT_CODE</code>. Client
      * Code related to this call.
      */
-    public final TableField<EntityProcessorCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this call.");
+    public final TableField<EntityProcessorCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this call.");
 
     /**
      * The column <code>entity_processor.entity_processor_calls.USER_ID</code>.

@@ -6,8 +6,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import java.util.Map;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -50,6 +53,25 @@ public class AbstractOverridableDataController<D extends AbstractOverridableDTO<
         final Pageable finPageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID)
                 : pageable);
         return this.service.readPageFilterLRO(eager, clientOnly, finPageable, request.getQueryParams())
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Write only this object's plan.
+     *
+     * Separate from PUT because a plan is not content. A full PUT of a page
+     * increments every per-component version, which is exactly what a blueprint
+     * entry fingerprints itself against, so saving a plan that way invalidated
+     * the plan in the same write. See `updateBlueprint` for why detecting that
+     * case inside the PUT could not be made reliable.
+     *
+     * The body is the whole plan, and an empty object clears it.
+     */
+    @PatchMapping("/{id}/blueprint")
+    public Mono<ResponseEntity<D>> updateBlueprint(@PathVariable String id,
+            @RequestBody(required = false) Map<String, Object> blueprint) {
+
+        return this.service.updateBlueprint(id, blueprint)
                 .map(ResponseEntity::ok);
     }
 

@@ -71,7 +71,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
      * The column <code>message.message_messages.CLIENT_CODE</code>. Client Code
      * related to this message.
      */
-    public final TableField<MessageMessagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this message.");
+    public final TableField<MessageMessagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this message.");
 
     /**
      * The column <code>message.message_messages.USER_ID</code>. ID of the user

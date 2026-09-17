@@ -72,7 +72,7 @@ public class CoreTokens extends TableImpl<CoreTokensRecord> {
     /**
      * The column <code>core.core_tokens.CLIENT_CODE</code>. Client Code
      */
-    public final TableField<CoreTokensRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code");
+    public final TableField<CoreTokensRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code");
 
     /**
      * The column <code>core.core_tokens.APP_CODE</code>. App Code
