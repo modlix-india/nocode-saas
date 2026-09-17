@@ -739,7 +739,15 @@ public class ClientRegistrationService {
     private Mono<AuthenticationResponse> getClientAuthenticationResponse(ClientRegistrationRequest registrationRequest,
                                                                          ULong userId, String password, ServerHttpRequest request, ServerHttpResponse response) {
 
-        AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId);
+        // Registration is only ever reached from a browser, and the session it hands back is
+        // the user's FIRST one - so it has to be a cookie session as well as a bearer one.
+        // `AuthenticationRequest.cookie` defaults to false and nothing here used to change it,
+        // so a freshly registered user got a token in localStorage and no cookie: the first
+        // page that relies on the cookie asked them to sign in again, on the account they had
+        // just created. Sign-in does not have this problem because UIEngine.Login sets cookie
+        // itself. The access token is still returned in the body either way, so this adds the
+        // cookie without taking anything away.
+        AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId).setCookie(true);
 
         if (registrationRequest.getInputPassType() != null)
             return switch (registrationRequest.getInputPassType()) {
