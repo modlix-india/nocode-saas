@@ -4,6 +4,8 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.*;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -208,6 +210,66 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 .flatMap(this::evictRecursively)
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                        this.getObjectName()));
+    }
+
+    /**
+     * Write ONLY the plan, leaving the object's content untouched.
+     *
+     * A blueprint is a field on the object it describes, so the obvious way to
+     * write one is a read-modify-write of the whole document through update().
+     * That is wrong here, and the reason is specific rather than stylistic:
+     * `PageService.updatableEntity` increments every per-component version on a
+     * full PUT, so writing a plan through update() moves the very counters the
+     * plan records itself against. Every entry stamped as reconciled was stale
+     * the instant it was saved, and the board reported a page nobody had touched
+     * as edited by hand.
+     *
+     * The first attempt at a fix compared the incoming componentDefinition with
+     * the stored one and skipped the bump when they matched. That cannot be made
+     * to work: one side has been through Mongo and the other through Jackson, and
+     * a structural equality between those two is not reliable in either
+     * direction — it wrongly reported a change often enough to leave false drift
+     * on the board, and a wrong answer the other way would have silently weakened
+     * the concurrency guard the bump exists for.
+     *
+     * So the plan gets its own door. Identity, content and component versions all
+     * come from the stored document and are never taken from a caller, which also
+     * means this cannot be used to edit anything but the plan. Only the document
+     * version moves, because the document did change.
+     *
+     * Access is the object's own UPDATE check against the STORED appCode and
+     * clientCode, for the reason spelled out on update(): authorising codes from
+     * the request body while keying the write on the id is how a caller reaches
+     * somebody else's document.
+     */
+    public Mono<D> updateBlueprint(String id, Map<String, Object> blueprint) { // NOSONAR
+
+        return FlatMapUtil.<ContextAuthentication, D, Boolean, D, D>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> StringUtil.safeIsBlank(id) ? Mono.empty() : this.repo.findById(id),
+
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> {
+
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.empty();
+
+                    stored.setBlueprint(blueprint);
+                    stored.setVersion(stored.getVersion() + 1);
+                    stored.setUpdatedAt(LocalDateTime.now(ZoneId.of("UTC")));
+
+                    return this.repo.save(stored);
+                },
+
+                (ca, stored, hasAccess, saved) -> this.evictRecursively(saved))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).updateBlueprint"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
                         this.getObjectName()));
     }
 
