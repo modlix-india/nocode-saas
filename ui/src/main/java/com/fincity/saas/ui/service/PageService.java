@@ -64,6 +64,14 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
 
                     // Full page PUT: increment all per-component and per-event versions
                     // so any concurrent component-level PATCHes get a 412 on retry.
+                    //
+                    // Unconditional on purpose. Skipping it when the incoming components
+                    // "look unchanged" was tried and reverted: one side of that
+                    // comparison has been through Mongo and the other through Jackson,
+                    // and structural equality between those two is wrong in both
+                    // directions often enough to matter. Anything that must write a page
+                    // WITHOUT disturbing these counters needs its own route rather than
+                    // a cleverer PUT — `PATCH /{id}/blueprint` is the first of those.
                     incrementAllComponentVersions(existing);
 
                     return Mono.just(existing);
