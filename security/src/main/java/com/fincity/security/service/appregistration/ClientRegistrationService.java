@@ -324,12 +324,7 @@ public class ClientRegistrationService {
                                 password)
                                 : Mono.just(Boolean.TRUE),
 
-                        passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
-                                : this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
-                                .filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
-                                        SecurityMessageResourceService.USER_ALREADY_EXISTS,
-                                        registrationRequest.getIdentifier())),
+                        passValid -> this.checkDuplicateIdentity(ca, registrationRequest),
 
                         (passValid, exists) -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
@@ -348,6 +343,35 @@ public class ClientRegistrationService {
                                 .checkSubDomainAvailability(registrationRequest.getSubDomain(),
                                         registrationRequest.getSubDomainSuffix(), registrationRequest.isBusinessClient()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
+    }
+
+    /**
+     * Refuse a registration that would duplicate an identity already standing on its own.
+     * <p>
+     * This used to run for individual clients only: {@code isBusinessClient} short-circuited
+     * to TRUE, so a business registration had no duplicate check of any kind. On an app whose
+     * usage type <em>requires</em> a business client -- every B2B and B2B2B app, so most of
+     * them -- that meant the check could never run at all, and a caller retrying the endpoint
+     * minted a fresh client and a fresh user every single time.
+     * <p>
+     * The two sides cannot ask the same question, though. An individual client is one person,
+     * so a second row is always a duplicate. A business client is a company, and a person who
+     * belongs to someone else's company may legitimately register their own; what they may not
+     * do is register a second one on top of a company they already own. So INDV refuses on
+     * existence, BUS refuses on ownership.
+     */
+    private Mono<Boolean> checkDuplicateIdentity(ContextAuthentication ca,
+                                                 ClientRegistrationRequest registrationRequest) {
+
+        Mono<Boolean> alreadyStanding = registrationRequest.isBusinessClient()
+                ? this.userService.checkBusinessClientOwnerExists(ca.getUrlClientCode(), registrationRequest)
+                : this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest);
+
+        return alreadyStanding.filter(e -> !e)
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.USER_ALREADY_EXISTS,
+                        registrationRequest.getIdentifier()));
     }
 
     private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType, // NOSONAR
