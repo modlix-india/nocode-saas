@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -283,6 +284,31 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 authenticationIdentifierType,
                 SecurityClientStatusCode.ACTIVE,
                 this.getNonDeletedUserStatusCodes());
+    }
+
+    /**
+     * Every non-deleted user for this identity, without the "exactly one or nothing" collapse
+     * that {@link #findUserNClient} applies.
+     * <p>
+     * That collapse is the right answer for password sign-in, which has no way to choose
+     * between two rows and must not guess. It is the wrong answer for social sign-in, which
+     * has to tell "this identity is unknown here" apart from "this identity is duplicated
+     * here" -- the two used to be the same empty Mono, so the caller registered again and
+     * made a third row. Pass {@code appCode} to ask what this app can see, or null to ask
+     * what exists at all under this client.
+     */
+    public Mono<List<User>> getUsersForIdentity(
+            String userName,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType) {
+
+        return this.dao.getAllUsersBy(
+                userName, clientCode, appCode, authenticationIdentifierType, this.getNonDeletedUserStatusCodes());
+    }
+
+    public Mono<Set<ULong>> getOwnerUserIds(Collection<ULong> userIds) {
+        return this.dao.getOwnerUserIds(userIds);
     }
 
     public Mono<Tuple3<Client, Client, User>> findUserNClient(
@@ -1724,6 +1750,30 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .getClientId(urlClientCode)
                 .flatMap(clientId -> this.dao.checkUserExists(
                         clientId, request.getUserName(), request.getEmailId(), request.getPhoneNumber(), "INDV"));
+    }
+
+    /**
+     * Does this identity already OWN a business client under the URL client?
+     * <p>
+     * The individual check above refuses any second row outright. A business registration
+     * cannot: someone who belongs to another company's client, with no client of their own,
+     * is entitled to register one. What they are not entitled to is a second one, and that is
+     * the case this answers -- existing rows are looked up hierarchy-wide and app-blind, the
+     * same reach as the INDV check, then filtered to the ones holding Owner.
+     * <p>
+     * Registration previously skipped the duplicate check entirely for business clients, so a
+     * caller that kept retrying kept getting fresh clients. This is the backstop for that
+     * independent of who is calling; {@code AuthenticationService.authenticateWSocial} makes
+     * the same decision earlier, so that the browser is told to sign in rather than refused.
+     */
+    public Mono<Boolean> checkBusinessClientOwnerExists(String urlClientCode, ClientRegistrationRequest request) {
+        return this.clientService
+                .getClientId(urlClientCode)
+                .flatMap(clientId -> this.dao.getUserIdsExisting(
+                        clientId, request.getUserName(), request.getEmailId(), request.getPhoneNumber(), "BUS"))
+                .flatMap(this.dao::getOwnerUserIds)
+                .map(owners -> !owners.isEmpty())
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<TokenObject> makeOneTimeToken(
