@@ -14,6 +14,7 @@ import static com.fincity.security.jooq.tables.SecurityV2Role.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -62,6 +64,7 @@ import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityV2RoleRole;
 import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
@@ -76,6 +79,12 @@ import reactor.util.context.Context;
 public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+
+    /** The role's own name, as opposed to the authority token {@link #OWNER_ROLE} built from it. */
+    private static final String OWNER_ROLE_NAME = "Owner";
+
+    /** How many rows sharing one identity are worth looking at before deciding what to do. */
+    private static final int DUPLICATE_IDENTITY_SCAN_LIMIT = 25;
 
     private final PasswordEncoder encoder;
     private final ClientDAO clientDAO;
@@ -339,6 +348,48 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(e -> e.value1() > 0);
     }
 
+    /**
+     * The users {@link #checkUserExists} would have counted, as ids.
+     * <p>
+     * Same hierarchy, same identity conditions, same exclusion of deleted rows: the difference
+     * is that a caller which has to decide something about those rows -- whether any of them
+     * owns a client, say -- cannot do it from a boolean.
+     */
+    public Mono<Set<ULong>> getUserIdsExisting(ULong managingClientId, String userName, String emailId,
+            String phoneNumber, String typeCode) {
+
+        if (managingClientId == null)
+            return Mono.just(Set.of());
+
+        List<Condition> userConditions = new ArrayList<>();
+
+        if (typeCode != null)
+            userConditions.add(SECURITY_CLIENT.TYPE_CODE.in(typeCode));
+
+        List<Condition> availabilityConditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
+
+        if (availabilityConditions.isEmpty())
+            return Mono.just(Set.of());
+
+        userConditions.add(SECURITY_USER.CLIENT_ID.in(
+                this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                        .from(SECURITY_CLIENT_HIERARCHY)
+                        .where(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId))));
+
+        userConditions.add(DSL.and(availabilityConditions));
+
+        userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+        return Flux.from(
+                this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER)
+                        .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+                        .where(DSL.and(userConditions))
+                        .limit(DUPLICATE_IDENTITY_SCAN_LIMIT))
+                .map(Record1::value1)
+                .collect(Collectors.toSet())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getUserIdsExisting"));
+    }
+
     public Mono<Boolean> checkUserExistsUnderManagingClient(
             ULong managingClientId,
             boolean includeDirectChildren,
@@ -498,6 +549,79 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .flatMapMany(Flux::from)
                 .map(e -> e.into(User.class))
                 .collectList();
+    }
+
+    /**
+     * Every user matching this identity, not just the first two.
+     * <p>
+     * {@link #getUsersBy} caps at two because its caller only wants to know "exactly one or
+     * not", and collapses anything else to empty. Deciding what to do about a duplicated
+     * identity needs the rows themselves: which of them owns a client, and which can reach
+     * this app. Capped all the same, because this runs on an unauthenticated endpoint and the
+     * decision does not get better with more rows.
+     */
+    public Mono<List<User>> getAllUsersBy(String userName, String clientCode, String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityUserStatusCode... userStatusCodes) {
+
+        SelectConditionStep<Record> query = this.getAllUsersPerAppQuery(userName, null, clientCode, appCode,
+                authenticationIdentifierType, null, userStatusCodes, SECURITY_USER.fields());
+
+        SelectLimitPercentStep<Record> limitQuery = query.limit(DUPLICATE_IDENTITY_SCAN_LIMIT);
+
+        return Mono.just(limitQuery)
+                .flatMap(LogUtil.logIfDebugKey(logger, "All users query : {}", limitQuery.toString()))
+                .flatMapMany(Flux::from)
+                .map(e -> e.into(User.class))
+                .collectList();
+    }
+
+    /**
+     * Which of these users hold the Owner role, by either route that can grant it.
+     * <p>
+     * Registration writes to two unrelated tables: {@code addDefaultRoles} to
+     * {@code security_v2_user_role} and {@code addDefaultProfiles} to
+     * {@code security_profile_user}. The token's {@code Authorities.ROLE_Owner} is built only
+     * from the first, and {@link #checkIfUserIsOwner} reads only the second, so either one
+     * alone answers false for an owner granted by the other path. Nothing keeps the two in
+     * sync, and a false answer here means a duplicate client gets created, so this asks both
+     * and takes the union. Sub-roles count, matching how the token is assembled.
+     */
+    public Mono<Set<ULong>> getOwnerUserIds(Collection<ULong> userIds) {
+
+        if (userIds == null || userIds.isEmpty())
+            return Mono.just(Set.of());
+
+        var profileOwners = this.dslContext.select(SECURITY_PROFILE_USER.USER_ID)
+                .from(SECURITY_PROFILE_USER)
+                .join(SECURITY_PROFILE_ROLE)
+                .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .join(SECURITY_V2_ROLE)
+                .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                .where(SECURITY_PROFILE_USER.USER_ID.in(userIds)
+                        .and(SECURITY_V2_ROLE.NAME.eq(OWNER_ROLE_NAME)));
+
+        var directRoleOwners = this.dslContext.select(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID)
+                .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                .join(SECURITY_V2_ROLE)
+                .on(SECURITY_V2_ROLE.ID.eq(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID))
+                .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.in(userIds)
+                        .and(SECURITY_V2_ROLE.NAME.eq(OWNER_ROLE_NAME)));
+
+        var nestedRoleOwners = this.dslContext.select(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID)
+                .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                .join(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
+                .on(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.ROLE_ID
+                        .eq(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID))
+                .join(SECURITY_V2_ROLE)
+                .on(SECURITY_V2_ROLE.ID.eq(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
+                .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.in(userIds)
+                        .and(SECURITY_V2_ROLE.NAME.eq(OWNER_ROLE_NAME)));
+
+        return Flux.from(profileOwners.union(directRoleOwners).union(nestedRoleOwners))
+                .map(Record1::value1)
+                .collect(Collectors.toSet())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getOwnerUserIds"));
     }
 
     private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
@@ -779,7 +903,7 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .leftJoin(SECURITY_V2_ROLE)
                 .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                 .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
-                .and(SECURITY_V2_ROLE.NAME.eq("Owner"))
+                .and(SECURITY_V2_ROLE.NAME.eq(OWNER_ROLE_NAME))
                 .limit(1))
                 .map(Objects::nonNull)
                 .defaultIfEmpty(false);
@@ -817,7 +941,7 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .join(SECURITY_V2_ROLE)
                 .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                 .where(DSL.and(
-                        SECURITY_V2_ROLE.NAME.eq("Owner"),
+                        SECURITY_V2_ROLE.NAME.eq(OWNER_ROLE_NAME),
                         SECURITY_USER.CLIENT_ID.eq(clientId),
                         SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE))))
                 .map(record -> record.into(User.class))

@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -63,6 +64,7 @@ import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 import com.fincity.security.util.UserAgentInfo;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -342,12 +344,7 @@ public class AuthenticationService implements IAuthenticationService {
         if (authRequest.getComputedIdentifierType() == null)
             authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
 
-        Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNClient(
-                authRequest.getUserName(),
-                authRequest.getUserId(),
-                clientCode,
-                appCode,
-                authRequest.getComputedIdentifierType());
+        Mono<Tuple3<Client, Client, User>> userClientMono = this.resolveSocialUser(authRequest, clientCode, appCode);
 
         return userClientMono
                 .flatMap(userTup -> FlatMapUtil.flatMapMono(
@@ -398,16 +395,162 @@ public class AuthenticationService implements IAuthenticationService {
                                 .consumeState(appRegIntegrationToken.getState())
                                 .thenReturn(auth))
                         .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWSocial")))
-                .switchIfEmpty(Mono.defer(() -> this
-                        // Deliberately NOT authenticateUserForHavingApp. That looks for any app
-                        // the user has a profile in and signs them into THAT one, so a social
-                        // sign-in on an app the user has never used answered 200 with a token
-                        // minted for a different app: the caller banks it, the browser sits on
-                        // this app's origin, and the authorities belong somewhere else. The
-                        // honest answer is that this app does not know this user, which is what
-                        // tells the caller to register them here.
-                        .authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED,
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg))));
+                .switchIfEmpty(Mono.defer(() -> this.socialSignInRefusal(authRequest, clientCode)));
+    }
+
+    /**
+     * Which existing user, if any, this social arrival signs in as.
+     * <p>
+     * {@code findNonDeletedUserNClient} answers "exactly one row or nothing", and the nothing
+     * covers two opposite situations: nobody here by that name, and several. Social sign-in
+     * cannot treat those alike. The caller's documented response to a refusal is to register,
+     * so answering "nothing" to a duplicated identity created another client, which made the
+     * next attempt worse -- the six clients one dev account accumulated in under an hour were
+     * this loop, not six sign-ups.
+     * <p>
+     * A single match still signs in exactly as before. Several means the identity is already
+     * duplicated, and the tie is broken in favour of a user who OWNS a client: registering
+     * again would give an owner a second company, which is the thing worth refusing. An
+     * identity that owns nothing falls through to empty and is registered, because someone who
+     * only belongs to another company's client is entitled to a client of their own.
+     */
+    private Mono<Tuple3<Client, Client, User>> resolveSocialUser(
+            AuthenticationRequest authRequest, String clientCode, String appCode) {
+
+        return this.userService
+                .getUsersForIdentity(
+                        authRequest.getUserName(), clientCode, appCode, authRequest.getComputedIdentifierType())
+                .flatMap(candidates -> {
+
+                    if (candidates.isEmpty())
+                        return Mono.empty();
+
+                    if (candidates.size() == 1)
+                        return this.findSocialUserById(authRequest, clientCode, appCode,
+                                candidates.getFirst().getId());
+
+                    return this.pickOwnerAmong(candidates, appCode)
+                            .flatMap(picked -> this.findSocialUserById(authRequest, clientCode, appCode,
+                                    picked.getId()));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resolveSocialUser"));
+    }
+
+    /**
+     * Re-runs the ordinary lookup narrowed to one user, so everything downstream -- client
+     * resolution, authorities, the managing-client tuple -- is built exactly as it always was.
+     */
+    private Mono<Tuple3<Client, Client, User>> findSocialUserById(
+            AuthenticationRequest authRequest, String clientCode, String appCode, ULong userId) {
+
+        return this.userService.findNonDeletedUserNClient(
+                authRequest.getUserName(), userId, clientCode, appCode, authRequest.getComputedIdentifierType());
+    }
+
+    /**
+     * The owner to sign in as, when one identity has several rows.
+     * <p>
+     * Deterministic on purpose: the same arrival must not land on a different account run to
+     * run. Preference goes to an owner with a profile actually assigned on this app -- that is
+     * the account someone has been using here -- and otherwise to the earliest, which is the
+     * original. {@code hasAssignedProfile} rather than {@code checkIfUserHasAnyProfile},
+     * because the latter falls back to the app's default profile and would answer true for
+     * every candidate, making the preference meaningless.
+     */
+    private Mono<User> pickOwnerAmong(List<User> candidates, String appCode) {
+
+        List<User> ordered = candidates.stream()
+                .sorted(Comparator.comparing(User::getId))
+                .toList();
+
+        return this.userService
+                .getOwnerUserIds(ordered.stream().map(User::getId).toList())
+                .flatMap(ownerIds -> {
+
+                    List<User> owners = ordered.stream()
+                            .filter(u -> ownerIds.contains(u.getId()))
+                            .toList();
+
+                    if (owners.isEmpty())
+                        return Mono.empty();
+
+                    return Flux.fromIterable(owners)
+                            .filterWhen(u -> this.profileService.hasAssignedProfile(u.getId(), appCode))
+                            .next()
+                            .switchIfEmpty(Mono.just(owners.getFirst()));
+                });
+    }
+
+    /**
+     * What to answer when no existing user was signed in.
+     * <p>
+     * 403 is the caller's cue to register, and that is right when this identity is genuinely
+     * new or owns nothing yet. It is wrong when the identity already owns a client and simply
+     * cannot reach this app: registering then builds a second company for somebody who has one,
+     * which is how the duplicates got made. That case answers 409 instead, and the browser
+     * takes it to the access request flow rather than the sign-up call.
+     * <p>
+     * The state is verified before the two are told apart. Without that, an unauthenticated
+     * caller could post any email and read the status back as an oracle for whether that
+     * person owns a client on this platform. A bogus or stale state gets the plain 403 that
+     * every caller got before.
+     */
+    private Mono<AuthenticationResponse> socialSignInRefusal(AuthenticationRequest authRequest, String clientCode) {
+
+        // Deliberately NOT authenticateUserForHavingApp. That looks for any app the user has a
+        // profile in and signs them into THAT one, so a social sign-in on an app the user has
+        // never used answered 200 with a token minted for a different app: the caller banks
+        // it, the browser sits on this app's origin, and the authorities belong somewhere
+        // else. The honest answer is that this app does not know this user, which is what
+        // tells the caller to register them here.
+        Mono<AuthenticationResponse> unknownHere = this.authError(
+                SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED,
+                msg -> new GenericException(HttpStatus.FORBIDDEN, msg));
+
+        return this.appRegistrationIntegrationTokenService
+                .verifyIntegrationState(authRequest.getSocialRegisterState())
+                // Scoped to the state lookup, which errors rather than completing empty on a
+                // state nobody minted. Wrapping the whole chain instead would also catch the
+                // refusal raised below and answer 403 in its place, which is the behaviour
+                // this method exists to stop.
+                .onErrorResume(e -> Mono.empty())
+                .flatMap(token -> {
+
+                    String verifiedUsername = token.getUsername();
+
+                    if (StringUtil.safeIsBlank(verifiedUsername)
+                            || !verifiedUsername.equals(authRequest.getUserName())
+                            || AppRegistrationIntegrationTokenService.isStateExpired(token))
+                        return unknownHere;
+
+                    return this.userService
+                            // App-blind on purpose: the question is whether this person already
+                            // owns a client anywhere under this client, not whether they can
+                            // reach the app they just tried to sign in to.
+                            .getUsersForIdentity(authRequest.getUserName(), clientCode, null,
+                                    authRequest.getComputedIdentifierType())
+                            .flatMap(existing -> this.refuseByOwnership(existing, unknownHere));
+                })
+                .switchIfEmpty(unknownHere)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.socialSignInRefusal"));
+    }
+
+    /**
+     * Nobody here at all, or somebody here who owns nothing, both mean "register them". Only an
+     * owner gets the refusal that sends the browser to ask for access instead.
+     */
+    private Mono<AuthenticationResponse> refuseByOwnership(
+            List<User> existing, Mono<AuthenticationResponse> unknownHere) {
+
+        if (existing.isEmpty())
+            return unknownHere;
+
+        return this.userService
+                .getOwnerUserIds(existing.stream().map(User::getId).toList())
+                .flatMap(ownerIds -> ownerIds.isEmpty()
+                        ? unknownHere
+                        : this.authError(SecurityMessageResourceService.ACCESS_REQUEST_REQUIRED,
+                                msg -> new GenericException(HttpStatus.CONFLICT, msg)));
     }
 
     private Mono<User> checkUserStatus(User user) {

@@ -720,6 +720,13 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 					.thenReturn(Mono.just(policy));
 			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
 					.thenReturn(Mono.just(Boolean.TRUE));
+
+			// A business registration now has a duplicate check of its own, where it used to
+			// have none at all: an identity that already OWNS a client may not register a
+			// second one. Nobody owns anything in this test.
+			when(userService.checkBusinessClientOwnerExists(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+
 			when(appService.getAppByCode(APP_CODE)).thenReturn(Mono.just(app));
 			when(clientService.getClientBy(CLIENT_CODE)).thenReturn(Mono.just(
 					TestDataFactory.createBusinessClient(SYSTEM_CLIENT_ID, CLIENT_CODE)));
@@ -778,6 +785,42 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 
 			verify(clientService).createForRegistration(argThat(client ->
 					"BUS".equals(client.getTypeCode())), any(ULong.class));
+		}
+
+		/**
+		 * The hole the duplicate clients came through. {@code isBusinessClient} used to
+		 * short-circuit the duplicate check to TRUE, so on any app whose usage type requires a
+		 * business client -- most of them -- no check ran at all and every retry of this
+		 * endpoint minted another client and another user on the same email.
+		 */
+		@Test
+		void register_BusinessType_IdentityAlreadyOwnsAClient_Conflict() {
+			ContextAuthentication ca = createUnauthenticatedContext();
+			setupSecurityContext(ca);
+
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			req.setBusinessClient(true);
+			req.setBusinessType("RETAIL");
+			req.setClientName("Business Corp");
+
+			ServerHttpRequest request = createMockRequest();
+			ServerHttpResponse response = mock(ServerHttpResponse.class);
+
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkBusinessClientOwnerExists(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			StepVerifier.create(service.register(req, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(clientService, never()).createForRegistration(any(Client.class), any(ULong.class));
 		}
 	}
 
