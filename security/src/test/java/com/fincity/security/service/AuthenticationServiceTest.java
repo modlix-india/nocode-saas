@@ -10,6 +10,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 import org.jooq.types.ULong;
@@ -647,8 +648,16 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
 			ServerHttpResponse response = mockResponse();
 
-			when(userService.findNonDeletedUserNClient(anyString(), any(), anyString(), any(), any()))
-					.thenReturn(Mono.empty());
+			// Nothing under this client at all, on this app or off it.
+			when(userService.getUsersForIdentity(anyString(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState("validState123");
+			token.setUsername("social@test.com");
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("validState123"))
+					.thenReturn(Mono.just(token));
 
 			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
 					.expectErrorMatches(e -> e instanceof GenericException
@@ -789,19 +798,202 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 			verify(appRegistrationIntegrationTokenService).consumeState("validState123");
 		}
 
-		/** Everything before the state checks, which is not what any of these tests are about. */
+		/**
+		 * One row for this identity, which is the ordinary case and the one the duplicate
+		 * handling must leave exactly as it was.
+		 */
 		private void socialChainUpToStateCheck() {
 
 			Client linClient = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
 			Client client = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
 			User user = TestDataFactory.createActiveUser(USER_ID, CLIENT_ID);
 
+			when(userService.getUsersForIdentity(anyString(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of(user)));
 			when(userService.findNonDeletedUserNClient(anyString(), any(), anyString(), any(), any()))
 					.thenReturn(Mono.just(Tuples.of(linClient, client, user)));
 			when(profileService.checkIfUserHasAnyProfile(any(ULong.class), anyString()))
 					.thenReturn(Mono.just(true));
 			when(userService.checkUserAndClient(any(), anyString()))
 					.thenReturn(Mono.just(true));
+		}
+
+		/** The session-minting stubs the two happy paths share. */
+		private void socialSessionStubs() {
+
+			when(tokenService.create(any(TokenObject.class)))
+					.thenAnswer(inv -> {
+						TokenObject t = inv.getArgument(0);
+						t.setId(ULong.valueOf(100));
+						return Mono.just(t);
+					});
+
+			Client managedClient = new Client();
+			managedClient.setCode("MANAGED");
+			when(clientService.getManagedClientOfClientById(any(ULong.class)))
+					.thenReturn(Mono.just(managedClient));
+		}
+
+		private AppRegistrationIntegrationToken verifiedState(String state, String userName) {
+
+			AppRegistrationIntegrationToken token = new AppRegistrationIntegrationToken();
+			token.setState(state);
+			token.setUsername(userName);
+			token.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState(state))
+					.thenReturn(Mono.just(token));
+
+			return token;
+		}
+
+		/**
+		 * The duplicate-client loop, from the platform's side.
+		 * <p>
+		 * Two rows for one identity used to collapse to the same empty Mono as no rows at
+		 * all, and the caller's documented answer to that is to register -- which produced a
+		 * third row, and a worse position on the next attempt. An owner among them is signed
+		 * in instead, and nothing new is created.
+		 */
+		@Test
+		void authenticateWSocial_DuplicateIdentityWithOwner_SignsInAsTheOwner() {
+
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			User member = TestDataFactory.createActiveUser(ULong.valueOf(5254), CLIENT_ID);
+			User owner = TestDataFactory.createActiveUser(ULong.valueOf(5258), CLIENT_ID);
+
+			Client linClient = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
+			Client client = TestDataFactory.createBusinessClient(CLIENT_ID, CLIENT_CODE);
+
+			// Returned owner-last, so a test that passed by picking the first row would not.
+			when(userService.getUsersForIdentity(anyString(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of(member, owner)));
+			when(userService.getOwnerUserIds(any()))
+					.thenReturn(Mono.just(Set.of(owner.getId())));
+			when(profileService.hasAssignedProfile(any(ULong.class), anyString()))
+					.thenReturn(Mono.just(false));
+
+			// Stubbed for the owner alone: picking anyone else fails here rather than silently
+			// signing the wrong account in.
+			when(userService.findNonDeletedUserNClient(
+					anyString(), eq(owner.getId()), anyString(), any(), any()))
+					.thenReturn(Mono.just(Tuples.of(linClient, client, owner)));
+			when(profileService.checkIfUserHasAnyProfile(any(ULong.class), anyString()))
+					.thenReturn(Mono.just(true));
+			when(userService.checkUserAndClient(any(), anyString()))
+					.thenReturn(Mono.just(true));
+
+			verifiedState("validState123", "social@test.com");
+			when(appRegistrationIntegrationTokenService.consumeState("validState123"))
+					.thenReturn(Mono.just(true));
+			socialSessionStubs();
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.assertNext(authResponse -> assertNotNull(authResponse.getAccessToken()))
+					.verifyComplete();
+
+			verify(userService).findNonDeletedUserNClient(
+					anyString(), eq(owner.getId()), anyString(), any(), any());
+		}
+
+		/**
+		 * Several rows and not one of them owns a client: the caller is told to register, which
+		 * is how somebody who only belongs to another company's client gets one of their own.
+		 */
+		@Test
+		void authenticateWSocial_DuplicateIdentityNoOwner_Forbidden() {
+
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			User one = TestDataFactory.createActiveUser(ULong.valueOf(5254), CLIENT_ID);
+			User two = TestDataFactory.createActiveUser(ULong.valueOf(5258), CLIENT_ID);
+
+			when(userService.getUsersForIdentity(anyString(), anyString(), any(), any()))
+					.thenReturn(Mono.just(List.of(one, two)));
+			when(userService.getOwnerUserIds(any())).thenReturn(Mono.just(Set.of()));
+
+			verifiedState("validState123", "social@test.com");
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		/**
+		 * Owns a client, cannot reach this app. 403 would send the browser to register and hand
+		 * somebody who already has a company a second one; 409 sends it to ask for access.
+		 */
+		@Test
+		void authenticateWSocial_OwnerWithoutAccessToThisApp_Conflict() {
+
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("social@test.com");
+			authRequest.setSocialRegisterState("validState123");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			User owner = TestDataFactory.createActiveUser(ULong.valueOf(5254), CLIENT_ID);
+
+			// Invisible to this app, present under the client: the two lookups differ only by
+			// appCode, and that difference is the whole question being asked.
+			when(userService.getUsersForIdentity(anyString(), anyString(), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(userService.getUsersForIdentity(anyString(), anyString(), isNull(), any()))
+					.thenReturn(Mono.just(List.of(owner)));
+			when(userService.getOwnerUserIds(any()))
+					.thenReturn(Mono.just(Set.of(owner.getId())));
+
+			verifiedState("validState123", "social@test.com");
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			// Nothing was created and nothing was signed in, so the state stays unspent.
+			verify(appRegistrationIntegrationTokenService, never()).consumeState(anyString());
+		}
+
+		/**
+		 * The 409 above is only safe if it cannot be read as an oracle. Without a state that
+		 * the provider actually verified for this address, anyone could post an email and learn
+		 * from the status whether that person owns a client here.
+		 */
+		@Test
+		void authenticateWSocial_UnverifiedState_DoesNotDiscloseThatTheIdentityExists() {
+
+			AuthenticationRequest authRequest = new AuthenticationRequest();
+			authRequest.setUserName("someone.elses@test.com");
+			authRequest.setSocialRegisterState("guessedState");
+
+			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
+			ServerHttpResponse response = mockResponse();
+
+			when(userService.getUsersForIdentity(anyString(), anyString(), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(List.of()));
+			when(appRegistrationIntegrationTokenService.verifyIntegrationState("guessedState"))
+					.thenReturn(Mono.error(new Exception("Invalid state")));
+
+			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			// The identity lookup that would answer the question is never even reached.
+			verify(userService, never()).getUsersForIdentity(anyString(), anyString(), isNull(), any());
 		}
 	}
 
