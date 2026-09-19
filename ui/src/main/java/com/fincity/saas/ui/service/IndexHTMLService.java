@@ -120,18 +120,9 @@ public class IndexHTMLService {
                     + "u.toString=function(t){var e=\"posthog\";return\"posthog\"!==a&&(e+=\".\"+a),"
                     + "t||(e+=\" (stub)\"),e},u.people.toString=function(){return u.toString(1)+\".people (stub)\"},"
                     + "o=\"init capture register register_once unregister identify setPersonProperties group reset "
-                    + "opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing "
-                    + "startSessionRecording stopSessionRecording\".split(\" \"),"
+                    + "opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing\".split(\" \"),"
                     + "n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}"
                     + "(document,window.posthog||[]);";
-
-    private static final String CONSENT_FALLBACK_BOOTSTRAP =
-            "window.addEventListener('DOMContentLoaded',function(){"
-                    + "setTimeout(function(){"
-                    + "if(!window.__MODLIX_CONSENT__||!window.__MODLIX_CONSENT__.mounted){"
-                    + "window.__MODLIX_FORCE_CONSENT__=true;"
-                    + "window.dispatchEvent(new CustomEvent('modlix:force-consent'));"
-                    + "}},250);});";
 
     private static final String DEFAULT_LOADER = "" +
             "<style>\n" +
@@ -484,10 +475,6 @@ public class IndexHTMLService {
         if (!Boolean.TRUE.equals(analytics.get(KEY_ENABLED)))
             return "";
 
-        Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
-                ? (Map<String, Object>) analytics.get("sessionReplay")
-                : Map.of();
-        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get(KEY_ENABLED));
         Map<String, Object> heatmaps = analytics.get("heatmaps") instanceof Map
                 ? (Map<String, Object>) analytics.get("heatmaps")
                 : Map.of();
@@ -500,40 +487,16 @@ public class IndexHTMLService {
         initOptions.put("autocapture", analytics.getOrDefault("autocapture", true));
         initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
         initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
-        initOptions.put("disable_session_recording", !replayEnabled);
+        // Session replay is not a feature of this platform. Recording is refused
+        // here rather than left to a per-app toggle, so no application document
+        // can turn it back on: an `analytics.sessionReplay` block is inert.
+        initOptions.put("disable_session_recording", true);
         initOptions.put("enable_heatmaps", heatmapsEnabled);
         initOptions.put("opt_out_capturing_by_default", consentRequired);
         initOptions.put("advanced_disable_flags", true);
 
-        if (replayEnabled) {
-            Map<String, Object> recording = new HashMap<>();
-            recording.put("maskAllInputs", sessionReplay.getOrDefault("maskAllInputs", true));
-            initOptions.put("session_recording", recording);
-        }
-
-        double sampleRate = 0.1;
-        if (sessionReplay.get("sampleRate") instanceof Number rawSampleRate) {
-            double v = rawSampleRate.doubleValue();
-            if (v >= 0 && v <= 1) sampleRate = v;
-        }
-        String sampleRateLiteral = sampleRate >= 1 ? "null" : Double.toString(sampleRate);
-
-        String optionsJson = gson.toJson(initOptions);
-        String apiKeyJson = gson.toJson(analyticsProjectApiKey);
-
-        StringBuilder snippet = new StringBuilder("<script>");
-        snippet.append(POSTHOG_STUB);
-        if (replayEnabled) {
-            snippet.append("var __phOpts=").append(optionsJson).append(";");
-            snippet.append("__phOpts.loaded=function(ph){try{ph.persistence.register({'$session_recording_remote_config':{enabled:true,sampleRate:").append(sampleRateLiteral).append(",recorderVersion:'v2',endpoint:'/s/',linkedFlag:null,urlBlocklist:[],urlTriggers:[],eventTriggers:[]}});ph.sessionRecording&&ph.sessionRecording.startIfEnabledOrStop&&ph.sessionRecording.startIfEnabledOrStop();}catch(e){}};");
-            snippet.append("posthog.init(").append(apiKeyJson).append(",__phOpts);");
-        } else {
-            snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");
-        }
-        if (consentRequired)
-            snippet.append(CONSENT_FALLBACK_BOOTSTRAP);
-        snippet.append("</script>");
-        return snippet.toString();
+        return "<script>" + POSTHOG_STUB + "posthog.init(" + gson.toJson(analyticsProjectApiKey) + ","
+                + gson.toJson(initOptions) + ");</script>";
     }
 
     @SuppressWarnings("unchecked")
