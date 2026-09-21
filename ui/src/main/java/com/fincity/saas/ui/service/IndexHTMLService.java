@@ -479,7 +479,13 @@ public class IndexHTMLService {
         tag.append("<script async src=\"").append(host).append("/a.js\"")
                 .append(" data-autocapture=\"").append(boolAttr(analytics.get("autocapture"), true)).append("\"")
                 .append(" data-pageviews=\"").append(boolAttr(analytics.get("capturePageviews"), true)).append("\"")
-                .append(" data-pageleaves=\"").append(boolAttr(analytics.get("capturePageleaves"), true)).append("\"");
+                .append(" data-pageleaves=\"").append(boolAttr(analytics.get("capturePageleaves"), true)).append("\"")
+                // Heatmaps are off unless the app asks: every click on the page becomes an
+                // event, where autocapture records only the labelled ones. This toggle did
+                // nothing at all until now — the old vendor snippet carried it and the
+                // replacement did not, so an app could have it switched on for months and
+                // record nothing.
+                .append(" data-heatmaps=\"").append(boolAttr(heatmapsOf(analytics), false)).append("\"");
         // Unconditional, and there is no application setting that turns it off. There was
         // one — `analytics.consentRequired`, defaulting to required — and it is now ignored.
         // A switch like that only has to be set wrong once, by anyone, for a site to measure
@@ -488,6 +494,13 @@ public class IndexHTMLService {
         tag.append(" data-consent=\"required\"></script>");
 
         return tag.toString();
+    }
+
+    /** `analytics.heatmaps.enabled`, which is a nested object rather than a flat flag. */
+    @SuppressWarnings("unchecked")
+    private static Object heatmapsOf(Map<String, Object> analytics) {
+        Object h = analytics.get("heatmaps");
+        return h instanceof Map ? ((Map<String, Object>) h).get(KEY_ENABLED) : null;
     }
 
     private static String boolAttr(Object value, boolean dflt) {
