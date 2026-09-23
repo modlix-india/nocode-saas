@@ -3,9 +3,10 @@ package com.fincity.saas.ui.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.HexFormat;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -26,13 +27,34 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
-import com.fincity.saas.ui.util.HogQLTenantRewriter;
 import com.google.gson.Gson;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+/**
+ * Proxies dashboard reads to the analytics engine.
+ *
+ * The engine answers a closed set of widgets and has no query language, so there is nothing
+ * here to sanitise and no expression to rewrite — which is why the HogQL rewriter this
+ * service used to depend on is gone rather than ported. Two things are still this side's job,
+ * and both are things the engine cannot know:
+ *
+ * <ul>
+ * <li><b>Who may read a site.</b> The engine holds one shared secret and trusts whoever
+ * presents it. Authorisation is Modlix's vocabulary — write access to the application, plus
+ * the caller's own client managing the target client — so it is enforced here, before the
+ * request is made.</li>
+ * <li><b>Which day boundary the numbers use.</b> Rollups are hourly and timezone-free; the
+ * zone only selects which buckets are summed. The order is the zone on the request, then the
+ * client's own {@code security_client.TIME_ZONE}, then Asia/Kolkata.</li>
+ * </ul>
+ *
+ * The site is always computed here and never read from the request body. A caller who could
+ * name their own site could read another tenant's numbers, and no amount of checking
+ * afterwards would undo that.
+ */
 @Service
 public class AnalyticsService {
 
@@ -43,17 +65,21 @@ public class AnalyticsService {
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
-    @Value("${ui.analytics.ingestionHost:}")
-    private String ingestionHost;
+    /**
+     * The last resort in the timezone chain. Not UTC: this platform's clients are
+     * overwhelmingly in one place, and the same default is already what
+     * {@code security_client.TIME_ZONE} carries, so the two cannot disagree.
+     */
+    private static final String FALLBACK_TIME_ZONE = "Asia/Kolkata";
 
-    @Value("${ui.analytics.posthog.personalApiKey:}")
-    private String personalApiKey;
+    private static final String KEY_SITE = "site";
+    private static final String KEY_TIMEZONE = "timezone";
 
-    @Value("${ui.analytics.posthog.projectId:}")
-    private String projectId;
+    @Value("${ui.analytics.engine.url:}")
+    private String engineUrl;
 
-    @Value("${ui.analytics.posthog.playerHost:}")
-    private String playerHost;
+    @Value("${ui.analytics.engine.secret:}")
+    private String engineSecret;
 
     private final ApplicationService appService;
     private final CacheService cacheService;
@@ -62,7 +88,7 @@ public class AnalyticsService {
     private final FeignAuthenticationService securityService;
     private final Gson gson = new Gson();
 
-    private WebClient postHogClient;
+    private WebClient engineClient;
 
     public AnalyticsService(ApplicationService appService, CacheService cacheService,
             WebClient.Builder webClientBuilder, UIMessageResourceService messageResourceService,
@@ -76,92 +102,112 @@ public class AnalyticsService {
 
     @PostConstruct
     void initialize() {
-        if (StringUtil.safeIsBlank(ingestionHost) || StringUtil.safeIsBlank(personalApiKey)
-                || StringUtil.safeIsBlank(projectId)) {
-            logger.warn("Analytics query proxy disabled — missing personalApiKey / projectId / ingestionHost");
+        if (StringUtil.safeIsBlank(engineUrl) || StringUtil.safeIsBlank(engineSecret)) {
+            logger.warn("Analytics query proxy disabled — ui.analytics.engine.url / .secret are not set");
             return;
         }
-        this.postHogClient = webClientBuilder.baseUrl(ingestionHost).build();
+        this.engineClient = webClientBuilder.baseUrl(engineUrl).build();
     }
 
     public Mono<Map<String, Object>> query(String appCode, String clientCode, Map<String, Object> requestBody) {
 
-        return checkConfiguredAndAuthorized(appCode, clientCode)
-                .flatMap(ca -> {
-                    Map<String, Object> rewritten = HogQLTenantRewriter.rewrite(requestBody, appCode, clientCode);
-                    String cacheKey = hash(appCode + "|" + clientCode + "|" + this.gson.toJson(rewritten));
+        return FlatMapUtil.flatMapMono(
+
+                () -> checkConfiguredAndAuthorized(appCode, clientCode),
+
+                ca -> resolveTimeZone(clientCode, requestBody),
+
+                (ca, zone) -> {
+                    Map<String, Object> request = engineRequest(requestBody, appCode, clientCode, zone);
+                    String cacheKey = hash(this.gson.toJson(request));
                     String userName = ca.getUser() == null ? "anonymous" : ca.getUser().getUserName();
                     return this.cacheService.<Map<String, Object>>cacheValueOrGet(CACHE_NAME_ANALYTICS_QUERY,
-                            () -> executeRemote(rewritten, appCode, clientCode, userName), cacheKey);
+                            () -> executeRemote(request, appCode, clientCode, userName), cacheKey);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AnalyticsService.query"));
     }
 
-    public Mono<Map<String, Object>> listReplays(String appCode, String clientCode, String dateFrom, String dateTo,
-            Integer limit) {
+    /**
+     * Builds what the engine is actually asked, from what the caller asked for.
+     *
+     * Everything the caller sent survives except {@code site}, which is overwritten rather
+     * than validated: overwriting cannot be got wrong, where validating can.
+     */
+    private Map<String, Object> engineRequest(Map<String, Object> requestBody, String appCode, String clientCode,
+            String zone) {
 
-        return checkConfiguredAndAuthorized(appCode, clientCode)
-                .flatMap(ca -> {
-                    String userName = ca.getUser() == null ? "anonymous" : ca.getUser().getUserName();
-                    String propertiesFilter = this.gson.toJson(tenantPropertyFilters(appCode, clientCode));
-                    long startedAt = System.currentTimeMillis();
-                    return this.postHogClient.get()
-                            .uri(uriBuilder -> {
-                                uriBuilder.path("/api/projects/{projectId}/session_recordings/")
-                                        .queryParam("properties", propertiesFilter);
-                                if (!StringUtil.safeIsBlank(dateFrom))
-                                    uriBuilder.queryParam("date_from", dateFrom);
-                                if (!StringUtil.safeIsBlank(dateTo))
-                                    uriBuilder.queryParam("date_to", dateTo);
-                                if (limit != null && limit > 0)
-                                    uriBuilder.queryParam("limit", limit);
-                                return uriBuilder.build(projectId);
-                            })
-                            .header(HEADER_AUTHORIZATION, BEARER_PREFIX + personalApiKey)
-                            .retrieve()
-                            .bodyToMono(Map.class)
-                            .map(this::asStringObjectMap)
-                            .doOnSuccess(resp -> logger.info(
-                                    "analytics_replays_list appCode={} clientCode={} userName={} durationMs={} ok=true",
-                                    appCode, clientCode, userName, System.currentTimeMillis() - startedAt))
-                            .doOnError(err -> logger.warn(
-                                    "analytics_replays_list appCode={} clientCode={} userName={} durationMs={} ok=false error={}",
-                                    appCode, clientCode, userName, System.currentTimeMillis() - startedAt,
-                                    err.getMessage()));
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AnalyticsService.listReplays"));
+        Map<String, Object> request = requestBody == null ? new LinkedHashMap<>() : new LinkedHashMap<>(requestBody);
+        request.put(KEY_SITE, siteKey(appCode, clientCode));
+        request.put(KEY_TIMEZONE, zone);
+        return request;
     }
 
-    public Mono<Map<String, Object>> getReplayPlayback(String appCode, String clientCode, String sessionId) {
+    /**
+     * The storage identity of a site, and it must match the engine's own spelling exactly:
+     * appCode lower case, clientCode upper. The platform is inconsistent about case — the
+     * gateway compares these case-insensitively and a URL can carry either — so both ends
+     * canonicalise rather than hoping.
+     */
+    static String siteKey(String appCode, String clientCode) {
+        return appCode.toLowerCase() + "_" + clientCode.toUpperCase();
+    }
 
-        if (StringUtil.safeIsBlank(sessionId))
-            return this.messageResourceService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "sessionId is required");
+    /**
+     * Request, then the client's own zone, then Asia/Kolkata.
+     *
+     * An unusable zone on the request is a 400 rather than a silent fallback: a dashboard
+     * quietly answering in a different zone from the one it was asked for is a number nobody
+     * can reconcile. An unusable zone on the CLIENT record is different — nobody asked for it
+     * in this request and refusing would take the dashboard down for a bad row — so that one
+     * falls through with a warning.
+     */
+    private Mono<String> resolveTimeZone(String clientCode, Map<String, Object> requestBody) {
 
-        return checkConfiguredAndAuthorized(appCode, clientCode)
-                .flatMap(ca -> verifyReplayBelongsToTenant(sessionId, appCode, clientCode)
-                        .then(createSharingConfig(sessionId))
-                        .map(token -> {
-                            Map<String, Object> result = new HashMap<>();
-                            result.put("sessionId", sessionId);
-                            result.put("url", buildEmbedUrl(sessionId, token));
-                            return result;
-                        }))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AnalyticsService.getReplayPlayback"));
+        Object requested = requestBody == null ? null : requestBody.get(KEY_TIMEZONE);
+        if (requested != null && !StringUtil.safeIsBlank(requested.toString())) {
+            String zone = requested.toString().trim();
+            if (!isValidZone(zone))
+                return this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        UIMessageResourceService.ANALYTICS_UNKNOWN_TIMEZONE, zone);
+            return Mono.just(zone);
+        }
+
+        return this.securityService.getClientByCode(clientCode)
+                .map(client -> {
+                    String zone = client == null ? null : client.getTimeZone();
+                    if (StringUtil.safeIsBlank(zone))
+                        return FALLBACK_TIME_ZONE;
+                    if (!isValidZone(zone)) {
+                        logger.warn("analytics_timezone clientCode={} has an unusable zone '{}', using {}",
+                                clientCode, zone, FALLBACK_TIME_ZONE);
+                        return FALLBACK_TIME_ZONE;
+                    }
+                    return zone;
+                })
+                .defaultIfEmpty(FALLBACK_TIME_ZONE);
+    }
+
+    private static boolean isValidZone(String zone) {
+        try {
+            ZoneId.of(zone);
+            return true;
+        } catch (DateTimeException e) {
+            return false;
+        }
     }
 
     private Mono<ContextAuthentication> checkConfiguredAndAuthorized(String appCode, String clientCode) {
 
-        if (postHogClient == null)
+        if (engineClient == null)
             return this.messageResourceService.throwMessage(
                     msg -> new GenericException(HttpStatus.SERVICE_UNAVAILABLE, msg),
-                    "Analytics service is not configured");
+                    UIMessageResourceService.ANALYTICS_NOT_CONFIGURED);
 
         if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank(clientCode))
             return this.messageResourceService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "appCode and clientCode are required");
+                    UIMessageResourceService.ANALYTICS_CODES_REQUIRED);
 
         return FlatMapUtil.flatMapMono(
 
@@ -171,14 +217,14 @@ public class AnalyticsService {
                         .filter(BooleanUtil::safeValueOf)
                         .switchIfEmpty(this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                "User does not have write access to this application")),
+                                UIMessageResourceService.ANALYTICS_NO_WRITE_ACCESS)),
 
                 (ca, hasWrite) -> this.securityService
                         .doesClientManageClientCode(ca.getClientCode(), clientCode)
                         .filter(BooleanUtil::safeValueOf)
                         .switchIfEmpty(this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                "User's client does not manage the requested client code")),
+                                UIMessageResourceService.ANALYTICS_CLIENT_NOT_MANAGED)),
 
                 (ca, hasWrite, isManaged) -> this.appService.read(appCode, appCode, clientCode)
                         .flatMap(wrapper -> {
@@ -186,7 +232,7 @@ public class AnalyticsService {
                             if (app == null || !isAnalyticsEnabled(app))
                                 return this.messageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                        "Analytics is not enabled for this application");
+                                        UIMessageResourceService.ANALYTICS_NOT_ENABLED);
                             return Mono.just(ca);
                         }));
     }
@@ -197,20 +243,21 @@ public class AnalyticsService {
 
         long startedAt = System.currentTimeMillis();
 
-        return this.postHogClient.post()
-                .uri("/api/projects/{projectId}/query/", projectId)
-                .header(HEADER_AUTHORIZATION, BEARER_PREFIX + personalApiKey)
+        return this.engineClient.post()
+                .uri("/q")
+                .header(HEADER_AUTHORIZATION, BEARER_PREFIX + engineSecret)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(m -> (Map<String, Object>) m)
                 .doOnSuccess(resp -> logger.info(
-                        "analytics_query appCode={} clientCode={} userName={} durationMs={} ok=true",
-                        appCode, clientCode, userName, System.currentTimeMillis() - startedAt))
+                        "analytics_query appCode={} clientCode={} userName={} widget={} durationMs={} ok=true",
+                        appCode, clientCode, userName, body.get("widget"), System.currentTimeMillis() - startedAt))
                 .doOnError(err -> logger.warn(
-                        "analytics_query appCode={} clientCode={} userName={} durationMs={} ok=false error={}",
-                        appCode, clientCode, userName, System.currentTimeMillis() - startedAt, err.getMessage()));
+                        "analytics_query appCode={} clientCode={} userName={} widget={} durationMs={} ok=false error={}",
+                        appCode, clientCode, userName, body.get("widget"), System.currentTimeMillis() - startedAt,
+                        err.getMessage()));
     }
 
     @SuppressWarnings("unchecked")
@@ -230,101 +277,5 @@ public class AnalyticsService {
         } catch (NoSuchAlgorithmException e) {
             return Integer.toHexString(s.hashCode());
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asStringObjectMap(Map<?, ?> raw) {
-        return raw == null ? Map.of() : (Map<String, Object>) raw;
-    }
-
-    private static List<Map<String, Object>> tenantPropertyFilters(String appCode, String clientCode) {
-        Map<String, Object> appFilter = new HashMap<>();
-        appFilter.put("key", "app_code");
-        appFilter.put("value", appCode);
-        appFilter.put("operator", "exact");
-        appFilter.put("type", "event");
-
-        Map<String, Object> clientFilter = new HashMap<>();
-        clientFilter.put("key", "url_client_code");
-        clientFilter.put("value", clientCode);
-        clientFilter.put("operator", "exact");
-        clientFilter.put("type", "event");
-
-        return List.of(appFilter, clientFilter);
-    }
-
-    /**
-     * Confirms a session recording belongs to the requesting tenant before
-     * we issue a sharing token. Uses HogQL against the events table —
-     * cheaper than fetching the full recording object, and bullet-proof:
-     * the filter is forced server-side via the rewriter and there's no
-     * way for the caller to reach a session that doesn't carry both
-     * tenant properties on at least one of its events.
-     */
-    private Mono<Boolean> verifyReplayBelongsToTenant(String sessionId, String appCode, String clientCode) {
-        Map<String, Object> envelope = new HashMap<>();
-        envelope.put("kind", "HogQLQuery");
-        envelope.put("query",
-                "SELECT count() FROM events WHERE properties.$session_id = '" + sessionId.replace("'", "''")
-                        + "' LIMIT 1");
-
-        Map<String, Object> rewritten = HogQLTenantRewriter.rewrite(Map.of("query", envelope), appCode, clientCode);
-
-        return this.postHogClient.post()
-                .uri("/api/projects/{projectId}/query/", projectId)
-                .header(HEADER_AUTHORIZATION, BEARER_PREFIX + personalApiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(rewritten)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(this::asStringObjectMap)
-                .map(resp -> {
-                    Object results = resp.get("results");
-                    if (!(results instanceof List<?> rows) || rows.isEmpty()) return false;
-                    Object first = rows.get(0);
-                    if (!(first instanceof List<?> firstRow) || firstRow.isEmpty()) return false;
-                    Object countObj = firstRow.get(0);
-                    return countObj instanceof Number n && n.longValue() > 0;
-                })
-                .flatMap(belongs -> Boolean.TRUE.equals(belongs)
-                        ? Mono.just(true)
-                        : this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                "Session recording does not belong to this tenant"));
-    }
-
-    /**
-     * Creates a sharing configuration on the recording (or returns the
-     * existing one) and returns the access token that the iframe URL
-     * needs.
-     */
-    private Mono<String> createSharingConfig(String sessionId) {
-        return this.postHogClient.post()
-                .uri("/api/projects/{projectId}/session_recordings/{sessionId}/sharing/", projectId, sessionId)
-                .header(HEADER_AUTHORIZATION, BEARER_PREFIX + personalApiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("enabled", true))
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(this::asStringObjectMap)
-                .map(resp -> {
-                    Object token = resp.get("access_token");
-                    return token == null ? "" : token.toString();
-                })
-                .flatMap(token -> token.isBlank()
-                        ? this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_GATEWAY, msg),
-                                "Failed to generate replay sharing token")
-                        : Mono.just(token));
-    }
-
-    /**
-     * Builds the iframe URL the browser will load. Falls back to the
-     * ingestion host if no separate playerHost is configured.
-     */
-    private String buildEmbedUrl(String sessionId, String accessToken) {
-        String host = StringUtil.safeIsBlank(playerHost) ? ingestionHost : playerHost;
-        if (host.endsWith("/")) host = host.substring(0, host.length() - 1);
-        return host + "/embedded/replay/" + sessionId + "?sharing_access_token=" + accessToken;
     }
 }
