@@ -109,30 +109,6 @@ public class IndexHTMLService {
 
     );
 
-    private static final String POSTHOG_STUB =
-            "!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){"
-                    + "function g(t,e){var o=e.split(\".\");2==o.length&&(t=t[o[0]],e=o[1]),"
-                    + "t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}"
-                    + "(p=t.createElement(\"script\")).type=\"text/javascript\",p.crossOrigin=\"anonymous\","
-                    + "p.async=!0,p.src=s.api_host+\"/static/array.js\","
-                    + "(r=t.getElementsByTagName(\"script\")[0]).parentNode.insertBefore(p,r);var u=e;"
-                    + "for(void 0!==a?u=e[a]=[]:a=\"posthog\",u.people=u.people||[],"
-                    + "u.toString=function(t){var e=\"posthog\";return\"posthog\"!==a&&(e+=\".\"+a),"
-                    + "t||(e+=\" (stub)\"),e},u.people.toString=function(){return u.toString(1)+\".people (stub)\"},"
-                    + "o=\"init capture register register_once unregister identify setPersonProperties group reset "
-                    + "opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing "
-                    + "startSessionRecording stopSessionRecording\".split(\" \"),"
-                    + "n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}"
-                    + "(document,window.posthog||[]);";
-
-    private static final String CONSENT_FALLBACK_BOOTSTRAP =
-            "window.addEventListener('DOMContentLoaded',function(){"
-                    + "setTimeout(function(){"
-                    + "if(!window.__MODLIX_CONSENT__||!window.__MODLIX_CONSENT__.mounted){"
-                    + "window.__MODLIX_FORCE_CONSENT__=true;"
-                    + "window.dispatchEvent(new CustomEvent('modlix:force-consent'));"
-                    + "}},250);});";
-
     private static final String DEFAULT_LOADER = "" +
             "<style>\n" +
             "\t._initloaderContainer {\n" +
@@ -169,9 +145,6 @@ public class IndexHTMLService {
 
     @Value("${ui.analytics.ingestionHost:}")
     private String analyticsIngestionHost;
-
-    @Value("${ui.analytics.posthog.projectApiKey:}")
-    private String analyticsProjectApiKey;
 
     @Value("${ui.cdnStripAPIPrefix:true}")
     private boolean cdnStripAPIPrefix;
@@ -469,10 +442,19 @@ public class IndexHTMLService {
         return Mono.just(new ObjectWithUniqueID<>(str.toString()).setHeaders(processCSPHeaders(appProps)));
     }
 
+    /**
+     * The analytics beacon, as one script tag.
+     *
+     * The script itself is served by the engine that receives its events, so this method
+     * carries no vendor stub and no copy of the wire format — the previous arrangement had
+     * the same minified blob transcribed here and again in the SSR renderer, and the two had
+     * begun to drift. Options travel as data attributes, and the endpoint is the tag's own
+     * src, so a page names the host exactly once.
+     */
     @SuppressWarnings("unchecked")
     private String generateAnalyticsSnippet(Map<String, Object> appProps) {
 
-        if (StringUtil.safeIsBlank(analyticsProjectApiKey) || StringUtil.safeIsBlank(analyticsIngestionHost))
+        if (StringUtil.safeIsBlank(analyticsIngestionHost))
             return "";
 
         Object analyticsObj = appProps.get("analytics");
@@ -484,56 +466,47 @@ public class IndexHTMLService {
         if (!Boolean.TRUE.equals(analytics.get(KEY_ENABLED)))
             return "";
 
-        Map<String, Object> sessionReplay = analytics.get("sessionReplay") instanceof Map
-                ? (Map<String, Object>) analytics.get("sessionReplay")
-                : Map.of();
-        boolean replayEnabled = Boolean.TRUE.equals(sessionReplay.get(KEY_ENABLED));
-        Map<String, Object> heatmaps = analytics.get("heatmaps") instanceof Map
-                ? (Map<String, Object>) analytics.get("heatmaps")
-                : Map.of();
-        boolean heatmapsEnabled = Boolean.TRUE.equals(heatmaps.get(KEY_ENABLED));
-        boolean consentRequired = !Boolean.FALSE.equals(analytics.get("consentRequired"));
+        String host = analyticsIngestionHost.endsWith("/")
+                ? analyticsIngestionHost.substring(0, analyticsIngestionHost.length() - 1)
+                : analyticsIngestionHost;
 
-        Map<String, Object> initOptions = new HashMap<>();
-        initOptions.put("api_host", analyticsIngestionHost);
-        initOptions.put("person_profiles", "identified_only");
-        initOptions.put("autocapture", analytics.getOrDefault("autocapture", true));
-        initOptions.put("capture_pageview", analytics.getOrDefault("capturePageviews", true));
-        initOptions.put("capture_pageleave", analytics.getOrDefault("capturePageleaves", true));
-        initOptions.put("disable_session_recording", !replayEnabled);
-        initOptions.put("enable_heatmaps", heatmapsEnabled);
-        initOptions.put("opt_out_capturing_by_default", consentRequired);
-        initOptions.put("advanced_disable_flags", true);
+        StringBuilder tag = new StringBuilder();
+        // A queue, so a page that fires an event before the async script has loaded does
+        // not lose it. Six lines rather than the vendor's four hundred, because the only
+        // surface to stub is one function.
+        tag.append("<script>window.mlx=window.mlx||function(){(window.mlx.q=window.mlx.q||[])")
+                .append(".push(arguments)};</script>");
+        tag.append("<script async src=\"").append(host).append("/a.js\"")
+                .append(" data-autocapture=\"").append(boolAttr(analytics.get("autocapture"), true)).append("\"")
+                .append(" data-pageviews=\"").append(boolAttr(analytics.get("capturePageviews"), true)).append("\"")
+                .append(" data-pageleaves=\"").append(boolAttr(analytics.get("capturePageleaves"), true)).append("\"")
+                // Heatmaps are off unless the app asks: every click on the page becomes an
+                // event, where autocapture records only the labelled ones. This toggle did
+                // nothing at all until now — the old vendor snippet carried it and the
+                // replacement did not, so an app could have it switched on for months and
+                // record nothing.
+                .append(" data-heatmaps=\"").append(boolAttr(heatmapsOf(analytics), false)).append("\"");
+        // Unconditional, and there is no application setting that turns it off. There was
+        // one — `analytics.consentRequired`, defaulting to required — and it is now ignored.
+        // A switch like that only has to be set wrong once, by anyone, for a site to measure
+        // people who were never asked, and nothing about that state looks wrong from the
+        // outside: the pages render, the numbers arrive, and the banner simply never appears.
+        tag.append(" data-consent=\"required\"></script>");
 
-        if (replayEnabled) {
-            Map<String, Object> recording = new HashMap<>();
-            recording.put("maskAllInputs", sessionReplay.getOrDefault("maskAllInputs", true));
-            initOptions.put("session_recording", recording);
-        }
+        return tag.toString();
+    }
 
-        double sampleRate = 0.1;
-        if (sessionReplay.get("sampleRate") instanceof Number rawSampleRate) {
-            double v = rawSampleRate.doubleValue();
-            if (v >= 0 && v <= 1) sampleRate = v;
-        }
-        String sampleRateLiteral = sampleRate >= 1 ? "null" : Double.toString(sampleRate);
+    /** `analytics.heatmaps.enabled`, which is a nested object rather than a flat flag. */
+    @SuppressWarnings("unchecked")
+    private static Object heatmapsOf(Map<String, Object> analytics) {
+        Object h = analytics.get("heatmaps");
+        return h instanceof Map ? ((Map<String, Object>) h).get(KEY_ENABLED) : null;
+    }
 
-        String optionsJson = gson.toJson(initOptions);
-        String apiKeyJson = gson.toJson(analyticsProjectApiKey);
-
-        StringBuilder snippet = new StringBuilder("<script>");
-        snippet.append(POSTHOG_STUB);
-        if (replayEnabled) {
-            snippet.append("var __phOpts=").append(optionsJson).append(";");
-            snippet.append("__phOpts.loaded=function(ph){try{ph.persistence.register({'$session_recording_remote_config':{enabled:true,sampleRate:").append(sampleRateLiteral).append(",recorderVersion:'v2',endpoint:'/s/',linkedFlag:null,urlBlocklist:[],urlTriggers:[],eventTriggers:[]}});ph.sessionRecording&&ph.sessionRecording.startIfEnabledOrStop&&ph.sessionRecording.startIfEnabledOrStop();}catch(e){}};");
-            snippet.append("posthog.init(").append(apiKeyJson).append(",__phOpts);");
-        } else {
-            snippet.append("posthog.init(").append(apiKeyJson).append(",").append(optionsJson).append(");");
-        }
-        if (consentRequired)
-            snippet.append(CONSENT_FALLBACK_BOOTSTRAP);
-        snippet.append("</script>");
-        return snippet.toString();
+    private static String boolAttr(Object value, boolean dflt) {
+        if (value == null)
+            return Boolean.toString(dflt);
+        return Boolean.toString(!Boolean.FALSE.equals(value));
     }
 
     @SuppressWarnings("unchecked")
