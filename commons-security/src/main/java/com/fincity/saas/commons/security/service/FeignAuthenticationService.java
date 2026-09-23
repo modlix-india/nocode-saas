@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
@@ -126,6 +127,18 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_APP_WRITE_ACCESS,
                 () -> this.feignAuthService.hasWriteAccess(appCode, clientCode), appCode, ":", clientCode);
+    }
+
+    /**
+     * The client record, for the fields only security holds — its IANA time zone among them.
+     *
+     * Deliberately not cached. The callers of this are low-volume (a dashboard read, not a
+     * request path), and a cache here would need an invalidation story of its own: a client
+     * changing their own time zone and seeing yesterday's day boundaries until a restart is
+     * a bug nobody would think to look for.
+     */
+    public Mono<Client> getClientByCode(String clientCode) {
+        return this.feignAuthService.getClientByCode(clientCode);
     }
 
     public Mono<Boolean> isValidClientCode(String clientCode) {
