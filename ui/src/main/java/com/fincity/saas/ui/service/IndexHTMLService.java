@@ -480,6 +480,10 @@ public class IndexHTMLService {
                 .append(" data-autocapture=\"").append(boolAttr(analytics.get("autocapture"), true)).append("\"")
                 .append(" data-pageviews=\"").append(boolAttr(analytics.get("capturePageviews"), true)).append("\"")
                 .append(" data-pageleaves=\"").append(boolAttr(analytics.get("capturePageleaves"), true)).append("\"")
+                // On unless the app says otherwise, unlike heatmaps: one extra event per page
+                // view rather than one per click, and how far down a document somebody got is
+                // a fact about the document rather than about the person.
+                .append(" data-scroll=\"").append(boolAttr(analytics.get("captureScroll"), true)).append("\"")
                 // Heatmaps are off unless the app asks: every click on the page becomes an
                 // event, where autocapture records only the labelled ones. This toggle did
                 // nothing at all until now — the old vendor snippet carried it and the
