@@ -82,7 +82,7 @@ public class EntityProcessorProductTemplateWalkInForms extends TableImpl<EntityP
      * <code>entity_processor.entity_processor_product_template_walk_in_forms.CLIENT_CODE</code>.
      * Client Code who created this Product template walk in form.
      */
-    public final TableField<EntityProcessorProductTemplateWalkInFormsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Product template walk in form.");
+    public final TableField<EntityProcessorProductTemplateWalkInFormsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this Product template walk in form.");
 
     /**
      * The column

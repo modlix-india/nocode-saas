@@ -61,7 +61,7 @@ public class FilesAccessPath extends TableImpl<FilesAccessPathRecord> {
     /**
      * The column <code>files.files_access_path.CLIENT_CODE</code>. Client code
      */
-    public final TableField<FilesAccessPathRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<FilesAccessPathRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>files.files_access_path.USER_ID</code>. USER ID

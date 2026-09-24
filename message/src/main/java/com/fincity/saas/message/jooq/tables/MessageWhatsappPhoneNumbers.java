@@ -76,7 +76,7 @@ public class MessageWhatsappPhoneNumbers extends TableImpl<MessageWhatsappPhoneN
      * <code>message.message_whatsapp_phone_numbers.CLIENT_CODE</code>. Client
      * Code related to this WhatsApp phone number.
      */
-    public final TableField<MessageWhatsappPhoneNumbersRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this WhatsApp phone number.");
+    public final TableField<MessageWhatsappPhoneNumbersRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this WhatsApp phone number.");
 
     /**
      * The column <code>message.message_whatsapp_phone_numbers.USER_ID</code>.

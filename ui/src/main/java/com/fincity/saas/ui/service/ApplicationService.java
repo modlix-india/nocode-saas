@@ -287,7 +287,22 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
                 (ca, ssp, shellPage) -> this.fillerService.read(object.getAppCode(), object.getAppCode(), clientCode),
 
+                // The analytics consent box is inlined the same way the shell page
+                // is, and for the same reason: it has to be on screen at first
+                // paint of EVERY page, including the marketing pages that set
+                // `wrapShell: false` and so never render the shell at all.
                 (ca, ssp, shellPage, filler) -> {
+
+                    Map<String, Object> props = object.getProperties();
+                    Object consentPageName = props == null ? null : props.get("consentPage");
+
+                    if (consentPageName == null)
+                        return Mono.empty();
+
+                    return this.pageService.read(consentPageName.toString(), object.getAppCode(), clientCode);
+                },
+
+                (ca, ssp, shellPage, filler, consentPage) -> {
 
                     if (object.getProperties().get("mobileApps") != null) {
                         object.getProperties().remove("mobileApps");
@@ -295,17 +310,6 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
                     if (object.getProperties().get("manifest") != null) {
                         object.getProperties().remove("manifest");
-                    }
-
-                    if (shellPage == null) {
-
-                        if (filler == null)
-                            return Mono.just(new ObjectWithUniqueID<>(object, id));
-
-                        object.getProperties()
-                                .put("fillerValues", filler.getObject().getValues());
-                        return Mono.just(
-                                new ObjectWithUniqueID<>(object, id + filler.getUniqueId()));
                     }
 
                     StringBuilder sb = new StringBuilder(id);
@@ -316,9 +320,17 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 .put("fillerValues", filler.getObject().getValues());
                     }
 
-                    sb.append(shellPage.getUniqueId());
-                    object.getProperties()
-                            .put("shellPageDefinition", shellPage.getObject());
+                    if (consentPage != null) {
+                        sb.append(consentPage.getUniqueId());
+                        object.getProperties()
+                                .put("consentPageDefinition", consentPage.getObject());
+                    }
+
+                    if (shellPage != null) {
+                        sb.append(shellPage.getUniqueId());
+                        object.getProperties()
+                                .put("shellPageDefinition", shellPage.getObject());
+                    }
 
                     return Mono.just(
                             new ObjectWithUniqueID<>(object, sb.toString()));

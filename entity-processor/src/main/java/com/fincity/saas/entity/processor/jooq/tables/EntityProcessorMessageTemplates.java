@@ -82,7 +82,7 @@ public class EntityProcessorMessageTemplates extends TableImpl<EntityProcessorMe
      * <code>entity_processor.entity_processor_message_templates.CLIENT_CODE</code>.
      * Client Code this message belongs to.
      */
-    public final TableField<EntityProcessorMessageTemplatesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code this message belongs to.");
+    public final TableField<EntityProcessorMessageTemplatesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code this message belongs to.");
 
     /**
      * The column

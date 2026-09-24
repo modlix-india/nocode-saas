@@ -30,6 +30,19 @@ public abstract class AbstractMongoUpdatableDataService<I extends Serializable, 
 						ovd.setPermission(evd.getPermission());
 						ovd.setMessage(evd.getMessage());
 
+						// `blueprint` is copied only when the caller supplied one, which
+						// is NOT how title and description behave above. Every
+						// updatableEntity copies its own content fields by name and none
+						// of them knows about this base-class field, so without a copy
+						// here a plan could never be saved at all. But an unconditional
+						// copy is worse: the page editor PUTs a whole page on every hand
+						// edit, and anything that PUTs from a list row carries no
+						// blueprint at all, since the LRO projection omits it. Either
+						// would erase the plan while reporting success. So null means
+						// "not supplied" and an empty map is how a plan is cleared.
+						if (evd.getBlueprint() != null)
+							ovd.setBlueprint(evd.getBlueprint());
+
 						// `published` is deliberately NOT copied here. It is server
 						// state, not caller state: copying it meant an ordinary PUT
 						// that omitted the field nulled it, and a body carrying

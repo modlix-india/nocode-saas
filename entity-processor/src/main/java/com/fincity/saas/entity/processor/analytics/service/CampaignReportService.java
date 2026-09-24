@@ -5,12 +5,23 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.CampaignReportDAO;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport;
 import com.fincity.saas.entity.processor.analytics.model.CampaignReport.StageCell;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeRequest;
 import com.fincity.saas.entity.processor.analytics.model.CampaignTreeResponse;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendRequest;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse;
+import com.fincity.saas.entity.processor.analytics.model.CampaignTrendResponse.CampaignTrendRow;
 import com.fincity.saas.entity.processor.analytics.model.StageNode;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
+import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
+import com.fincity.saas.entity.processor.dao.CampaignDAO;
+import com.fincity.saas.entity.processor.dao.CampaignMetricDAO;
+import com.fincity.saas.entity.processor.dto.CampaignMetric;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
@@ -19,18 +30,48 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class CampaignReportService implements IProcessorAccessService {
+
+    private static final Set<TimePeriod> SUPPORTED_TIME_PERIODS = Set.of(
+            TimePeriod.DAYS,
+            TimePeriod.WEEKS,
+            TimePeriod.MONTHS,
+            TimePeriod.QUARTERS,
+            TimePeriod.YEARS);
+
+    /**
+     * Upper bound on time-series rows a single trend request may materialise.
+     * {@code DatePair.toTimePeriodMap} builds one row object per bucket before any
+     * {@code includeZero} filtering, so an unbounded range is a cheap way to make the
+     * service allocate itself to death. 1500 covers ~4 years of daily buckets.
+     */
+    private static final int MAX_TREND_BUCKETS = 1500;
+
+    private static final LocalDateTime MAX_LOCAL_DATE_TIME = LocalDateTime.MAX;
+
+    private static final DateTimeFormatter WEEK_LABEL_FORMAT =
+            DateTimeFormatter.ofPattern("MMM dd", Locale.ENGLISH);
+    private static final DateTimeFormatter MONTH_LABEL_FORMAT =
+            DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
@@ -44,28 +85,252 @@ public class CampaignReportService implements IProcessorAccessService {
 
     private final CampaignReportDAO campaignReportDAO;
     private final ProductService productService;
+    private final CampaignDAO campaignDAO;
+    private final CampaignMetricDAO campaignMetricDAO;
 
     public CampaignReportService(
             IFeignSecurityService securityService,
             ProcessorMessageResourceService msgService,
             CampaignReportDAO campaignReportDAO,
-            ProductService productService) {
+            ProductService productService,
+            CampaignDAO campaignDAO,
+            CampaignMetricDAO campaignMetricDAO) {
         this.securityService = securityService;
         this.msgService = msgService;
         this.campaignReportDAO = campaignReportDAO;
         this.productService = productService;
+        this.campaignDAO = campaignDAO;
+        this.campaignMetricDAO = campaignMetricDAO;
     }
 
     /**
-     * Build the campaign report tree for a product. Access is gated by
-     * {@code productService.readByIdentity} — the caller must be able to see
-     * the product, and the controller layer enforces {@code ROLE_Owner}.
+     * Build the campaign trend (rotation) report (Daily / Weekly / Monthly / Quarterly / Yearly) for products.
+     *
+     * <p>{@code productIds} present → those active products. Absent → every active product the
+     * caller's access allows.
+     */
+    @PreAuthorize("hasAuthority('" + BusinessPartnerConstant.OWNER_ROLE + "')")
+    public Mono<CampaignTrendResponse> getCampaignTrend(CampaignTrendRequest request) {
+
+        if (request.getTimePeriod() != null && !SUPPORTED_TIME_PERIODS.contains(request.getTimePeriod())) {
+            return Mono.error(new GenericException(HttpStatus.BAD_REQUEST,
+                    "Unsupported time period: " + request.getTimePeriod()
+                            + ". Supported periods are: DAYS, WEEKS, MONTHS, QUARTERS, YEARS"));
+        }
+
+        BaseFilter.ReportOptions options = request.toReportOptions();
+        long bucketCount = estimateBucketCount(options);
+        if (bucketCount > MAX_TREND_BUCKETS) {
+            return Mono.error(new GenericException(HttpStatus.BAD_REQUEST,
+                    "Requested range spans " + bucketCount + " " + options.timePeriod()
+                            + " buckets, which exceeds the limit of " + MAX_TREND_BUCKETS
+                            + ". Narrow the date range or use a coarser time period."));
+        }
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> productService.getAllProducts(access, request.getProductIds(), Boolean.TRUE),
+                (access, products) -> {
+                    if (products.isEmpty()) {
+                        return Mono.just(new CampaignTrendResponse(List.of(), List.of()));
+                    }
+                    return buildTrendReport(access, products, request, options);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignReportService.getCampaignTrend"));
+    }
+
+    private Mono<CampaignTrendResponse> buildTrendReport(
+            ProcessorAccess access,
+            List<Product> products,
+            CampaignTrendRequest request,
+            BaseFilter.ReportOptions options) {
+
+        TimePeriod timePeriod = options.timePeriod();
+        String timezone = options.timezone();
+
+        // One window drives both series. Widening to whole local days here and then
+        // deriving every bound from it is what keeps spend (bucketed on the DATE-only
+        // METRIC_DATE) and leads (bucketed on the UTC TIMESTAMP CREATED_AT) over the
+        // same calendar span — deriving them separately silently gives the boundary
+        // buckets spend without the leads that earned it.
+        DatePair window = dayAlignedWindow(options.totalDatePair(), timezone);
+
+        LocalDate metricFromDate = window.getFirst().toLocalDate();
+        LocalDate metricToDate = window.getSecond().toLocalDate();
+
+        LocalDateTime startUtcTimestamp = DatePair.convertToUtc(window.getFirst(), timezone);
+        LocalDateTime endUtcTimestamp = DatePair.convertToUtc(window.getSecond(), timezone);
+
+        List<ULong> productIds = products.stream().map(Product::getId).toList();
+
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.zip(
+                        campaignDAO.findCampaignIdsForProducts(
+                                access.getAppCode(), access.getClientCode(), productIds, request.getPlatforms(), Boolean.TRUE)
+                                .collectList(),
+                        this.getStageTree(products)),
+                idsAndTree -> {
+                    List<ULong> campaignIds = idsAndTree.getT1();
+                    List<StageNode> stageTree = idsAndTree.getT2();
+
+                    if (campaignIds.isEmpty()) {
+                        return Mono.just(new CampaignTrendResponse(stageTree, List.of()));
+                    }
+
+                    return Mono.zip(
+                            // Campaign-level rows only: the adset and ad rows carry the same
+                            // spend broken down finer, so summing all three triple-counts.
+                            // Filtered in SQL, not after collection — a year of ad-level rows
+                            // for a busy tenant is orders of magnitude more than we keep.
+                            campaignMetricDAO
+                                    .findCampaignLevelByFilters(
+                                            access.getAppCode(),
+                                            access.getClientCode(),
+                                            campaignIds,
+                                            metricFromDate,
+                                            metricToDate)
+                                    .collectList(),
+                            campaignReportDAO.getStageCountsByPeriod(
+                                    access,
+                                    campaignIds,
+                                    startUtcTimestamp,
+                                    endUtcTimestamp,
+                                    timePeriod,
+                                    timezone))
+                            .map(data -> new CampaignTrendResponse(
+                                    stageTree,
+                                    this.assembleTrendRows(
+                                            data.getT1(),
+                                            data.getT2(),
+                                            window,
+                                            timePeriod,
+                                            request.isIncludeZero())));
+                });
+    }
+
+    private Mono<List<StageNode>> getStageTree(List<Product> products) {
+        List<ULong> templateIds = products.stream()
+                .map(Product::getProductTemplateId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        return campaignReportDAO.getStageTreeForProductTemplates(templateIds);
+    }
+
+    /**
+     * Fold both series into the period buckets of {@code window}.
+     *
+     * <p>Everything here is in the caller's local calendar: {@code window} is built from
+     * local bounds, {@code CampaignMetric#getMetricDate()} is a local DATE, and the stage
+     * rows carry a period start the DAO already converted out of UTC. No value is
+     * round-tripped through UTC on the way in — doing so only to convert straight back
+     * inside the lookup was what made the original version so hard to reason about.
+     */
+    private List<CampaignTrendRow> assembleTrendRows(
+            List<CampaignMetric> metrics,
+            List<PerDateCount> stageRows,
+            DatePair window,
+            TimePeriod timePeriod,
+            boolean includeZero) {
+
+        NavigableMap<DatePair, CampaignTrendRow> rows = window.toTimePeriodMap(timePeriod, CampaignTrendRow::new);
+
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        for (CampaignMetric m : metrics) {
+            if (m.getMetricDate() == null) {
+                continue;
+            }
+            bucketFor(m.getMetricDate().atStartOfDay(), rows).addMetric(m);
+        }
+
+        for (PerDateCount s : stageRows) {
+            if (s.getDate() == null || s.getGroupedId() == null || s.getCount() == null) {
+                continue;
+            }
+            bucketFor(s.getDate(), rows).addStageCount(s.getGroupedId().toString(), s.getCount());
+        }
+
+        BigDecimal grandTotalSpend = rows.values().stream()
+                .map(CampaignTrendRow::getSpend)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        rows.forEach((bucket, row) -> row.setPeriodBounds(bucket)
+                .setPeriod(formatPeriodLabel(bucket.getFirst().toLocalDate(), timePeriod))
+                .applyRatios(grandTotalSpend));
+
+        return rows.values().stream()
+                .filter(row -> includeZero || row.hasActivity())
+                .toList();
+    }
+
+    /**
+     * Bucket for a local timestamp, clamped to the first bucket when it falls short.
+     *
+     * <p>The DAO groups on the true period start, so a range that opens mid-period
+     * (a Wednesday, say) gets stage rows stamped with that period's Monday — earlier
+     * than any bucket. Those rows only ever counted tickets inside the window, so the
+     * first bucket is where they belong; the previous code looked for an exact
+     * containing bucket, found none, and dropped the opening period's leads on the
+     * floor while still reporting its spend.
+     */
+    private static CampaignTrendRow bucketFor(LocalDateTime localDateTime, NavigableMap<DatePair, CampaignTrendRow> rows) {
+        Map.Entry<DatePair, CampaignTrendRow> entry = rows.floorEntry(DatePair.of(localDateTime, MAX_LOCAL_DATE_TIME));
+        return entry == null ? rows.firstEntry().getValue() : entry.getValue();
+    }
+
+    /**
+     * Widen to whole local days so the first and last buckets are backed by a full
+     * day of both spend and leads rather than a partial one.
+     */
+    private static DatePair dayAlignedWindow(DatePair datePair, String timezone) {
+        return DatePair.of(
+                datePair.getFirst().toLocalDate().atStartOfDay(),
+                datePair.getSecond().toLocalDate().atTime(LocalTime.MAX),
+                timezone);
+    }
+
+    /** Bucket count the request would materialise, without actually building the map. */
+    private static long estimateBucketCount(BaseFilter.ReportOptions options) {
+        DatePair datePair = options.totalDatePair();
+        long days = ChronoUnit.DAYS.between(datePair.getFirst().toLocalDate(), datePair.getSecond().toLocalDate()) + 1;
+        return switch (options.timePeriod()) {
+            case DAYS -> days;
+            case WEEKS -> (days / 7) + 2;
+            case MONTHS -> (days / 28) + 2;
+            case QUARTERS -> (days / 90) + 2;
+            case YEARS -> (days / 365) + 2;
+            default -> days;
+        };
+    }
+
+    private static String formatPeriodLabel(LocalDate date, TimePeriod timePeriod) {
+        return switch (timePeriod) {
+            case DAYS -> date.toString();
+            case WEEKS -> "Wk of " + date.format(WEEK_LABEL_FORMAT);
+            case MONTHS -> date.format(MONTH_LABEL_FORMAT);
+            case QUARTERS -> "Q" + ((date.getMonthValue() - 1) / 3 + 1) + " " + date.getYear();
+            case YEARS -> String.valueOf(date.getYear());
+            default -> date.toString();
+        };
+    }
+
+    /**
+     * Build the campaign report tree for a product. Access is gated twice: the
+     * {@code ROLE_Owner} authority on this method, and
+     * {@code productService.readByIdentity} — the caller must also be able to see
+     * the product itself.
      *
      * <p>This iteration only fills {@link CampaignReport.Level#CAMPAIGN} rows
      * (one per active campaign linked to the product). Adset and ad expansion
      * are pending — when implemented they'll populate {@link CampaignReport#getChildren()}
      * on the campaign rows based on {@link CampaignTreeRequest#getDepth()}.
      */
+    @PreAuthorize("hasAuthority('" + BusinessPartnerConstant.OWNER_ROLE + "')")
     public Mono<CampaignTreeResponse> getCampaignTree(CampaignTreeRequest request) {
 
         if (request == null || request.getProductId() == null) {

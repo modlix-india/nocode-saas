@@ -241,7 +241,7 @@ public class SecurityAppBillingConfig extends TableImpl<SecurityAppBillingConfig
      * <code>security.security_app_billing_config.SUSPEND_CLIENT_CODE</code>.
      * Client code to serve when suspended
      */
-    public final TableField<SecurityAppBillingConfigRecord, String> SUSPEND_CLIENT_CODE = createField(DSL.name("SUSPEND_CLIENT_CODE"), SQLDataType.CHAR(8), this, "Client code to serve when suspended");
+    public final TableField<SecurityAppBillingConfigRecord, String> SUSPEND_CLIENT_CODE = createField(DSL.name("SUSPEND_CLIENT_CODE"), SQLDataType.CHAR(12), this, "Client code to serve when suspended");
 
     /**
      * The column <code>security.security_app_billing_config.STATUS</code>.

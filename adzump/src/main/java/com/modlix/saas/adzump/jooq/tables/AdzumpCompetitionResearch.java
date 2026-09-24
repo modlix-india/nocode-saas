@@ -67,7 +67,7 @@ public class AdzumpCompetitionResearch extends TableImpl<AdzumpCompetitionResear
      * The column <code>adzump.adzump_competition_research.client_code</code>.
      * Client code (tenant-private)
      */
-    public final TableField<AdzumpCompetitionResearchRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(8).nullable(false), this, "Client code (tenant-private)");
+    public final TableField<AdzumpCompetitionResearchRecord, String> CLIENT_CODE = createField(DSL.name("client_code"), SQLDataType.CHAR(12).nullable(false), this, "Client code (tenant-private)");
 
     /**
      * The column <code>adzump.adzump_competition_research.product_id</code>.

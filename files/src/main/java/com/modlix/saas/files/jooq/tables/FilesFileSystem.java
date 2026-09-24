@@ -78,7 +78,7 @@ public class FilesFileSystem extends TableImpl<FilesFileSystemRecord> {
     /**
      * The column <code>files.files_file_system.CODE</code>. Client code
      */
-    public final TableField<FilesFileSystemRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code");
+    public final TableField<FilesFileSystemRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client code");
 
     /**
      * The column <code>files.files_file_system.NAME</code>. Name of the file

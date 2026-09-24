@@ -93,7 +93,7 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
      * <code>entity_processor.entity_processor_campaigns.CLIENT_CODE</code>.
      * ClientCode on which this campaign created
      */
-    public final TableField<EntityProcessorCampaignsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "ClientCode on which this campaign created");
+    public final TableField<EntityProcessorCampaignsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "ClientCode on which this campaign created");
 
     /**
      * The column

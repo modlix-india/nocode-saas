@@ -82,7 +82,7 @@ public class EntityProcessorProductWalkInForms extends TableImpl<EntityProcessor
      * <code>entity_processor.entity_processor_product_walk_in_forms.CLIENT_CODE</code>.
      * Client Code who created this Product walk in form.
      */
-    public final TableField<EntityProcessorProductWalkInFormsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Product walk in form.");
+    public final TableField<EntityProcessorProductWalkInFormsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this Product walk in form.");
 
     /**
      * The column

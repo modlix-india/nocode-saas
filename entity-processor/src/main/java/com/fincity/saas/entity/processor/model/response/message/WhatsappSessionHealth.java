@@ -79,7 +79,16 @@ public class WhatsappSessionHealth implements Serializable {
     /** Messages with no reply inside 48 hours, over a rolling 30 days. Part of what throttles a number. */
     private Integer unansweredRolling30d;
 
+    /**
+     * Sends WhatsApp refused inside the cooldown window.
+     *
+     * <p>Was computed and shown but never acted on, which is how four refusals in thirty-five
+     * minutes all sailed through the gate. It now holds the number; see {@link #lastFailureAt}.
+     */
     private Integer recentFailures;
+
+    /** The most recent refusal, and therefore what the cooldown is counted from. */
+    private LocalDateTime lastFailureAt;
 
     private LocalDateTime lastOutboundAt;
     private LocalDateTime lastInboundAt;

@@ -8,6 +8,7 @@ import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
+import com.fincity.saas.commons.core.util.OutboundUrlUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -37,6 +38,23 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         super(Connection.class);
     }
 
+    /**
+     * Refuse a connection pointing anywhere inside our own network before it is
+     * stored. Both write paths go through here: create below, and update via
+     * {@link #updatableEntity(Connection)}.
+     *
+     * Mono.defer, not a bare call, so the refusal arrives as an error signal on
+     * the returned publisher rather than as a synchronous throw out of the
+     * controller method.
+     */
+    @Override
+    public Mono<Connection> create(Connection entity) {
+        return Mono.defer(() -> {
+            OutboundUrlUtil.validateConnectionDetails(entity.getConnectionDetails());
+            return super.create(entity);
+        });
+    }
+
     @Override
     public Mono<Connection> read(String id) {
         return super.read(id)
@@ -57,6 +75,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                 return this.messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         AbstractMongoMessageResourceService.VERSION_MISMATCH);
+
+            OutboundUrlUtil.validateConnectionDetails(entity.getConnectionDetails());
 
             existing.setConnectionSubType(entity.getConnectionSubType());
             existing.setConnectionDetails(entity.getConnectionDetails());

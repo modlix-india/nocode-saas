@@ -76,7 +76,7 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
      * The column <code>message.message_calls.CLIENT_CODE</code>. Client Code
      * related to this Call.
      */
-    public final TableField<MessageCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this Call.");
+    public final TableField<MessageCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code related to this Call.");
 
     /**
      * The column <code>message.message_calls.USER_ID</code>. ID of the user

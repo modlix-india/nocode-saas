@@ -259,7 +259,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
                 "subSource", "Homepage"
         ));
 
-        assertThat(res.statusCode()).as("Duplicate lead (no rules) should be blocked with 400").isEqualTo(400);
+        assertThat(res.statusCode()).as("Duplicate lead (no rules) should be blocked with 409").isEqualTo(409);
         String errorMsg = res.body().path("debugMessage");
         assertThat(errorMsg).as("Error should reference existing ticket")
                 .contains("already exists with ID");
@@ -328,7 +328,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         //
         // ACTUAL BEHAVIOR (BUG):
         //   checkWithinClientDuplicate() finds the existing deal with the same phone
-        //   number and immediately returns 400 "already exists" WITHOUT evaluating the
+        //   number and immediately returns 409 "already exists" WITHOUT evaluating the
         //   dedup rules. The rule-based re-inquiry logic is never reached.
         assertThat(s2Ticket1Id).as("S2 ticket 1 must exist for re-inquiry test").isNotNull();
 
@@ -392,7 +392,7 @@ public class RealEstateDedupScenario extends BaseIntegrationTest {
         // (existing deal source is "Website", not "Channel Partner")
         assertThat(res.statusCode())
                 .as("Duplicate from different source should be blocked")
-                .isEqualTo(400);
+                .isEqualTo(409);
         String errorMsg = res.body().path("debugMessage");
         assertThat(errorMsg).as("Error should reference existing ticket")
                 .contains("already exists with ID");

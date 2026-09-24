@@ -78,7 +78,7 @@ public class MessageDispatchOutbox extends TableImpl<MessageDispatchOutboxRecord
      * The column <code>message.message_dispatch_outbox.CLIENT_CODE</code>.
      * Client Code this handoff belongs to.
      */
-    public final TableField<MessageDispatchOutboxRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code this handoff belongs to.");
+    public final TableField<MessageDispatchOutboxRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code this handoff belongs to.");
 
     /**
      * The column <code>message.message_dispatch_outbox.CODE</code>. Unique Code

@@ -93,7 +93,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.CLIENT_CODE</code>. Client
      * Code who created this Stage.
      */
-    public final TableField<EntityProcessorStagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Stage.");
+    public final TableField<EntityProcessorStagesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Client Code who created this Stage.");
 
     /**
      * The column <code>entity_processor.entity_processor_stages.CODE</code>.

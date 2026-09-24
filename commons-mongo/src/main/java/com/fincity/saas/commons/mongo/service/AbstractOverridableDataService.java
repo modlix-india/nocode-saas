@@ -4,6 +4,8 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.*;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -42,6 +44,7 @@ import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
+import com.fincity.saas.commons.mongo.util.ThreeWayMerge;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
@@ -98,6 +101,25 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     private static final String[] LRO_FIELDS = { "_id", "name", "message", CLIENT_CODE, "permission", APP_CODE,
             "baseClientCode", NOT_OVERRIDABLE, "description", "title", "published", "version", "createdAt",
             "createdBy", "updatedAt", "updatedBy" };
+
+    /**
+     * Fields a publish reconciliation must never merge, and which are therefore
+     * absent from the merged content.
+     *
+     * Identity (id, name, appCode, clientCode, baseClientCode) is reimposed from the
+     * stored document by publish() and must not be taken from caller-supplied draft
+     * content. Bookkeeping (version, timestamps, published, message) belongs to the
+     * document rather than to its content: updatableEntity rebuilds every one of
+     * them from the freshly read live document, and `version` in particular is the
+     * optimistic lock itself, so merging it would produce a publish claiming to be a
+     * version it is not.
+     */
+    private static final Set<String> RECONCILE_IGNORED_ROOT_KEYS = Set.of("id", "_id", "_class", "version",
+            "createdAt", "createdBy", "updatedAt", "updatedBy", "published", "message", "name", APP_CODE, CLIENT_CODE,
+            "baseClientCode");
+
+    /** Conflicting paths named in the publish message before it turns into a count. */
+    private static final int RECONCILE_CONFLICTS_SHOWN = 5;
 
     /**
      * One page big enough to be every object of one type in one app. An index is
@@ -188,6 +210,66 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 .flatMap(this::evictRecursively)
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_CREATE,
+                        this.getObjectName()));
+    }
+
+    /**
+     * Write ONLY the plan, leaving the object's content untouched.
+     *
+     * A blueprint is a field on the object it describes, so the obvious way to
+     * write one is a read-modify-write of the whole document through update().
+     * That is wrong here, and the reason is specific rather than stylistic:
+     * `PageService.updatableEntity` increments every per-component version on a
+     * full PUT, so writing a plan through update() moves the very counters the
+     * plan records itself against. Every entry stamped as reconciled was stale
+     * the instant it was saved, and the board reported a page nobody had touched
+     * as edited by hand.
+     *
+     * The first attempt at a fix compared the incoming componentDefinition with
+     * the stored one and skipped the bump when they matched. That cannot be made
+     * to work: one side has been through Mongo and the other through Jackson, and
+     * a structural equality between those two is not reliable in either
+     * direction — it wrongly reported a change often enough to leave false drift
+     * on the board, and a wrong answer the other way would have silently weakened
+     * the concurrency guard the bump exists for.
+     *
+     * So the plan gets its own door. Identity, content and component versions all
+     * come from the stored document and are never taken from a caller, which also
+     * means this cannot be used to edit anything but the plan. Only the document
+     * version moves, because the document did change.
+     *
+     * Access is the object's own UPDATE check against the STORED appCode and
+     * clientCode, for the reason spelled out on update(): authorising codes from
+     * the request body while keying the write on the id is how a caller reaches
+     * somebody else's document.
+     */
+    public Mono<D> updateBlueprint(String id, Map<String, Object> blueprint) { // NOSONAR
+
+        return FlatMapUtil.<ContextAuthentication, D, Boolean, D, D>flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> StringUtil.safeIsBlank(id) ? Mono.empty() : this.repo.findById(id),
+
+                (ca, stored) -> this.accessCheck(ca, UPDATE, stored.getAppCode(), stored.getClientCode(), true),
+
+                (ca, stored, hasAccess) -> {
+
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.empty();
+
+                    stored.setBlueprint(blueprint);
+                    stored.setVersion(stored.getVersion() + 1);
+                    stored.setUpdatedAt(LocalDateTime.now(ZoneId.of("UTC")));
+
+                    return this.repo.save(stored);
+                },
+
+                (ca, stored, hasAccess, saved) -> this.evictRecursively(saved))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).updateBlueprint"))
+                .switchIfEmpty(messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg), FORBIDDEN_PERMISSION,
                         this.getObjectName()));
     }
 
@@ -778,9 +860,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
      * publishing an Application would appear to do nothing at all.
      *
      * Going through update() also reuses accessCheck, getMergedSources,
-     * extractOverride, the Version snapshot and the optimistic-lock check, so a
-     * publish whose base moved on underneath it is rejected rather than silently
-     * overwriting.
+     * extractOverride, the Version snapshot and the optimistic-lock check. A publish
+     * whose base moved on underneath it is reconciled first (see
+     * {@link #reconcile}), and only a drift that cannot be reconciled is rejected.
      */
     public Mono<D> publish(String id, String message) {
 
@@ -803,28 +885,171 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                 AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, this.getObjectName(), id)),
 
-                (draft, stored) -> {
-                    D entity = this.objectMapper.convertValue(draft.getContent(), this.pojoClass);
-                    // setId is declared on AbstractDTO, so it returns that type and
-                    // cannot join a chain of the overridable setters.
-                    entity.setId(id);
-                    // Identity comes from the STORED document, never from draft
-                    // content, which is caller supplied. Otherwise update()'s own
-                    // access check runs against codes the caller chose.
-                    entity.setAppCode(stored.getAppCode())
-                            .setClientCode(stored.getClientCode())
-                            .setName(stored.getName())
-                            .setBaseClientCode(stored.getBaseClientCode())
-                            .setVersion(draft.getBaseVersion())
-                            .setMessage(message == null ? draft.getMessage() : message);
-                    return this.update(entity);
-                },
+                // reconcile() has already taken identity from `stored` rather than
+                // from the caller-supplied draft content, and stamped the version
+                // this publish is entitled to move from. Only the message is this
+                // method's to decide.
+                (draft, stored) -> this.reconcile(draft, stored).flatMap(rec -> {
+                    rec.entity().setMessage(
+                            annotate(message == null ? draft.getMessage() : message, rec.note()));
+                    return this.update(rec.entity());
+                }),
 
                 (draft, stored, published) -> this.markPublished(id, stored)
                         .then(this.draftService.discardByObjectId(id))
                         .thenReturn(published))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).publish"));
+    }
+
+    /**
+     * The content to publish, stamped with the live version it is being applied to.
+     *
+     * @param note human-readable account of any reconciliation, or null when the
+     *             draft published onto the version it was taken from. It is appended
+     *             to the publish message, which is what the Version record keeps, so
+     *             a reconciled publish says so in the object's own history rather
+     *             than only in a log line nobody reads.
+     */
+    private record Reconciled<E>(E entity, String note) {
+    }
+
+    /**
+     * Bring live changes made after the draft was taken into the draft, instead of
+     * refusing the publish.
+     *
+     * The common drift is not a conflict at all: someone published a neighbouring
+     * change, or the live document was touched through a different pane, and the two
+     * sets of edits are in different parts of the tree. Refusing those cost the
+     * author their whole draft -- the only recovery was discard and redo -- to
+     * protect live content the draft never mentions.
+     *
+     * A three-way merge answers it properly, because the draft already records the
+     * live version it was taken from and version history keeps that version's
+     * content. base -> draft says what the author changed; base -> live says what
+     * happened underneath them; the merge replays the first onto the second. Only
+     * where the two touch the same value is there anything to decide, and
+     * {@link ThreeWayMerge} decides for the draft and reports the path.
+     *
+     * The result is stamped with the CURRENT live version, so the optimistic-lock
+     * check in updatableEntity still runs and still fails on a live write that lands
+     * between this read and that one. Reconciliation removes a stale conflict; it
+     * does not remove the lock.
+     *
+     * No base snapshot means nothing can say what the author changed, so there is no
+     * merge to do and the publish falls back to the old behaviour: stamped with the
+     * frozen baseVersion, which updatableEntity then rejects. That is the honest
+     * answer, and it is still recoverable by discarding and saving again.
+     */
+    private Mono<Reconciled<D>> reconcile(Draft draft, D stored) {
+
+        D draftEntity = this.objectMapper.convertValue(draft.getContent(), this.pojoClass);
+
+        if (stored.getVersion() == draft.getBaseVersion()) {
+            this.stampFromStored(draftEntity, stored);
+            draftEntity.setVersion(draft.getBaseVersion());
+            return Mono.just(new Reconciled<>(draftEntity, null));
+        }
+
+        return this.versionService
+                .contentAt(this.getObjectName().toUpperCase(), stored.getAppCode(), stored.getName(),
+                        stored.getClientCode(), draft.getBaseVersion())
+                // The APPLIED form on every side. Draft content is what the editor
+                // was shown and sent back, and a Version record holds what was sent
+                // to update(), both of which are post-applyOverride. Diffing an
+                // applied tree against a stored override delta would read every
+                // inherited value as a change.
+                .flatMap(base -> this.readInternal(stored.getId())
+                        .map(live -> this.mergeOnto(draft, stored, base, live)))
+                .defaultIfEmpty(this.unreconciled(draftEntity, stored, draft))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).reconcile"));
+    }
+
+    /**
+     * The draft as it stands, unmerged, still claiming the version it was taken
+     * from.
+     *
+     * Keeping the FROZEN baseVersion here is the whole point: it is what makes
+     * updatableEntity refuse a publish that could not be reconciled. Stamping the
+     * live version instead would turn an unreasonable-about drift into a silent
+     * overwrite, which is the bug the optimistic lock exists to prevent.
+     */
+    private Reconciled<D> unreconciled(D draftEntity, D stored, Draft draft) {
+
+        this.stampFromStored(draftEntity, stored);
+        draftEntity.setVersion(draft.getBaseVersion());
+        return new Reconciled<>(draftEntity, null);
+    }
+
+    /**
+     * Put back everything RECONCILE_IGNORED_ROOT_KEYS kept out of the merge, and
+     * everything draft content must never be trusted for.
+     *
+     * Identity from the stored document rather than from the draft is a security
+     * property on the publish path: draft content is caller supplied, and taking
+     * appCode/clientCode from it would make update()'s own access check run against
+     * codes the caller chose. On the read path it is simply necessary -- a merged
+     * entity with a null id and appCode is not a usable object at all, since
+     * applyChange and every cache key read them.
+     *
+     * `version` is deliberately NOT set here. It means something different in each
+     * caller and getting it wrong is the difference between refusing a dangerous
+     * publish and performing one, so each one states it.
+     */
+    private void stampFromStored(D entity, D stored) {
+
+        entity.setId(stored.getId());
+        entity.setAppCode(stored.getAppCode())
+                .setClientCode(stored.getClientCode())
+                .setName(stored.getName())
+                .setBaseClientCode(stored.getBaseClientCode())
+                .setPublished(stored.getPublished())
+                .setMessage(stored.getMessage());
+        entity.setCreatedAt(stored.getCreatedAt());
+        entity.setCreatedBy(stored.getCreatedBy());
+        entity.setUpdatedAt(stored.getUpdatedAt());
+        entity.setUpdatedBy(stored.getUpdatedBy());
+    }
+
+    private Reconciled<D> mergeOnto(Draft draft, D stored, Map<String, Object> base, D live) {
+
+        ThreeWayMerge.Result result = ThreeWayMerge.merge(base,
+                this.objectMapper.convertValue(live, TYPE_REFERENCE_MAP), draft.getContent(),
+                RECONCILE_IGNORED_ROOT_KEYS);
+
+        D entity = this.objectMapper.convertValue(result.merged(), this.pojoClass);
+        this.stampFromStored(entity, stored);
+        // The merged content is the live document plus the draft's delta, so the
+        // version it is based on is the live one. That is also what lets the publish
+        // through the optimistic lock, and what makes the draft surface report the
+        // version a publish would actually move from.
+        entity.setVersion(stored.getVersion());
+
+        StringBuilder note = new StringBuilder("[reconciled from v").append(draft.getBaseVersion())
+                .append(" onto live v").append(stored.getVersion());
+
+        if (!result.isClean()) {
+            // Named rather than counted: a path is what someone can go and look at.
+            // Capped because a whole-subtree replacement can conflict in hundreds of
+            // places and this string ends up in the object's history.
+            List<String> shown = result.conflicts().size() > RECONCILE_CONFLICTS_SHOWN
+                    ? result.conflicts().subList(0, RECONCILE_CONFLICTS_SHOWN)
+                    : result.conflicts();
+            note.append("; draft kept over live at ").append(String.join(", ", shown));
+            if (result.conflicts().size() > shown.size())
+                note.append(" and ").append(result.conflicts().size() - shown.size()).append(" more");
+        }
+
+        return new Reconciled<>(entity, note.append("]").toString());
+    }
+
+    private static String annotate(String message, String note) {
+
+        if (note == null)
+            return message;
+
+        return StringUtil.safeIsBlank(message) ? note : message + " " + note;
     }
 
     /**
@@ -1530,11 +1755,22 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     }
 
     /**
-     * The object as the draft surface should serve it: the draft content when one
-     * exists for this exact document, otherwise the ordinary merged read.
+     * The object as the draft surface should serve it: the draft reconciled against
+     * the current live document when one exists for this exact document, otherwise
+     * the ordinary merged read.
      *
      * The draft holds the full effective object the editor was working on, not a
-     * delta, so it is returned as-is rather than re-merged against its base.
+     * delta. Returning it as-is was wrong in one specific way: it is a SNAPSHOT of
+     * the live document at the moment the draft was taken, so anything published to
+     * live afterwards vanished from the draft host. Measured on websmith, where the
+     * draft host served an app definition with no `title` and no `links` because
+     * both were published to live after the draft was taken, and the draft still
+     * carried the v2 copy that predated them.
+     *
+     * It goes through the same {@link #reconcile} the publish path uses, deliberately
+     * and not merely for convenience: the draft surface is where someone decides
+     * whether to publish, so it has to show what publishing would actually produce.
+     * Two separate merges that could disagree would make the preview a lie.
      *
      * Substitution happens for the document being served, not for every ancestor
      * in the override chain. A draft taken at a base client is therefore visible
@@ -1569,7 +1805,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         return this.draftService
                 .find(this.getObjectName().toUpperCase(), stored.getAppCode(), stored.getName(),
                         stored.getClientCode())
-                .map(d -> this.objectMapper.convertValue(d.getContent(), this.pojoClass))
+                .flatMap(d -> this.reconcile(d, stored).map(Reconciled::entity))
                 .switchIfEmpty(Mono.defer(() -> this.readInternal(stored.getId())));
     }
 
