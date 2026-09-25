@@ -610,6 +610,59 @@ public class CampaignReportDAO {
                 });
     }
 
+    /**
+     * For each time period bucket across {@code campaignIds}, returns the total number of
+     * distinct CRM tickets created in that window (the cohort denominator for stage percentages).
+     */
+    public Mono<List<PerDateCount>> getTotalLeadsByPeriod(
+            ProcessorAccess access,
+            List<ULong> campaignIds,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            TimePeriod timePeriod,
+            String timezone) {
+
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+
+        Field<Integer> distinctTicketCount = DSL.countDistinct(TICKETS.ID).as("distinctTicketCount");
+
+        Condition baseCondition = TICKETS.APP_CODE
+                .eq(access.getAppCode())
+                .and(TICKETS.CLIENT_CODE.eq(access.getClientCode()))
+                .and(TICKETS.CAMPAIGN_ID.in(campaignIds))
+                .and(TICKETS.IS_ACTIVE.isTrue());
+
+        if (startDate != null && endDate != null) {
+            baseCondition = baseCondition.and(TICKETS.CREATED_AT.between(startDate, endDate));
+        }
+
+        Field<LocalDateTime> periodStartField =
+                PeriodBucketUtil.toDateBucketGroupKeyField(timePeriod, TICKETS.CREATED_AT, timezone)
+                        .as("periodStart");
+
+        return Flux.from(dslContext
+                .select(periodStartField, distinctTicketCount)
+                .from(TICKETS)
+                .where(baseCondition)
+                .groupBy(periodStartField))
+                .collectList()
+                .map(records -> {
+                    List<PerDateCount> leadRows = new ArrayList<>(records.size());
+                    for (Record record : records) {
+                        LocalDateTime periodStartTimestamp = record.get("periodStart", LocalDateTime.class);
+                        Long ticketCount = record.get("distinctTicketCount", Long.class);
+                        if (periodStartTimestamp != null && ticketCount != null) {
+                            leadRows.add(new PerDateCount()
+                                    .setDate(periodStartTimestamp)
+                                    .setCount(ticketCount));
+                        }
+                    }
+                    return leadRows;
+                });
+    }
+
     /* ---------------- helpers ---------------- */
 
     private CampaignPlatform parsePlatform(String s) {
