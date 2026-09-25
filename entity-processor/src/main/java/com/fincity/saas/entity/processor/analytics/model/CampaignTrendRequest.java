@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Sort.Direction;
 
 @Data
 @Accessors(chain = true)
@@ -21,4 +22,5 @@ public class CampaignTrendRequest extends BaseFilter<CampaignTrendRequest> {
 
     private List<ULong> productIds;
     private List<CampaignPlatform> platforms;
+    private Direction sortDirection = Direction.DESC;
 }

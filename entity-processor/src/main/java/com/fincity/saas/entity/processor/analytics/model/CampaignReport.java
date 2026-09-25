@@ -40,6 +40,8 @@ public class CampaignReport implements Serializable {
         private long count;
         /** Row's spend / count. Null when count is zero or spend is zero. */
         private BigDecimal cpl;
+        /** Stage count ÷ total leads in cohort * 100. */
+        private BigDecimal percentage;
     }
 
     // ---- identity ----
