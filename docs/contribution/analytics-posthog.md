@@ -1,10 +1,21 @@
 # Analytics (PostHog) — Self-Hosted
 
+> **Superseded, and being read with that in mind.** Ingest and query no longer go to PostHog.
+> Pages load a beacon served by the [analytics engine](https://github.com/modlix-india/analytics-engine)
+> and `/api/ui/analytics/query` proxies to its fixed widget API; `HogQLTenantRewriter` has been
+> deleted, because a closed widget set has no expression to rewrite. What is still accurate
+> below: the per-app toggles on the application document, the consent model, and the tenancy
+> rules `AnalyticsService` enforces. What is not: the PostHog snippet, HogQL, session replay,
+> the project and personal API keys, and the VM stacks — those are retired in milestone 12,
+> and this document is rewritten when they go rather than half-edited now.
+
 This document captures the end-to-end analytics architecture so anyone (or anyone's AI) can pick up the work without re-discovering it.
 
 ## Why self-host
 
-We host PostHog ourselves so that user-facing event capture and session replay live entirely on Modlix infrastructure (no third-party data egress). The platform builds many apps for many tenants — analytics has to be tenant-aware, ad-blocker-resilient, and consent-respecting from day one.
+We host PostHog ourselves so that user-facing event capture lives entirely on Modlix infrastructure (no third-party data egress). The platform builds many apps for many tenants — analytics has to be tenant-aware, ad-blocker-resilient, and consent-respecting from day one.
+
+Session replay was part of the original scope and has since been withdrawn; the stack still carries its remains. Read workaround 1 before assuming anything about it.
 
 ## Architecture at a glance
 
@@ -47,19 +58,44 @@ OCI Object Storage buckets (S3-compatible):
 
 - [IndexHTMLService.java](../../ui/src/main/java/com/fincity/saas/ui/service/IndexHTMLService.java) — injects the PostHog snippet into rendered HTML at the application server. `generateAnalyticsSnippet(appProps)` reads:
   - **Env-level** (Spring Cloud Config): `ui.analytics.ingestionHost`, `ui.analytics.posthog.projectApiKey` — injected via `@Value`.
-  - **App-level** (per-application toggles): `analytics.enabled`, `analytics.sessionReplay.enabled`, `analytics.heatmaps.enabled`, `analytics.consentRequired`, `analytics.autocapture`, `analytics.capturePageviews`, `analytics.capturePageleaves`, `analytics.sessionReplay.maskAllInputs`. All sub-toggles are opt-in (default false).
+  - **App-level** (per-application toggles): see the table under "Application properties" below.
   - **Critical:** keys/URLs are NEVER stored on the application document. Only user-facing toggles.
+- [ApplicationService.java](../../ui/src/main/java/com/fincity/saas/ui/service/ApplicationService.java) — `applyChange` inlines the app's `consentPage` as `consentPageDefinition`, exactly as it does for `shellPage`, and folds that page's uniqueId into the cache key.
 
 ### Frontend (`nocode-ui`)
 
 - [`ui-app/ssr/src/render/htmlRenderer.ts`](../../../nocode-ui/ui-app/ssr/src/render/htmlRenderer.ts) — same snippet generator, server-side. Mirrors the Java implementation byte-for-byte.
 - [`ui-app/ssr/src/config/configLoader.ts`](../../../nocode-ui/ui-app/ssr/src/config/configLoader.ts) — reads `ui.analytics.*` from Spring Cloud Config; merged in `mergeConfigs()` (must include the `analytics` branch — easy to miss).
-- [`ui-app/client/src/App/AnalyticsConsentBanner.tsx`](../../../nocode-ui/ui-app/client/src/App/AnalyticsConsentBanner.tsx) — React component that:
-  - Subscribes to `STORE_PREFIX.application`, `STORE_PREFIX.auth.user`, `STORE_PREFIX.auth.client` via `addListenerAndCallImmediately` (NOT `getStore()` — that's expensive).
-  - Calls `posthog.register({ app_code, url_client_code, client_code })` super properties for per-app filtering.
-  - Calls `posthog.identify(userId)` on login, `posthog.reset()` on logout.
-  - Manages opt-in / opt-out via `posthog.opt_in_capturing` / `opt_out_capturing` and `start/stopSessionRecording`.
-  - Stores consent in localStorage with cookie fallback (`modlix_analytics_consent`).
+- [`ui-app/client/src/App/analyticsConsent.ts`](../../../nocode-ui/ui-app/client/src/App/analyticsConsent.ts) — the only place that decides whether PostHog captures. Reads and writes the decision (localStorage with a cookie fallback, `modlix_analytics_consent`), mirrors it to `Store.analyticsConsent`, and drives `opt_in_capturing` / `opt_out_capturing`.
+- [`ui-app/client/src/App/AnalyticsBinder.tsx`](../../../nocode-ui/ui-app/client/src/App/AnalyticsBinder.tsx) — renders nothing. Subscribes to `STORE_PREFIX.application`, `.auth.user`, `.auth.client`, `.urlDetails` via `addListenerAndCallImmediately` (NOT `getStore()` — that's expensive) to register the `app_code` / `url_client_code` / `client_code` / `page_name` super properties, call `identify` / `reset` around sign in, and replay a decision made on an earlier visit.
+  - It reads the analytics settings from `Store.application`, **not** `window.__APP_BOOTSTRAP__`. Only the Node SSR renderer emits that global, so a binder keyed on it is dead on anything the Java `ui` service serves — which is how the original banner silently never ran locally.
+- [`ui-app/client/src/functions/{Get,Set}AnalyticsConsent.ts`](../../../nocode-ui/ui-app/client/src/functions/) — the KIRun surface apps build their consent box against.
+- [`ui-app/client/src/Engine/RenderEngineContainer.tsx`](../../../nocode-ui/ui-app/client/src/Engine/RenderEngineContainer.tsx) — renders `consentPageDefinition` as a sibling overlay of whichever page is showing.
+
+### The consent page
+
+Consent UI is **not** in React. An app points `properties.consentPage` at one of its own pages and builds the box with components; the platform renders it over every page until the visitor answers. Three things about that page are not obvious:
+
+1. **Its `onLoad` is run by `RenderEngineContainer`, not by `Page`.** `Page` only runs its own onLoad when `Store.urlDetails.pageName` matches its context, which is never true for an overlay. The shell page has the same problem and is handled the same way.
+2. **Root must be a zero-size, `pointer-events: none` anchor** (`position: fixed`, `width/height: 0`, high `z-index`), with each visible box `position: fixed` and `pointer-events: auto`. Otherwise it covers the page underneath.
+3. **Drive which box shows from a single store key.** Two `SetStore` writes racing (hide bar, show panel) can interleave with a re-seed and leave both hidden. The shipped pages use one `Page.view` key with values `bar` / `panel`.
+
+Consent belongs to the **browser**, not the account: it survives sign out, and signing in neither grants nor revokes it. An app whose terms of service already cover measurement should set `consentRequired: false` rather than try to infer consent from a login.
+
+### Application properties
+
+| key | default | effect |
+|---|---|---|
+| `analytics.enabled` | `false` | Master switch. False emits no snippet at all. |
+| `analytics.consentRequired` | **`true`** | Sets `opt_out_capturing_by_default`. True means PostHog boots opted out and captures nothing until consent is granted — so an app that leaves this unset and ships no consent page captures nothing. |
+| `analytics.autocapture` | `true` | Clicks/inputs. Heatmaps piggyback on this listener. |
+| `analytics.capturePageviews` | `true` | `capture_pageview` |
+| `analytics.capturePageleaves` | `true` | `capture_pageleave` |
+| `analytics.heatmaps.enabled` | `false` | `enable_heatmaps`. Must be explicit — see the workaround below. |
+| `analytics.consentCookieName` | `modlix_analytics_consent` | Name of the localStorage key / cookie. Client-side only. |
+| `consentPage` | *(none)* | Top-level, **not** under `analytics`. Names a page in the same app. |
+
+`analytics.sessionReplay.*` is **inert** — see below.
 
 ### Spring Cloud Config (`oci-config`)
 
@@ -82,40 +118,24 @@ Files: `application-oci{dev,stage,prod}.yml` in the `oci-config` repo.
 
 ## Critical workarounds (read before touching)
 
-### 1. Session replay needs a manual `$session_recording_remote_config` bootstrap
+### 1. We do not record sessions
 
-PostHog SDK v1.372.x has a `get ws()` getter that gates session recording start. It checks `_instance.get_property("$session_recording_remote_config")` for `enabled: true`. That property is normally populated by `/decide` (or `/flags?config=true` in newer SDKs).
+Session replay was built and then deliberately withdrawn. Both snippet generators now hard-code `disable_session_recording: true` rather than deriving it from a toggle, so **no application document can switch recording back on** — an `analytics.sessionReplay` block is inert. The consent code touches no recording API.
 
-In our hobby self-host, `/decide` 403s and the SDK doesn't request `?config=true`, so the property is never set and recording never starts — even after `posthog.opt_in_capturing()` + `posthog.startSessionRecording()`.
+What went with it: the `$session_recording_remote_config` bootstrap (a workaround for the SDK's `get ws()` gate, which `/decide` would normally satisfy but our hobby self-host 403s), `maskAllInputs`, `sampleRate`, and the two recording methods in the snippet stub.
 
-**The fix** (in both `IndexHTMLService.java` and `htmlRenderer.ts`):
+**What is deliberately still standing**, parked for a later decision rather than overlooked:
 
-1. Set `advanced_disable_flags: true` in init options to silence the 403 noise.
-2. Use the `loaded` callback to `register` the property manually:
+- `SessionReplayList` and `SessionReplayPlayer` components in `nocode-ui`, plus their catalog registration. Nothing but `appbuilder/docs` and `appbuilder/componentBook` references them.
+- The replay surface in [AnalyticsService.java](../../ui/src/main/java/com/fincity/saas/ui/service/AnalyticsService.java) — recordings list, tenant-ownership check, sharing-token and embed-URL builder.
+- The docs pages under `modlix-apps/docs-content/pages/platform/`, which still describe replay as available.
+- On the analytics VMs: the `replay-capture`, `ingestion-sessionreplay` and `recording-api` containers, and the `{dev,stage,prod}-posthog` OCI buckets, which still hold everything recorded to date.
 
-```js
-posthog.init(KEY, {
-  ...options,
-  advanced_disable_flags: true,
-  loaded: function(ph) {
-    ph.persistence.register({
-      '$session_recording_remote_config': {
-        enabled: true,
-        recorderVersion: 'v2',
-        endpoint: '/s/',
-        sampleRate: null,
-        linkedFlag: null,
-        urlBlocklist: [], urlTriggers: [], eventTriggers: []
-      }
-    });
-    ph.sessionRecording.startIfEnabledOrStop();
-  }
-});
-```
+So the surface reads as supported while nothing feeds it. Decide whether to remove it or revive it before trusting either half.
 
-If session replay stops working again, **first** check whether the SDK upgraded and changed the property name or shape.
+`advanced_disable_flags: true` stays in the init options — it silences the `/decide` 403 noise and is what makes the heatmaps flag below necessary.
 
-### 1b. Heatmaps need `enable_heatmaps: true` (same root cause)
+### 1b. Heatmaps need `enable_heatmaps: true`
 
 PostHog's heatmap collector (`Heatmaps.isEnabled`) checks `config.enable_heatmaps` first and falls back to `persistence.props['$heatmaps_enabled_server_side']`. The server-side flag is populated by `/decide`, which we have disabled (`advanced_disable_flags: true`) — so without the explicit config flag, no `$$heatmap` events are ever sent and the PostHog UI shows empty heatmaps.
 
@@ -132,6 +152,8 @@ PostHog hobby's preflight wizard fails for `kafka` and `plugins` checks (the und
 If you upgrade PostHog and views.py shape changes, the sed regex in the start script may need updating.
 
 ### 3. OCI Object Storage doesn't support trailing checksums
+
+Only matters if session replay is ever revived — nothing writes these blobs now. Kept because the override is still in place on the VMs.
 
 PostHog uploads session-replay blobs via boto3, which by default uses `Transfer-Encoding: chunked` with CRC32C trailing checksums. OCI rejects these with `MissingContentLength`.
 
@@ -152,7 +174,7 @@ The `.env` variables that drive this override are named `OBJECT_STORAGE_*` (NOT 
 
 ## Deploy
 
-### Code changes (analytics snippet, consent banner, etc.)
+### Code changes (analytics snippet, consent plumbing, etc.)
 
 Standard branch promotion: `feature/x` → `master` (PR) → release branches:
 
@@ -186,19 +208,24 @@ Source in `oci-config/scripts/cloudflare/analytics-proxy/`. Deploy with `wrangle
 
 ## Verifying after deploy
 
-1. Open an app domain (e.g. `dev.leadzump.ai`), accept the consent banner.
-2. PostHog UI → Activity → confirm events flow with `app_code`, `url_client_code`, `client_code` super properties.
-3. Replay → confirm sessions are listed (give it ~30s after page interaction).
-4. If replay doesn't start, in browser console:
+1. Open an app domain (e.g. `dev.leadzump.ai`) in a clean profile. The consent box should appear over the landing page; accept it.
+2. In the browser console, confirm the decision was stored and applied:
    ```js
-   posthog.persistence.get_property('$session_recording_remote_config')
-   posthog.sessionRecording.bs   // should be 'active' or 'lazy_loading', not 'disabled'
+   localStorage.getItem('modlix_analytics_consent')  // {"status":"granted","categories":{...},...}
+   posthog.has_opted_in_capturing()                  // true
    ```
+3. PostHog UI → Activity → confirm events flow with `app_code`, `url_client_code`, `client_code`, `page_name` super properties.
+4. Reload. The box must not come back.
+5. Reject in a second clean profile and confirm no events arrive for it.
+
+If the box never appears, in order: is `analytics.enabled` true and `consentRequired` not `false`; does the app have `consentPage` set and does that page exist; did `Store.application.properties.consentPageDefinition` actually arrive (the server inlines it, so a stale HTML/app cache will hide it — flush Redis).
 
 ## Open / future work
 
+- **Decide the fate of the replay pipeline** — see workaround 1. Recording is off; the components, `AnalyticsService` endpoints, docs pages, VM containers and OCI buckets are all still standing. Parked deliberately.
 - **Settings UI** in AppBuilder + SiteZump (no-code panels) for the per-app analytics toggles. Today these have to be set directly on the application JSON.
+- **`marketing` consent drives nothing.** The category is stored and readable, but no advertising pixel consumes it — so an app that offers the toggle is making a promise the platform does not keep. Meta CAPI is the natural first consumer.
+- **`appbuilder` still sets `consentRequired: true`.** Its terms of service arguably already cover product analytics, in which case `false` is the honest setting and the box should not show there at all.
 - **Stop unused MinIO + SeaweedFS containers** on the analytics VMs (we use OCI Object Storage; the local stores are wasted RAM).
 - **Worker container preflight patch** — currently only `web` and `temporal-django-worker` self-heal on restart. The `worker` container's CMD is baked into the image. If the preflight check ever matters there, add a `command:` override in `docker-compose.override.yml`.
 - **Rotate PostHog Personal API tokens and Cloudflare API token** — the bootstrap tokens we generated during initial setup should be rotated.
-- **PostHog SDK upgrades** — the session-recording bootstrap workaround is tightly coupled to SDK internals (`$session_recording_remote_config`, `recorderVersion: 'v2'`, `bs` field). On every SDK bump, retest replay end-to-end.
