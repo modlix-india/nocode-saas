@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -50,7 +52,16 @@ public class IndexHTMLService {
     private static final String[] SCRIPT_FIELDS = new String[] { "async", "type", "crossorigin", "defer", "integrity",
             "nomodule", "referrerpolicy", "src" };
 
-    private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", "content" };
+    private static final String PROPERTY = "property";
+
+    private static final String HTTPS_PREFIX = "https://";
+
+    // `property` is what Open Graph is addressed by. Without it here, an og tag
+    // stored in `metas` came out as `<meta content="..."/>`, which says nothing
+    // to any consumer -- so this path could never produce a link preview at all,
+    // however the application was configured.
+    private static final String[] META_FIELDS = new String[] { "charset", "name", "http-equiv", PROPERTY,
+            "content" };
 
     public static final String CACHE_NAME_INDEX = "indexNewCache";
 
@@ -360,7 +371,15 @@ public class IndexHTMLService {
 
         processTagType(str, (Map<String, Object>) appProps.get("links"), "link", LINK_FIELDS);
         processTagType(str, (Map<String, Object>) appProps.get("scripts"), "script", SCRIPT_FIELDS);
-        processTagType(str, (Map<String, Object>) appProps.get("metas"), "meta", META_FIELDS);
+
+        // Before `metas`, so an og property said properly here is the one in the
+        // document and a duplicate in the free-form list is what gets skipped.
+        // The set is a local rather than a field: this service is a singleton
+        // and renders are concurrent, so anything shared would let one app's og
+        // block suppress another app's metas.
+        Set<String> saidByOg = new LinkedHashSet<>();
+        str.append(processOpenGraph((Map<String, Object>) appProps.get("og"), title, saidByOg));
+        processTagType(str, (Map<String, Object>) appProps.get("metas"), "meta", META_FIELDS, saidByOg);
 
         if (appProps.get("manifest") != null && !((Map<String, ?>) appProps.get("manifest")).isEmpty())
             str.append("<link rel=\"manifest\" href=\"")
@@ -643,8 +662,21 @@ public class IndexHTMLService {
         return cspString.toString();
     }
 
-    @SuppressWarnings("unchecked")
     private void processTagType(StringBuilder str, Map<String, Object> tagType, String tag, String[] attributeList) {
+        this.processTagType(str, tagType, tag, attributeList, Set.of());
+    }
+
+    /**
+     * @param alreadySaid properties the `og` block emitted for this document. A
+     *                    meta repeating one of them is dropped rather than
+     *                    appended: ogp.me gives the first tag precedence on a
+     *                    conflict, but LinkedIn and Teams do not document that
+     *                    they follow it, so the document is never given two of
+     *                    the same property to choose between.
+     */
+    @SuppressWarnings("unchecked")
+    private void processTagType(StringBuilder str, Map<String, Object> tagType, String tag, String[] attributeList,
+            Set<String> alreadySaid) {
 
         if (tagType == null || tagType.isEmpty())
             return;
@@ -653,24 +685,217 @@ public class IndexHTMLService {
                 .stream()
                 .map(e -> (Map<String, Object>) e)
                 .sorted(new MapWithOrderComparator())
+                .filter(e -> !alreadySaid.contains(StringUtil.safeValueOf(e.get(PROPERTY), "")))
                 .map(e -> this.toTagString(tag, e, attributeList))
                 .collect(Collectors.joining()));
     }
 
+    /**
+     * The application's site-wide Open Graph defaults, as head tags.
+     *
+     * This path renders one shell per application with no page in scope, so
+     * everything here is the app-level default. The SSR renderer layers a page's
+     * own `properties.seo` on top; nothing equivalent is possible here, and
+     * `og:url` can only name the canonical origin for the same reason.
+     *
+     * Emission order follows ogp.me: the four required properties first, the
+     * `og:image:*` structured properties directly under `og:image` (they attach
+     * to the root tag above them and are done as soon as another root element is
+     * parsed), then the optional ones.
+     */
+    @SuppressWarnings("unchecked")
+    private String processOpenGraph(Map<String, Object> og, Object appTitle, Set<String> emitted) {
+
+        if (og == null || og.isEmpty())
+            return "";
+
+        Map<String, Object> image = og.get("image") instanceof Map ? (Map<String, Object>) og.get("image") : Map.of();
+        String canonicalBase = trimTrailingSlashes(StringUtil.safeValueOf(og.get("canonicalBase"), "").trim());
+
+        String title = firstOf(og.get("title"), appTitle);
+        String imageUrl = absolutise(StringUtil.safeValueOf(image.get("url"), ""), canonicalBase);
+        String description = firstOf(og.get("description"));
+
+        // Nothing worth a card means no card. A consumer handed an empty title
+        // falls back to the document's own <title>, which is usually right.
+        if (title.isEmpty() && imageUrl.isEmpty() && description.isEmpty())
+            return "";
+
+        StringBuilder sb = new StringBuilder();
+
+        appendMeta(sb, emitted, PROPERTY, "og:title", title);
+        appendMeta(sb, emitted, PROPERTY, "og:type", firstOf(og.get("type"), "website"));
+        appendImageMetas(sb, emitted, imageUrl, image);
+        appendMeta(sb, emitted, PROPERTY, "og:url", canonicalBase);
+        appendMeta(sb, emitted, PROPERTY, "og:description", description);
+        appendMeta(sb, emitted, PROPERTY, "og:site_name", firstOf(og.get("siteName"), appTitle));
+        appendMeta(sb, emitted, PROPERTY, "og:locale", firstOf(og.get("locale")));
+        appendLocaleAlternates(sb, emitted, og.get("localeAlternate"));
+        appendMeta(sb, emitted, PROPERTY, "og:determiner", firstOf(og.get("determiner")));
+        appendSocialMetas(sb, emitted, og, imageUrl);
+
+        return sb.toString();
+    }
+
+    /**
+     * The `og:image` root and its structured properties.
+     *
+     * These sit directly under `og:image` because ogp.me attaches a structured
+     * property to the root tag above it, and considers it done as soon as
+     * another root element is parsed. Moved below `og:site_name` they would
+     * attach to nothing.
+     */
+    private void appendImageMetas(StringBuilder sb, Set<String> emitted, String imageUrl, Map<String, Object> image) {
+
+        if (imageUrl.isEmpty())
+            return;
+
+        appendMeta(sb, emitted, PROPERTY, "og:image", imageUrl);
+        if (imageUrl.startsWith(HTTPS_PREFIX))
+            appendMeta(sb, emitted, PROPERTY, "og:image:secure_url", imageUrl);
+        appendMeta(sb, emitted, PROPERTY, "og:image:alt", firstOf(image.get("alt")));
+        appendMeta(sb, emitted, PROPERTY, "og:image:type", firstOf(image.get("type")));
+        appendMeta(sb, emitted, PROPERTY, "og:image:width", firstOf(image.get("width")));
+        appendMeta(sb, emitted, PROPERTY, "og:image:height", firstOf(image.get("height")));
+    }
+
+    /**
+     * The one repeated property in the set. ogp.me says to put multiple versions
+     * of the same tag on the page, so these deliberately bypass the dedupe.
+     */
+    private void appendLocaleAlternates(StringBuilder sb, Set<String> emitted, Object localeAlternate) {
+
+        if (!(localeAlternate instanceof List<?> alternates) || alternates.isEmpty())
+            return;
+
+        emitted.add("og:locale:alternate");
+        for (Object alt : alternates) {
+            String value = firstOf(alt);
+            if (!value.isEmpty())
+                sb.append("<meta property=\"og:locale:alternate\" content=\"")
+                        .append(escapeHtml(value))
+                        .append("\"/> \n");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void appendSocialMetas(StringBuilder sb, Set<String> emitted, Map<String, Object> og, String imageUrl) {
+
+        Map<String, Object> twitter = og.get("twitter") instanceof Map ? (Map<String, Object>) og.get("twitter")
+                : Map.of();
+
+        // X reads og:* for everything except the card layout, which only
+        // twitter:card selects. Defaulted from whether an image resolved,
+        // because summary_large_image with no image renders as a blank plate.
+        appendMeta(sb, emitted, "name", "twitter:card",
+                firstOf(twitter.get("card"), imageUrl.isEmpty() ? "summary" : "summary_large_image"));
+        appendMeta(sb, emitted, "name", "twitter:site", firstOf(twitter.get("site")));
+        appendMeta(sb, emitted, "name", "twitter:creator", firstOf(twitter.get("creator")));
+        appendMeta(sb, emitted, PROPERTY, "fb:app_id", firstOf(og.get("fbAppId")));
+    }
+
+    private static String trimTrailingSlashes(String value) {
+
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '/')
+            end--;
+        return value.substring(0, end);
+    }
+
+    private void appendMeta(StringBuilder sb, Set<String> emitted, String attribute, String property, String value) {
+
+        if (value == null || value.isBlank() || emitted.contains(property))
+            return;
+
+        emitted.add(property);
+        sb.append("<meta ")
+                .append(attribute)
+                .append("=\"")
+                .append(property)
+                .append("\" content=\"")
+                .append(escapeHtml(value))
+                .append("\"/> \n");
+    }
+
+    /** First non-blank candidate, trimmed. */
+    private static String firstOf(Object... candidates) {
+
+        for (Object candidate : candidates) {
+            if (candidate == null)
+                continue;
+            String value = candidate.toString().trim();
+            if (!value.isEmpty())
+                return value;
+        }
+        return "";
+    }
+
+    /**
+     * Resolve a stored URL against the canonical base.
+     *
+     * Stored image values are root-relative files-API paths, and Facebook, X and
+     * Slack all reject a relative `og:image`. With no canonical base configured
+     * there is nothing honest to prepend, so the tag is dropped rather than
+     * emitted broken.
+     */
+    private static String absolutise(String value, String canonicalBase) {
+
+        String v = value == null ? "" : value.trim();
+        if (v.isEmpty())
+            return "";
+
+        String lower = v.toLowerCase();
+        if (lower.startsWith("http://") || lower.startsWith("https://") || v.startsWith("//"))
+            return v;
+        if (canonicalBase.isEmpty())
+            return "";
+
+        while (v.startsWith("/"))
+            v = v.substring(1);
+        return canonicalBase + "/" + v;
+    }
+
     private String toTagString(String tag, Map<String, Object> attributes, String[] attributeList) {
 
-        StringBuilder linkSB = new StringBuilder("<").append(tag)
-                .append(' ');
+        StringBuilder linkSB = new StringBuilder("<").append(tag);
 
         for (String attr : attributeList)
             if (attributes.containsKey(attr))
-                linkSB.append(attr)
-                        .append('=')
-                        .append("\"")
-                        .append(attributes.get(attr))
-                        .append("\"");
+                // The separator is not cosmetic. Without it the attributes ran
+                // together as `name="a"content="b"`, which a lenient HTML parser
+                // recovers from and a strict one does not.
+                linkSB.append(' ')
+                        .append(attr)
+                        .append("=\"")
+                        .append(escapeHtml(attributes.get(attr)))
+                        .append('"');
 
         return linkSB.append("/> \n")
                 .toString();
+    }
+
+    /**
+     * Escape a value going into a double-quoted HTML attribute.
+     *
+     * These values are author-supplied: a page description holding one
+     * apostrophe or quote used to close the attribute early and take the rest of
+     * the tag, and whatever followed it in the head, with it.
+     *
+     * The five replacements and their order match `escapeHtml` in the SSR
+     * renderer's htmlRenderer.ts, so the two paths emit the same bytes for the
+     * same document. `&amp;` goes first or it would re-escape the entities the
+     * others introduce.
+     */
+    private static String escapeHtml(Object value) {
+
+        if (value == null)
+            return "";
+
+        return value.toString()
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }
