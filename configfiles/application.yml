@@ -42,6 +42,25 @@ management:
       expose: '*'
       exposure:
         include: '*'
+  metrics:
+    distribution:
+      # Micrometer ships count, sum and max for http.server.requests and nothing else, so every
+      # dashboard and every alert can only show a MEAN. A mean hides exactly the thing users
+      # complain about: on 2026-09-26 the edge p95 for entity-processor sat near a second for
+      # hours while the service's own mean read 42ms. A mean over a quiet hour is worse than
+      # useless -- at 00:30 UTC, with 1.3 req/min, one nightly batch endpoint at 13.7s dragged
+      # the whole service "average" to 726ms with no user affected.
+      #
+      # `slo` rather than `percentiles-histogram: true` on purpose. The latter adds roughly 70
+      # buckets per URI per instance, and entity-processor alone has ~60 URIs across four
+      # blue/green colours. These nine boundaries add nine series per URI per instance and are
+      # enough to compute p95 and p99 with histogram_quantile, which is all the dashboard needs.
+      #
+      # Boundaries are clustered below a second because that is where the decisions are: the
+      # difference between 25ms and 250ms is a regression worth chasing, the difference between
+      # 5s and 10s is an endpoint that is broken either way.
+      slo:
+        http.server.requests: 25ms,50ms,100ms,250ms,500ms,1s,2s,5s,10s
 
 endpoints:
   enabled: true
