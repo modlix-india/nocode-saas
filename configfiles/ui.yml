@@ -2,6 +2,18 @@ spring:
   data:
     mongodb:
       uri: ${ui.mongo.uri}
+      # Spring Data defaults this to false since 3.0, and it was set only in
+      # src/test/resources/application-test.yml -- so the test suites built every
+      # @CompoundIndex in the codebase and no running server ever did. All 27 of them were
+      # missing from dev, stage and production until 2026-09-27. ui.page is 2118 documents but
+      # 208MB, so the page lookup by {appCode, clientCode, name} was collection-scanning all of
+      # it: docsExamined 2118, up to 1631ms. With the index, docsExamined 1.
+      #
+      # Safe to switch on only because every declared index already exists with a matching
+      # spec -- each one was resolved through MongoPersistentEntityIndexResolver and diffed
+      # against all three environments first. A name that exists with a DIFFERENT key spec does
+      # not warn, it throws IndexKeySpecsConflict and the service fails to start.
+      auto-index-creation: true
     redis:
       url: ${redis.url}
 
