@@ -43,6 +43,17 @@
             <groupId>io.r2dbc</groupId>
             <artifactId>r2dbc-pool</artifactId>
         </dependency>
+        <!--
+            For ConnectionPoolMetrics only, so the r2dbc pool this module creates is visible in
+            Prometheus. Optional because it is a compile-time need of this module alone: every
+            service that uses it already pulls in the actuator starter itself, and the binding is
+            guarded by an ObjectProvider, so a consumer without actuator still builds and runs.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
