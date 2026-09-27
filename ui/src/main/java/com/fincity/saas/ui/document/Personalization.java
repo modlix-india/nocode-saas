@@ -16,7 +16,12 @@ import reactor.core.publisher.Mono;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document
-@CompoundIndex(def = "{'applicationName': 1, 'name': 1, 'id': 1}", name = "personalizationFilteringIndex")
+// '_id', not 'id'. Spring does NOT map property names to field names inside a @CompoundIndex
+// string definition -- it hands the string through almost verbatim -- so 'id' would create an
+// index on a field that no document has, because @Id is stored as _id. Verified by running
+// MongoPersistentEntityIndexResolver directly: with 'id' it resolves to
+// {"applicationName": 1, "name": 1, "id": 1}.
+@CompoundIndex(def = "{'applicationName': 1, 'name': 1, '_id': 1}", name = "personalizationFilteringIndex")
 @Accessors(chain = true)
 @ToString(callSuper = true)
 public class Personalization extends AbstractOverridableDTO<Personalization> {
