@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Makes logging incapable of blocking a request thread.
+
+  WHY THIS EXISTS. Spring Boot's appenders are synchronous. On a reactive service the thread that
+  calls log.debug(...) is a Netty event loop, so a slow write does not slow down logging, it stops
+  the service. On 2026-09-28 production was logging every SQL statement at DEBUG - `SELECT 1`,
+  `START TRANSACTION READ WRITE`, `COMMIT` around every operation - and entity-processor stalled
+  badly enough that a 500-row lookup timed out at nginx's 60 second ceiling while the host idled
+  at 3% CPU and the database at four running threads.
+
+  Turning the level down fixed the symptom. This fixes the shape: with the appenders wrapped in
+  AsyncAppender, a logging call hands off to a queue and returns, and no log write can ever sit in
+  the path of a request again. Someone turning DEBUG back on to chase a bug should cost disk and
+  noise, not availability.
+
+  neverBlock=true is the whole point and must not be removed. Without it, AsyncAppender BLOCKS the
+  caller once the queue fills, which reintroduces exactly the failure this is here to prevent - it
+  would merely take 16384 messages longer to arrive. With it, a full queue drops messages instead.
+  Losing log lines under extreme load is the correct trade: logs are diagnostics, and diagnostics
+  are not worth an outage.
+
+  discardingThreshold=0 keeps everything until the queue is genuinely full. The default of 20%
+  silently drops TRACE, DEBUG and INFO once the queue is a fifth from full, which would throw away
+  the lines you most want while investigating the very incident that filled it.
+
+  includeCallerData=false is the default and is stated explicitly because switching it on makes
+  every log call capture a stack trace, which is far more expensive than the write this file
+  exists to move off the request thread.
+
+  This lives in commons, which ui, core, entity-processor, security, message, multi and gateway all
+  depend on. The commons2 services - files, notification and worker - carry their own copy, because
+  no single module covers both families. If a service ever depends on both, two logback-spring.xml
+  files land on one classpath and which one wins is down to jar order: keep the copies identical,
+  or collapse them into a shared module first.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--
+      Plain text on the console, structured GELF in the file. The console is read by a human
+      through `docker logs`; the file is what Alloy tails and ships to Loki, and that is where the
+      structure earns the bytes. Writing GELF to both was serialising every line twice.
+    -->
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!--
+      Spring exports LOG_FILE as a system property from logging.file.name, which every deployed
+      environment sets. The fallback keeps a developer running this locally, without that property,
+      from getting an appender pointed at a literal unresolved path.
+    -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${FILE_LOG_THRESHOLD}</level>
+        </filter>
+        <!--
+          The format is named here rather than read from FILE_LOG_STRUCTURED_FORMAT. Spring's
+          defaults.xml defines that property as an EMPTY string when logging.structured.format.file
+          is unset, so `${FILE_LOG_STRUCTURED_FORMAT:-gelf}` resolves to "" and never falls back -
+          and StructuredLogEncoder then throws "Unknown format ''" and the service does not start.
+          A logging default must not be able to stop a service booting, so it is fixed here.
+          This makes logging.structured.format.file redundant; the file is always GELF, which is
+          what Alloy parses into the service/level/instance_id labels in Loki.
+        -->
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>gelf</format>
+            <charset>${FILE_LOG_CHARSET}</charset>
+        </encoder>
+        <file>${LOG_FILE:-logs/application.log}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGBACK_ROLLINGPOLICY_FILE_NAME_PATTERN:-${LOG_FILE:-logs/application.log}.%d{yyyy-MM-dd}.%i.gz}</fileNamePattern>
+            <cleanHistoryOnStart>${LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START:-false}</cleanHistoryOnStart>
+            <maxFileSize>${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-10MB}</maxFileSize>
+            <totalSizeCap>${LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP:-0}</totalSizeCap>
+            <maxHistory>${LOGBACK_ROLLINGPOLICY_MAX_HISTORY:-7}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="CONSOLE"/>
+        <queueSize>16384</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>16384</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <!--
+      Only the async wrappers are attached. Referencing CONSOLE or FILE directly here as well
+      would defeat the whole file, because the synchronous appender would still be called on the
+      request thread.
+
+      Spring applies logging.level.* from the config server after this file is read, so levels are
+      still controlled there and through /actuator/loggers at runtime.
+    -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+</configuration>
