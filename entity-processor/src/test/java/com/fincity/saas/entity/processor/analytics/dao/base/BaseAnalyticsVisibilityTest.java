@@ -8,6 +8,9 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 
+import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -176,6 +179,36 @@ class BaseAnalyticsVisibilityTest {
         assertNotNull(dao.getField(BaseProcessorDto.Fields.clientId), "clientId must map to a column");
         assertNotNull(dao.getField(AbstractFlowUpdatableDTO.Fields.appCode), "appCode must map to a column");
         assertNotNull(dao.getField(AbstractFlowUpdatableDTO.Fields.clientCode), "clientCode must map to a column");
+    }
+
+    @Test
+    @DisplayName("the id-resolution union is bounded by a LIMIT")
+    void unionIsBounded() {
+
+        // This is the test the 2026-09-28 incident is owed. Without the LIMIT, a scope with a
+        // few assignees but several hundred managed client ids makes MySQL abandon the index on
+        // the client branch and scan the table - 160,624 rows and 260ms per analytics request,
+        // for a result that was then discarded for exceeding the cap. Bounded, the same query
+        // reads 10,100 rows in 17ms. A future edit that drops the limit fails here rather than
+        // on production.
+        TestAnalyticsDAO dao = new TestAnalyticsDAO();
+        DSLContext ctx = DSL.using(SQLDialect.MYSQL);
+
+        String sql = dao.visibleIdQuery(
+                        ctx,
+                        DSL.field("APP_CODE", String.class)
+                                .eq("leadzump")
+                                .and(DSL.field("CLIENT_CODE", String.class).eq("FIN")),
+                        EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID,
+                        EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.CLIENT_ID,
+                        List.of(USER_A, USER_B),
+                        List.of(CLIENT_A))
+                .getSQL();
+
+        assertTrue(sql.toLowerCase().contains("union"), "both branches must still be a union");
+        assertTrue(
+                sql.toLowerCase().trim().matches("(?s).*limit\\s+\\??\\s*$"),
+                "the union must end in a LIMIT, otherwise an unselective branch scans the table: " + sql);
     }
 
     @Test
