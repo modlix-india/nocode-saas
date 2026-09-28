@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jooq.Condition;
+import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Select;
@@ -264,19 +265,13 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                             .eq(access.getAppCode())
                             .and(clientCodeField.eq(access.getEffectiveClientCode()));
 
-                    Select<? extends Record1<ULong>> visibleIds = this.dslContext
-                            .select(this.idField)
-                            .from(this.table)
-                            .where(scope.and(assignedField.in(users)))
-                            .union(this.dslContext
-                                    .select(this.idField)
-                                    .from(this.table)
-                                    .where(scope.and(clientIdField.in(clients))));
+                    Select<? extends Record1<ULong>> visibleIds =
+                            this.visibleIdQuery(this.dslContext, scope, assignedField, clientIdField, users, clients);
 
                     return Flux.from(visibleIds)
                             .map(Record1::value1)
-                            // One past the cap is enough to know the cap was passed, without
-                            // dragging the whole set across the wire to find out.
+                            // Belt and braces: the LIMIT above already bounds what the server
+                            // produces, this bounds what we buffer if it ever does not.
                             .take(VISIBLE_ID_CAP + 1L)
                             .collectList();
                 })
@@ -292,6 +287,43 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                             .setMultiValue(ids);
                 })
                 .onErrorReturn(fallback);
+    }
+
+    /**
+     * The LIMIT is what makes this safe to run at all, and leaving it out was a production
+     * incident on 2026-09-28.
+     *
+     * A branch is only cheap when it is selective, and real scopes are not symmetrical:
+     * production sends three assignee ids and several HUNDRED managed client ids. Against a list
+     * that long MySQL abandons the index and scans - 160,624 rows, 260ms, on every analytics
+     * request. Worse, that scope sees 20,108 rows, so the result was then discarded for
+     * exceeding the cap and the original OR ran anyway. It was pure cost.
+     *
+     * Bounded, the same query reads 10,100 rows in 17ms.
+     *
+     * The limit works with the cap rather than against it. Fewer than cap+1 rows back means the
+     * LIMIT never truncated, so the set is complete and can be trusted. Exactly cap+1 means we
+     * are over the cap and fall back to the OR - which is what the full result would have made
+     * us do anyway, only after paying fifteen times as much to find out.
+     *
+     * Package-private and taking its DSLContext as an argument so a test can render the SQL
+     * without a database and assert the bound is still there.
+     */
+    Select<? extends Record1<ULong>> visibleIdQuery(
+            DSLContext ctx,
+            Condition scope,
+            Field assignedField,
+            Field clientIdField,
+            List<ULong> users,
+            List<ULong> clients) {
+
+        return ctx.select(this.idField)
+                .from(this.table)
+                .where(scope.and(assignedField.in(users)))
+                .union(ctx.select(this.idField)
+                        .from(this.table)
+                        .where(scope.and(clientIdField.in(clients))))
+                .limit(VISIBLE_ID_CAP + 1);
     }
 
     private Mono<AbstractCondition> getAppCodeCondition(ProcessorAccess access) {
