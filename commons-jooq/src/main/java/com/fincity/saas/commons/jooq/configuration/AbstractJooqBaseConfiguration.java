@@ -7,7 +7,9 @@ import org.jooq.impl.DSL;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.metrics.r2dbc.ConnectionPoolMetrics;
 import org.springframework.context.annotation.Bean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +22,8 @@ import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
 import io.r2dbc.spi.ConnectionFactories;
@@ -65,8 +69,24 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
                 .create();
     }
 
+    /**
+     * The r2dbc pool every service actually talks to MySQL through, and until now the one thing
+     * about those services that nothing measured. Prometheus had HikariCP metrics - which cover
+     * only the JDBC path Flyway uses at startup - and nothing at all for this pool, so
+     * "connections exhausted" and "the database is slow" looked identical from outside.
+     *
+     * The metrics are bound by hand rather than by exposing the ConnectionPool as a bean.
+     * Spring Boot's ConnectionPoolMetricsAutoConfiguration would pick a bean up automatically,
+     * but ConnectionPool implements ConnectionFactory, and R2dbcAutoConfiguration backs off on
+     * any ConnectionFactory bean - so publishing one would silently change which pool the rest
+     * of the context wires itself to. Binding directly leaves that wiring exactly as it was and
+     * adds only the meters.
+     *
+     * ObjectProvider because the registry is not required for the service to run: no actuator,
+     * no meters, and the DSLContext is still built.
+     */
     @Bean
-    DSLContext context() {
+    DSLContext context(ObjectProvider<MeterRegistry> meterRegistry) {
 
         Builder props = ConnectionFactoryOptions.parse(url).mutate();
         ConnectionFactory factory = ConnectionFactories.get(props.option(ConnectionFactoryOptions.DRIVER, "pool")
@@ -74,7 +94,12 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
                 .option(ConnectionFactoryOptions.USER, username)
                 .option(ConnectionFactoryOptions.PASSWORD, password)
                 .build());
-        return DSL.using(
-                new ConnectionPool(ConnectionPoolConfiguration.builder(factory).build()));
+
+        ConnectionPool pool = new ConnectionPool(ConnectionPoolConfiguration.builder(factory).build());
+
+        meterRegistry.ifAvailable(registry ->
+                new ConnectionPoolMetrics(pool, "r2dbc", Tags.empty()).bindTo(registry));
+
+        return DSL.using(pool);
     }
 }

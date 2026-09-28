@@ -14,10 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jooq.Condition;
+import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.Record1;
+import org.jooq.Select;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends AbstractDTO<ULong, ULong>>
@@ -143,7 +148,7 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()),
                         this.getAdditionalAccessConditions(access))
-                .map(condTuple -> {
+                .flatMap(condTuple -> {
                     List<AbstractCondition> appClientConditions = new ArrayList<>();
                     condTuple.getT1().ifPresent(appClientConditions::add);
                     condTuple.getT2().ifPresent(appClientConditions::add);
@@ -155,17 +160,170 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                     condTuple.getT3().ifPresent(userClientConditions::add);
                     condTuple.getT4().ifPresent(userClientConditions::add);
 
-                    AbstractCondition userClientCondition = access.isOutsideUser()
-                            ? ComplexCondition.and(userClientConditions)
-                            : ComplexCondition.or(userClientConditions);
+                    Mono<AbstractCondition> userClientCondition = access.isOutsideUser()
+                            ? Mono.just(ComplexCondition.and(userClientConditions))
+                            : this.visibilityCondition(access, fieldMappings, userClientConditions);
 
-                    AbstractCondition finalAccessCondition = condTuple.getT5()
-                            .filter(AbstractCondition::isNonEmpty)
-                            .<AbstractCondition>map(additional -> ComplexCondition.or(userClientCondition, additional))
-                            .orElse(userClientCondition);
+                    return userClientCondition.map(resolved -> {
+                        AbstractCondition finalAccessCondition = condTuple.getT5()
+                                .filter(AbstractCondition::isNonEmpty)
+                                .<AbstractCondition>map(additional -> ComplexCondition.or(resolved, additional))
+                                .orElse(resolved);
 
-                    return ComplexCondition.and(appClientCondition, finalAccessCondition);
+                        return ComplexCondition.and(appClientCondition, finalAccessCondition);
+                    });
                 });
+    }
+
+    /**
+     * Above this many visible rows the plain OR is left alone.
+     *
+     * Measured on production against leadzump/FIN, 160,563 tickets. The OR costs a flat ~220ms
+     * whatever the scope, because it always scans every row of the tenant. This path costs two
+     * things that both grow with the number of visible rows: the union that resolves the ids,
+     * and the {@code ID IN (...)} that follows it.
+     *
+     * <pre>
+     *   visible ids     union     IN (...)     total      the OR it replaces
+     *        ~1,000     ~4ms          5ms      ~9ms                    220ms
+     *         5,294     4.3ms        27ms      ~31ms                   220ms
+     *        16,760    23.3ms        29ms      ~52ms                   221ms
+     *        60,178     278ms        30ms     ~308ms                   236ms
+     * </pre>
+     *
+     * The union itself only turns against us around 60,000 -- roughly a third of the tenant --
+     * where the assignee branch stops being selective and MySQL falls back to the same
+     * two-column index for it anyway, then pays for materialisation and de-duplication on top.
+     * The cap is set well below that crossover on purpose: the second half of the round trip
+     * sends every id back as a bind parameter, and 20,000 of them is a 109KB statement on every
+     * analytics request. The win is concentrated at the small end (25x at a thousand ids, 7x at
+     * five thousand, 4x at seventeen), so the cap buys nearly all of it at a fraction of the
+     * statement size. Raising it trades wire and parse cost for a shrinking return.
+     */
+    private static final int VISIBLE_ID_CAP = 10000;
+
+    /**
+     * The access scope is "assigned to someone in my sub-org OR belonging to a client I manage".
+     * Both columns are indexed -- IDX1_TICKETS_AC_CC_ASSIGNED_USER and
+     * IDX2_TICKETS_AC_CC_CLIENT_ID -- but MySQL cannot serve an OR across two different columns
+     * from one composite index, so it falls back to the (APP_CODE, CLIENT_CODE) prefix and
+     * filters by hand: 77,442 rows examined for leadzump/FIN, on every analytics query, for
+     * every endpoint that inherits this class. Distributing the AND over the OR does not help,
+     * and an INDEX_MERGE hint is ignored, because both candidate indexes share that same leading
+     * prefix so a single ref access always looks cheapest.
+     * <p>
+     * A UNION of the two branches does work -- each side becomes a covering range scan -- but a
+     * UNION cannot be expressed in the AbstractCondition model the callers build their queries
+     * from. So the union is run here, on its own, and its result replaces the OR with an
+     * equality on the primary key.
+     * <p>
+     * That substitution is exact rather than approximate: the id set is by definition the set of
+     * rows the original OR matched, so {@code ID IN (ids)} selects the same rows. It stays exact
+     * whatever the caller ANDs or ORs around it, which is what makes this safe to do inside
+     * access scoping.
+     * <p>
+     * Every path that cannot be resolved -- one side of the OR absent, no ids to match on, a
+     * field the mapping does not cover, a set past the cap, or the query failing -- returns the
+     * original OR. This can lose performance. It cannot widen what a user is allowed to see.
+     */
+    private Mono<AbstractCondition> visibilityCondition(
+            ProcessorAccess access, Map<String, String> fieldMappings, List<AbstractCondition> userClientConditions) {
+
+        AbstractCondition fallback = ComplexCondition.or(userClientConditions);
+
+        // One branch only -- the common case for a user without BP access, where
+        // getClientIdCondition returns empty. The OR collapses to a single indexed condition and
+        // there is nothing to fix.
+        if (userClientConditions.size() < 2) return Mono.just(fallback);
+
+        List<ULong> users = access.getUserInherit() == null
+                ? null
+                : access.getUserInherit().getSubOrg();
+        List<ULong> clients = access.getUserInherit() == null
+                ? null
+                : access.getUserInherit().getManagingClientIds();
+
+        if (users == null || users.isEmpty() || clients == null || clients.isEmpty())
+            return Mono.just(fallback);
+
+        Field assignedField = this.getField(fieldMappings.get(BaseFilter.Fields.assignedUserIds));
+        Field clientIdField = this.getField(fieldMappings.get(BaseFilter.Fields.clientIds));
+        Field appCodeField = this.getField(AbstractFlowUpdatableDTO.Fields.appCode);
+        Field clientCodeField = this.getField(AbstractFlowUpdatableDTO.Fields.clientCode);
+
+        if (assignedField == null || clientIdField == null || appCodeField == null || clientCodeField == null)
+            return Mono.just(fallback);
+
+        // Mono.defer so that a failure while BUILDING the query is an error signal like any
+        // other and reaches onErrorReturn below. Thrown during assembly instead, it would escape
+        // the operator chain entirely and fail the request -- turning a performance optimisation
+        // into an outage.
+        return Mono.defer(() -> {
+                    // The same tenant scoping the outer query applies. Without it each branch
+                    // would scan every tenant's rows and the index would be no use here either.
+                    Condition scope = appCodeField
+                            .eq(access.getAppCode())
+                            .and(clientCodeField.eq(access.getEffectiveClientCode()));
+
+                    Select<? extends Record1<ULong>> visibleIds =
+                            this.visibleIdQuery(this.dslContext, scope, assignedField, clientIdField, users, clients);
+
+                    return Flux.from(visibleIds)
+                            .map(Record1::value1)
+                            // Belt and braces: the LIMIT above already bounds what the server
+                            // produces, this bounds what we buffer if it ever does not.
+                            .take(VISIBLE_ID_CAP + 1L)
+                            .collectList();
+                })
+                .map(ids -> {
+                    // Empty means this user can see nothing, which is NOT the same as no filter.
+                    // An IN over an empty list is dropped by the condition model, so the original
+                    // OR -- which correctly matches nothing -- has to stand.
+                    if (ids.isEmpty() || ids.size() > VISIBLE_ID_CAP) return fallback;
+
+                    return (AbstractCondition) new FilterCondition()
+                            .setField(AbstractDTO.Fields.id)
+                            .setOperator(FilterConditionOperator.IN)
+                            .setMultiValue(ids);
+                })
+                .onErrorReturn(fallback);
+    }
+
+    /**
+     * The LIMIT is what makes this safe to run at all, and leaving it out was a production
+     * incident on 2026-09-28.
+     *
+     * A branch is only cheap when it is selective, and real scopes are not symmetrical:
+     * production sends three assignee ids and several HUNDRED managed client ids. Against a list
+     * that long MySQL abandons the index and scans - 160,624 rows, 260ms, on every analytics
+     * request. Worse, that scope sees 20,108 rows, so the result was then discarded for
+     * exceeding the cap and the original OR ran anyway. It was pure cost.
+     *
+     * Bounded, the same query reads 10,100 rows in 17ms.
+     *
+     * The limit works with the cap rather than against it. Fewer than cap+1 rows back means the
+     * LIMIT never truncated, so the set is complete and can be trusted. Exactly cap+1 means we
+     * are over the cap and fall back to the OR - which is what the full result would have made
+     * us do anyway, only after paying fifteen times as much to find out.
+     *
+     * Package-private and taking its DSLContext as an argument so a test can render the SQL
+     * without a database and assert the bound is still there.
+     */
+    Select<? extends Record1<ULong>> visibleIdQuery(
+            DSLContext ctx,
+            Condition scope,
+            Field assignedField,
+            Field clientIdField,
+            List<ULong> users,
+            List<ULong> clients) {
+
+        return ctx.select(this.idField)
+                .from(this.table)
+                .where(scope.and(assignedField.in(users)))
+                .union(ctx.select(this.idField)
+                        .from(this.table)
+                        .where(scope.and(clientIdField.in(clients))))
+                .limit(VISIBLE_ID_CAP + 1);
     }
 
     private Mono<AbstractCondition> getAppCodeCondition(ProcessorAccess access) {
