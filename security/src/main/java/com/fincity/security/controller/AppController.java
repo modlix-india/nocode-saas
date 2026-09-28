@@ -56,7 +56,7 @@ public class AppController
     @GetMapping("/applyAppCodeSuffix")
     public Mono<ResponseEntity<String>> applyAppCodeSuffix(@RequestParam String appCode) {
         return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
-                .header("Cache-Control", "max-age: " + cacheAge)
+                .header("Cache-Control", "max-age=" + cacheAge)
                 .header("x-frame-options", SAME_ORIGIN)
                 .header("X-Frame-Options", SAME_ORIGIN).body(appCode + appCodeSuffix));
     }
@@ -71,7 +71,7 @@ public class AppController
         }
 
         return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
-                .header("Cache-Control", "max-age: " + cacheAge)
+                .header("Cache-Control", "max-age=" + cacheAge)
                 .header("x-frame-options", SAME_ORIGIN)
                 .header("X-Frame-Options", SAME_ORIGIN).body(prefix + appCode));
     }

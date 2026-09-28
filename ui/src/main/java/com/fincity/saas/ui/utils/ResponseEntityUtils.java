@@ -44,7 +44,11 @@ public class ResponseEntityUtils {
 
 		var rp = ResponseEntity.ok()
 				.header("ETag", "W/" + obj.getUniqueId())
-				.header("Cache-Control", noStore ? "no-store" : "max-age: " + cacheAge + ", must-revalidate")
+				// "max-age=" and not "max-age: ". A cache directive is `token [ "=" value ]`
+				// (RFC 9111 5.2), so the colon form parses as an unknown directive and is
+				// dropped: the response then carried no freshness lifetime at all and every
+				// one of these was revalidated on every navigation, the style sheet included.
+				.header("Cache-Control", noStore ? "no-store" : "max-age=" + cacheAge + ", must-revalidate")
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
 
