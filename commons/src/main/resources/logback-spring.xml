@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Makes logging incapable of blocking a request thread.
+
+  Spring Boot's appenders are synchronous. On a reactive service the thread that calls
+  log.debug(...) is a Netty event loop, so a slow write does not slow logging down, it stops the
+  service. On 2026-09-28 production was logging every SQL statement at DEBUG and entity-processor
+  stalled badly enough that a 500-row lookup timed out at nginx's 60 second ceiling, while the host
+  idled at 3% CPU and the database at four running threads.
+
+  Turning the level down fixed that symptom. This fixes the shape: wrapped in AsyncAppender, a
+  logging call hands off to a queue and returns, so no log write can sit in the path of a request
+  again. Raising a logger to DEBUG to chase a bug should cost disk and noise, not availability.
+
+  neverBlock=true is the whole point and must not be removed. Without it AsyncAppender BLOCKS the
+  caller once the queue fills, which is the same failure 16384 messages later. With it, a full
+  queue drops messages instead - the right trade, because diagnostics are not worth an outage.
+
+  discardingThreshold=0 keeps everything until the queue is genuinely full. The default of 20%
+  silently drops TRACE, DEBUG and INFO once the queue is a fifth from full, throwing away exactly
+  the lines you want while investigating the incident that filled it.
+
+  This lives in commons (ui, core, entity-processor, security, message, multi, gateway). The
+  commons2 services - files, notification, worker - carry an identical copy, because no single
+  module covers both families. If a service ever depends on both, two logback-spring.xml files land
+  on one classpath and jar order decides: keep them identical, or collapse them into one module.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--
+      Plain text on the console, structured GELF in the file. The console is read by a human
+      through `docker logs`; the file is what Alloy tails into Loki, and that is where the
+      structure earns its bytes. Writing GELF to both serialised every line twice.
+    -->
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${FILE_LOG_THRESHOLD}</level>
+        </filter>
+        <!--
+          The format is named literally rather than read from FILE_LOG_STRUCTURED_FORMAT. Spring's
+          defaults.xml defines that property as an EMPTY string when logging.structured.format.file
+          is unset, and logback's `:-` default only applies to an UNDEFINED variable, not an empty
+          one - so `${FILE_LOG_STRUCTURED_FORMAT:-gelf}` resolves to "", StructuredLogEncoder
+          throws "Unknown format ''", and the service does not start. A logging default must never
+          be able to stop a boot. logging.structured.json.add.* still applies; it is resolved from
+          the Spring Environment independently of how the format was chosen.
+        -->
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>gelf</format>
+            <charset>${FILE_LOG_CHARSET}</charset>
+        </encoder>
+        <file>${LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGBACK_ROLLINGPOLICY_FILE_NAME_PATTERN:-${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz}</fileNamePattern>
+            <cleanHistoryOnStart>${LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START:-false}</cleanHistoryOnStart>
+            <maxFileSize>${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-10MB}</maxFileSize>
+            <totalSizeCap>${LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP:-0}</totalSizeCap>
+            <maxHistory>${LOGBACK_ROLLINGPOLICY_MAX_HISTORY:-7}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="CONSOLE"/>
+        <queueSize>16384</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>16384</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <!--
+      Only the async wrappers are attached. Also referencing CONSOLE or FILE here would defeat the
+      file, because the synchronous appender would still run on the request thread.
+
+      Spring applies logging.level.* from the config server after this file is read, so levels stay
+      controlled there and through /actuator/loggers at runtime.
+    -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+</configuration>

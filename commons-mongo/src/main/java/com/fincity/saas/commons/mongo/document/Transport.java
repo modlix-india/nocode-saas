@@ -16,6 +16,12 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'clientCode': 1}", name = "transportFilteringIndex")
+// Transport documents carry the whole encoded app, so they are around 1MB each: ui.transport is
+// 231MB across 218 documents on production. That makes a collection scan here cost far more than
+// the document count suggests -- a lookup by unique code was reading the entire 231MB and taking
+// up to 380ms. Both of these shapes appear in mongod's slow-op log.
+@CompoundIndex(def = "{'uniqueTransportCode': 1}", name = "transportUniqueCodeIndex")
+@CompoundIndex(def = "{'createdAt': 1}", name = "transportCreatedAtIndex")
 @Accessors(chain = true)
 public class Transport extends AbstractOverridableDTO<Transport> {
 
