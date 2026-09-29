@@ -9,6 +9,7 @@ import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.r2dbc.R2dbcProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.util.StringUtils;
 
@@ -30,7 +31,20 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
 import lombok.Getter;
 
+/*
+ * @EnableConfigurationProperties is load-bearing, not decoration. R2dbcProperties is normally
+ * registered by R2dbcAutoConfiguration, so taking it as a bean parameter appears to work - until
+ * a context that does not have that auto-configuration, at which point the whole application
+ * fails to start with "required a bean of type R2dbcProperties that could not be found".
+ *
+ * That is exactly what happened to core's integration tests, whose application-test.yml excludes
+ * R2dbcAutoConfiguration, R2dbcDataAutoConfiguration and R2dbcTransactionManagerAutoConfiguration
+ * deliberately so the suite needs no database. Declaring it here binds spring.r2dbc.pool.* from
+ * the Environment directly and makes this class depend on no auto-configuration at all - which
+ * was the point, since relying on one is what put the pool sizing out of reach in the first place.
+ */
 @Getter
+@EnableConfigurationProperties(R2dbcProperties.class)
 public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
 
     @Value("${spring.r2dbc.url}")

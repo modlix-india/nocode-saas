@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -128,7 +129,33 @@ public class EntityCollectorService extends AbstractConnectionService {
                                                                 logId,
                                                                 mapper.convertValue(response, new TypeReference<>() {}),
                                                                 EntityProcessorCollectorLogStatus.SUCCESS,
-                                                                successMessage))))))
+                                                                successMessage))
+                                                        // A 4xx from the target means this lead will
+                                                        // NEVER be accepted - most often a Facebook
+                                                        // form that collected no usable phone number.
+                                                        // Letting it escape made the webhook answer
+                                                        // 500, and Meta retries 5xx: production saw
+                                                        // 40 of these in a day, each redelivered, each
+                                                        // logging two 500s and a stack trace, for a
+                                                        // lead no retry could ever fix.
+                                                        //
+                                                        // Recorded against the collector log and
+                                                        // stopped here. A 5xx is deliberately NOT
+                                                        // caught: that one is transient and Meta
+                                                        // SHOULD redeliver it.
+                                                        .onErrorResume(
+                                                                WebClientResponseException.class,
+                                                                ex -> ex.getStatusCode().is4xxClientError()
+                                                                        ? entityCollectorLogService
+                                                                                .updateOnError(
+                                                                                        logId,
+                                                                                        "Target rejected the lead ("
+                                                                                                + ex.getStatusCode()
+                                                                                                        .value()
+                                                                                                + "): "
+                                                                                                + ex.getResponseBodyAsString())
+                                                                                .then(Mono.empty())
+                                                                        : Mono.error(ex))))))
                         .then(),
                 (extractList, ex) -> Mono.empty());
     }
