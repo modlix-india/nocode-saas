@@ -21,6 +21,7 @@
         <nocode-kirun-version>4.7.0</nocode-kirun-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <jooq.version>3.20.3</jooq.version>
+        <r2dbc-mysql.version>1.4.2</r2dbc-mysql.version>
     </properties>
     <dependencies>
         <dependency>
@@ -42,6 +43,22 @@
         <dependency>
             <groupId>io.r2dbc</groupId>
             <artifactId>r2dbc-pool</artifactId>
+        </dependency>
+        <!--
+            Test scope only. This module builds the ConnectionFactory from the r2dbc URL, whose
+            driver is `mysql`, but the driver itself is declared by each SERVICE - so the module's
+            own classpath advertises only `[ pool ]`. That is the whole reason the old code forced
+            DRIVER=pool and accidentally nested one pool inside another.
+
+            Without this, R2dbcPoolConfigurationTest cannot resolve a factory and the pool sizing
+            goes back to being untested. Compile scope would be wrong: it would impose MySQL on
+            every consumer of commons-jooq.
+        -->
+        <dependency>
+            <groupId>io.asyncer</groupId>
+            <artifactId>r2dbc-mysql</artifactId>
+            <version>${r2dbc-mysql.version}</version>
+            <scope>test</scope>
         </dependency>
         <!--
             For ConnectionPoolMetrics only, so the r2dbc pool this module creates is visible in
