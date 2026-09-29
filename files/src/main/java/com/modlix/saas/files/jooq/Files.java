@@ -5,7 +5,6 @@ package com.modlix.saas.files.jooq;
 
 
 import com.modlix.saas.files.jooq.tables.FilesAccessPath;
-import com.modlix.saas.files.jooq.tables.FilesAccessPathBackup;
 import com.modlix.saas.files.jooq.tables.FilesFileSystem;
 import com.modlix.saas.files.jooq.tables.FilesSecuredAccessKeys;
 import com.modlix.saas.files.jooq.tables.FilesUploadDownload;
@@ -36,11 +35,6 @@ public class Files extends SchemaImpl {
      * The table <code>files.files_access_path</code>.
      */
     public final FilesAccessPath FILES_ACCESS_PATH = FilesAccessPath.FILES_ACCESS_PATH;
-
-    /**
-     * The table <code>files.files_access_path_backup</code>.
-     */
-    public final FilesAccessPathBackup FILES_ACCESS_PATH_BACKUP = FilesAccessPathBackup.FILES_ACCESS_PATH_BACKUP;
 
     /**
      * The table <code>files.files_file_system</code>.
@@ -74,7 +68,6 @@ public class Files extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             FilesAccessPath.FILES_ACCESS_PATH,
-            FilesAccessPathBackup.FILES_ACCESS_PATH_BACKUP,
             FilesFileSystem.FILES_FILE_SYSTEM,
             FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS,
             FilesUploadDownload.FILES_UPLOAD_DOWNLOAD
