@@ -8,8 +8,8 @@ spring:
     username: ${entity-processor.db.username}
     password: ${entity-processor.db.password}
     pool:
-      initial-size: 2
-      max-size: 4
+      initial-size: 5
+      max-size: 10
       max-idle-time: 30m
       validation-query: SELECT 1
     flyway:
