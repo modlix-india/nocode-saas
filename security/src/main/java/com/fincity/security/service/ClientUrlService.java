@@ -72,6 +72,8 @@ public class ClientUrlService
 
     private final AppService appService;
 
+    private final CloudflareCustomHostnameService cloudflareService;
+
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
@@ -139,13 +141,66 @@ public class ClientUrlService
     private int draftTokenExpiryMinutes;
 
     public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
-            ClientService clientService, AppService appService, DraftTokenDAO draftTokenDAO) {
+            ClientService clientService, AppService appService, DraftTokenDAO draftTokenDAO,
+            CloudflareCustomHostnameService cloudflareService) {
 
         this.cacheService = cacheService;
         this.msgService = msgService;
         this.clientService = clientService;
         this.appService = appService;
         this.draftTokenDAO = draftTokenDAO;
+        this.cloudflareService = cloudflareService;
+    }
+
+    /**
+     * Mirror a LIVE row's hostname into Cloudflare for SaaS, and pass the row on
+     * regardless of what Cloudflare said.
+     *
+     * DRAFT rows are skipped deliberately, and this is the important half. Draft
+     * hosts are minted per session and the mint rotates, so registering them
+     * would burn the zone's custom hostname allowance within a day and leave
+     * thousands of entries that will never validate. Only a LIVE row names a
+     * hostname a visitor will ever type.
+     */
+    private Mono<ClientUrl> syncToCloudflare(ClientUrl entity, boolean add) {
+
+        if (entity == null || entity.getUrlType() != ClientUrlType.LIVE
+                || !this.cloudflareService.isConfigured())
+            return Mono.justOrEmpty(entity);
+
+        // Hosts under a domain we own are dropped by the Cloudflare service itself,
+        // at that boundary, so every caller gets the rule rather than just this one.
+        String host = ClientUrlPattern.hostOf(entity.getUrlPattern());
+        if (StringUtil.safeIsBlank(host))
+            return Mono.just(entity);
+
+        return (add ? this.cloudflareService.addHostname(host) : this.cloudflareService.removeHostname(host))
+                .thenReturn(entity);
+    }
+
+    /**
+     * Move the registration when an edit moves the hostname.
+     *
+     * Without this an author correcting a typo leaves the wrong hostname
+     * registered and the right one absent, which reads as "the domain does not
+     * work and nothing in our data says why". Compares the resolved hosts rather
+     * than the raw patterns, because two patterns can differ in scheme, port or a
+     * trailing slash and still name the same host.
+     */
+    private Mono<ClientUrl> resyncHost(ClientUrl old, ClientUrl updated) {
+
+        if (!this.cloudflareService.isConfigured())
+            return Mono.justOrEmpty(updated);
+
+        String before = old == null ? "" : ClientUrlPattern.hostOf(old.getUrlPattern());
+        String after = updated == null ? "" : ClientUrlPattern.hostOf(updated.getUrlPattern());
+
+        if (before.equals(after))
+            return Mono.justOrEmpty(updated);
+
+        return this.syncToCloudflare(old, false)
+                .then(this.syncToCloudflare(updated, true))
+                .defaultIfEmpty(updated);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -246,6 +301,7 @@ public class ClientUrlService
 
                     return super.create(ent);
                 })).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.create"))
+                .flatMap(created -> this.syncToCloudflare(created, true))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -262,7 +318,8 @@ public class ClientUrlService
         // Guarded as tightly as create: an existing row edited onto an app's own
         // hostname hijacks it exactly as a new one would.
         return this.checkNotAnAppSubdomain(entity.getUrlPattern())
-                .flatMap(ok -> super.update(entity))
+                .flatMap(ok -> this.read(entity.getId()))
+                .flatMap(old -> super.update(entity).flatMap(updated -> this.resyncHost(old, updated)))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -280,8 +337,13 @@ public class ClientUrlService
         // hostname, so it is not worth a lookup.
         Object patched = updateFields.get(URL_PATTERN);
 
+        // Only a patch that touches urlPattern can move the hostname, so only that
+        // one pays for the extra read of the pre-update row.
         return (patched == null ? Mono.just(Boolean.TRUE) : this.checkNotAnAppSubdomain(patched.toString()))
-                .flatMap(ok -> super.update(key, updateFields))
+                .flatMap(ok -> patched == null
+                        ? super.update(key, updateFields)
+                        : this.read(key).flatMap(
+                                old -> super.update(key, updateFields).flatMap(updated -> this.resyncHost(old, updated))))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -293,7 +355,11 @@ public class ClientUrlService
     @Override
     public Mono<Integer> delete(ULong id) {
 
-        return this.read(id).flatMap(e -> super.delete(id))
+        // The row is read first so the hostname survives the delete: once the row is
+        // gone there is nothing left to tell Cloudflare which custom hostname to drop.
+        return this.read(id)
+                .flatMap(e -> super.delete(id)
+                        .flatMap(count -> this.syncToCloudflare(e, false).thenReturn(count)))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))

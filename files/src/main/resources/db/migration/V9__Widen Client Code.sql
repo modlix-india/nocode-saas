@@ -24,9 +24,30 @@
 -- random base36 suffix and regenerates on collision instead of counting, and
 -- every APP_CODE column is already 64 wide.
 
+-- EDITED 2026-09-29, after this migration broke stage and production.
+--
+-- It originally carried a fourth statement, between the two below:
+--
+--     ALTER TABLE `files`.`files_access_path_backup` MODIFY COLUMN `CLIENT_CODE` CHAR(12) ...
+--
+-- `files_access_path_backup` was a hand-made snapshot that existed on DEV ONLY, taken
+-- 2026-09-16 before altering the live table. MySQL DDL is not transactional, so on stage and
+-- production statement 1 applied, statement 2 failed on the missing table, and statements 3 and
+-- 4 never ran -- leaving `flyway_schema_history` with `version=9, success=0`. Flyway then
+-- refused to validate on every boot, `flywayInitializer` failed, and files-server would not
+-- start. It fell back to the previous colour on every deploy for three weeks without anyone
+-- being told, because the CI workflow piped keepup.sh into `tee` and lost its exit code.
+--
+-- It passed CI because CI ran it on dev, which was the one environment where the table existed.
+-- A migration may only touch tables that its own migrations created. The snapshot was dropped
+-- from dev on 2026-09-28 (dumped first to ~/backups on the jumphost; 426 rows).
+--
+-- Removing the line changes this file's checksum, so the value recorded in
+-- `flyway_schema_history` has to be realigned on every environment that already applied V9, or
+-- validation fails there instead. Do not deploy files-server until that is done. The checksum is
+-- deliberately not quoted here: it is computed over this file including these comments, so
+-- writing it down would change it.
 ALTER TABLE `files`.`files_access_path`
-    MODIFY COLUMN `CLIENT_CODE` CHAR(12) NOT NULL COMMENT 'Client code';
-ALTER TABLE `files`.`files_access_path_backup`
     MODIFY COLUMN `CLIENT_CODE` CHAR(12) NOT NULL COMMENT 'Client code';
 ALTER TABLE `files`.`files_file_system`
     MODIFY COLUMN `CODE` CHAR(12) NOT NULL COMMENT 'Client code';
