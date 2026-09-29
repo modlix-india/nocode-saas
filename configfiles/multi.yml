@@ -4,8 +4,12 @@ spring:
     username: ${multi.db.username}
     password: ${multi.db.password}
     pool:
-      initial-size: 2
-      max-size: 4
+      # Until 2026-09-29 these numbers did nothing. commons-jooq built its own pool and never
+      # read spring.r2dbc.pool.*, so every query ran through a pool stuck at r2dbc-pool's
+      # default of 10 while THIS block configured a second pool that nothing used. Now there is
+      # one pool and these values are real, so 4 would have been a cut from the effective 10.
+      initial-size: 5
+      max-size: 10
       max-idle-time: 30m
       validation-query: SELECT 1
   flyway:
