@@ -8,13 +8,6 @@ logging:
   level:
     org:
       jooq: DEBUG
-  # structured:
-  #   format:
-  #     console: gelf
-  #     file: gelf
-  #   json:
-  #     add:
-  #       instanceId: ${INSTANCE_ID:default}
 
 eureka:
   client:
