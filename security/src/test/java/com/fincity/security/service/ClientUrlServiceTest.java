@@ -57,6 +57,14 @@ class ClientUrlServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private DraftTokenDAO draftTokenDAO;
 
+	/**
+	 * Unstubbed, so {@code isConfigured()} answers false and no row in these tests
+	 * reaches Cloudflare. That is the same state local and dev run in, and it keeps
+	 * every assertion here about the row rather than about a third party.
+	 */
+	@Mock
+	private CloudflareCustomHostnameService cloudflareService;
+
 	@InjectMocks
 	private ClientUrlService service;
 
