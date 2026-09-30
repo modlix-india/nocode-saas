@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -196,15 +197,24 @@ public class CampaignReportService implements IProcessorAccessService {
                                     startUtcTimestamp,
                                     endUtcTimestamp,
                                     timePeriod,
+                                    timezone),
+                            campaignReportDAO.getTotalLeadsByPeriod(
+                                    access,
+                                    campaignIds,
+                                    startUtcTimestamp,
+                                    endUtcTimestamp,
+                                    timePeriod,
                                     timezone))
                             .map(data -> new CampaignTrendResponse(
                                     stageTree,
                                     this.assembleTrendRows(
                                             data.getT1(),
                                             data.getT2(),
+                                            data.getT3(),
                                             window,
                                             timePeriod,
-                                            request.isIncludeZero())));
+                                            request.isIncludeZero(),
+                                            request.getSortDirection())));
                 });
     }
 
@@ -230,9 +240,11 @@ public class CampaignReportService implements IProcessorAccessService {
     private List<CampaignTrendRow> assembleTrendRows(
             List<CampaignMetric> metrics,
             List<PerDateCount> stageRows,
+            List<PerDateCount> totalLeadRows,
             DatePair window,
             TimePeriod timePeriod,
-            boolean includeZero) {
+            boolean includeZero,
+            Direction sortDirection) {
 
         NavigableMap<DatePair, CampaignTrendRow> rows = window.toTimePeriodMap(timePeriod, CampaignTrendRow::new);
 
@@ -254,6 +266,13 @@ public class CampaignReportService implements IProcessorAccessService {
             bucketFor(s.getDate(), rows).addStageCount(s.getGroupedId().toString(), s.getCount());
         }
 
+        for (PerDateCount t : totalLeadRows) {
+            if (t.getDate() == null || t.getCount() == null) {
+                continue;
+            }
+            bucketFor(t.getDate(), rows).setTotalLeads(t.getCount());
+        }
+
         BigDecimal grandTotalSpend = rows.values().stream()
                 .map(CampaignTrendRow::getSpend)
                 .filter(Objects::nonNull)
@@ -263,7 +282,7 @@ public class CampaignReportService implements IProcessorAccessService {
                 .setPeriod(formatPeriodLabel(bucket.getFirst().toLocalDate(), timePeriod))
                 .applyRatios(grandTotalSpend));
 
-        return rows.values().stream()
+        return (sortDirection == Direction.ASC ? rows.values() : rows.descendingMap().values()).stream()
                 .filter(row -> includeZero || row.hasActivity())
                 .toList();
     }
