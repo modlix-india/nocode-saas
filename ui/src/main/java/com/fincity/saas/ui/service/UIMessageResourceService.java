@@ -27,6 +27,8 @@ public class UIMessageResourceService extends AbstractMongoMessageResourceServic
 
     public static final String ANALYTICS_CODES_REQUIRED = "analytics_codes_required";
 
+    public static final String ANALYTICS_LOGIN_REQUIRED = "analytics_login_required";
+
     public static final String ANALYTICS_NO_WRITE_ACCESS = "analytics_no_write_access";
 
     public static final String ANALYTICS_CLIENT_NOT_MANAGED = "analytics_client_not_managed";
