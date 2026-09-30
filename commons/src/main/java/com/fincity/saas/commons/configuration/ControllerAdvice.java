@@ -74,11 +74,30 @@ public class ControllerAdvice implements ErrorWebExceptionHandler {
 		String eId = GenericException.uniqueId();
 		Mono<String> msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
 
-		log.error("Error : {}", eId, ex);
-
 		final HttpStatus status = (ex instanceof ResponseStatusException rse)
 				? HttpStatus.valueOf(rse.getStatusCode().value())
 				: HttpStatus.INTERNAL_SERVER_ERROR;
+
+		// The status was already being computed two lines below this, and the ERROR log sat
+		// ABOVE it - so every exception was logged as a server fault with a full stack trace,
+		// including the ones that are simply the client's problem.
+		//
+		// What that cost, measured on production 2026-09-29: of the day's ERROR lines, 848 were
+		// notification's AsyncRequestNotUsableException ("Servlet container error notification
+		// for disconnected client") - a browser closing an SSE tab - and 405 were security's
+		// expired tokens and denied access. Together with the rest, 96% of the estate's ERROR
+		// volume was not a fault, and it hid the things that were: worker's nightly transport
+		// sweep had been failing on a 401 for weeks inside that noise, at one line a day.
+		//
+		// A 4xx is a statement about the request, not about this service. It is still logged,
+		// at DEBUG with the stack, so it can be turned back on per-logger through
+		// /actuator/loggers when a specific client problem needs chasing. 5xx keeps the stack
+		// at ERROR, which is the only thing that should page anyone.
+		if (status.is4xxClientError()) {
+			log.debug("Client error {} : {}", status.value(), eId, ex);
+		} else {
+			log.error("Error : {}", eId, ex);
+		}
 
 		sr = msg.map(m -> new GenericException(status, eId, m, ex))
 				.flatMap(g -> ServerResponse.status(g.getStatusCode())

@@ -834,7 +834,24 @@ public class AuthenticationService implements IAuthenticationService {
                     return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
                 })
                 .onErrorResume(e -> {
-                    logger.error("AuthenticationService.getAuthentication: {}", e.getMessage());
+                    // An unusable bearer token is the most ordinary thing that happens here: the
+                    // token expired, or it was issued for another app. The request then continues
+                    // as anonymous, exactly as intended, and the caller sees a 401 at the edge -
+                    // so there is nothing for anyone to act on and nothing was lost.
+                    //
+                    // Logging it at ERROR made it the second loudest thing in the estate: 302
+                    // "Authorization token expired" plus 90 "Source was empty" on production in
+                    // a day, 2026-09-29, against 19 real errors from entity-processor. Noise on
+                    // that scale is not free - it is what hid worker's genuine 401.
+                    //
+                    // Anything that is NOT a 4xx is still an error: that means the token could
+                    // not be evaluated at all - cache down, security call failing - and it makes
+                    // every request anonymous, which is a real incident wearing a 401 costume.
+                    if (e instanceof GenericException g && g.getStatusCode().is4xxClientError())
+                        logger.debug("AuthenticationService.getAuthentication: {}", e.getMessage());
+                    else
+                        logger.error("AuthenticationService.getAuthentication: {}", e.getMessage(), e);
+
                     return this.makeAnonymousSpringAuthentication(request);
                 })
                 .flatMap(e -> {

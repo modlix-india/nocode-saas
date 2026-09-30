@@ -68,7 +68,17 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 "/api/core/notifications/internal/**",
                 "/api/core/internal/billing/**",
                 "/api/core/internal/data/**",
-                "/api/core/index/internal/**");
+                "/api/core/index/internal/**",
+                // The worker drives transport retention on a schedule, calling core and ui
+                // directly through Eureka rather than through nginx, so it carries no token.
+                // ui reaches its own endpoint because UIConfiguration passes "/**" here; core
+                // did not list it, so every nightly sweep of core's transports since the job
+                // was written has failed with 401 and nothing has been cleaned up. See
+                // AbstractTransportController.internalCleanupOlderThan for why unauthenticated
+                // is defensible on this path: the blast radius is bounded by construction, not
+                // by the caller - it can only ever delete Transport documents, and the
+                // retention floor and per-run cap live in the service.
+                "/api/core/transports/internal/**");
     }
 
     @Bean
