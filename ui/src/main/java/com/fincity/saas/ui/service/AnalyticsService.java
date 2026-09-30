@@ -62,6 +62,11 @@ public class AnalyticsService {
 
     public static final String CACHE_NAME_ANALYTICS_QUERY = "analyticsQueryCache";
 
+    // The same authority app UPDATE and DELETE require. Reading a site's analytics is a
+    // privileged view of its traffic, so it is gated on being able to edit the app rather
+    // than on merely holding a token.
+    private static final String AUTHORITY_APPLICATION_UPDATE = "Authorities.Application_UPDATE";
+
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -211,20 +216,62 @@ public class AnalyticsService {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                /*
+                 * VERIFIED OPEN ON PRODUCTION, 2026-09-30, before this check existed:
+                 *
+                 *   curl -X POST https://modlix.com/api/ui/analytics/query \
+                 *        -H 'appCode: leadzump' -H 'clientCode: SYSTEM' -d '{"widget":"topPages"}'
+                 *   -> 200, another tenant's page paths, event counts and visitor numbers
+                 *
+                 * Three things had to be wrong at once, and they were.
+                 *
+                 * Nothing asked whether the caller was authenticated. `appCode` and `clientCode`
+                 * are read from caller-supplied HEADERS, so they are attacker-controlled. And the
+                 * client-scope test below was `doesClientManageClientCode(ca.getClientCode(),
+                 * clientCode)` - for an anonymous caller `ca.getClientCode()` is the HOST's client,
+                 * and since most apps sit under SYSTEM that reduced to "does SYSTEM manage SYSTEM",
+                 * which is trivially true. Any host would serve any tenant.
+                 *
+                 * An unauthenticated caller has nothing to check scope against, so this must come
+                 * first and must be a hard stop rather than a fall-through to anonymous.
+                 */
+                () -> SecurityContextUtil.getUsersContextAuthentication().flatMap(ca -> {
+                    if (!ca.isAuthenticated())
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                UIMessageResourceService.ANALYTICS_LOGIN_REQUIRED);
 
-                ca -> this.securityService.hasWriteAccess(appCode, clientCode)
+                    if (!SecurityContextUtil.hasAuthority(AUTHORITY_APPLICATION_UPDATE, ca.getAuthorities()))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                UIMessageResourceService.ANALYTICS_NO_WRITE_ACCESS);
+
+                    return Mono.just(ca);
+                }),
+
+                /*
+                 * The caller's OWN client, not the target's. It was `hasWriteAccess(appCode,
+                 * clientCode)` - asking whether the client being *read* has write access to the
+                 * app, which says nothing about whether the caller does. `accessCheck` in
+                 * AbstractOverridableDataService, which app update and delete both use, passes the
+                 * caller's client here; this now matches it.
+                 */
+                ca -> this.securityService.hasWriteAccess(appCode, ca.getClientCode())
                         .filter(BooleanUtil::safeValueOf)
                         .switchIfEmpty(this.messageResourceService.throwMessage(
                                 msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 UIMessageResourceService.ANALYTICS_NO_WRITE_ACCESS)),
 
-                (ca, hasWrite) -> this.securityService
-                        .doesClientManageClientCode(ca.getClientCode(), clientCode)
-                        .filter(BooleanUtil::safeValueOf)
-                        .switchIfEmpty(this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                UIMessageResourceService.ANALYTICS_CLIENT_NOT_MANAGED)),
+                // Own client passes without a call; anything else must be genuinely managed.
+                // Reading a tenant you merely share a parent code with is not management.
+                (ca, hasWrite) -> clientCode.equals(ca.getClientCode())
+                        ? Mono.just(Boolean.TRUE)
+                        : this.securityService
+                                .doesClientManageClientCode(ca.getClientCode(), clientCode)
+                                .filter(BooleanUtil::safeValueOf)
+                                .switchIfEmpty(this.messageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        UIMessageResourceService.ANALYTICS_CLIENT_NOT_MANAGED)),
 
                 (ca, hasWrite, isManaged) -> this.appService.read(appCode, appCode, clientCode)
                         .flatMap(wrapper -> {
