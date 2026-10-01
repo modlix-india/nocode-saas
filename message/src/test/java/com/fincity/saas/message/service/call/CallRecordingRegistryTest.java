@@ -2,6 +2,7 @@ package com.fincity.saas.message.service.call;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -173,5 +174,13 @@ class CallRecordingRegistryTest {
                 .expectNext(this.played)
                 .verifyComplete();
         assertFalse(cancelled.get(), "cancelling the answer can release the connection its body streams over");
+    }
+
+    @Test
+    void theUrlHandedOverIsRelativeSoThePagesPathCarriesTheTenant() {
+
+        // An absolute /api/... drops the /<app>/<client>/page prefix on hosts that address the app by path.
+        assertEquals("api/message/call/recording/CODE1", ICallRecordingService.recordingUri("CODE1", true));
+        assertNull(ICallRecordingService.recordingUri("CODE1", false));
     }
 }

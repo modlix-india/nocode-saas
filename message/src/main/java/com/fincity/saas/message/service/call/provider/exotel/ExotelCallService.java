@@ -52,10 +52,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -71,7 +68,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
     private static final String PARAM_USER_ID = "userId";
-    private static final String OPERATION_PLAY = "recording download";
 
     /** Domains a recording may be fetched from with account credentials; see {@link ExotelApiConfig#isRecordingUrl}. */
     @Value("${message.call.exotel.recording-domains:" + ExotelApiConfig.DEFAULT_RECORDING_DOMAINS + "}")
@@ -304,8 +300,9 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                 ? super.callService
                                         .readByExotelCallId(access, exotelCall.getId())
                                         .filter(call -> !StringUtil.safeIsBlank(call.getConnectionName()))
-                                        .switchIfEmpty(Mono.defer(() -> this.recordingUnavailable(callCode)))
-                                : this.recordingUnavailable(callCode),
+                                        .switchIfEmpty(Mono.defer(
+                                                () -> ICallRecordingService.unavailable(super.msgService, callCode)))
+                                : ICallRecordingService.unavailable(super.msgService, callCode),
                         (exotelCall, call) -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), call.getConnectionName()),
                         (exotelCall, call, connection) -> super.isValidConnection(connection),
@@ -318,45 +315,22 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         return ExotelApiConfig.isRecordingUrl(url, Arrays.asList(this.recordingDomains));
     }
 
-    /**
-     * Fetches a recording with Basic credentials. Anything that is not audio, including a redirect (not followed),
-     * is answered as not available; a failure to reach Exotel is a 502 that names no URL.
-     */
+    /** Fetches a recording with Basic credentials; {@link ICallRecordingService#stream} does the rest. */
     Mono<ResponseEntity<Flux<DataBuffer>>> fetchRecording(
             Connection connection, String callCode, String url, String range) {
 
-        return this.webClientConfig
-                .createExotelRecordingWebClient(connection)
-                .flatMap(client -> client.get()
-                        .uri(URI.create(url.trim()))
-                        .headers(headers -> {
-                            if (!StringUtil.safeIsBlank(range)) headers.set(HttpHeaders.RANGE, range);
-                        })
-                        .retrieve()
-                        .onStatus(HttpStatusCode::isError, response -> response.releaseBody()
-                                .then(this.recordingUnavailable(callCode)))
-                        .toEntityFlux(DataBuffer.class))
-                .flatMap(entity ->
-                        ICallRecordingService.isAudio(entity.getHeaders().getContentType())
-                                ? Mono.just(ICallRecordingService.asPlayable(entity))
-                                : entity.getBody()
-                                        .doOnNext(DataBufferUtils::release)
-                                        .then(this.<ResponseEntity<Flux<DataBuffer>>>recordingUnavailable(callCode)))
-                .onErrorResume(
-                        e -> !(e instanceof GenericException),
-                        e -> super.msgService.throwMessage(
+        return ICallRecordingService.stream(
+                        this.webClientConfig.createExotelRecordingWebClient(connection),
+                        client -> client.get().uri(URI.create(url.trim())),
+                        range,
+                        super.msgService,
+                        callCode,
+                        () -> super.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_GATEWAY, msg),
                                 MessageResourceService.EXOTEL_REQUEST_FAILED,
-                                OPERATION_PLAY,
+                                ICallRecordingService.OPERATION_PLAY,
                                 "no answer"))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.fetchRecording"));
-    }
-
-    private <T> Mono<T> recordingUnavailable(String callCode) {
-        return super.msgService.throwMessage(
-                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                MessageResourceService.CALL_RECORDING_NOT_AVAILABLE,
-                callCode);
     }
 
     @Override

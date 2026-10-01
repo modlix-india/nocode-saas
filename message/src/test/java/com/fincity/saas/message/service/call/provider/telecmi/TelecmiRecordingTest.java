@@ -17,6 +17,8 @@ import com.fincity.saas.message.dao.call.provider.telecmi.TelecmiDAO;
 import com.fincity.saas.message.dto.call.provider.telecmi.TelecmiCall;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.document.Connection;
+import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.CallConnectionService;
 import java.net.URI;
@@ -58,6 +60,8 @@ class TelecmiRecordingTest {
 
     private TelecmiCall call;
 
+    private Connection connection;
+
     @BeforeEach
     void setUp() {
 
@@ -80,11 +84,13 @@ class TelecmiRecordingTest {
             return Mono.error(error.apply(invocation.getArgument(1)));
         });
 
-        Connection connection = new Connection()
+        this.connection = new Connection()
+                .setConnectionType(ConnectionType.CALL)
+                .setConnectionSubType(ConnectionSubType.TELECMI)
                 .setConnectionDetails(Map.of(TelecmiApiConfig.APP_ID, "1111112", TelecmiApiConfig.SECRET, SECRET));
-        connection.setName("calls");
+        this.connection.setName("calls");
         CallConnectionService connections = mock(CallConnectionService.class);
-        when(connections.getCoreDocument(eq("app"), eq("CLIENT"), eq("calls"))).thenReturn(Mono.just(connection));
+        when(connections.getCoreDocument(eq("app"), eq("CLIENT"), eq("calls"))).thenReturn(Mono.just(this.connection));
 
         this.call = new TelecmiCall().setConnectionName("calls").setRecordingFile("REC-1.mp3");
         this.call.setAppCode("app").setClientCode("CLIENT");
@@ -229,6 +235,19 @@ class TelecmiRecordingTest {
         // readInternal is scoped to the caller's app and client; another tenant's row reads as empty,
         // exactly as an unknown code does, and CallService answers not found once no provider has it.
         assertNull(this.play("CODE-OF-ANOTHER-TENANT", null));
+        assertTrue(this.requested.isEmpty());
+    }
+
+    @Test
+    void aConnectionThatIsNotTelecmisIsRefusedAndTelecmiIsNotAsked() {
+
+        // A connection renamed or repointed after the call: its details must not be sent to /v2/play.
+        this.connection.setConnectionSubType(ConnectionSubType.EXOTEL);
+
+        GenericException refused = assertThrows(GenericException.class, () -> this.play("CODE1", null));
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), refused.getStatusCode().value());
+        assertEquals(MessageResourceService.INVALID_CONNECTION_TYPE, refused.getMessage());
         assertTrue(this.requested.isEmpty());
     }
 }

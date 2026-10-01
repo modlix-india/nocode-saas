@@ -49,10 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.jooq.types.ULong;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -75,7 +72,6 @@ public class TelecmiIntegrationsService {
     private static final String OPERATION_UPDATE_USER = "user update";
     private static final String OPERATION_REMOVE_USER = "user removal";
     private static final String OPERATION_CLICK_TO_CALL = "click-to-call";
-    private static final String OPERATION_PLAY = "recording download";
 
     private static final String PARAM_USER_ID = "userId";
     private static final String PARAM_TO_NUMBER = "toNumber";
@@ -1016,44 +1012,25 @@ public class TelecmiIntegrationsService {
     }
 
     /**
-     * {@code /v2/play} carries the secret in its query string, so errors are drained and replaced, and a failure to
-     * reach TeleCMI becomes a 502 naming no URL ({@code WebClientResponseException}'s message includes it).
-     * TeleCMI also refuses in JSON bodies, so anything not audio is "not available". {@code Range} support is untested.
+     * {@code /v2/play} carries the secret in its query string, so {@link ICallRecordingService#stream} answers
+     * every failure without the URL. {@code Range} support is untested.
      */
     public Mono<ResponseEntity<Flux<DataBuffer>>> fetchRecording(
             Connection connection, String callCode, String file, String range) {
 
-        return this.webClientConfig
-                .createTelecmiWebClient(connection)
-                .flatMap(client -> client.get()
-                        .uri(builder -> builder.path(TelecmiApiConfig.playUrl())
-                                .queryParam("appid", this.appId(connection))
-                                .queryParam("secret", this.detail(connection, TelecmiApiConfig.SECRET))
-                                .queryParam("file", file)
-                                .build())
-                        .headers(headers -> {
-                            if (!StringUtil.safeIsBlank(range)) headers.set(HttpHeaders.RANGE, range);
-                        })
-                        .retrieve()
-                        .onStatus(HttpStatusCode::isError, response -> response.releaseBody()
-                                .then(this.recordingUnavailable(callCode)))
-                        .toEntityFlux(DataBuffer.class))
-                .flatMap(entity ->
-                        ICallRecordingService.isAudio(entity.getHeaders().getContentType())
-                                ? Mono.just(ICallRecordingService.asPlayable(entity))
-                                : entity.getBody()
-                                        .doOnNext(DataBufferUtils::release)
-                                        .then(this.<ResponseEntity<Flux<DataBuffer>>>recordingUnavailable(callCode)))
-                .onErrorResume(
-                        e -> !(e instanceof GenericException), e -> this.requestFailed(OPERATION_PLAY, "no answer"))
+        return ICallRecordingService.stream(
+                        this.webClientConfig.createTelecmiWebClient(connection),
+                        client -> client.get()
+                                .uri(builder -> builder.path(TelecmiApiConfig.playUrl())
+                                        .queryParam("appid", this.appId(connection))
+                                        .queryParam("secret", this.detail(connection, TelecmiApiConfig.SECRET))
+                                        .queryParam("file", file)
+                                        .build()),
+                        range,
+                        this.msgService,
+                        callCode,
+                        () -> this.requestFailed(ICallRecordingService.OPERATION_PLAY, "no answer"))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TelecmiIntegrationsService.fetchRecording"));
-    }
-
-    public <T> Mono<T> recordingUnavailable(String callCode) {
-        return this.msgService.throwMessage(
-                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                MessageResourceService.CALL_RECORDING_NOT_AVAILABLE,
-                callCode);
     }
 
     private Mono<CallProviderApp> requireApp(MessageAccess access, Connection connection) {

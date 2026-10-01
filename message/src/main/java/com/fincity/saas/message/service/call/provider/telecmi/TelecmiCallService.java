@@ -343,11 +343,13 @@ public class TelecmiCallService extends AbstractCallProviderService<MessageTelec
                         () -> super.dao
                                 .readInternal(access, callCode)
                                 .flatMap(call -> StringUtil.safeIsBlank(call.getRecordingFile())
-                                        ? this.integrationsService.<TelecmiCall>recordingUnavailable(callCode)
+                                        ? ICallRecordingService.<TelecmiCall>unavailable(super.msgService, callCode)
                                         : Mono.just(call)),
                         call -> super.callConnectionService.getCoreDocument(
                                 call.getAppCode(), call.getClientCode(), call.getConnectionName()),
-                        (call, connection) -> this.integrationsService.fetchRecording(
+                        // As Exotel's: the secret goes only to a connection that is TeleCMI's.
+                        (call, connection) -> super.isValidConnection(connection),
+                        (call, connection, valid) -> this.integrationsService.fetchRecording(
                                 connection, callCode, call.getRecordingFile(), range))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TelecmiCallService.recording(access)"));
     }

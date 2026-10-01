@@ -1,13 +1,22 @@
 package com.fincity.saas.message.service.call;
 
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.message.service.MessageResourceService;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -17,8 +26,15 @@ import reactor.core.publisher.Mono;
  */
 public interface ICallRecordingService {
 
-    /** Where every recording is played from, with our call code appended. */
-    String RECORDING_URI = "/api/message/call/recording/";
+    /**
+     * Where every recording is played from, with our call code appended. Relative, as every softphone URL is: the
+     * page's {@code /<app>/<client>/page} prefix then carries the tenant, which an absolute {@code /api/...} drops
+     * on hosts that address the app by path.
+     */
+    String RECORDING_URI = "api/message/call/recording/";
+
+    /** The operation a "could not reach the provider" error names. */
+    String OPERATION_PLAY = "recording download";
 
     ConnectionSubType getConnectionSubType();
 
@@ -31,6 +47,44 @@ public interface ICallRecordingService {
     /** Our URL for a call's recording, or null when the provider has reported none. */
     static String recordingUri(String callCode, boolean hasRecording) {
         return hasRecording && callCode != null ? RECORDING_URI + callCode : null;
+    }
+
+    static <T> Mono<T> unavailable(MessageResourceService msgService, String callCode) {
+        return msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                MessageResourceService.CALL_RECORDING_NOT_AVAILABLE,
+                callCode);
+    }
+
+    /**
+     * Fetches a recording from its provider and streams it back. {@code Range} is forwarded and a partial answer
+     * passed back. An error status, or anything not audio (a redirect, which is not followed, or TeleCMI's refusal
+     * in a JSON body), is not available, its body drained. No answer at all is {@code unreachable}, which must not
+     * name the URL: the provider's can carry its credentials.
+     */
+    static Mono<ResponseEntity<Flux<DataBuffer>>> stream(
+            Mono<WebClient> client,
+            Function<WebClient, WebClient.RequestHeadersSpec<?>> request,
+            String range,
+            MessageResourceService msgService,
+            String callCode,
+            Supplier<Mono<ResponseEntity<Flux<DataBuffer>>>> unreachable) {
+
+        return client.flatMap(webClient -> request.apply(webClient)
+                        .headers(headers -> {
+                            if (!StringUtil.safeIsBlank(range)) headers.set(HttpHeaders.RANGE, range);
+                        })
+                        .retrieve()
+                        .onStatus(HttpStatusCode::isError, response -> response.releaseBody()
+                                .then(ICallRecordingService.<Throwable>unavailable(msgService, callCode)))
+                        .toEntityFlux(DataBuffer.class))
+                .flatMap(entity -> isAudio(entity.getHeaders().getContentType())
+                        ? Mono.just(asPlayable(entity))
+                        : entity.getBody()
+                                .doOnNext(DataBufferUtils::release)
+                                .then(ICallRecordingService.<ResponseEntity<Flux<DataBuffer>>>unavailable(
+                                        msgService, callCode)))
+                .onErrorResume(e -> !(e instanceof GenericException), e -> unreachable.get());
     }
 
     static boolean isAudio(MediaType type) {
