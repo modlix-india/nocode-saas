@@ -179,8 +179,9 @@ public class MessageProviderUserEndpointsRecord extends UpdatableRecordImpl<Mess
      * Setter for
      * <code>message.message_provider_user_endpoints.ENDPOINT_VALUE</code>. What
      * goes into the connect applet's destination list: a sip: URI, or an E.164
-     * number. Also the reverse lookup key when resolving which agent an unknown
-     * callback belongs to.
+     * number. Would also be the lookup key for attributing a call this service
+     * never placed, if that reconciliation is ever built - see the index note
+     * below, which is why no index on it exists yet.
      */
     public MessageProviderUserEndpointsRecord setEndpointValue(String value) {
         set(8, value);
@@ -191,8 +192,9 @@ public class MessageProviderUserEndpointsRecord extends UpdatableRecordImpl<Mess
      * Getter for
      * <code>message.message_provider_user_endpoints.ENDPOINT_VALUE</code>. What
      * goes into the connect applet's destination list: a sip: URI, or an E.164
-     * number. Also the reverse lookup key when resolving which agent an unknown
-     * callback belongs to.
+     * number. Would also be the lookup key for attributing a call this service
+     * never placed, if that reconciliation is ever built - see the index note
+     * below, which is why no index on it exists yet.
      */
     public String getEndpointValue() {
         return (String) get(8);

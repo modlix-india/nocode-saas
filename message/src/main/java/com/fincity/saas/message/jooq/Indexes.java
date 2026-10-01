@@ -11,6 +11,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderUserEndpoints;
+import com.fincity.saas.message.jooq.tables.MessageTelecmiCalls;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 
 import org.jooq.Index;
@@ -33,6 +34,7 @@ public class Indexes {
     public static final Index MESSAGE_EXOTEL_CALLS_IDX0_EXOTEL_CALLS_AC_CC = Internal.createIndex(DSL.name("IDX0_EXOTEL_CALLS_AC_CC"), MessageExotelCalls.MESSAGE_EXOTEL_CALLS, new OrderField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.APP_CODE, MessageExotelCalls.MESSAGE_EXOTEL_CALLS.CLIENT_CODE }, false);
     public static final Index MESSAGE_MESSAGE_WEBHOOKS_IDX0_MESSAGE_WEBHOOKS_AC_CC = Internal.createIndex(DSL.name("IDX0_MESSAGE_WEBHOOKS_AC_CC"), MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS, new OrderField[] { MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.APP_CODE, MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.CLIENT_CODE }, false);
     public static final Index MESSAGE_MESSAGES_IDX0_MESSAGES_AC_CC = Internal.createIndex(DSL.name("IDX0_MESSAGES_AC_CC"), MessageMessages.MESSAGE_MESSAGES, new OrderField[] { MessageMessages.MESSAGE_MESSAGES.APP_CODE, MessageMessages.MESSAGE_MESSAGES.CLIENT_CODE }, false);
+    public static final Index MESSAGE_TELECMI_CALLS_IDX0_TELECMI_CALLS_AC_CC = Internal.createIndex(DSL.name("IDX0_TELECMI_CALLS_AC_CC"), MessageTelecmiCalls.MESSAGE_TELECMI_CALLS, new OrderField[] { MessageTelecmiCalls.MESSAGE_TELECMI_CALLS.APP_CODE, MessageTelecmiCalls.MESSAGE_TELECMI_CALLS.CLIENT_CODE }, false);
     public static final Index MESSAGE_WHATSAPP_PHONE_NUMBERS_IDX0_WHATSAPP_PHONE_NUMBER_AC_CC = Internal.createIndex(DSL.name("IDX0_WHATSAPP_PHONE_NUMBER_AC_CC"), MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, new OrderField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.APP_CODE, MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.CLIENT_CODE }, false);
     public static final Index MESSAGE_BRIDGE_INSTANCES_IDX1_BRIDGE_INSTANCES_PLACEMENT = Internal.createIndex(DSL.name("IDX1_BRIDGE_INSTANCES_PLACEMENT"), MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES, new OrderField[] { MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES.STATE, MessageBridgeInstances.MESSAGE_BRIDGE_INSTANCES.IS_ACTIVE }, false);
     public static final Index MESSAGE_DISPATCH_OUTBOX_IDX1_DISPATCH_OUTBOX_SWEEP = Internal.createIndex(DSL.name("IDX1_DISPATCH_OUTBOX_SWEEP"), MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX, new OrderField[] { MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX.NEXT_ATTEMPT_AT, MessageDispatchOutbox.MESSAGE_DISPATCH_OUTBOX.ATTEMPTS }, false);

@@ -7,15 +7,8 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 /**
- * Sets one setting on the app. Sent with the app token.
- *
- * <p>A key/value pair, per the vendor's Postman collection. The one that matters here is
- * {@code callback}: browser-placed calls never run the App Bazaar flow, so its Passthru applet never
- * fires for them, and the URL registered here is their only route back with status and recordings.
- *
- * <p>Calling this also creates the settings record the browser SDK reads on startup. Without it,
- * the SDK's own {@code GET /app_setting} returns 404 and the softphone fails before it reaches the
- * registrar.
+ * Sets one setting on the app. Sent with the app token. {@code callback} matters most: browser-placed calls
+ * never run the App Bazaar flow, so this URL is their only route back with status and recordings.
  */
 @Data
 @Accessors(chain = true)

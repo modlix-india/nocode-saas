@@ -20,15 +20,35 @@ import reactor.core.publisher.Mono;
 public interface IFeignMessageService {
 
     String MESSAGE_PATH = "/api/message";
-    String EXOTEL_CALL_PATH = MESSAGE_PATH + "/call/exotel";
+    /** Provider-neutral call operations: the message service picks the provider from the named connection. */
+    String CALL_INTERNAL_PATH = MESSAGE_PATH + "/call/internal";
+
     String WHATSAPP_PATH = MESSAGE_PATH + "/whatsapp";
     String WHATSAPP_TICKET_PATH = WHATSAPP_PATH + "/ticket";
 
-    @PostMapping(EXOTEL_CALL_PATH + "/internal/connect")
+    /** Exotel's inbound connect, read as its applet response, which is what Exotel is answered with. */
+    @PostMapping(CALL_INTERNAL_PATH + "/connect")
     Mono<ExotelConnectAppletResponse> connectCall(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestBody IncomingCallRequest callRequest);
+
+    /** The same connect, for TeleCMI's HTTP-flow answer, which this service passes through untouched. */
+    @PostMapping(CALL_INTERNAL_PATH + "/connect")
+    Mono<Map<String, Object>> connectCallReply(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestBody IncomingCallRequest callRequest);
+
+    /**
+     * Whether a TeleCMI inbound flow request ({@code token}, {@code appId}) is this tenant's. Call it before
+     * looking up or creating a deal; a failure is answered with 401 and nothing else.
+     */
+    @PostMapping(CALL_INTERNAL_PATH + "/telecmi/verify")
+    Mono<Boolean> verifyTelecmiFlow(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestBody Map<String, String> request);
 
     /**
      * Places an outbound call through the provider.
@@ -42,26 +62,16 @@ public interface IFeignMessageService {
      * the provider's call id and raw payloads, and mirroring that DTO here would create a second copy
      * to keep in step for no gain: this service maps it straight onto its own row.
      */
-    @PostMapping(EXOTEL_CALL_PATH + "/internal/make")
+    @PostMapping(CALL_INTERNAL_PATH + "/make")
     Mono<Map<String, Object>> makeCallInternal(
             @RequestParam String appCode, @RequestParam String clientCode, @RequestBody Map<String, Object> request);
 
     /**
-     * Places a call from the agent's browser softphone to a deal's customer.
-     *
-     * <p>Same contract as {@link #makeCallInternal}, and the same obligation: call it only after
-     * confirming the caller may act on the deal, and pass the number taken from that deal. The
-     * message service checks neither, and for browser calls it cannot — it has no view of deals at
-     * all, which is exactly why this call originates here rather than from the softphone.
-     *
-     * <p>{@code userId} is the agent whose browser should ring, not the caller's choice of agent.
-     * The message service resolves it to that agent's provisioned SIP identity and refuses if they
-     * have none.
-     *
-     * <p>Untyped, like its sibling, for the same reason: the response is the message service's own
-     * call representation and this service maps it straight onto its own row.
+     * Places a call from the agent's browser softphone to a deal's customer. As with {@link #makeCallInternal},
+     * call it only after confirming the caller may act on the deal, and pass that deal's number; the message
+     * service checks neither. {@code userId} must be the caller's own.
      */
-    @PostMapping(EXOTEL_CALL_PATH + "/internal/browser-dial")
+    @PostMapping(CALL_INTERNAL_PATH + "/browser-dial")
     Mono<Map<String, Object>> browserDialInternal(
             @RequestParam String appCode, @RequestParam String clientCode, @RequestBody BrowserDialRequest request);
 

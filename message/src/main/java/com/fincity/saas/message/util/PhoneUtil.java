@@ -27,26 +27,11 @@ public class PhoneUtil {
     }
 
     /**
-     * Whether two values name the same phone.
+     * Whether two values name the same phone, normalised through {@link #parse} since the provider echoes numbers
+     * back in its own shape. Unparseable values (SIP URI, extension) compare on their last ten digits, or exactly
+     * when shorter.
      *
-     * <p>Normalises through {@link #parse} first, so {@code +910000000001} and {@code 0000000001}
-     * are recognised as one number rather than two — the provider echoes a number back in whatever
-     * shape it stores it, and a plain string compare reports a change on every re-provision.
-     *
-     * <p>Falls back to comparing the last ten digits when either side will not parse, and to an
-     * exact compare when there are fewer than ten. That covers what {@code parse} rejects: a SIP
-     * URI, an extension, a short code.
-     *
-     * <p><b>The fallback is region-blind, and that is a scoping assumption rather than an
-     * oversight.</b> Comparing the last ten digits treats two numbers as one whenever their tails
-     * match, which is only safe where numbers share a country — true of this integration, which is
-     * scoped to one regional provider account. It runs only when {@link #parse} rejects a side,
-     * and {@code parse} itself defaults to {@code DEFAULT_REGION}. A caller spanning countries
-     * should compare parsed numbers and treat an unparseable one as unequal.
-     *
-     * <p>Errs toward reporting a <em>difference</em>. A false difference costs one redundant write
-     * of the same values; a false match means an operator's new number silently never takes effect,
-     * which is the defect this exists to prevent.
+     * <p>That fallback is region-blind by design: safe only because this integration is scoped to one country.
      */
     public static boolean isSameNumber(String left, String right) {
 

@@ -12,12 +12,8 @@ import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * A tenant's integration app with a calling provider, created once per connection.
- *
- * <p>Holds the credentials that mint browser-calling tokens, which is why this entity is
- * deliberately not given a {@code BaseUpdatableController}: the generic eager read paths return
- * {@code rec.intoMap()} straight off the JOOQ record, so {@link JsonIgnore} below is defence in
- * depth and not the control. Keeping the generic surface unmounted is the control.
+ * A tenant's integration app with a calling provider. Holds the credentials that mint browser-calling tokens, so
+ * it gets no {@code BaseUpdatableController}: the eager read paths bypass {@link JsonIgnore}.
  */
 @Data
 @Accessors(chain = true)
@@ -41,12 +37,7 @@ public class CallProviderApp extends BaseUpdatableDto<CallProviderApp> {
     private String providerAppName;
     private String accountSid;
 
-    /**
-     * Where the provider posts status for calls it placed outside a call flow.
-     *
-     * <p>Browser-originated calls never run the App Bazaar flow, so its Passthru applet never fires
-     * for them. This URL, registered on the provider app itself, is their only route back.
-     */
+    /** Where the provider posts status for browser-originated calls, which never run the App Bazaar flow. */
     private String callbackUrl;
 
     @JsonIgnore

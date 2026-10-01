@@ -8,15 +8,8 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 /**
- * What the provider tells us immediately after accepting an outbound call.
- *
- * <p>More than expected, and enough to record the call outright: verified against a live dial, the
- * response carries the {@code CallSid}, the {@code VirtualNumber} presented to the customer, the
- * {@code FromNumber} the call originated from, and a {@code CallState} of {@code "active"} once the
- * invite has been dispatched. Nothing has to be correlated afterwards.
- *
- * <p>{@code requestId} is kept even though the Sid supersedes it: it is the identifier the vendor's
- * own logs are searched by, and the only thing to quote about a call that never materialised.
+ * What the provider returns on accepting an outbound call, verified on a live dial: enough to record the call
+ * outright. {@code requestId} is kept because the vendor's logs are searched by it.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
@@ -31,7 +24,7 @@ public class ExotelOutboundCallResult implements Serializable {
     @JsonProperty("CallSid")
     private String callSid;
 
-    /** The number the provider actually presented to the customer, which becomes the caller id. */
+    /** The number presented to the customer, which becomes the caller id. */
     @JsonProperty("VirtualNumber")
     private String virtualNumber;
 
@@ -39,7 +32,7 @@ public class ExotelOutboundCallResult implements Serializable {
     @JsonProperty("FromNumber")
     private String fromNumber;
 
-    /** The provider's own view of the call at dispatch: "active" once the invite has gone out. */
+    /** "active" once the invite has gone out. */
     @JsonProperty("CallState")
     private String callState;
 

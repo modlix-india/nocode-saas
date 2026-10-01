@@ -136,23 +136,12 @@ public class TicketCallLogService {
     }
 
     /**
-     * Places a call to a deal's customer from the agent's browser softphone.
+     * Places a call to a deal's customer from the agent's browser softphone. The ticket is read under the caller's
+     * access and the number taken from it, so an agent can ring only deals they can see; the message service has
+     * no user-scoped ticket lookup, which is why this lives here.
      *
-     * <p>Deliberately the same shape as {@link #makeCall}: access is established first, the ticket
-     * is read under that access, and only then is the number taken from it. The softphone sends
-     * nothing but a ticket id, so an agent can ring the customers of deals they can see and no
-     * others.
-     *
-     * <p>The reason this lives here rather than in the message service is that the check above is
-     * only possible here. That service's sole ticket lookup is an internal one with no user
-     * scoping, so a browser-facing dial route there would resolve any ticket in the tenant —
-     * restoring exactly the gap this method exists to close.
-     *
-     * <p>Worth being honest about the limit: the agent's browser holds a provider token that can
-     * reach the dial API directly, so this constrains the sanctioned path rather than making
-     * arbitrary dialling impossible. What it does guarantee is that every call placed through the
-     * UI is recorded against a deal the agent could see, which is what makes the call log worth
-     * reading.
+     * <p>The browser's provider token can still reach the dial API directly: this constrains the sanctioned path,
+     * so every UI call is logged against a deal the agent could see.
      */
     public Mono<Call> makeBrowserCall(Identity ticketId, String connectionName) {
 
@@ -167,11 +156,8 @@ public class TicketCallLogService {
     }
 
     /**
-     * Hands the dial to the message service, with the destination taken from the deal.
-     *
-     * <p>The agent comes from {@code access}, not from the request: the message service mints and
-     * uses that agent's own provider token, so a userId carried in from outside would let one agent
-     * dial as another.
+     * Hands the dial to the message service with the deal's number. The agent comes from {@code access}, never the
+     * request, or one agent could dial as another.
      */
     private Mono<Map<String, Object>> placeFromBrowser(ProcessorAccess access, Ticket ticket, String connectionName) {
 
@@ -194,8 +180,6 @@ public class TicketCallLogService {
                     "userId");
 
         // Null when the stored number will not parse, which the blank check above does not catch.
-        // Left unchecked, that surfaced as a 500 from a NullPointerException on the next line, where
-        // the truth is simply that the deal holds a number nobody can ring.
         PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
 
         if (to == null || to.getNumber() == null)
@@ -204,9 +188,7 @@ public class TicketCallLogService {
                     ProcessorMessageResourceService.MISSING_PARAMETERS,
                     Ticket.Fields.phoneNumber);
 
-        // The provider's browser dial API takes a single E.164 string, where click-to-call takes the
-        // country code and number as separate fields. PhoneUtil.parse already formats to E.164 —
-        // country code and leading plus included — so there is nothing to assemble here.
+        // The browser dial API takes one E.164 string, which PhoneUtil.parse already produces.
         BrowserDialRequest request = new BrowserDialRequest()
                 .setConnectionName(connectionName)
                 .setUserId(access.getUserId().toBigInteger())
@@ -226,10 +208,18 @@ public class TicketCallLogService {
 
         PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
 
+        if (to == null || to.getNumber() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    Ticket.Fields.phoneNumber);
+
         Map<String, Object> request = new HashMap<>();
         request.put("toNumber", Map.of("countryCode", to.getCountryCode(), "number", to.getNumber()));
         if (connectionName != null && !connectionName.isBlank()) request.put("connectionName", connectionName);
         if (callerId != null && !callerId.isBlank()) request.put("callerId", callerId);
+        // Never from the request: TeleCMI rings this user's mobile first. Exotel ignores it.
+        if (access.getUserId() != null) request.put("userId", access.getUserId().toBigInteger());
 
         return this.feignMessageService.makeCallInternal(access.getAppCode(), access.getClientCode(), request);
     }
@@ -248,9 +238,10 @@ public class TicketCallLogService {
                 .setTicketId(ticket.getId())
                 .setProductId(ticket.getProductId())
                 .setConnectionName(connectionName)
-                .setCallProvider(EXOTEL_PROVIDER)
                 .setOutbound(true);
 
+        // TeleCMI's placed call names its provider; Exotel's does not.
+        if (call.getCallProvider() == null) call.setCallProvider(EXOTEL_PROVIDER);
         if (call.getDirection() == null) call.setDirection(DIRECTION_OUTBOUND);
 
         return this.upsert(access.getAppCode(), access.getClientCode(), call);
@@ -265,6 +256,7 @@ public class TicketCallLogService {
     public Mono<Call> recordIncomingCall(
             ProcessorAccess access,
             Ticket ticket,
+            String callProvider,
             String providerCallId,
             String connectionName,
             PhoneNumber from,
@@ -276,7 +268,7 @@ public class TicketCallLogService {
                 .setTicketId(ticket.getId())
                 .setProductId(ticket.getProductId())
                 .setConnectionName(connectionName)
-                .setCallProvider(EXOTEL_PROVIDER)
+                .setCallProvider(callProvider)
                 .setOutbound(false)
                 .setDirection(DIRECTION_INBOUND)
                 .setCallStatus(CallStatus.ORIGINATE)

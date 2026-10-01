@@ -33,11 +33,10 @@ import com.fincity.saas.message.model.response.call.provider.exotel.integrations
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
+import com.fincity.saas.message.service.call.AgentEndpoints;
 import com.fincity.saas.message.util.PhoneUtil;
-import com.fincity.saas.message.util.SetterUtil;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,29 +54,15 @@ import reactor.util.context.Context;
 /**
  * Exotel's Integrations Core API: the app, its agents, and the tokens a browser registers with.
  *
- * <p>A separate bean from {@link ExotelCallService} rather than more methods on it. That service
- * speaks the telephony API with one credential pair; this one speaks a different API on a different
- * host with a different pair, and folding them together would put two unrelated contracts behind
- * one class.
- *
- * <p>Three auth styles reach the same host and none of them is the obvious one everywhere. See
- * {@link WebClientConfig#createExotelIntegrationsWebClient}.
+ * <p>Separate from {@link ExotelCallService}: a different API on a different host with a different credential
+ * pair. Auth style varies by endpoint; see {@link WebClientConfig#createExotelIntegrationsWebClient}.
  */
 @Service
 public class ExotelIntegrationsService {
 
-    /**
-     * Only ever reads JWT claims, so a plain mapper is enough and no bean is needed.
-     */
     private static final ObjectMapper STATIC_MAPPER = new ObjectMapper();
 
-    /**
-     * What each provider call is named in the failure it raises.
-     *
-     * <p>Named once each because they are user-facing: they fill the first placeholder of
-     * {@code exotel_request_failed}, so "Exotel app creation failed: …" is what an operator reads.
-     * Spelled at the call site they drift, and the same failure gets two different names.
-     */
+    /** Operation names are user-facing: they fill the first placeholder of {@code exotel_request_failed}. */
     private static final String OPERATION_CUSTOMER_TOKEN = "customer token";
 
     private static final String OPERATION_APP_TOKEN = "app token";
@@ -88,44 +73,30 @@ public class ExotelIntegrationsService {
 
     private static final String OPERATION_USER_MAPPING = "user mapping";
 
-    private static final String OPERATION_AGENT_TOKEN = "agent session token";
-
-    private static final String OPERATION_DIAL_TOKEN = "agent session token for dialling";
-
     private static final String OPERATION_OUTBOUND_CALL = "outbound call";
 
-    /** The expiry claim on the provider's agent token. */
     private static final String CLAIM_EXPIRY = "exp";
 
     /** Stands in for the provider's own error text when it sent no body at all. */
     private static final String CAUSE_NO_RESPONSE = "no response";
 
-    /** The dial parameter name, for the refusal an empty destination raises. */
+    private static final int MAX_CAUSE_LENGTH = 200;
+
     private static final String PARAM_TO_NUMBER = "toNumber";
 
-    private static final String ENDPOINT_WEBRTC_SIP = "WEBRTC_SIP";
-    private static final String ENDPOINT_PSTN_PHONE = "PSTN_PHONE";
+    private static final String ENDPOINT_WEBRTC_SIP = ProviderUserEndpoint.ENDPOINT_WEBRTC_SIP;
+    private static final String ENDPOINT_PSTN_PHONE = ProviderUserEndpoint.ENDPOINT_PSTN_PHONE;
 
     /**
-     * {@code Data} on the token endpoint is a <b>bare JWT string</b>, not an object.
-     *
-     * <p>There is no {@code Token} field and no {@code ExpiresIn} field, whatever the vendor's
-     * examples show. Binding an object here yields a null token on every call, silently.
+     * {@code Data} on the token endpoint is a bare JWT string, not the object with {@code Token} and
+     * {@code ExpiresIn} the vendor's examples show. Binding an object yields a null token, silently.
      */
     private static final ParameterizedTypeReference<ExotelIntegrationsResponse<String>> TOKEN_TYPE =
             new ParameterizedTypeReference<>() {};
-    /**
-     * App responses are read as raw JSON on purpose.
-     *
-     * <p>{@code Data} is an array on {@code GET /app} but a single object on {@code POST /app}, and
-     * binding one shape would fail on the other with a {@code MismatchedInputException}.
-     * Normalising here costs a few lines and tolerates either, including whichever Exotel settles
-     * on later.
-     */
-    /** The dial response, bound rather than picked apart: its fields carry the provider's names. */
     private static final ParameterizedTypeReference<ExotelIntegrationsResponse<ExotelOutboundCallResult>>
             OUTBOUND_CALL_TYPE = new ParameterizedTypeReference<>() {};
 
+    /** Read as raw JSON: {@code Data} is an array on {@code GET /app} but a single object on {@code POST /app}. */
     private static final ParameterizedTypeReference<ExotelIntegrationsResponse<JsonNode>> APP_JSON_TYPE =
             new ParameterizedTypeReference<>() {};
 
@@ -140,11 +111,8 @@ public class ExotelIntegrationsService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Everything a calling connection must carry before an app can be created.
-     *
-     * <p>Both credential pairs are required, not one: the telephony pair places click-to-call and
-     * the integrations pair creates the app and mints softphone tokens, and a tenant using the
-     * softphone keeps both flows.
+     * Required before an app can be created. Both credential pairs: the telephony pair places click-to-call and
+     * the integrations pair creates the app and mints softphone tokens.
      */
     private static final List<String> REQUIRED_DETAILS = List.of(
             ExotelIntegrationsApiConfig.ACCOUNT_SID,
@@ -176,13 +144,9 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * The first required detail this connection does not carry.
-     *
-     * <p>Checked before anything reaches the provider, and all of them rather than one at a time:
-     * app creation spends the tenant's credentials and creates a billable object, so a connection
-     * that is half filled in should fail at the request rather than after an app exists with no way
-     * to reach it. The callback URL is in this set for that reason — an app registered against a
-     * URL nobody serves looks provisioned and reports nothing.
+     * The first required detail this connection lacks, checked before app creation spends credentials on a
+     * billable object. The callback URL is included because an app registered against an unserved URL reports
+     * nothing.
      */
     private Optional<String> firstMissingDetail(Connection connection) {
 
@@ -204,12 +168,7 @@ public class ExotelIntegrationsService {
                 key);
     }
 
-    /**
-     * Unwraps the envelope, turning a provider-level failure into a real error.
-     *
-     * <p>Integrations Core reports failure inside a 200 body, so without this a refusal would read
-     * as an empty success and surface much later as a null field.
-     */
+    /** Unwraps the envelope. Integrations Core reports failure inside a 200 body, so this is the real check. */
     private <T> Mono<T> unwrap(ExotelIntegrationsResponse<T> response, String operation) {
         if (response == null || !response.isSuccess()) {
             String cause = response == null ? CAUSE_NO_RESPONSE : response.errorDetail();
@@ -220,6 +179,31 @@ public class ExotelIntegrationsService {
                     cause);
         }
         return Mono.just(response.getData());
+    }
+
+    /**
+     * An HTTP error from Exotel, as the same 502 {@link #unwrap} gives, with Exotel's own reason. Unmapped it
+     * surfaces as a bare 500 and the reason is lost.
+     */
+    private <T> Mono<T> exotelFailure(WebClientResponseException e, String operation) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_GATEWAY, msg),
+                MessageResourceService.EXOTEL_REQUEST_FAILED,
+                operation,
+                failureCause(e));
+    }
+
+    /** Exotel's {@code Error} from the body when it sent one, else the HTTP status; capped for the message. */
+    static String failureCause(WebClientResponseException e) {
+        String cause = null;
+        try {
+            JsonNode error = STATIC_MAPPER.readTree(e.getResponseBodyAsString()).path("Error");
+            if (error.isTextual() && !error.asText().isBlank()) cause = error.asText();
+        } catch (Exception ignored) {
+            // Not JSON: an HTML error page from a proxy, say.
+        }
+        if (cause == null) cause = "HTTP " + e.getStatusCode().value();
+        return cause.length() > MAX_CAUSE_LENGTH ? cause.substring(0, MAX_CAUSE_LENGTH) : cause;
     }
 
     // ---------------------------------------------------------------------------------------
@@ -234,6 +218,7 @@ public class ExotelIntegrationsService {
                         .bodyValue(request)
                         .retrieve()
                         .bodyToMono(TOKEN_TYPE))
+                .onErrorResume(WebClientResponseException.class, e -> this.exotelFailure(e, operation))
                 .flatMap(response -> this.unwrap(response, operation));
     }
 
@@ -252,11 +237,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Authenticates the app itself.
-     *
-     * <p>Not interchangeable with the customer token: user mappings and app settings bind to the
-     * right Exotel account only when the app token is used, and can otherwise land on a different
-     * tenant altogether.
+     * Authenticates the app itself. Not interchangeable with the customer token: user mappings and app settings
+     * bind to the right Exotel account only with the app token.
      */
     private Mono<String> appToken(Connection connection, String appId, String appSecret) {
         return this.requestToken(connection, ExotelTokenRequest.ofApp(appId, appSecret), OPERATION_APP_TOKEN);
@@ -267,16 +249,10 @@ public class ExotelIntegrationsService {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Registers this tenant's integration app, and initialises its settings record.
+     * Registers this tenant's integration app and initialises its settings. Idempotent.
      *
-     * <p>Idempotent, and self-contained: the admin supplies only what their Exotel dashboard shows
-     * them — {@code accountSid}, {@code customerId}, {@code customerSecret}. The app and its secret
-     * are created here.
-     *
-     * <p>{@code appSecret} is deliberately <b>not</b> required on the connection. Exotel mints it
-     * when the app is created and returns it exactly once; demanding it upfront would be a
-     * chicken-and-egg trap, since the client has no way to know it before the app exists. It is
-     * captured from the creation response, stored, and read from our own row forever after.
+     * <p>{@code appSecret} is not required on the connection: Exotel mints it at creation and returns it exactly
+     * once, so it is captured from that response and read from our own row afterwards.
      */
     public Mono<CallAppStatus> initializeApp(MessageAccess access, Connection connection) {
 
@@ -296,10 +272,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Re-running against an app we already have: refresh the callback URL, keep the stored secret.
-     *
-     * <p>Worth doing on every run rather than only at creation, because the tenant's host can
-     * change and a stale callback URL is invisible until a call goes unlogged.
+     * Re-running against an existing app: refresh the callback URL, since the tenant's host can change, and keep
+     * the stored secret.
      */
     private Mono<CallProviderApp> refreshAppSetting(
             MessageAccess access, Connection connection, CallProviderApp existing) {
@@ -310,28 +284,17 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Brings a brand-new app into existence for a tenant that has none.
+     * Creates an app for a tenant that has none.
      *
-     * <p>Our own row is the authority on whether this tenant has an app, and it is the only
-     * authority there is. The provider's listing carries nothing that identifies a tenant —
-     * {@code AppID}, {@code AppName}, {@code CustomerID}, {@code ExotelAccountSid},
-     * {@code ExotelDomain}, {@code IsActive} — and the name cannot stand in for one, because the
-     * name that comes back is not always the name that was sent. So other apps on the account are
-     * none of this tenant's business. One Exotel account is meant to hold many: one per tenant, and
-     * one per environment, each environment having its own database and so its own row.
+     * <p>Our own row is the only authority on whether this tenant has an app: the provider's listing carries
+     * nothing that identifies a tenant, and the returned {@code AppName} is not always the name sent. One Exotel
+     * account holds many apps, one per tenant and per environment.
      *
-     * <p><b>Persist the secret before doing anything else.</b> The provider returns it exactly
-     * once, at creation. Every network call placed between creating the app and writing that secret
-     * down is another chance to end up with an app nobody can ever authenticate as, and therefore
-     * nobody can ever delete. {@link #teardownApp} needs it too, which is why a row lost without a
-     * teardown strands its app at the provider for good. Tear down before wiping a database.
+     * <p>The secret is persisted before any other call because the provider returns it only once; without it the
+     * app can never be authenticated as, or deleted. Tear down before wiping a database.
      *
-     * <p><b>Adopt only when told which app to adopt.</b> A missing row means either that this
-     * tenant never had an app or that its row was lost, and nothing distinguishes the two — not
-     * here, where teardown purges rather than tombstones, and not at the provider. Guessing either
-     * way is wrong, so the operator decides: {@code appId} and {@code appSecret} on the connection
-     * name an existing app to re-link instead of creating one. They are for recovery only, are
-     * never written by this service, and should be taken off once the row exists.
+     * <p>A lost row cannot be told apart from a tenant that never had one, so nothing is adopted by guessing:
+     * {@code appId} and {@code appSecret} on the connection name an existing app to re-link, for recovery only.
      */
     private Mono<CallProviderApp> registerNewApp(
             MessageAccess access, Connection connection, String appName, String accountSid) {
@@ -341,9 +304,7 @@ public class ExotelIntegrationsService {
                         masterToken -> this.adoptFromConnection(connection)
                                 .switchIfEmpty(
                                         Mono.defer(() -> this.createApp(connection, masterToken, appName, accountSid))),
-                        // Straight to the database, before the token call and the callback
-                        // registration.
-                        // Neither of those can lose the secret if it is already written down.
+                        // Persisted before the token call and callback registration, so neither can lose the secret.
                         (masterToken, app) -> this.persistApp(access, connection, app, appName, accountSid),
                         (masterToken, app, row) ->
                                 this.appToken(connection, row.getProviderAppId(), row.getProviderAppSecret()),
@@ -356,9 +317,6 @@ public class ExotelIntegrationsService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.registerNewApp"));
     }
 
-    /**
-     * Writes the app down the moment we have its secret, before anything else can fail.
-     */
     private Mono<CallProviderApp> persistApp(
             MessageAccess access, Connection connection, ExotelAppData app, String appName, String accountSid) {
 
@@ -378,9 +336,7 @@ public class ExotelIntegrationsService {
         row.setAppCode(access.getAppCode()).setClientCode(access.getClientCode());
 
         return this.callProviderAppDAO.create(row).onErrorResume(e -> {
-            // Two initialize calls raced and the other won. Its row holds the same app, so
-            // read it
-            // back rather than failing: the loser's app is already recorded by the winner.
+            // Two initialize calls raced and the other won; its row holds the same app, so read it back.
             return this.callProviderAppDAO
                     .findByClient(access.getAppCode(), access.getClientCode(), this.provider())
                     .switchIfEmpty(Mono.error(e));
@@ -388,20 +344,12 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Re-links an app the operator has named on the connection, if they have named one.
+     * Re-links an app the operator named on the connection; empty unless both {@code appId} and {@code appSecret}
+     * are given.
      *
-     * <p>For a database loss or an app made by hand, and nothing else. The provider never re-reveals
-     * a secret, so both halves have to be supplied: {@code appId} says which app, {@code appSecret}
-     * proves it is ours to use. Empty when either is absent — the normal case, and the one that
-     * means create.
-     *
-     * <p>Verified before it is written down, which is the opposite of the created path and
-     * deliberately so. A created app's secret exists nowhere but the response, so its row has to be
-     * written first; an adopted pair was typed in and can be typed again, so the row is worth
-     * nothing until the pair is known to work. Persisting an unverified pair would leave a row that
-     * blocks its own retry on {@code UK2_CALL_PROVIDER_APPS_TENANT} and that no teardown can clear,
-     * because teardown needs a working secret. A pair the provider rejects fails the whole
-     * initialize rather than falling through to creation, so a typo cannot quietly make a new app.
+     * <p>Verified before it is written, unlike a created app: an unverified row would block its own retry on
+     * {@code UK2_CALL_PROVIDER_APPS_TENANT} and could not be torn down. A rejected pair fails the initialize
+     * rather than falling through to creation, so a typo cannot quietly create a new app.
      */
     private Mono<ExotelAppData> adoptFromConnection(Connection connection) {
 
@@ -437,14 +385,9 @@ public class ExotelIntegrationsService {
                         MessageResourceService.EXOTEL_APP_NOT_RETURNED));
     }
 
-    /** Accepts {@code Data} as either a single app or an array of them. */
     /**
-     * Reads one agent's mapping back from the provider.
-     *
-     * <p>Filtered by {@code user_id}, which returns a single object where the unfiltered listing
-     * returns a paginated {@code {Users:[…]}} envelope. Bound to raw JSON and normalised for the
-     * same reason the app endpoints are: the same path answers in more than one shape, and binding
-     * to one of them fails on the other.
+     * Reads one agent's mapping back, filtered by {@code user_id}. Read as raw JSON because the path answers
+     * either as a single object or as a paginated {@code {Users:[…]}} envelope.
      */
     private Mono<ExotelUserMappingData> findMapping(Connection connection, String appToken, String email) {
 
@@ -460,15 +403,9 @@ public class ExotelIntegrationsService {
                 .flatMapMany(data -> this.toList(data, ExotelUserMappingData.class, OPERATION_USER_MAPPING))
                 .filter(mapping -> email.equalsIgnoreCase(mapping.getAppUserId()))
                 .next()
-                // 404 IS the miss. Exotel answers "user mapping not found" with a
-                // 404 rather than an empty success, and Spring turns that into an
-                // error — so without this, provisioning a brand-new agent fails on
-                // the very read that exists to check whether they already have a
-                // mapping, and no first agent can ever be created.
+                // Exotel answers "user mapping not found" with a 404; that is the miss, not an error.
                 .onErrorResume(WebClientResponseException.NotFound.class, e -> Mono.empty())
-                // Anything else is not a miss, and must not be treated as one: we do
-                // not know whether a mapping exists, and creating a duplicate on a
-                // failed read is the exact outcome this method exists to prevent.
+                // Any other failure is unknown, not a miss: treating it as one would create a duplicate mapping.
                 .onErrorResume(e -> this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_GATEWAY, msg),
                         MessageResourceService.EXOTEL_MAPPING_READ_FAILED,
@@ -476,16 +413,10 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Reads a provider payload that may arrive as one object, an array, or a paginated envelope.
+     * Reads a payload that may be one object, an array, or a {@code Users} envelope.
      *
-     * <p>One helper for every listing, because the app listing and the user listing differed only
-     * in the type they bound to. The envelope is unwrapped only when its key is present, so the same
-     * method serves both shapes without the caller knowing which it got.
-     *
-     * <p>An unreadable payload raises rather than coming back empty. Empty is a real answer here —
-     * it means "no such app" or "no such mapping" — and a caller that cannot tell the two apart goes
-     * on to create a duplicate, which is the outcome the provider's own support asked us to stop
-     * producing.
+     * <p>An unreadable payload raises rather than returning empty, since empty means "none exists" and the
+     * caller would go on to create a duplicate.
      */
     private <T> Flux<T> toList(JsonNode data, Class<T> type, String operation) {
 
@@ -512,12 +443,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Creates the app's settings record.
-     *
-     * <p>An initialisation rather than a configuration — the body carries only the app and the
-     * account. It matters because the browser SDK reads {@code GET /app_setting} on startup, and
-     * without this it gets a 404 and softphone initialisation fails before it reaches the
-     * registrar.
+     * Writes the app's settings. The browser SDK reads {@code GET /app_setting} on startup, and without them it
+     * gets a 404 and softphone initialisation fails.
      */
     private Mono<String> registerCallbackUrl(MessageAccess access, Connection connection, String appToken) {
 
@@ -535,16 +462,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Writes one app setting, and fails if it did not take.
-     *
-     * <p>Bound to the envelope rather than to {@code String}. Exotel reports failure inside a 200 —
-     * {@code {"Status":"failure","Error":...}} — so reading the body as a string treats a refusal
-     * as a success. {@link #unwrap} is the only thing that actually checks.
-     *
-     * <p>Errors propagate on purpose. The caller decides what a failure means, and it must not
-     * conclude the settings registered: writing CALLBACK_URL for a callback Exotel never accepted
-     * leaves a row asserting the integration is wired when it is not, which is harder to diagnose
-     * than an initialize that says plainly it failed.
+     * Writes one app setting, and fails if it did not take. Exotel reports failure inside a 200, so the body goes
+     * through {@link #unwrap} rather than being read as a string.
      */
     private Mono<Void> putAppSetting(WebClient client, String key, String value) {
 
@@ -558,48 +477,22 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Where Exotel should post status for calls it placed outside a call flow.
-     *
-     * <p>Built with the client code, not without it. The tenant segment is load-bearing — the
-     * gateway derives the tenant from the host and path, so a URL missing it resolves to the wrong
-     * client or 404s, and outbound call logging then fails silently, which is the worst way for it
-     * to fail.
-     */
-    /**
-     * The status callback URL, exactly as the connection states it.
-     *
-     * <p>Registered verbatim: no path appended, no scheme repaired, no host derived. It was
-     * previously resolved from the tenant's app URL, which is a different address with a different
-     * lifecycle — that one answers a browser, this one has to be reachable by the provider and has
-     * to carry whatever prefix the gateway needs to resolve the tenant from the path. Deriving it
-     * produced a plausible URL that no callback ever arrived on.
-     *
-     * <p>Required by {@link #initializeApp}, so the value is present by the time this runs.
+     * The status callback URL exactly as the connection states it, never derived: it must be reachable by the
+     * provider and carry whatever path prefix the gateway needs to resolve the tenant.
      */
     private String callbackUrl(Connection connection) {
         return this.detail(connection, ExotelIntegrationsApiConfig.CALLBACK_URL).trim();
     }
 
-    /**
-     * The account's region, as the connection states it.
-     *
-     * <p>No fallback. It is in {@code REQUIRED_DETAILS}, so a connection without it never reaches
-     * here, and a default would be unreachable code claiming to handle a case that cannot arise.
-     */
     private String exotelDomain(Connection connection) {
         return this.detail(connection, ExotelIntegrationsApiConfig.EXOTEL_DOMAIN);
     }
 
     /**
-     * Deletes this tenant's integration app at the provider, and forgets it locally.
+     * Deletes this tenant's app at the provider, and forgets it locally.
      *
-     * <p>Only possible because the app secret is captured at creation: the delete has to be
-     * authenticated <b>as the app itself</b>. A customer token is accepted and answers {@code
-     * "Deleted Successfully"} while deleting nothing, so an app whose secret was never stored
-     * cannot be removed by anyone — which is how orphans accumulate.
-     *
-     * <p>That same silent success is why this verifies afterwards rather than trusting the
-     * response.
+     * <p>The delete must be authenticated as the app itself: a customer token answers {@code "Deleted
+     * Successfully"} while deleting nothing. That silent success is why this verifies afterwards.
      */
     public Mono<Boolean> teardownApp(MessageAccess access, Connection connection) {
 
@@ -640,9 +533,7 @@ public class ExotelIntegrationsService {
                 .onErrorResume(e -> Mono.just(Boolean.FALSE));
     }
 
-    /**
-     * Reads the listing back, because the delete response cannot be believed on its own.
-     */
+    /** Reads the listing back, because the delete response cannot be believed on its own. */
     private Mono<Boolean> confirmAppGone(Connection connection, String appId) {
         return this.customerToken(connection)
                 .flatMap(masterToken -> this.webClientConfig
@@ -667,10 +558,8 @@ public class ExotelIntegrationsService {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Maps one agent onto a SIP device, and records where they can be reached.
-     *
-     * <p>Two endpoint rows come out of this: the SIP identity at priority 1 and the agent's mobile
-     * at priority 2. Ringing is sequential, so that order is what Exotel actually dials.
+     * Maps one agent onto a SIP device and records their endpoints: SIP at priority 1, mobile at priority 2.
+     * Ringing is sequential, so that order is what Exotel dials.
      */
     public Mono<ProvisionedAgent> provisionAgent(
             MessageAccess access, Connection connection, ProvisionAgentRequest request) {
@@ -678,19 +567,12 @@ public class ExotelIntegrationsService {
         if (request.getUserId() == null) return this.missingParam(BaseMessageRequest.Fields.userId);
         if (request.getVirtualNumber() == null || request.getVirtualNumber().isBlank())
             return this.missingParam(ProvisionAgentRequest.Fields.virtualNumber);
-        // Refused, not defaulted. Sequential ringing means Exotel dials this after
-        // maxRingingDuration, so a blank or wrong value does not degrade to "browser
-        // only" — it rings whoever that number reaches, on every call the agent does
-        // not answer in time. Every agent here is required to hold both a number and an
-        // email, so a missing one is a bad request rather than a shape to support, and
-        // saying so at provisioning time is the only point where someone can still fix it.
+        // Refused, not defaulted: Exotel dials this after maxRingingDuration, so a wrong value rings whoever it
+        // reaches on every call the agent does not answer in time.
         if (request.getAgentNumber() == null || request.getAgentNumber().isBlank())
             return this.missingParam(ProvisionAgentRequest.Fields.agentNumber);
 
-        // Checked as numbers, not merely as present. Both reach the provider, and a typo comes back
-        // as a mapping that will not dial — one round trip and one confusing error later than it
-        // needs to. PhoneUtil is the same parser the rest of this service compares numbers with, so
-        // what it rejects here is exactly what it could not have matched afterwards.
+        // Parsed with the same PhoneUtil that compares numbers later, so a typo fails here rather than at dial time.
         if (PhoneUtil.parse(request.getVirtualNumber()) == null)
             return this.invalidParam(ProvisionAgentRequest.Fields.virtualNumber, request.getVirtualNumber());
 
@@ -703,9 +585,7 @@ public class ExotelIntegrationsService {
                         (app, allowed) -> this.securityService.getUserInternal(
                                 request.getUserId().toBigInteger(), null),
                         (app, allowed, user) -> {
-                            // The override wins when given: the provider's identity for this
-                            // agent cannot always follow ours. Only then is the email
-                            // requirement irrelevant, since it exists to supply this value.
+                            // The override wins when given; the email requirement exists only to supply this.
                             if (request.getAppUserId() != null
                                     && !request.getAppUserId().isBlank())
                                 return Mono.just(request.getAppUserId().trim());
@@ -728,15 +608,9 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Confirms the target user belongs to a client this caller may administer.
-     *
-     * <p>Separate from the {@code ROLE_Owner} gate on the endpoint, and not covered by it: being an
-     * owner says whose <em>request</em> this is, not whose <em>user</em>. Without this an owner in
-     * one tenant could mint SIP credentials for a user in another, on their own Exotel account, and
-     * then mint session tokens as that user.
-     *
-     * <p>Hierarchy rather than strict equality, so a parent administering a client beneath it still
-     * works — which is the normal shape here.
+     * Confirms the target user belongs to a client this caller may administer (hierarchy, not equality). The
+     * {@code ROLE_Owner} gate does not cover this: without it an owner could mint SIP credentials and session
+     * tokens for another tenant's user.
      */
     private Mono<Boolean> requireManagedUser(MessageAccess access, ULong userId) {
 
@@ -751,17 +625,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Refuses to hand one provider identity to two different agents.
-     *
-     * <p>Nothing in the schema prevents it — the endpoint rows are keyed on our user id, so two
-     * users mapped to the same provider identity are two perfectly valid rows. What they are not is
-     * two agents: they share one SIP endpoint, so each rings for the other's calls, inbound routing
-     * sends a deal's customer to whoever answers first, and the outbound log attributes every call
-     * to whichever user the lookup happened to return.
-     *
-     * <p>Worth checking because it is the natural shortcut. A per-user licence tempts an operator
-     * to point a second agent at an identity that already works, and the result looks provisioned
-     * from every angle until two people are on one call.
+     * Refuses to hand one provider identity to two agents. The schema allows it, but they would share one SIP
+     * endpoint: each rings for the other's calls, and the call log attributes calls to whichever the lookup returns.
      */
     private Mono<Boolean> requireIdentityUnclaimed(
             MessageAccess access, ProvisionAgentRequest request, String providerUserId) {
@@ -779,19 +644,11 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Brings the provider's mapping in line with the request, creating it if there is none.
+     * Brings the provider's mapping in line with the request: create if none, reuse if it matches, update if it
+     * differs. Re-provisioning is how an operator changes an agent's numbers.
      *
-     * <p>Three outcomes, and the middle one is the reason this is not a plain "create if absent":
-     * no mapping means create one, a mapping that already matches is reused untouched, and a
-     * mapping that differs is updated. Re-provisioning an agent is how an operator changes their
-     * virtual or agent number, and this method returning the stale mapping unconditionally is what
-     * made that silently do nothing — the request succeeded, the row said the old number, and the
-     * agent kept dialling out on it.
-     *
-     * <p>Still never creates a second AppUser for an agent who has one. The update goes through the
-     * same {@code POST /usermapping}, which the provider treats as an upsert keyed on {@code
-     * app_user_id}, so an existing agent is modified rather than duplicated — and the re-read below
-     * is what proves it, rather than the 200.
+     * <p>Never creates a second AppUser: {@code POST /usermapping} is an upsert keyed on {@code app_user_id}, and
+     * the re-read proves it rather than the 200.
      */
     private Mono<ExotelUserMappingData> resolveMapping(
             MessageAccess access,
@@ -812,13 +669,7 @@ public class ExotelIntegrationsService {
                 .flatMap(mapping -> this.requireDialReady(mapping, email));
     }
 
-    /**
-     * Sends a changed mapping and confirms it landed.
-     *
-     * <p>Note what is deliberately not recorded: what the numbers changed <em>from</em>. The row
-     * afterwards holds the new values, and these services do not log, so the previous ones are
-     * gone. If that history is ever wanted it has to become a row, not a log line.
-     */
+    /** Sends a changed mapping and confirms it landed. The previous numbers are not recorded anywhere. */
     private Mono<ExotelUserMappingData> applyMappingChange(
             Connection connection,
             String appToken,
@@ -832,17 +683,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Writes the mapping at the provider and reads back what it now holds.
-     *
-     * <p>The read-back is the point. {@link #mapUser} returning a SIP identity says the request was
-     * accepted, not that the mapping is in the state it was asked for, and every guard after this —
-     * dial-readiness, and whether an update actually applied — needs the provider's own copy rather
-     * than the echo of what we sent.
-     *
-     * <p>Fails rather than completing empty when that read finds nothing. Completing empty here
-     * would fall through to the caller's {@code switchIfEmpty} and post the mapping a second time,
-     * and a second post for an agent who already has a mapping is the duplicate AppUser that {@link
-     * #resolveMapping} exists to prevent.
+     * Writes the mapping and reads back what the provider now holds; later guards need its copy, not our echo.
+     * Fails rather than completing empty, which would make the caller's {@code switchIfEmpty} post a duplicate.
      */
     private Mono<ExotelUserMappingData> upsertMapping(
             Connection connection,
@@ -861,15 +703,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * What the request would change about an agent who is already provisioned.
-     *
-     * <p>True when the request would change something, false when it asks for nothing new. The two numbers have to be read from two different places, which is the whole
-     * awkwardness here: Exotel echoes {@code VirtualNumber} back on the mapping, but its mapping
-     * response carries no agent number at all, so the only record of what that agent's mobile is
-     * currently set to is our own {@code PSTN_PHONE} endpoint row.
-     *
-     * <p>A missing endpoint row reports no agent-number change on purpose. There is nothing to
-     * compare against, and the write that follows creates the row either way.
+     * Whether the request would change an already-provisioned agent. Exotel echoes {@code VirtualNumber} on the
+     * mapping but never the agent number, so that one is compared against our own {@code PSTN_PHONE} row.
      */
     private Mono<Boolean> hasPendingChange(
             MessageAccess access,
@@ -886,12 +721,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * What the request would change about the virtual number, or empty when it changes nothing.
-     *
-     * <p>Re-asserted rather than assumed correct when the provider reports no virtual number on the
-     * read. There is nothing to compare against, and treating "cannot tell" as "already right" is
-     * precisely what let a changed number never leave this service. The upsert writes the same
-     * values when it was already right, which costs one call on an admin action.
+     * A virtual number the provider did not report counts as changed, so the upsert re-asserts it rather than
+     * assuming it is right.
      */
     private static boolean virtualNumberChanged(ExotelUserMappingData existing, ProvisionAgentRequest request) {
 
@@ -902,37 +733,23 @@ public class ExotelIntegrationsService {
         return !PhoneUtil.isSameNumber(current, request.getVirtualNumber());
     }
 
-    /**
-     * The same for the agent number, whose only record is our own endpoint row.
-     *
-     * <p>A blank current value reports no change on purpose: there is no row to compare against yet,
-     * and the write that follows creates it either way.
-     */
+    /** A blank current value (no endpoint row yet) reports no change; the write that follows creates the row. */
     private static boolean agentNumberChanged(String current, ProvisionAgentRequest request) {
 
         return !current.isBlank() && !PhoneUtil.isSameNumber(current, request.getAgentNumber());
     }
 
     /**
-     * Confirms the provider actually applied the new virtual number.
-     *
-     * <p>A 200 from the mapping upsert is not evidence that the change landed, and this integration
-     * has been caught by that distinction more than once. Only the virtual number can be checked:
-     * it is the one of the two numbers Exotel echoes back, so a rejected or unassigned number shows
-     * up here as the old value still standing.
-     *
-     * <p>The agent number is unverifiable at the provider by the same asymmetry — the mapping
-     * response never carries it — so our endpoint row is the only assertion we can make about it.
+     * Confirms the provider applied the new virtual number; a 200 from the upsert is not evidence. The agent
+     * number cannot be checked because the mapping response never carries it.
      */
     private Mono<ExotelUserMappingData> requireChangeApplied(
             ExotelUserMappingData updated, ProvisionAgentRequest request, String email) {
 
         if (PhoneUtil.isSameNumber(updated.getVirtualNumber(), request.getVirtualNumber())) return Mono.just(updated);
 
-        // Unverifiable is not the same as wrong. If the provider reports no virtual number
-        // on the read path there is nothing to compare, and refusing here would fail a
-        // provisioning that is very likely correct. The endpoint rows written next stand as the
-        // record of what was asked for.
+        // Unverifiable is not wrong: with no virtual number on the read, refusing would fail a likely-correct
+        // provisioning.
         if (StringUtil.safeIsBlank(updated.getVirtualNumber())) return Mono.just(updated);
 
         return this.msgService.throwMessage(
@@ -944,13 +761,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Refuses a mapping the agent could not actually dial from.
-     *
-     * <p>Two conditions, and the provider's own diagnosis of error 10715 names both: an inactive
-     * user has no SIP row to originate from, and a mapping without a {@code SipId} has no browser
-     * identity to register. Either one produces a softphone that connects and then fails on every
-     * call, which is the most expensive way for this to be wrong — the agent looks provisioned to
-     * everyone including themselves.
+     * Refuses a mapping the agent could not dial from, per the provider's diagnosis of error 10715: an inactive
+     * user has no SIP row to originate from, and no {@code SipId} means no browser identity to register.
      */
     private Mono<ExotelUserMappingData> requireDialReady(ExotelUserMappingData mapping, String email) {
 
@@ -987,8 +799,7 @@ public class ExotelIntegrationsService {
                 .createExotelIntegrationsWebClient(connection, appToken, ReactiveAuthenticationScheme.NONE)
                 .flatMap(client -> client.post()
                         .uri(ExotelIntegrationsApiConfig.userMappingUrl())
-                        // An array even for one agent: Exotel takes a list and answers with a
-                        // list.
+                        // An array even for one agent: Exotel takes a list and answers with a list.
                         .bodyValue(List.of(mapping))
                         .retrieve()
                         .bodyToMono(USER_MAPPING_TYPE))
@@ -1001,20 +812,9 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Writes the agent's endpoint rows.
-     *
-     * <p>Scoped to the <b>tenant's</b> client code, taken from {@link MessageAccess}, not to the
-     * agent's own. These rows were previously written under the agent's client, which reads as more
-     * precise and is in fact a bug: every operation that touches them afterwards — deactivation,
-     * teardown, the admin listing — scopes by the caller's tenant, and an owner is explicitly
-     * allowed to manage agents in client hierarchies below their own. Written under the agent's
-     * client, those rows became invisible to the very operations meant to manage them: the SIP
-     * mapping would be revoked at the provider while our rows stayed active, minting tokens for an
-     * agent who could no longer dial.
-     *
-     * <p>Nothing read the agent's own client code — it was stored for audit and never consulted —
-     * so this loses no information that anything depended on, and it matches how {@code
-     * message_call_provider_apps} has always been keyed.
+     * Writes the agent's endpoint rows under the tenant's client code from {@link MessageAccess}, not the agent's
+     * own: deactivation, teardown and the admin listing all scope by the caller's tenant, and an owner may manage
+     * agents in client hierarchies below their own.
      */
     private Mono<ProvisionedAgent> writeEndpoints(
             MessageAccess access, Connection connection, ProvisionAgentRequest request, ExotelUserMappingData mapping) {
@@ -1035,11 +835,8 @@ public class ExotelIntegrationsService {
 
         pstn.setProviderUserId(mapping.getAppUserId());
 
-        // Upserts, because re-provisioning is the only way to change an agent's numbers: an
-        // insert here hits UK2_PROVIDER_USER_ENDPOINTS_AGENT and turns that change into a
-        // duplicate-key error on the second run.
-        // Answered through the same folding the listing uses, so what a create returns and what a
-        // subsequent read returns cannot describe the agent differently.
+        // Upserts: re-provisioning changes an agent's numbers, and an insert would hit
+        // UK2_PROVIDER_USER_ENDPOINTS_AGENT on the second run.
         return this.providerUserEndpointDAO.upsert(sip).flatMap(writtenSip -> this.providerUserEndpointDAO
                 .upsert(pstn)
                 .map(writtenPstn -> merge(merge(new ProvisionedAgent(), writtenSip), writtenPstn)));
@@ -1069,12 +866,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Whether this tenant's app exists, without asking the provider.
-     *
-     * <p>A read of our own row. It says the app was registered, not that the provider still holds
-     * it — an app deleted in the provider's console leaves this answering yes. That is the same
-     * trade {@code browserCallStatus} makes on its cheap path, and for the same reason: a settings
-     * screen loads this on every visit.
+     * Whether this tenant's app exists, from our own row only: an app deleted in the provider's console still
+     * reads as present. Cheap because a settings screen loads it on every visit.
      */
     public Mono<CallAppStatus> callAppStatus(MessageAccess access) {
 
@@ -1085,31 +878,16 @@ public class ExotelIntegrationsService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.callAppStatus"));
     }
 
-    /**
-     * The outward view of an app row.
-     *
-     * <p>One builder for both the setup call and the status read, so what {@code initialize} answers
-     * and what a later status check answers cannot drift apart. It also keeps
-     * {@code CallProviderApp} — which holds the app secret and the raw provider payload — from
-     * reaching a response at all.
-     */
+    /** One builder for setup and status; it also keeps the app secret and raw provider payload out of responses. */
     private CallAppStatus appStatusOf(CallProviderApp app) {
         return CallAppStatus.of(this.provider(), app.getProviderAppName(), app.getCallbackUrl());
     }
 
     /**
-     * Every agent provisioned on a connection, one entry each.
+     * Every agent provisioned on a connection, one entry each, collapsed from the per-destination rows.
      *
-     * <p>Collapses the destination rows into the agent they belong to. The table holds one row per
-     * destination because ringing is sequential and {@code PRIORITY} is the order the provider
-     * dials; a listing that returns those rows shows the same person twice, once for their browser
-     * and once for their phone, and invites an operator to deactivate "the other one".
-     *
-     * <p>Collected and grouped in memory rather than through {@code Flux.groupBy}. This is an admin
-     * listing of one tenant's agents — tens of rows — and {@code groupBy} carries a real hazard at
-     * that size for no benefit: its inner groups must be consumed promptly or the operator stalls on
-     * its prefetch. A {@code LinkedHashMap} also keeps the DAO's ordering, so agents come back in
-     * the order it sorted them rather than in whatever order groups happened to complete.
+     * <p>Grouped in memory rather than with {@code Flux.groupBy}: tens of rows, no prefetch-stall hazard, and a
+     * {@code LinkedHashMap} keeps the DAO's ordering.
      */
     public Flux<ProvisionedAgent> getAgentEndpoints(MessageAccess access, Connection connection) {
 
@@ -1120,89 +898,42 @@ public class ExotelIntegrationsService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.getAgentEndpoints"));
     }
 
-    // Package-private so the collapsing is testable without a database: it is presentation logic
-    // over rows whose shape a screen must not see, and the half-provisioned cases are the ones
-    // worth pinning.
+    // Package-private so the collapsing is testable without a database.
     static List<ProvisionedAgent> consolidate(List<ProviderUserEndpoint> endpoints) {
-
-        Map<ULong, ProvisionedAgent> byUser = new LinkedHashMap<>();
-
-        for (ProviderUserEndpoint endpoint : endpoints)
-            merge(byUser.computeIfAbsent(endpoint.getUserId(), id -> new ProvisionedAgent()), endpoint);
-
-        return List.copyOf(byUser.values());
+        return AgentEndpoints.consolidate(endpoints);
     }
 
-    /**
-     * Folds one destination row into the agent it belongs to.
-     *
-     * <p>The endpoint type decides which field it lands in, so an agent with only a phone comes back
-     * with a null {@code sipEndpoint} rather than being hidden — a half-provisioned agent is exactly
-     * what a screen needs to show. A type this does not recognise is ignored rather than guessed at:
-     * {@code ENDPOINT_TYPE} is a string precisely so a third kind needs no migration, and inventing
-     * a home for it here would put it in the wrong one.
-     */
+    /** Folds one destination row into its agent. Shared with every provider: see {@link AgentEndpoints}. */
     private static ProvisionedAgent merge(ProvisionedAgent agent, ProviderUserEndpoint endpoint) {
-
-        agent.setUserId(endpoint.getUserId());
-
-        SetterUtil.setIfPresent(endpoint.getProviderUserId(), agent::setProviderUserId);
-        SetterUtil.setIfPresent(endpoint.getVirtualNumber(), agent::setVirtualNumber);
-
-        if (ENDPOINT_WEBRTC_SIP.equals(endpoint.getEndpointType())) agent.setSipEndpoint(endpoint.getEndpointValue());
-        else if (ENDPOINT_PSTN_PHONE.equals(endpoint.getEndpointType()))
-            agent.setAgentNumber(endpoint.getEndpointValue());
-
-        if (endpoint.isActive()) agent.setActive(true);
-
-        if (endpoint.getUpdatedAt() != null
-                && (agent.getUpdatedAt() == null || endpoint.getUpdatedAt().isAfter(agent.getUpdatedAt())))
-            agent.setUpdatedAt(endpoint.getUpdatedAt());
-
-        return agent;
+        return AgentEndpoints.fold(agent, endpoint);
     }
 
     /**
-     * Retires an agent locally and at the provider.
-     *
-     * <p>Both halves matter and they do different jobs. Clearing our rows stops this service
-     * minting new tokens; deleting the mapping is what makes Exotel refuse the agent's next
-     * registration. Neither invalidates a token already issued, so a session open right now
-     * survives until it reconnects.
+     * Retires an agent locally and at the provider. Clearing our rows stops new tokens; deleting the mapping makes
+     * Exotel refuse the next registration. A token already issued survives until the session reconnects.
      */
     public Mono<Integer> deactivateAgent(MessageAccess access, Connection connection, ULong userId) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.requireApp(access, connection),
-                        // Same reasoning as provisioning: an owner must not be able to deprovision
-                        // someone else's tenant's agent, which would take their phones down.
+                        // An owner must not be able to deprovision another tenant's agent.
                         app -> this.requireManagedUser(access, userId),
                         (app, allowed) -> this.providerIdentity(access, connection, userId),
                         (app, allowed, providerUserId) ->
                                 this.appToken(connection, app.getProviderAppId(), app.getProviderAppSecret()),
                         (app, allowed, providerUserId, token) ->
                                 this.revokeAtProvider(connection, token, providerUserId),
-                        // Keyed on the agent, not the caller's tenant. Rows record whoever
-                        // provisioned last, so a child-client owner retiring an agent a parent
-                        // owner had provisioned would match nothing here — having already revoked
-                        // the mapping at the provider. That left the rows active, tokens still being
-                        // minted, and a softphone registering for calls that all failed. The
-                        // caller's right to touch this agent was settled by requireManagedUser.
+                        // Keyed on the agent, not the caller's tenant: rows record whoever provisioned last,
+                        // so a child-client owner would otherwise match nothing after revoking at the provider.
+                        // Access was settled by requireManagedUser.
                         (app, allowed, providerUserId, token, revoked) -> this.providerUserEndpointDAO.deactivate(
                                 access.getAppCode(), userId, connection.getName()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.deactivateAgent"));
     }
 
     /**
-     * The provider-side identity to revoke, or blank when this agent holds none.
-     *
-     * <p>Blank rather than empty, deliberately. An agent with no active endpoint still has local
-     * rows worth clearing, and completing empty here abandons the whole chain — the endpoint
-     * answered 200 with no body while the deactivation never ran.
-     *
-     * <p>Blank identities are filtered out before the map because {@code PROVIDER_USER_ID} is
-     * nullable, and Reactor raises {@code NullPointerException} when a mapper returns null rather
-     * than treating it as an empty signal.
+     * The provider identity to revoke, or blank when there is none. Blank rather than empty so the deactivation
+     * still runs; blank ids are filtered first because {@code PROVIDER_USER_ID} is nullable and a null map throws.
      */
     private Mono<String> providerIdentity(MessageAccess access, Connection connection, ULong userId) {
 
@@ -1215,15 +946,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Removes the agent's mapping at the provider, and fails the operation if it cannot.
-     *
-     * <p>That failure has to surface, which is the whole reason this exists. Clearing our own rows
-     * only stops this service minting new tokens; deleting the mapping is what makes the provider
-     * refuse the agent's next registration. The result used to be bound into the chain and never
-     * read, so a refused revocation returned 200 — leaving a departed agent with a working
-     * softphone and an administrator no reason to look.
-     *
-     * <p>Nothing to revoke counts as success: an agent with no provider identity has none to remove.
+     * Removes the agent's mapping at the provider, and fails the operation if it cannot, so a refused revocation
+     * does not leave a departed agent with a working softphone. Nothing to revoke counts as success.
      */
     private Mono<Boolean> revokeAtProvider(Connection connection, String appToken, String providerUserId) {
 
@@ -1241,18 +965,14 @@ public class ExotelIntegrationsService {
     private Mono<Boolean> deleteUserMapping(Connection connection, String appToken, String providerUserId) {
         return this.webClientConfig
                 .createExotelIntegrationsWebClient(connection, appToken, ReactiveAuthenticationScheme.NONE)
-                // DELETE with a body, on /users rather than /usermapping. Mappings are created
-                // on one
-                // endpoint and removed on the other, and the body is a bare array of app user
-                // ids.
+                // DELETE with a body, on /users rather than /usermapping; the body is a bare array of app user ids.
                 .flatMap(client -> client.method(HttpMethod.DELETE)
                         .uri(ExotelIntegrationsApiConfig.usersUrl())
                         .bodyValue(List.of(providerUserId))
                         .retrieve()
                         .bodyToMono(String.class))
                 .thenReturn(Boolean.TRUE)
-                // False, not an error, so the caller decides what a refusal means. It treats it as
-                // a failure of the whole deactivation rather than clearing local rows regardless.
+                // False, not an error: the caller fails the whole deactivation on it.
                 .onErrorResume(e -> Mono.just(Boolean.FALSE));
     }
 
@@ -1261,48 +981,31 @@ public class ExotelIntegrationsService {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * A fresh token per call. Never cached: one shared between agents is a credential leak.
+     * The app token, with the agent's Exotel user id: what Exotel's browser SDK starts with. Exotel has no token
+     * narrower than the app, so it goes only to a provisioned agent's own request, and is never cached or logged.
      */
     public Mono<BrowserCallToken> generateBrowserToken(MessageAccess access, Connection connection, ULong userId) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.requireApp(access, connection),
                         app -> this.requireEndpoint(access, connection, userId),
-                        (app, endpoint) -> this.requestToken(
-                                connection,
-                                ExotelTokenRequest.ofAgent(
-                                        app.getProviderAppId(),
-                                        app.getProviderAppSecret(),
-                                        endpoint.getProviderUserId()),
-                                OPERATION_AGENT_TOKEN),
-                        // Never log the token itself. It authenticates as that agent for its full
-                        // life, around ninety days, and it grants their SIP credentials and the
-                        // ability to place calls on the tenant's account.
+                        (app, endpoint) ->
+                                this.appToken(connection, app.getProviderAppId(), app.getProviderAppSecret()),
+                        // Never log the token: it authenticates as the whole app for about ninety days.
                         (app, endpoint, token) -> Mono.just(BrowserCallToken.of(
                                 token, endpoint.getProviderUserId(), expiresInSeconds(token), this.provider())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.generateBrowserToken"));
     }
 
-    /**
-     * A database read, no provider round trip, so it is cheap enough for every page load.
-     */
+    /** Reads our own rows only, with no provider round trip, so it is cheap enough for every page load. */
     public Mono<BrowserCallStatus> browserCallStatus(MessageAccess access, Connection connection, ULong userId) {
         return this.browserCallStatus(access, connection, userId, false);
     }
 
     /**
-     * Whether this agent can take calls in the browser.
-     *
-     * <p>Two depths, because the cheap answer is the one worth giving on every page load and the
-     * expensive one is the only answer that is actually true. Unverified, this reads our own rows:
-     * fast, no provider round trip, and blind to a user the provider has since deactivated or
-     * stripped of their SIP device. Verified, it asks the provider.
-     *
-     * <p>The gap between the two is not hypothetical. An agent whose provider user is inactive will
-     * still register a softphone successfully — registration and origination read different records
-     * — and then fail every call with an opaque 500. Nothing on the cheap path can see that. Worth
-     * verifying before enabling a dial button, or when diagnosing an agent who says calling is
-     * broken; not worth it on every page load.
+     * Whether this agent can take calls in the browser. Unverified, it reads our own rows; verified, it asks the
+     * provider, the only way to see a user it has deactivated or stripped of a SIP device. Such an agent still
+     * registers a softphone and then fails every call with an opaque 500.
      */
     public Mono<BrowserCallStatus> browserCallStatus(
             MessageAccess access, Connection connection, ULong userId, boolean verifyWithProvider) {
@@ -1325,10 +1028,11 @@ public class ExotelIntegrationsService {
                                             && mapping.getSipId() != null
                                             && !mapping.getSipId().isBlank())
                                     .checkedWithProvider())
-                            // No mapping at the provider means the endpoint row
-                            // outlived it. Not provisioned, and say so rather than
-                            // reporting our row's optimistic view.
-                            .defaultIfEmpty(status.setProvisioned(false).checkedWithProvider())
+                            // No mapping at the provider: our endpoint row outlived it.
+                            // Deferred: an eager argument would mark the status before the check runs, and a
+                            // provider error would then report the agent as checked and not provisioned.
+                            .switchIfEmpty(Mono.fromSupplier(() -> status.setProvisioned(false)
+                                    .checkedWithProvider()))
                             .onErrorResume(e -> Mono.just(status));
                 })
                 .defaultIfEmpty(BrowserCallStatus.notProvisioned(this.provider()))
@@ -1338,19 +1042,10 @@ public class ExotelIntegrationsService {
     /**
      * Asks the provider to ring this agent's browser and then the customer.
      *
-     * <p>Authenticated as the <b>agent</b>, not as the app. The vendor's SDK holds a single
-     * agent-scoped token and uses it for everything including this call, so that is the credential
-     * this endpoint is known to accept; an app token has never been shown to work here. Minting it
-     * server-side is what makes a backend-placed dial possible at all, and it is the same token
-     * {@link #generateBrowserToken} already issues.
+     * <p>Authenticated with the app token, since Exotel has no agent-scoped one; the agent is named in the body.
      *
-     * <p>Returns everything needed to record the call outright: the provider answers synchronously
-     * with the call's {@code Sid}, the virtual number it presented and the SIP endpoint it
-     * originated from. A response without a {@code Sid} is refused rather than recorded, since a
-     * row no callback can be matched to is worse than a loud failure.
-     *
-     * @param toNumber the customer's number, already resolved from the deal by the service that
-     * owns the deal. Never taken from a browser.
+     * @param toNumber the customer's number, resolved from the deal by the service that owns it. Never taken from
+     * a browser.
      */
     public Mono<ExotelOutboundCallResult> placeOutboundCall(
             MessageAccess access, Connection connection, ULong userId, String toNumber) {
@@ -1365,16 +1060,11 @@ public class ExotelIntegrationsService {
         return FlatMapUtil.flatMapMono(
                         () -> this.requireApp(access, connection),
                         app -> this.requireEndpoint(access, connection, userId),
-                        (app, endpoint) -> this.requestToken(
-                                connection,
-                                ExotelTokenRequest.ofAgent(
-                                        app.getProviderAppId(),
-                                        app.getProviderAppSecret(),
-                                        endpoint.getProviderUserId()),
-                                OPERATION_DIAL_TOKEN),
-                        (app, endpoint, agentToken) -> this.webClientConfig
+                        (app, endpoint) ->
+                                this.appToken(connection, app.getProviderAppId(), app.getProviderAppSecret()),
+                        (app, endpoint, appToken) -> this.webClientConfig
                                 .createExotelIntegrationsWebClient(
-                                        connection, agentToken, ReactiveAuthenticationScheme.NONE)
+                                        connection, appToken, ReactiveAuthenticationScheme.NONE)
                                 .flatMap(client -> client.post()
                                         .uri(ExotelIntegrationsApiConfig.outboundCallUrl())
                                         .bodyValue(ExotelOutboundCallRequest.of(
@@ -1384,22 +1074,18 @@ public class ExotelIntegrationsService {
                                                 endpoint.getProviderUserId()))
                                         .retrieve()
                                         .bodyToMono(OUTBOUND_CALL_TYPE))
+                                .onErrorResume(
+                                        WebClientResponseException.class,
+                                        e -> this.exotelFailure(e, OPERATION_OUTBOUND_CALL))
                                 .flatMap(response -> this.unwrap(response, OPERATION_OUTBOUND_CALL)
                                         .flatMap(result -> this.toDialResult(response.getRequestId(), result))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelIntegrationsService.placeOutboundCall"));
     }
 
     /**
-     * Reads the dial response, and refuses one that cannot identify the call.
-     *
-     * <p>A missing {@code CallSid} is treated as a failure rather than recorded as a gap. The
-     * provider returns one synchronously — verified against a live dial — so its absence means
-     * something happened that this code does not understand, and the honest response is to say so
-     * loudly. The alternative, writing a row that cannot be matched to any callback, produces a
-     * call whose duration and recording arrive later and land nowhere.
-     *
-     * <p>The call may still have been placed. That is what the request id in the message is for: it
-     * is the identifier the provider's own logs are searched by.
+     * Refuses a dial response without a {@code CallSid}: the provider returns one synchronously, and a row no
+     * callback can match is worse than a loud failure. The call may still have been placed, so the request id in
+     * the message is what the provider's logs are searched by.
      */
     private Mono<ExotelOutboundCallResult> toDialResult(String requestId, ExotelOutboundCallResult result) {
 
@@ -1413,11 +1099,8 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * The provider's customer id, from our own row first.
-     *
-     * <p>Captured when the app was created and stored alongside it, so it stays correct even if the
-     * connection document is later edited. Falls back to the connection for a row written before
-     * that metadata was recorded.
+     * The provider's customer id, from our row first so later edits to the connection do not change it; falls
+     * back to the connection for older rows.
      */
     private String customerIdFor(CallProviderApp app, Connection connection) {
 
@@ -1442,12 +1125,7 @@ public class ExotelIntegrationsService {
                         connection.getName()));
     }
 
-    /**
-     * The agent's SIP endpoint, or a 403.
-     *
-     * <p>Forbidden rather than not-found on purpose: the UI has to tell "you are not set up for
-     * calling" apart from "calling is broken", and a 404 reads as the second.
-     */
+    /** The agent's SIP endpoint, or a 403 so the UI can tell "not set up for calling" from "calling is broken". */
     private Mono<ProviderUserEndpoint> requireEndpoint(MessageAccess access, Connection connection, ULong userId) {
         return this.providerUserEndpointDAO
                 .findActiveEndpoints(access.getAppCode(), userId, connection.getName(), this.provider())
@@ -1461,15 +1139,9 @@ public class ExotelIntegrationsService {
     }
 
     /**
-     * Seconds until this token expires, read from its own {@code exp} claim.
-     *
-     * <p>Derived rather than reported: the response carries no {@code ExpiresIn}, and the claim set
-     * is only {@code Id} and {@code exp} — there is no {@code iat} to subtract. Observed lifetime
-     * is about 90 days, not the 24 hours the vendor's examples imply, so anything scheduling a
-     * refresh must read this rather than assume.
-     *
-     * <p>Returns null when the token cannot be parsed. A caller should treat that as "unknown", not
-     * as "expired": the token may well be fine and only its metadata unreadable.
+     * Seconds until this token expires, from its {@code exp} claim: the response has no {@code ExpiresIn} and the
+     * claims no {@code iat}. Observed lifetime is about 90 days, not the 24 hours the vendor's examples imply.
+     * Null means unknown, not expired.
      */
     static Long expiresInSeconds(String jwt) {
         if (jwt == null) return null;

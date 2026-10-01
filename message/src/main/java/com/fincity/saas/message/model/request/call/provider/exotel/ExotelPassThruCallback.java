@@ -132,16 +132,8 @@ public class ExotelPassThruCallback implements Serializable {
     }
 
     /**
-     * Reads the indexed leg entries out of the form body.
-     *
-     * <p>The provider flattens them as {@code Legs[0][OnCallDuration]}, {@code Legs[1][Number]} and
-     * so on, which no form binder reassembles on its own — so without this the legs list is always
-     * empty and the answered leg's talk time is invisible. That matters because the dial duration
-     * beside it includes ringing, and the two get conflated when only one is available.
-     *
-     * <p>Indices are read in order until one is missing, rather than scanned across the whole body:
-     * the keys are dense by construction, and stopping at the first gap avoids walking a payload
-     * whose size the provider controls.
+     * Reads the indexed leg entries ({@code Legs[0][OnCallDuration]} and so on), which no form binder
+     * reassembles. Stops at the first missing index rather than scanning a body whose size the provider controls.
      */
     private static List<Map<String, Object>> legsFrom(MultiValueMap<String, String> formData) {
 

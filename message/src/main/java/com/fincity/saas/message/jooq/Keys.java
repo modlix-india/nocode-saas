@@ -12,6 +12,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderUserEndpoints;
+import com.fincity.saas.message.jooq.tables.MessageTelecmiCalls;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.records.MessageBridgeInstancesRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageCallProviderAppsRecord;
@@ -21,6 +22,7 @@ import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageMessageWebhooksRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageProviderUserEndpointsRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageTelecmiCallsRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
 
 import org.jooq.ForeignKey;
@@ -61,6 +63,9 @@ public class Keys {
     public static final UniqueKey<MessageProviderUserEndpointsRecord> KEY_MESSAGE_PROVIDER_USER_ENDPOINTS_PRIMARY = Internal.createUniqueKey(MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS, DSL.name("KEY_message_provider_user_endpoints_PRIMARY"), new TableField[] { MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.ID }, true);
     public static final UniqueKey<MessageProviderUserEndpointsRecord> KEY_MESSAGE_PROVIDER_USER_ENDPOINTS_UK1_PROVIDER_USER_ENDPOINTS_CODE = Internal.createUniqueKey(MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS, DSL.name("KEY_message_provider_user_endpoints_UK1_PROVIDER_USER_ENDPOINTS_CODE"), new TableField[] { MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.CODE }, true);
     public static final UniqueKey<MessageProviderUserEndpointsRecord> KEY_MESSAGE_PROVIDER_USER_ENDPOINTS_UK2_PROVIDER_USER_ENDPOINTS_AGENT = Internal.createUniqueKey(MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS, DSL.name("KEY_message_provider_user_endpoints_UK2_PROVIDER_USER_ENDPOINTS_AGENT"), new TableField[] { MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.APP_CODE, MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.USER_ID, MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.CONNECTION_NAME, MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS.ENDPOINT_TYPE }, true);
+    public static final UniqueKey<MessageTelecmiCallsRecord> KEY_MESSAGE_TELECMI_CALLS_PRIMARY = Internal.createUniqueKey(MessageTelecmiCalls.MESSAGE_TELECMI_CALLS, DSL.name("KEY_message_telecmi_calls_PRIMARY"), new TableField[] { MessageTelecmiCalls.MESSAGE_TELECMI_CALLS.ID }, true);
+    public static final UniqueKey<MessageTelecmiCallsRecord> KEY_MESSAGE_TELECMI_CALLS_UK1_TELECMI_CALLS_CODE = Internal.createUniqueKey(MessageTelecmiCalls.MESSAGE_TELECMI_CALLS, DSL.name("KEY_message_telecmi_calls_UK1_TELECMI_CALLS_CODE"), new TableField[] { MessageTelecmiCalls.MESSAGE_TELECMI_CALLS.CODE }, true);
+    public static final UniqueKey<MessageTelecmiCallsRecord> KEY_MESSAGE_TELECMI_CALLS_UK2_TELECMI_CALLS_PROVIDER_CALL_ID = Internal.createUniqueKey(MessageTelecmiCalls.MESSAGE_TELECMI_CALLS, DSL.name("KEY_message_telecmi_calls_UK2_TELECMI_CALLS_PROVIDER_CALL_ID"), new TableField[] { MessageTelecmiCalls.MESSAGE_TELECMI_CALLS.PROVIDER_CALL_ID }, true);
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_PRIMARY = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_PRIMARY"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.ID }, true);
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK1_WHATSAPP_PHONE_NUMBER_CODE = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_UK1_WHATSAPP_PHONE_NUMBER_CODE"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.CODE }, true);
     public static final UniqueKey<MessageWhatsappPhoneNumbersRecord> KEY_MESSAGE_WHATSAPP_PHONE_NUMBERS_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID = Internal.createUniqueKey(MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS, DSL.name("KEY_message_whatsapp_phone_numbers_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID"), new TableField[] { MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS.PHONE_NUMBER_ID }, true);

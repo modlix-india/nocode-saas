@@ -12,6 +12,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderUserEndpoints;
+import com.fincity.saas.message.jooq.tables.MessageTelecmiCalls;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 
 import java.util.Arrays;
@@ -79,6 +80,12 @@ public class Message extends SchemaImpl {
     public final MessageProviderUserEndpoints MESSAGE_PROVIDER_USER_ENDPOINTS = MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS;
 
     /**
+     * One TeleCMI call as this service knows it: the row a webhook is matched
+     * against.
+     */
+    public final MessageTelecmiCalls MESSAGE_TELECMI_CALLS = MessageTelecmiCalls.MESSAGE_TELECMI_CALLS;
+
+    /**
      * WhatsApp Business phone numbers
      */
     public final MessageWhatsappPhoneNumbers MESSAGE_WHATSAPP_PHONE_NUMBERS = MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS;
@@ -107,6 +114,7 @@ public class Message extends SchemaImpl {
             MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS,
             MessageMessages.MESSAGE_MESSAGES,
             MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS,
+            MessageTelecmiCalls.MESSAGE_TELECMI_CALLS,
             MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS
         );
     }

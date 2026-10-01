@@ -8,18 +8,8 @@ import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * A browser-placed dial, handed over by a service that has already checked the caller may make it.
- *
- * <p>A body rather than query parameters, and that is the point of the type. {@code toNumber} is a
- * customer's phone number: in a query string it lands in the gateway's access log, this service's
- * access log, and every proxy in between, none of which are places a customer's number should be
- * retained. Its sibling {@code /internal/make} has always taken a {@code CallRequest} body for the
- * same reason.
- *
- * <p>{@code userId} is the agent whose browser should ring, not the caller's choice of agent — the
- * message service resolves it to that agent's provisioned SIP identity and refuses if they have
- * none. The tenant codes stay as parameters, matching {@code /internal/make}, because they identify
- * the caller rather than the call.
+ * A browser-placed dial, from a service that has already checked the caller may make it. A body so the customer's
+ * {@code toNumber} stays out of access logs; {@code userId} is the agent whose browser rings.
  */
 @Data
 @Accessors(chain = true)

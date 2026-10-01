@@ -8,16 +8,8 @@ import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
 
 /**
- * One provisioned agent, as an admin screen wants to see them: one row per person.
- *
- * <p>The table underneath holds one row per <em>destination</em> — a {@code WEBRTC_SIP} row and a
- * {@code PSTN_PHONE} row for the same agent — because ringing is sequential and the rows carry the
- * order the provider dials. That shape is right for routing and wrong for a listing, where it shows
- * the same person twice and invites an operator to deactivate "the other one".
- *
- * <p>Deliberately carries no provider metadata. The endpoint rows hold the agent's SIP secret in
- * {@code providerMetadata}; naming the fields wanted here rather than returning the rows means that
- * secret has no path to a response at all.
+ * One provisioned agent, collapsed from their per-destination endpoint rows. Carries no provider metadata, so the
+ * SIP secret in {@code providerMetadata} has no path to a response.
  */
 @Data
 @Accessors(chain = true)
@@ -40,14 +32,7 @@ public class ProvisionedAgent implements Serializable {
     /** The number presented to the customer on this agent's outbound calls. */
     private String virtualNumber;
 
-    /**
-     * Whether any of this agent's destinations is still live.
-     *
-     * <p>Any, not all: deactivation clears every row for the agent together, so a mix means
-     * something partial happened and the honest answer for a screen is that they are still
-     * reachable. An operator seeing "active" with one destination missing has something to look at,
-     * where "inactive" on a reachable agent would be a lie.
-     */
+    /** Whether any of this agent's destinations is still live; a mix means a partial change, still reachable. */
     private boolean active;
 
     /** When this agent's provisioning last changed, taken as the latest across their rows. */

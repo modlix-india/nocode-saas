@@ -9,12 +9,8 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 
 /**
- * A registered integration app.
- *
- * <p>{@code AppSecret} comes back <b>only from {@code POST /app}</b>, at creation, and never
- * again: the {@code GET /app} listing omits it, the way most platforms show a secret once. It has
- * to be captured from the creation response and persisted there and then, because there is no way
- * to read it back afterwards.
+ * A registered integration app. {@code AppSecret} comes back only from {@code POST /app}, at creation, and
+ * must be persisted then: the {@code GET /app} listing omits it.
  */
 @Data
 @Accessors(chain = true)
@@ -27,12 +23,7 @@ public class ExotelAppData implements Serializable {
     @JsonProperty("AppID")
     private String appId;
 
-    /**
-     * Present on the creation response only. Null on every listing.
-     *
-     * <p>Capture it when it appears or the app becomes unusable: nothing else can mint the app token
-     * that user mapping and browser sessions both depend on.
-     */
+    /** Present on the creation response only; nothing else can mint the app token. */
     @JsonProperty("AppSecret")
     @ToString.Exclude
     private String appSecret;

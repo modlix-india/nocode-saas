@@ -45,13 +45,8 @@ public class ExotelCallBackController {
         MediaType contentType = exchange.getRequest().getHeaders().getContentType();
 
         if (contentType != null && MediaType.APPLICATION_JSON.isCompatibleWith(contentType)) {
-            // Joined, not .next(): a body split across chunks — which a long recording URL is enough
-            // to cause — would otherwise be parsed from its first chunk alone and silently truncated.
-            //
-            // Released in a finally, and that is not optional. join() hands back a composite buffer
-            // the caller owns, of() can throw on an empty body or malformed JSON, and the default
-            // allocator is pooled: without this, every callback leaks a body-sized buffer of native
-            // memory and the service degrades over days rather than failing where the bug is.
+            // Joined, not .next(): a body split across chunks would be parsed from its first chunk alone.
+            // Released in a finally: join() returns a pooled composite buffer the caller owns, and of() can throw.
             return DataBufferUtils.join(exchange.getRequest().getBody())
                     .map(dataBuffer -> {
                         try {

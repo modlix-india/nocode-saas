@@ -86,7 +86,7 @@ public class MessageProviderUserEndpoints extends TableImpl<MessageProviderUserE
      * message_call_provider_apps — not the agent's own client, which every
      * management operation would then fail to match.
      */
-    public final TableField<MessageProviderUserEndpointsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Tenant that owns this endpoint. From MessageAccess, matching message_call_provider_apps — not the agent's own client, which every management operation would then fail to match.");
+    public final TableField<MessageProviderUserEndpointsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Tenant that owns this endpoint. From MessageAccess, matching message_call_provider_apps — not the agent's own client, which every management operation would then fail to match.");
 
     /**
      * The column <code>message.message_provider_user_endpoints.USER_ID</code>.
@@ -121,10 +121,11 @@ public class MessageProviderUserEndpoints extends TableImpl<MessageProviderUserE
      * The column
      * <code>message.message_provider_user_endpoints.ENDPOINT_VALUE</code>. What
      * goes into the connect applet's destination list: a sip: URI, or an E.164
-     * number. Also the reverse lookup key when resolving which agent an unknown
-     * callback belongs to.
+     * number. Would also be the lookup key for attributing a call this service
+     * never placed, if that reconciliation is ever built - see the index note
+     * below, which is why no index on it exists yet.
      */
-    public final TableField<MessageProviderUserEndpointsRecord, String> ENDPOINT_VALUE = createField(DSL.name("ENDPOINT_VALUE"), SQLDataType.VARCHAR(512).nullable(false), this, "What goes into the connect applet's destination list: a sip: URI, or an E.164 number. Also the reverse lookup key when resolving which agent an unknown callback belongs to.");
+    public final TableField<MessageProviderUserEndpointsRecord, String> ENDPOINT_VALUE = createField(DSL.name("ENDPOINT_VALUE"), SQLDataType.VARCHAR(512).nullable(false), this, "What goes into the connect applet's destination list: a sip: URI, or an E.164 number. Would also be the lookup key for attributing a call this service never placed, if that reconciliation is ever built - see the index note below, which is why no index on it exists yet.");
 
     /**
      * The column <code>message.message_provider_user_endpoints.PRIORITY</code>.

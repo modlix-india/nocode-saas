@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
+import com.fincity.saas.message.configuration.call.exotel.ExotelIntegrationsApiConfig;
 import com.fincity.saas.message.dao.call.ProviderUserEndpointDAO;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
 import com.fincity.saas.message.dto.call.Call;
@@ -37,18 +38,26 @@ import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.IBrowserCallService;
+import com.fincity.saas.message.service.call.ICallRecordingService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.service.dispatch.EventDispatcher;
 import com.fincity.saas.message.util.PhoneUtil;
 import com.fincity.saas.message.util.SetterUtil;
+import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -56,10 +65,17 @@ import reactor.util.context.Context;
 
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO>
-        implements IBrowserCallService {
+        implements IBrowserCallService, ICallRecordingService {
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
+
+    private static final String PARAM_USER_ID = "userId";
+    private static final String OPERATION_PLAY = "recording download";
+
+    /** Domains a recording may be fetched from with account credentials; see {@link ExotelApiConfig#isRecordingUrl}. */
+    @Value("${message.call.exotel.recording-domains:" + ExotelApiConfig.DEFAULT_RECORDING_DOMAINS + "}")
+    private String[] recordingDomains = {ExotelApiConfig.DEFAULT_RECORDING_DOMAINS};
 
     private EventDispatcher eventDispatcher;
 
@@ -93,14 +109,8 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         this.providerUserEndpointDAO = providerUserEndpointDAO;
     }
 
-    // -----------------------------------------------------------------------------------------
-    // IBrowserCallService — delegated to ExotelIntegrationsService.
-    //
-    // Implemented here rather than on that service so the capability is discovered from the same
-    // object CallService already registers: the dispatcher derives its browser map by testing the
-    // registered provider with instanceof, which means a provider cannot be half-registered.
-    // The Integrations Core client stays in its own class, which is worth it given its size.
-    // -----------------------------------------------------------------------------------------
+    // IBrowserCallService, delegated to ExotelIntegrationsService. Implemented here because CallService
+    // discovers the capability with instanceof on the provider it already registers.
 
     @Override
     public Mono<CallAppStatus> initializeApp(MessageAccess access, Connection connection) {
@@ -145,19 +155,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     /**
-     * Places a browser call for a service that has already checked the deal, and returns the
-     * provider-shaped call.
-     *
-     * <p>Provider-shaped for the same reason {@link #makeCallInternal} is: the caller needs the
-     * {@code Sid} to key its own record on, and the neutral {@link Call} has nowhere to carry it —
-     * it models the connection, the provider and the direction, not the provider's own identifiers.
-     * Returning the neutral form here left every row on the calling side with a null provider call
-     * id, so the callback that arrived minutes later matched nothing and recorded the call a second
-     * time: once against the deal with no outcome, once with the outcome and no deal.
-     *
-     * <p>Resolves the connection itself, again like {@code makeCallInternal}, so the route above it
-     * stays a thin pass-through.
+     * Places a browser call for a service that has already checked the deal. Returns the provider-shaped call
+     * because the caller keys its record on the {@code Sid}; without it the later callback matches nothing and
+     * the call is recorded twice.
      */
+    @Override
     public Mono<ExotelCall> browserDialInternal(
             String appCode, String clientCode, String connectionName, ULong userId, String toNumber) {
 
@@ -178,12 +180,8 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     /**
-     * Builds the row from what the provider reported.
-     *
-     * <p>Prefers the provider's own view of the call over ours wherever it has one: the virtual
-     * number it actually presented as the caller id, and the SIP endpoint it actually originated
-     * from. Those can differ from what our endpoint rows say — a stale mapping, or an agent
-     * re-provisioned since — and when they do, the provider is right about what happened.
+     * Builds the row from what the provider reported. Its virtual number and SIP endpoint win over our endpoint
+     * rows, which can be stale.
      */
     private ExotelCall fromDialResult(Connection connection, String toNumber, ExotelOutboundCallResult result) {
 
@@ -203,11 +201,9 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         if (result.getVirtualNumber() != null && !result.getVirtualNumber().isBlank())
             call.setCallerId(result.getVirtualNumber());
 
-        // The agent's SIP endpoint, which for a browser call is genuinely where the call came from.
         if (result.getFromNumber() != null && !result.getFromNumber().isBlank()) call.setFrom(result.getFromNumber());
 
-        // "active" the moment the provider has dispatched the invite. Anything else it reports is
-        // taken as-is; a blank status leaves the column null for the first callback to fill.
+        // A blank status leaves the column null for the first callback to fill.
         ExotelCallStatus reported = ExotelCallStatus.lookupLiteral(result.getCallState());
         if (reported != null) call.setExotelCallStatus(reported);
 
@@ -215,31 +211,16 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     /**
-     * Finds the call a callback belongs to.
+     * Finds the call a callback belongs to, by the provider's call id, which the dial response supplies
+     * synchronously.
      *
-     * <p>On the provider's call id, which every callback carries and which is recorded on the row the
-     * moment the call is placed — the dial response supplies it synchronously, so there is never a
-     * window where a call of ours exists without one.
+     * <p>Empty is a real outcome: an agent's browser token can reach the dial API directly, so some calls were
+     * never recorded here. Failing would make the provider retry in vain and lose the rest of the batch.
      *
-     * <p>Returning empty is a real outcome, not a failure. An agent's browser holds a token that can
-     * reach the provider's dial API directly, so calls get placed that this service never recorded
-     * and never will. Failing the callback would only make the provider retry something that cannot
-     * succeed, and would lose the events for every call that <i>is</i> ours in the same batch. These
-     * services do not log, so an unattributed call leaves no trace at all — reconciling them means
-     * comparing our rows against the provider's call list, not reading a log.
-     *
-     * <p><b>Deliberately not scoped to a tenant</b>, and it takes no {@code MessageAccess} for that
-     * reason. The scoped overload exists on {@code BaseProviderDAO}, but the tenant a callback URL
-     * resolves to is not always the tenant that owns the call: webhook URLs commonly resolve to
-     * {@code SYSTEM} while the call belongs to a sub-client, so scoping here drops legitimate
-     * callbacks. The row found supplies the access the follow-up write uses, so the update still
-     * lands under the owning tenant.
-     *
-     * <p>The cost is real and recorded rather than hidden: both callback routes are {@code
-     * permitAll}, so anyone holding a {@code CallSid} — which is embedded in every recording URL the
-     * provider issues — can drive an update against that call's row whatever headers they send.
-     * Scoping is the wrong layer for that; the endpoint needs authenticating, which is tracked as a
-     * deliberate deferral rather than an oversight.
+     * <p>Deliberately not scoped to a tenant: callback URLs often resolve to {@code SYSTEM} while the call
+     * belongs to a sub-client. The row found supplies the access for the follow-up write. The cost: both callback
+     * routes are {@code permitAll}, so anyone holding a {@code CallSid} (it is in every recording URL) can drive an
+     * update on that row; the endpoint needs authenticating, which is a known deferral.
      */
     private Mono<ExotelCall> resolveCallbackTarget(String callSid) {
 
@@ -255,16 +236,8 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
      * the consumer has accepted it. A consumer outage therefore delays a call log, it does not lose
      * one and it does not make us look unavailable to Exotel.
      *
-     * <p><b>A failed enqueue does fail the callback, deliberately.</b> Delivery failures are
-     * already swallowed inside {@code enqueueAndDispatch} — the row is durable, so the sweeper
-     * retries and the webhook must not be told — which leaves the outbox write itself as the only
-     * failure that can surface here. That one has no sweeper to recover it: there is no row to
-     * retry, so the event is simply gone.
-     *
-     * <p>Propagating turns that into a retry. The provider re-sends the callback, the merge is keyed
-     * on the call id and idempotent, and a transient write can succeed the second time. Swallowing
-     * it instead recorded nothing anywhere and lost the status permanently — these services do not
-     * log, so it left no trace either.
+     * <p>A failed enqueue fails the callback on purpose: with no outbox row there is nothing for the sweeper to
+     * retry, while the provider's re-send is idempotent on the call id.
      */
     private Mono<Void> handOverToOwner(ExotelCall call) {
 
@@ -301,7 +274,9 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .setDuration(call.getDuration())
                 .setConversationDuration(call.getConversationDuration())
                 .setPrice(call.getPrice() == null ? null : call.getPrice().toString())
-                .setRecordingUrl(call.getRecordingUrl());
+                // Ours, never Exotel's: Exotel's needs the account's credentials, so a browser gets a sign-in prompt.
+                .setRecordingUrl(ICallRecordingService.recordingUri(
+                        call.getCode(), !StringUtil.safeIsBlank(call.getRecordingUrl())));
 
         String owner = call.getOwnerService() == null ? this.defaultCallOwnerService : call.getOwnerService();
 
@@ -311,6 +286,77 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 DispatchEventType.CALL_STATUS,
                 call.getSid(),
                 dispatch);
+    }
+
+    // Recordings
+
+    /**
+     * Streams a call's recording from Exotel with the credentials of the connection the call row names, since
+     * Exotel's URL answers {@code 401} to a browser. Read within the caller's own app and client. Not available
+     * when the row has no recording, its URL is not on an Exotel domain, or no call row names its connection.
+     */
+    @Override
+    public Mono<ResponseEntity<Flux<DataBuffer>>> recording(MessageAccess access, String callCode, String range) {
+
+        return FlatMapUtil.flatMapMono(
+                        () -> super.dao.readInternal(access, callCode),
+                        exotelCall -> this.isRecordingUrl(exotelCall.getRecordingUrl())
+                                ? super.callService
+                                        .readByExotelCallId(access, exotelCall.getId())
+                                        .filter(call -> !StringUtil.safeIsBlank(call.getConnectionName()))
+                                        .switchIfEmpty(Mono.defer(() -> this.recordingUnavailable(callCode)))
+                                : this.recordingUnavailable(callCode),
+                        (exotelCall, call) -> super.callConnectionService.getCoreDocument(
+                                access.getAppCode(), access.getClientCode(), call.getConnectionName()),
+                        (exotelCall, call, connection) -> super.isValidConnection(connection),
+                        (exotelCall, call, connection, vConn) ->
+                                this.fetchRecording(connection, callCode, exotelCall.getRecordingUrl(), range))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.recording"));
+    }
+
+    private boolean isRecordingUrl(String url) {
+        return ExotelApiConfig.isRecordingUrl(url, Arrays.asList(this.recordingDomains));
+    }
+
+    /**
+     * Fetches a recording with Basic credentials. Anything that is not audio, including a redirect (not followed),
+     * is answered as not available; a failure to reach Exotel is a 502 that names no URL.
+     */
+    Mono<ResponseEntity<Flux<DataBuffer>>> fetchRecording(
+            Connection connection, String callCode, String url, String range) {
+
+        return this.webClientConfig
+                .createExotelRecordingWebClient(connection)
+                .flatMap(client -> client.get()
+                        .uri(URI.create(url.trim()))
+                        .headers(headers -> {
+                            if (!StringUtil.safeIsBlank(range)) headers.set(HttpHeaders.RANGE, range);
+                        })
+                        .retrieve()
+                        .onStatus(HttpStatusCode::isError, response -> response.releaseBody()
+                                .then(this.recordingUnavailable(callCode)))
+                        .toEntityFlux(DataBuffer.class))
+                .flatMap(entity ->
+                        ICallRecordingService.isAudio(entity.getHeaders().getContentType())
+                                ? Mono.just(ICallRecordingService.asPlayable(entity))
+                                : entity.getBody()
+                                        .doOnNext(DataBufferUtils::release)
+                                        .then(this.<ResponseEntity<Flux<DataBuffer>>>recordingUnavailable(callCode)))
+                .onErrorResume(
+                        e -> !(e instanceof GenericException),
+                        e -> super.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_GATEWAY, msg),
+                                MessageResourceService.EXOTEL_REQUEST_FAILED,
+                                OPERATION_PLAY,
+                                "no answer"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.fetchRecording"));
+    }
+
+    private <T> Mono<T> recordingUnavailable(String callCode) {
+        return super.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                MessageResourceService.CALL_RECORDING_NOT_AVAILABLE,
+                callCode);
     }
 
     @Override
@@ -370,26 +416,22 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     @Override
     public Mono<Call> makeCall(MessageAccess access, CallRequest callRequest, Connection connection) {
-        String to = callRequest.getToNumber().getNumber();
-
-        String callerId = callRequest.getCallerId() == null
-                ? (String) connection.getConnectionDetails().get(ExotelCallRequest.Fields.callerId)
-                : callRequest.getCallerId().getLandlineNumber();
-
-        if (to == null) return super.throwMissingParam(ExotelCallRequest.Fields.to);
-
-        if (callerId == null) return super.throwMissingParam(ExotelCallRequest.Fields.callerId);
-
-        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(to, callerId, Boolean.TRUE);
-        this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.isValidConnection(connection),
-                        vConn -> this.makeExotelCall(access, exotelCallRequest, connection),
-                        (vConn, eCreated) ->
+                        () -> this.toExotelRequest(callRequest, connection),
+                        exotelCallRequest -> super.isValidConnection(connection),
+                        (exotelCallRequest, vConn) -> this.makeExotelCall(
+                                access,
+                                access.getUserId(),
+                                access.getUser() == null
+                                        ? null
+                                        : access.getUser().getPhoneNumber(),
+                                exotelCallRequest,
+                                connection),
+                        (exotelCallRequest, vConn, eCreated) ->
                                 this.toCall(eCreated).map(call -> call.setConnectionName(connection.getName())),
-                        (vConn, eCreated, call) -> super.callService.createInternal(access, call),
-                        (vConn, eCreated, call, cCall) -> super.callEventService
+                        (exotelCallRequest, vConn, eCreated, call) -> super.callService.createInternal(access, call),
+                        (exotelCallRequest, vConn, eCreated, call, cCall) -> super.callEventService
                                 .sendMakeCallEvent(
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
                                 .thenReturn(cCall))
@@ -406,37 +448,61 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
      * <p>No deal check, and none is possible: this service cannot evaluate one. The caller has
      * already done it, and the number dialled is theirs to justify. That is exactly why the public
      * {@code /make} endpoint should not be reachable from a browser.
+     *
+     * <p>The agent is the request's {@code userId}: the service's own access carries no user.
      */
+    @Override
     public Mono<ExotelCall> makeCallInternal(
             String appCode, String clientCode, CallRequest callRequest, String ownerService) {
 
+        if (callRequest.getUserId() == null) return super.throwMissingParam(PARAM_USER_ID);
+
         MessageAccess access = MessageAccess.of(appCode, clientCode, Boolean.TRUE);
+        ULong userId = callRequest.getUserId();
 
         return FlatMapUtil.flatMapMono(
                         () -> super.callConnectionService.getCoreDocument(
                                 appCode, clientCode, callRequest.getConnectionName()),
                         connection -> super.isValidConnection(connection),
-                        (connection, vConn) ->
-                                this.makeExotelCall(access, this.toExotelRequest(callRequest, connection), connection),
-                        (connection, vConn, eCreated) ->
+                        (connection, vConn) -> this.toExotelRequest(callRequest, connection),
+                        (connection, vConn, exotelRequest) -> super.getUserIdAndPhone(clientCode, userId),
+                        (connection, vConn, exotelRequest, agent) -> this.makeExotelCall(
+                                access,
+                                userId,
+                                agent.getValue() == null
+                                        ? null
+                                        : agent.getValue().getNumber(),
+                                exotelRequest,
+                                connection),
+                        (connection, vConn, exotelRequest, agent, eCreated) ->
                                 super.updateInternalWithoutUser(access, eCreated.setOwnerService(ownerService)),
-                        (connection, vConn, eCreated, stamped) -> this.toCall(stamped)
+                        (connection, vConn, exotelRequest, agent, eCreated, stamped) -> this.toCall(stamped)
                                 .map(call -> call.setConnectionName(connection.getName()))
-                                .flatMap(call -> super.callService.createInternal(access, call))
+                                .flatMap(call -> super.callService.createInternal(access, userId, call))
                                 .thenReturn(stamped))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCallInternal"));
     }
 
-    private ExotelCallRequest toExotelRequest(CallRequest callRequest, Connection connection) {
+    /**
+     * The request Exotel is sent, for both make routes, checked before anything is looked up. A missing
+     * {@code toNumber} is how an unparseable deal number arrives, and it is a 400 naming {@code to}.
+     */
+    private Mono<ExotelCallRequest> toExotelRequest(CallRequest callRequest, Connection connection) {
 
-        String to = callRequest.getToNumber().getNumber();
+        String to = callRequest.getToNumber() == null
+                ? null
+                : callRequest.getToNumber().getNumber();
+        if (StringUtil.safeIsBlank(to)) return super.throwMissingParam(ExotelCallRequest.Fields.to);
+
         String callerId = callRequest.getCallerId() == null
-                ? (String) connection.getConnectionDetails().get(ExotelCallRequest.Fields.callerId)
+                ? super.getConnectionDetail(
+                        connection.getConnectionDetails(), ExotelCallRequest.Fields.callerId, String.class)
                 : callRequest.getCallerId().getLandlineNumber();
+        if (StringUtil.safeIsBlank(callerId)) return super.throwMissingParam(ExotelCallRequest.Fields.callerId);
 
         ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(to, callerId, Boolean.TRUE);
         this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
-        return exotelCallRequest;
+        return Mono.just(exotelCallRequest);
     }
 
     public Mono<Call> makeCall(CallRequest callRequest) {
@@ -486,13 +552,25 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 request::setCustomField);
     }
 
-    private Mono<ExotelCall> makeExotelCall(MessageAccess messageAccess, ExotelCallRequest request, Connection conn) {
+    /** Asks Exotel to ring the agent, then the customer, and records the call as the agent's. */
+    private Mono<ExotelCall> makeExotelCall(
+            MessageAccess messageAccess, ULong userId, String agentPhone, ExotelCallRequest request, Connection conn) {
 
-        request.setFrom(
-                PhoneUtil.parse(messageAccess.getUser().getPhoneNumber()).getNumber());
+        if (StringUtil.safeIsBlank(agentPhone)) return super.throwMissingParam(ExotelCallRequest.Fields.from);
+
+        PhoneNumber from = PhoneUtil.parse(agentPhone);
+
+        if (from == null || from.getNumber() == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.EXOTEL_INVALID_PHONE_NUMBER,
+                    ExotelCallRequest.Fields.from,
+                    agentPhone);
+
+        request.setFrom(from.getNumber());
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.getCallBackAppUrl(conn.getAppCode()),
+                        () -> this.statusCallbackUrl(conn),
                         callBackUri -> request.setStatusCallback(callBackUri).toFormDataAsync(),
                         (callBackUri, formData) -> webClientConfig.createExotelWebClient(conn),
                         (callBackUri, formData, webClient) -> {
@@ -521,10 +599,34 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                     .bodyToMono(ExotelCallResponse.class);
                         },
                         (callBackUri, formData, webClient, response) -> this.createInternal(
-                                messageAccess, ExotelCall.ofOutbound(request).update(response)))
+                                messageAccess,
+                                userId,
+                                ExotelCall.ofOutbound(request).update(response)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
+    /**
+     * Where Exotel posts a click-to-call's status: the connection's {@code statusCallback}, else its
+     * {@code callbackUrl}, verbatim; the tenant's app URL only when it states neither.
+     */
+    private Mono<String> statusCallbackUrl(Connection conn) {
+        String stated = statusCallbackOf(conn.getConnectionDetails());
+        return stated != null ? Mono.just(stated) : super.getCallBackAppUrl(conn.getAppCode());
+    }
+
+    /** The status URL a connection states, or null when it states none. */
+    static String statusCallbackOf(Map<String, Object> details) {
+
+        if (details == null) return null;
+
+        for (String key : List.of(ExotelCallRequest.Fields.statusCallback, ExotelIntegrationsApiConfig.CALLBACK_URL)) {
+            if (details.get(key) instanceof String url && !url.isBlank()) return url.trim();
+        }
+
+        return null;
+    }
+
+    @Override
     public Mono<ExotelConnectAppletResponse> connectCall(
             String appCode, String clientCode, IncomingCallRequest request) {
 
@@ -558,12 +660,9 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         return FlatMapUtil.flatMapMono(
                         () -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        connection -> super.getUserIdAndPhone(request.getUserId()),
-                        // A repeated CallSid answers with the destination again rather than erroring.
-                        // The applet is retried — by the provider on a timeout, and by the flow itself
-                        // when fetchAfterAttempt is set — and a second attempt failing would drop a
-                        // live call that the first attempt had already recorded. The row is what makes
-                        // this safe to repeat: it exists, so nothing is written twice.
+                        connection -> super.getUserIdAndPhone(access.getClientCode(), request.getUserId()),
+                        // A repeated CallSid answers with the destination again rather than erroring: the applet
+                        // is retried, and the existing row means nothing is written twice.
                         (connection, user) -> this.existsByUniqueField(access, exotelRequest.getCallSid())
                                 .flatMap(exists -> {
                                     if (Boolean.TRUE.equals(exists))
@@ -577,19 +676,18 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                                     exotelRequest, user.getValue(), (String) connection
                                                             .getConnectionDetails()
                                                             .getOrDefault("accountSid", ""))
-                                            // The connect applet is always answered by the owning
-                                            // service, which is what reached us here, so the owner is
-                                            // known at creation time and a later status callback never
-                                            // has to guess.
+                                            // The connect applet is always answered by the owning service.
                                             .setOwnerService(this.defaultCallOwnerService);
 
-                                    Mono<ExotelCall> exotelCreated =
-                                            this.createInternal(access, user.getId(), exotelCall);
-
-                                    Mono<Call> callCreated = this.toCall(exotelCall)
-                                            .map(call -> call.setConnectionName(connection.getName()))
-                                            .flatMap(call ->
-                                                    super.callService.createInternal(access, user.getId(), call));
+                                    // The call row is written after the Exotel row so it carries that row's id,
+                                    // which is how the recording finds its connection.
+                                    Mono<ExotelCall> exotelCreated = this.createInternal(
+                                                    access, user.getId(), exotelCall)
+                                            .flatMap(created -> this.toCall(created)
+                                                    .map(call -> call.setConnectionName(connection.getName()))
+                                                    .flatMap(call -> super.callService.createInternal(
+                                                            access, user.getId(), call))
+                                                    .thenReturn(created));
 
                                     Mono<ExotelConnectAppletResponse> responseCreated = this.createResponse(
                                             access,
@@ -597,14 +695,14 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                             connection,
                                             user.getValue().getNumber());
 
-                                    return Mono.zip(exotelCreated, callCreated, responseCreated)
+                                    return Mono.zip(exotelCreated, responseCreated)
                                             .<ExotelConnectAppletResponse>flatMap(tuple -> super.callEventService
                                                     .sendIncomingCallEvent(
                                                             access.getAppCode(),
                                                             access.getClientCode(),
                                                             user.getId(),
                                                             tuple.getT1())
-                                                    .thenReturn(tuple.getT3()));
+                                                    .thenReturn(tuple.getT2()));
                                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
     }
@@ -615,17 +713,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         ExotelConnectAppletResponse response = new ExotelConnectAppletResponse();
         this.applyConnectionDetailsToResponse(response, connection.getConnectionDetails());
 
-        // Every active endpoint for this agent, in PRIORITY order, exactly as stored. The DAO
-        // already sorts by PRIORITY ascending, and that column is the reason the table exists: with
-        // sequential ringing it is the order the provider dials, so the browser rings first and the
-        // desk phone only after maxRingingDuration. Returning the rows in their stored order IS the
-        // routing rule — rebuilding that order here would silently ignore a third endpoint type or a
-        // deliberate re-prioritisation.
-        //
-        // The profile number is the fallback for having no rows at all, not an entry to append. An
-        // agent provisioned for browser calling already holds a PSTN_PHONE row; preferring the
-        // profile number over it means the call rings whichever of the two happened to be picked
-        // when they disagree.
+        // Stored PRIORITY order is the routing rule (see destinationNumbers).
         return this.providerUserEndpointDAO
                 .findActiveEndpoints(
                         access.getAppCode(),
@@ -640,35 +728,20 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     /**
-     * The destinations the applet dials, given what is stored for the agent.
+     * The destinations the applet dials, given what is stored for the agent. Pure so it is testable, since it
+     * changes inbound routing for every tenant; a tenant with only a {@code PSTN_PHONE} row still rings just that.
      *
-     * <p>Extracted and pure so the routing rule can be tested without a database, which matters
-     * because this changes inbound behaviour for <b>every</b> existing tenant — including those that
-     * will never use browser calling. A tenant with only a {@code PSTN_PHONE} row must still ring
-     * that row and nothing else.
-     *
-     * <p>Stored order is returned untouched. {@code PRIORITY} is why the table exists: ringing is
-     * sequential, so the stored order <em>is</em> the routing rule, and rebuilding it here would
-     * silently ignore a third endpoint type or a deliberate re-prioritisation.
-     *
-     * <p><b>The profile number is a fallback for having no rows, not an entry to append</b>, and
-     * that is a product decision worth stating rather than inferring. Appending it would double-ring
-     * whenever it disagrees with the stored {@code PSTN_PHONE} value. The cost is that an agent
-     * whose PSTN row was deactivated, or who somehow holds only a SIP row, is unreachable when their
-     * browser is shut — where previously the profile number always rang. Reachability now follows
-     * what was provisioned, not what a profile happens to say.
+     * <p>Stored order is returned untouched: ringing is sequential, so {@code PRIORITY} is the routing rule. The
+     * profile number is a fallback for having no rows, not an entry to append, which would double-ring when it
+     * disagrees with {@code PSTN_PHONE}. So an agent with only a SIP row is unreachable when their browser is shut.
      */
     static List<String> destinationNumbers(List<String> storedEndpoints, String fallbackPhone) {
         return storedEndpoints.isEmpty() ? fallbackOnly(fallbackPhone) : storedEndpoints;
     }
 
     /**
-     * The agent's own number, for an agent with no provisioned endpoints at all.
-     *
-     * <p>Preserves the behaviour inbound calling had before browser calling existed: an agent who
-     * has never been provisioned still rings on their phone rather than not at all. An empty list is
-     * returned when even that is unknown, which the provider treats as nowhere to send the call —
-     * correct, and better than inventing a destination.
+     * The agent's own number, for an agent with no provisioned endpoints, so they still ring. Empty when even
+     * that is unknown, which the provider treats as nowhere to send the call.
      */
     private static List<String> fallbackOnly(String fallbackPhone) {
         return fallbackPhone == null || fallbackPhone.isBlank() ? List.of() : List.of(fallbackPhone);
@@ -689,15 +762,8 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         details, ExotelConnectAppletResponse.Fields.maxConversationDuration, Long.class),
                 response::setMaxConversationDuration);
 
-        // Optional, and unset unless an operator configures it. Inbound status and recordings
-        // arrive today through the App Bazaar Passthru applet configured in the provider's console
-        // — verified on live inbound calls, which do report duration, talk time and a recording —
-        // so this is not a gap in reporting. What it removes is the manual console step: set this
-        // and the applet is told where to post, rather than depending on a dashboard entry that has
-        // to be updated by hand whenever the callback host changes.
-        //
-        // Left absent by default on purpose. A tenant that already has the console entry would
-        // otherwise receive the same event twice, and none of the handlers were written for that.
+        // Optional and unset by default: inbound status already arrives via the Passthru applet configured in the
+        // provider's console, and setting both would deliver every event twice.
         SetterUtil.setIfPresent(
                 super.getConnectionDetail(
                         details, ExotelConnectAppletResponse.Fields.dialPassthruEventUrl, String.class),

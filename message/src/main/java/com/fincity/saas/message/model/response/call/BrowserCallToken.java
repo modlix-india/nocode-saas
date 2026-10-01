@@ -1,5 +1,6 @@
 package com.fincity.saas.message.model.response.call;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -7,13 +8,8 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 
 /**
- * A short-lived credential for one agent's browser softphone.
- *
- * <p>Provider-neutral on purpose: the UI picks its client adapter from {@code provider} rather than
- * from a page-authored setting, so adding a second provider needs no page edits anywhere.
- *
- * <p>Never cached and never shared between agents. One cached token handed to two agents is a
- * cross-agent credential leak.
+ * A short-lived credential for one agent's browser softphone; the UI picks its client adapter from
+ * {@code provider}. Never cached or shared between agents.
  */
 @Data
 @Accessors(chain = true)
@@ -28,6 +24,10 @@ public class BrowserCallToken implements Serializable {
     private String providerUserId;
     private Long expiresIn;
     private String provider;
+
+    /** The provider's signalling region the softphone registers with, for providers that need one. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String region;
 
     public static BrowserCallToken of(String token, String providerUserId, Long expiresIn, String provider) {
         return new BrowserCallToken()

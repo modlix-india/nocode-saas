@@ -81,7 +81,7 @@ public class MessageCallProviderApps extends TableImpl<MessageCallProviderAppsRe
      * Tenant that owns this registration. Taken from MessageAccess, not from
      * the Connection, which is overridable and may report SYSTEM.
      */
-    public final TableField<MessageCallProviderAppsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Tenant that owns this registration. Taken from MessageAccess, not from the Connection, which is overridable and may report SYSTEM.");
+    public final TableField<MessageCallProviderAppsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(12).nullable(false), this, "Tenant that owns this registration. Taken from MessageAccess, not from the Connection, which is overridable and may report SYSTEM.");
 
     /**
      * The column

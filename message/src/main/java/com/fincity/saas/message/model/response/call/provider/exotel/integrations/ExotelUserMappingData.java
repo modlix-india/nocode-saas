@@ -39,12 +39,7 @@ public class ExotelUserMappingData implements Serializable {
     @JsonProperty("SipId")
     private String sipId;
 
-    /**
-     * Treat as plaintext.
-     *
-     * <p>Exotel ships this encrypted, but under a key hardcoded in its own public client SDK, so the
-     * ciphertext is no better protected than the value. Never let it reach a read path.
-     */
+    /** Treat as plaintext: Exotel encrypts it under a key hardcoded in its public SDK. Never expose it on reads. */
     @JsonProperty("SipSecret")
     @ToString.Exclude
     private String sipSecret;

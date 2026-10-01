@@ -12,6 +12,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderUserEndpoints;
+import com.fincity.saas.message.jooq.tables.MessageTelecmiCalls;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 
 
@@ -63,6 +64,12 @@ public class Tables {
      * inbound connect applet.
      */
     public static final MessageProviderUserEndpoints MESSAGE_PROVIDER_USER_ENDPOINTS = MessageProviderUserEndpoints.MESSAGE_PROVIDER_USER_ENDPOINTS;
+
+    /**
+     * One TeleCMI call as this service knows it: the row a webhook is matched
+     * against.
+     */
+    public static final MessageTelecmiCalls MESSAGE_TELECMI_CALLS = MessageTelecmiCalls.MESSAGE_TELECMI_CALLS;
 
     /**
      * WhatsApp Business phone numbers

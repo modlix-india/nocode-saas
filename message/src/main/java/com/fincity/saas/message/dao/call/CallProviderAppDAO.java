@@ -17,13 +17,8 @@ public class CallProviderAppDAO extends BaseUpdatableDAO<MessageCallProviderApps
     }
 
     /**
-     * The integration app registered for one tenant.
-     *
-     * <p>Not scoped by connection. One app serves every agent belonging to the tenant — agents are
-     * rows in its user mapping, not a reason to register another app — and the app's name has never
-     * carried a connection component. Keying the lookup on the connection made a tenant's second
-     * CALL connection look like a tenant with no app, which is how a duplicate gets created at a
-     * provider that accepts repeated names without complaint.
+     * The integration app registered for one tenant. Not scoped by connection: one app serves the whole tenant,
+     * and keying on connection made a second connection look app-less and register a duplicate at the provider.
      */
     public Mono<CallProviderApp> findByClient(String appCode, String clientCode, String provider) {
 
@@ -37,11 +32,8 @@ public class CallProviderAppDAO extends BaseUpdatableDAO<MessageCallProviderApps
     }
 
     /**
-     * Records the callback URL after the row already exists.
-     *
-     * <p>Separate from creation on purpose: the row is written the instant the provider returns the
-     * app secret, before anything else is attempted, because that secret cannot be read back. The
-     * callback URL is registered afterwards and folded in here.
+     * Records the callback URL after the row exists. The row is written the instant the provider returns the app
+     * secret, which cannot be read back, before the callback is registered.
      */
     public Mono<Integer> updateCallbackUrl(ULong id, String callbackUrl) {
 
@@ -52,12 +44,8 @@ public class CallProviderAppDAO extends BaseUpdatableDAO<MessageCallProviderApps
     }
 
     /**
-     * Removes the registration outright, once the provider-side app is gone.
-     *
-     * <p>Scoped to the tenant, matching {@link #findByClient}. Purging by connection would leave the
-     * row behind whenever teardown ran from a different connection than the one that created it, and
-     * a surviving row for a deleted app is worse than no row: it is the one thing that stops the
-     * next initialize from registering a replacement.
+     * Removes the registration once the provider-side app is gone. Scoped to the tenant like {@link #findByClient};
+     * a surviving row for a deleted app would stop the next initialize from registering a replacement.
      */
     public Mono<Integer> purgeByClient(String appCode, String clientCode, String provider) {
 

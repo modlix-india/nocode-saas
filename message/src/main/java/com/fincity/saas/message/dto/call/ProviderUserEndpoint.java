@@ -12,17 +12,8 @@ import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * One place a given agent can be reached, and where it sits in the ringing order.
- *
- * <p>An agent normally has two: a {@code WEBRTC_SIP} endpoint at priority 1 and a
- * {@code PSTN_PHONE} endpoint at priority 2. Ringing is sequential, so the priority is what Exotel
- * actually dials in order, not bookkeeping.
- *
- * <p>The agent is the {@code userId} inherited from {@link BaseUpdatableDto}. Do not redeclare it
- * here.
- *
- * <p>Like {@link CallProviderApp}, this entity gets no {@code BaseUpdatableController}: its
- * metadata carries the provider's SIP secret.
+ * One place an agent can be reached; {@code priority} is the order the provider rings them in. The agent is the
+ * inherited {@code userId}. No {@code BaseUpdatableController}: its metadata carries the provider's SIP secret.
  */
 @Data
 @Accessors(chain = true)
@@ -33,6 +24,12 @@ public class ProviderUserEndpoint extends BaseUpdatableDto<ProviderUserEndpoint>
 
     @Serial
     private static final long serialVersionUID = 8004266133417790215L;
+
+    /** {@code ENDPOINT_TYPE} of an agent's browser softphone. Rings first. */
+    public static final String ENDPOINT_WEBRTC_SIP = "WEBRTC_SIP";
+
+    /** {@code ENDPOINT_TYPE} of an agent's own phone, rung when the browser is not reachable. */
+    public static final String ENDPOINT_PSTN_PHONE = "PSTN_PHONE";
 
     private String connectionName;
     private String provider;
@@ -46,11 +43,8 @@ public class ProviderUserEndpoint extends BaseUpdatableDto<ProviderUserEndpoint>
     private String providerUserId;
 
     /**
-     * Rest of the provider's response, including the SIP secret.
-     *
-     * <p>Treat as plaintext regardless of what the provider calls it: Exotel returns the SIP secret
-     * encrypted under a key hardcoded in its own public client SDK, so the ciphertext is no more
-     * protected than the value. Never expose this through a read path.
+     * Rest of the provider's response, including the SIP secret. Treat as plaintext: Exotel encrypts it under a key
+     * hardcoded in its public SDK. Never expose this through a read path.
      */
     @JsonIgnore
     @ToString.Exclude

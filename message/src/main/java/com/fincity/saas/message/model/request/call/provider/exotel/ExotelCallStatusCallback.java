@@ -32,15 +32,8 @@ public class ExotelCallStatusCallback implements Serializable {
     @Serial
     private static final long serialVersionUID = 3500927590328043740L;
 
-    // The aliases below carry exactly the keys the WebRTC callback was observed to send, and
-    // nothing else. That payload names several fields differently from the telephony API this class
-    // was written for — Status/CallStatus, RecordingUrl/CallRecordings,
-    // ConversationDuration/TotalDuration — and an unmapped key is dropped in silence, which is how a
-    // completed call sat at IN_PROGRESS with no duration and no recording.
-    //
-    // Speculative spellings were removed. An alias for a key no provider sends cannot be verified,
-    // cannot fail visibly, and quietly suggests the payload is less settled than it is. Add one when
-    // a live payload shows it, not before.
+    // The aliases carry exactly the keys the WebRTC callback was observed to send; an unmapped key is dropped
+    // in silence. Add one only when a live payload shows it.
     @JsonProperty("CallSid")
     private String callSid;
 

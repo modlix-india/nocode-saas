@@ -65,15 +65,8 @@ public class TicketCallLogController {
     }
 
     /**
-     * Places a call to the deal's customer from the agent's browser softphone.
-     *
-     * <p>Takes a ticket and nothing else. The number comes from the deal and the agent comes from the
-     * authenticated token, so neither can be chosen by the caller — the softphone cannot name a
-     * number to dial, nor dial as somebody else.
-     *
-     * <p>Separate from {@code /make} because the two ring different things: that one calls the
-     * agent's phone and bridges it, this one rings their registered browser. Same authorisation, same
-     * resulting row.
+     * Places a call to the deal's customer from the agent's browser softphone. Takes a ticket and nothing else:
+     * the number comes from the deal and the agent from the token, so the softphone can choose neither.
      */
     @PostMapping("/{ticketId}/browser-dial")
     public Mono<ResponseEntity<Call>> makeBrowserCall(

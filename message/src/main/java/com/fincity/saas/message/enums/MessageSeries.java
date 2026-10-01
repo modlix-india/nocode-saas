@@ -5,12 +5,14 @@ import static com.fincity.saas.message.jooq.Tables.MESSAGE_CALL_PROVIDER_APPS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_EXOTEL_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_MESSAGES;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_PROVIDER_USER_ENDPOINTS;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_TELECMI_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBERS;
 
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.CallProviderApp;
 import com.fincity.saas.message.dto.call.ProviderUserEndpoint;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
+import com.fincity.saas.message.dto.call.provider.telecmi.TelecmiCall;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.MessageWebhook;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
@@ -37,7 +39,8 @@ public enum MessageSeries implements EnumType {
             "Provider User Endpoint",
             9,
             "provider_user_endpoint",
-            MESSAGE_PROVIDER_USER_ENDPOINTS);
+            MESSAGE_PROVIDER_USER_ENDPOINTS),
+    TELECMI_CALL("TELECMI_CALL", "TeleCMI Call", 10, "telecmi_call", MESSAGE_TELECMI_CALLS);
 
     // WHATSAPP_MESSAGE (5), WHATSAPP_TEMPLATE (6) and WHATSAPP_BUSINESS_ACCOUNT (7) retired with the
     // Cloud API. Their ordinals are deliberately not reused: existing rows in the retired tables
@@ -82,6 +85,7 @@ public enum MessageSeries implements EnumType {
             case WHATSAPP_PHONE_NUMBER -> WhatsappPhoneNumber.class;
             case CALL_PROVIDER_APP -> CallProviderApp.class;
             case PROVIDER_USER_ENDPOINT -> ProviderUserEndpoint.class;
+            case TELECMI_CALL -> TelecmiCall.class;
         };
     }
 }

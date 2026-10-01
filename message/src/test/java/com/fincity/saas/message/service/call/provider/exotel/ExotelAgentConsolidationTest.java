@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Test;
  */
 class ExotelAgentConsolidationTest {
 
-    private static final ULong AGENT = ULong.valueOf(4405);
-    private static final ULong OTHER_AGENT = ULong.valueOf(4406);
+    private static final ULong AGENT = ULong.valueOf(7);
+    private static final ULong OTHER_AGENT = ULong.valueOf(8);
 
     private static ProviderUserEndpoint endpoint(ULong userId, String type, String value, boolean active) {
 

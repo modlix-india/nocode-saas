@@ -8,11 +8,8 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 /**
- * The envelope every Integrations Core response arrives in.
- *
- * <p>{@code Code} and {@code Status} live in the body, so a 200 at the HTTP layer is not on its own
- * proof of success — check {@link #isSuccess()} before reading {@code Data}. {@code Data} is an
- * object on some endpoints and an array on others, which is why this is generic.
+ * The envelope every Integrations Core response arrives in. Failure is reported in the body, so a 200 is not
+ * success: check {@link #isSuccess()} before reading {@code Data}.
  */
 @Data
 @Accessors(chain = true)

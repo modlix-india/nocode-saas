@@ -19,16 +19,12 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Every place this agent can be reached on a connection, in the order Exotel should try them.
+     * Every place this agent can be reached on a connection, in ring order. Runs on every inbound call before the
+     * phone rings; {@code IDX1_PROVIDER_USER_ENDPOINTS_ROUTING} exists for this query.
      *
-     * <p>The hot path: this runs on every inbound call, between the customer dialling and the phone
-     * ringing, and {@code IDX1_PROVIDER_USER_ENDPOINTS_ROUTING} exists for exactly this query.
-     *
-     * <p>Deliberately not filtered on {@code CLIENT_CODE}. Security user ids are globally unique and
-     * a user belongs to one client, so filtering on {@code USER_ID} already scopes the result to a
-     * single tenant; the row's client code is that agent's by construction. Adding the filter would
-     * mean resolving the agent's client code first, which is a Feign round trip in the path before
-     * the phone can ring, to derive something the row already implies.
+     * <p>Deliberately not filtered on {@code CLIENT_CODE}: user ids are globally unique and a user belongs to one
+     * client, so {@code USER_ID} already scopes to one tenant, and resolving the client code would add a Feign
+     * round trip before the phone can ring.
      */
     public Flux<ProviderUserEndpoint> findActiveEndpoints(
             String appCode, ULong userId, String connectionName, String provider) {
@@ -45,26 +41,33 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Writes one endpoint, replacing the row already there for that agent on that connection.
-     *
-     * <p>An upsert rather than an insert, because re-provisioning is how an agent's numbers get
-     * changed. {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT} makes one row per agent, connection and
-     * endpoint type, so a plain insert on the second run fails on the unique key — which is what
-     * turned "update this agent's virtual number" into a duplicate-key error rather than an update.
-     *
-     * <p>Reactivates as part of the same write. An agent who was deactivated and is being set up
-     * again should come back on their existing row rather than leaving an inactive duplicate behind
-     * that the routing lookup skips and an operator still sees.
+     * The connections an agent holds an active endpoint of one type on. Not filtered on {@code CLIENT_CODE}, for
+     * the reason {@link #findActiveEndpoints} gives.
+     */
+    public Flux<String> findActiveConnectionNames(String appCode, ULong userId, String endpointType) {
+
+        return Flux.from(this.dslContext
+                        .selectDistinct(MESSAGE_PROVIDER_USER_ENDPOINTS.CONNECTION_NAME)
+                        .from(MESSAGE_PROVIDER_USER_ENDPOINTS)
+                        .where(MESSAGE_PROVIDER_USER_ENDPOINTS.APP_CODE.eq(appCode))
+                        .and(MESSAGE_PROVIDER_USER_ENDPOINTS.USER_ID.eq(userId))
+                        .and(MESSAGE_PROVIDER_USER_ENDPOINTS.ENDPOINT_TYPE.eq(endpointType))
+                        .and(MESSAGE_PROVIDER_USER_ENDPOINTS.IS_ACTIVE.eq(Boolean.TRUE)))
+                .map(rec -> rec.get(MESSAGE_PROVIDER_USER_ENDPOINTS.CONNECTION_NAME));
+    }
+
+    /**
+     * Writes one endpoint, replacing and reactivating the row already there for that agent, connection and type.
+     * An upsert because re-provisioning is how an agent's numbers change, and
+     * {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT} allows one such row.
      */
     public Mono<ProviderUserEndpoint> upsert(ProviderUserEndpoint endpoint) {
         return this.updateExisting(endpoint).switchIfEmpty(Mono.defer(() -> this.insertOrConverge(endpoint)));
     }
 
     /**
-     * Updates the row this agent already has, or completes empty when there is none.
-     *
-     * <p>Empty rather than inserting, so the insert lives in exactly one place. That matters for
-     * the retry in {@link #insertOrConverge}: a fallback that could insert again would recurse.
+     * Updates the row this agent already has, or completes empty. Never inserts, so the retry in
+     * {@link #insertOrConverge} cannot recurse.
      */
     private Mono<ProviderUserEndpoint> updateExisting(ProviderUserEndpoint endpoint) {
 
@@ -77,10 +80,8 @@ public class ProviderUserEndpointDAO
                         .set(MESSAGE_PROVIDER_USER_ENDPOINTS.PROVIDER_USER_ID, endpoint.getProviderUserId())
                         .set(MESSAGE_PROVIDER_USER_ENDPOINTS.PROVIDER_METADATA, endpoint.getProviderMetadata())
                         .set(MESSAGE_PROVIDER_USER_ENDPOINTS.IS_ACTIVE, Boolean.TRUE)
-                        // Rewritten too: the row records whoever provisioned last, and an owner
-                        // in a parent client may provision an agent belonging to a child client.
-                        // An audit field, not part of any key — per-agent operations locate rows by
-                        // agent, and the caller's right to touch them is settled before they run.
+                        // Records whoever provisioned last, possibly a parent-client owner. An audit
+                        // field, not part of any key: per-agent operations locate rows by agent.
                         .set(MESSAGE_PROVIDER_USER_ENDPOINTS.CLIENT_CODE, endpoint.getClientCode())
                         .where(MESSAGE_PROVIDER_USER_ENDPOINTS.APP_CODE.eq(endpoint.getAppCode()))
                         .and(MESSAGE_PROVIDER_USER_ENDPOINTS.USER_ID.eq(endpoint.getUserId()))
@@ -96,14 +97,8 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Inserts, and converges rather than failing when a concurrent provision got there first.
-     *
-     * <p>The update-then-insert above is a read-modify-write, so two provisions of the same agent
-     * can both see no row and both insert; one loses on {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT}.
-     * Retrying as an update makes the loser converge on the values it was going to write anyway,
-     * which is what the caller wanted — the alternative is a duplicate-key error reaching an
-     * operator who did nothing wrong. Same shape as {@code persistApp} in the calling service, for
-     * the same reason.
+     * Inserts, retrying as an update when a concurrent provision of the same agent won the race on
+     * {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT}, so the loser converges instead of surfacing a duplicate-key error.
      */
     private Mono<ProviderUserEndpoint> insertOrConverge(ProviderUserEndpoint endpoint) {
 
@@ -111,13 +106,7 @@ public class ProviderUserEndpointDAO
                 .onErrorResume(e -> this.updateExisting(endpoint).switchIfEmpty(Mono.error(e)));
     }
 
-    /**
-     * One endpoint, by the columns its unique key uses.
-     *
-     * <p>Not scoped by client code, matching {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT} as V26
-     * defines it: an agent holds one endpoint of each type per connection, whichever tenant's owner
-     * provisioned it.
-     */
+    /** One endpoint, by the columns of {@code UK2_PROVIDER_USER_ENDPOINTS_AGENT}, which excludes client code. */
     public Mono<ProviderUserEndpoint> findEndpoint(
             String appCode, ULong userId, String connectionName, String endpointType) {
 
@@ -131,12 +120,8 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Every endpoint mapped to one provider identity, across agents.
-     *
-     * <p>Exists to answer whether an identity is already claimed. Not scoped by client code on
-     * purpose: the point is to catch a second agent anywhere under this app pointing at the same
-     * provider user, and a check that stopped at the caller's own tenant would miss exactly the
-     * cross-wiring it is meant to prevent.
+     * Every endpoint mapped to one provider identity, to tell whether it is already claimed. Not scoped by client
+     * code on purpose: it must catch a second agent anywhere under this app pointing at the same provider user.
      */
     public Flux<ProviderUserEndpoint> findByProviderUserId(String appCode, String providerUserId, String provider) {
 
@@ -152,17 +137,11 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Every agent mapped on a connection. Admin listing, not a call path.
+     * Every agent mapped on a connection, for admin listing. Scoped by client code, unlike the per-agent
+     * operations, because sibling tenants can each hold a connection of the same name.
      *
-     * <p><b>Still scoped by client code, unlike the per-agent operations.</b> A connection is
-     * resolved per {@code (appCode, clientCode)}, so two sibling tenants can each hold one under the
-     * same name — and dropping the filter here would show one tenant's agents in the other's
-     * listing. Deactivation can safely key on the agent alone because the caller's right to that
-     * agent is settled first; a listing has no such gate.
-     *
-     * <p>The cost is a blind spot worth knowing: a row written by a parent-client owner carries
-     * their client code, so it will not appear in the child's listing even though the child's
-     * inbound routing rings it. An agent provisioned from above is invisible from below.
+     * <p>So a row written by a parent-client owner carries their client code and is missing from the child's
+     * listing, though the child's inbound routing still rings it.
      */
     public Flux<ProviderUserEndpoint> findByConnection(String appCode, String clientCode, String connectionName) {
 
@@ -178,12 +157,8 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Removes every endpoint on a connection outright.
-     *
-     * <p>A hard delete, unlike {@link #deactivate}, because this runs only as part of tearing the
-     * whole integration down: the provider-side app is gone, so the rows describe SIP identities that
-     * no longer exist anywhere. Keeping them soft-deleted would leave the reverse lookup matching
-     * endpoints that cannot ring.
+     * Hard-deletes every endpoint on a connection. Runs only on teardown, when the provider-side identities no
+     * longer exist; soft-deleted rows would leave the reverse lookup matching endpoints that cannot ring.
      */
     public Mono<Integer> purgeByConnection(String appCode, String clientCode, String connectionName) {
 
@@ -195,11 +170,8 @@ public class ProviderUserEndpointDAO
     }
 
     /**
-     * Soft-deletes every endpoint an agent holds on a connection.
-     *
-     * <p>Stops this service minting new tokens. It revokes nothing already issued and nothing at the
-     * provider, so the provider-side user mapping has to be deleted too or the agent keeps a working
-     * softphone until their session ends.
+     * Soft-deletes every endpoint an agent holds on a connection. Revokes nothing already issued or at the
+     * provider, so the provider-side user must be deleted too or the softphone works until the session ends.
      */
     public Mono<Integer> deactivate(String appCode, ULong userId, String connectionName) {
 

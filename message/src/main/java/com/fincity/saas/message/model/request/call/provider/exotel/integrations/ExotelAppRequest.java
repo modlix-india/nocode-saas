@@ -8,11 +8,8 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 
 /**
- * Registers an integration app against an Exotel account. Sent with the customer token.
- *
- * <p>Carries the telephony credentials too. Exotel binds the app to the account by way of them, so
- * an app created without them registers but cannot place calls — which fails later, and somewhere
- * unrelated. Shape taken from the vendor's own Postman collection.
+ * Registers an integration app against an Exotel account. Sent with the customer token. Carries the telephony
+ * credentials too: without them the app registers but cannot place calls.
  */
 @Data
 @Accessors(chain = true)

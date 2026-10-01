@@ -143,10 +143,19 @@ public abstract class AbstractCallProviderService<
                 .switchIfEmpty(Mono.just(this.appBaseUrl + CALL_BACK_URI + this.getProviderUri()));
     }
 
-    protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
+    /**
+     * The agent's id and profile number, which is null when it does not parse. An error for an unknown user, since
+     * security answers those with an empty 200 that would otherwise become a silent empty call response.
+     */
+    protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(String clientCode, ULong userId) {
         return this.securityService
                 .getUserInternal(userId.toBigInteger(), null)
                 .map(userResponse -> IdAndValue.of(
-                        ULongUtil.valueOf(userResponse.getId()), PhoneUtil.parse(userResponse.getPhoneNumber())));
+                        ULongUtil.valueOf(userResponse.getId()), PhoneUtil.parse(userResponse.getPhoneNumber())))
+                .switchIfEmpty(Mono.defer(() -> super.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        MessageResourceService.INVALID_USER_FOR_CLIENT,
+                        userId,
+                        clientCode)));
     }
 }

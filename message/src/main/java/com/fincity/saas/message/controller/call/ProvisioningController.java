@@ -19,18 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 /**
- * Setting up browser calling for a tenant, and mapping its agents.
- *
- * <p>Hand-written rather than extending {@code BaseUpdatableController}, and that is deliberate.
- * The base class would bring a full generic data API with it — {@code POST /}, {@code /query},
- * {@code /eager/query}, {@code DELETE /{id}} — scoped only by app and client, so any authenticated
- * user in the tenant could read every row. Both tables behind these routes hold provider
- * credentials, and the eager paths return {@code rec.intoMap()} straight off the JOOQ record, which
- * no Jackson annotation on the DTO can filter. Exposing only these six named operations is the control;
- * the {@code @JsonIgnore}s on the DTOs are defence in depth behind it.
- *
- * <p>No security annotations here. Authorization lives on {@link CallService}, per this codebase's
- * convention.
+ * Setting up browser calling for a tenant, and mapping its agents. Deliberately not a
+ * {@code BaseUpdatableController}: its generic query routes would let any tenant user read rows holding provider
+ * credentials, and the eager paths return {@code rec.intoMap()}, which no {@code @JsonIgnore} filters.
+ * Authorization lives on {@link CallService}.
  */
 @RestController
 @RequestMapping("/api/message/call/provisioning")
@@ -54,26 +46,15 @@ public class ProvisioningController {
         return this.callService.provisionAgent(request).map(ResponseEntity::ok);
     }
 
-    /**
-     * Removes the tenant's integration app at the provider, and the local rows with it.
-     *
-     * <p>Destructive: every agent on this connection loses browser calling. Only works for an app
-     * this service created, because deleting one needs the secret the provider issues once.
-     */
+    /** Removes the tenant's integration app at the provider and locally; every agent loses browser calling. */
     @DeleteMapping("/app")
     public Mono<ResponseEntity<Boolean>> teardown(@RequestParam(name = "connectionName") String connectionName) {
         return this.callService.teardownCallApp(connectionName).map(ResponseEntity::ok);
     }
 
     /**
-     * Whether calling is set up for this tenant, for a settings screen to render a state from.
-     *
-     * <p>Always a {@code 200}. Not initialised comes back as {@code initialized: false} rather than
-     * an empty {@code 204}, so a caller has something to bind to and does not have to infer meaning
-     * from a status code.
-     *
-     * <p>Answered from our own row, so it is cheap enough to load with the page. It reports that the
-     * app was registered, not that the provider still holds it.
+     * Whether calling is set up for this tenant; always a {@code 200}. Reports that the app was registered, not
+     * that the provider still holds it.
      */
     @GetMapping("/app")
     public Mono<ResponseEntity<CallAppStatus>> appStatus(@RequestParam(name = "connectionName") String connectionName) {
@@ -87,12 +68,7 @@ public class ProvisioningController {
         return this.callService.getAgentEndpoints(connectionName).collectList().map(ResponseEntity::ok);
     }
 
-    /**
-     * Retires an agent's endpoints.
-     *
-     * <p>Belongs in offboarding. Note it stops new tokens being minted but does not, on its own,
-     * end a session already running in a browser.
-     */
+    /** Retires an agent's endpoints, for offboarding. */
     @DeleteMapping("/agent/{userId}")
     public Mono<ResponseEntity<Integer>> deactivateAgent(
             @PathVariable(name = "userId") BigInteger userId,
