@@ -13,7 +13,7 @@ public enum ConnectionType {
 
     TEXT(ConnectionSubType.WHATSAPP),
 
-    CALL(ConnectionSubType.EXOTEL),
+    CALL(ConnectionSubType.EXOTEL, ConnectionSubType.TELECMI),
 
     AI(ConnectionSubType.OPENAI, ConnectionSubType.GEMINI, ConnectionSubType.CLAUDE, ConnectionSubType.GROK, ConnectionSubType.DEEP_SEEK);
 

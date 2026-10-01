@@ -168,9 +168,10 @@ public class EntityProcessorCalls extends TableImpl<EntityProcessorCallsRecord> 
 
     /**
      * The column <code>entity_processor.entity_processor_calls.FROM</code>.
-     * Phone number of the caller.
+     * Caller. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
-    public final TableField<EntityProcessorCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15), this, "Phone number of the caller.");
+    public final TableField<EntityProcessorCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.VARCHAR(64), this, "Caller. An E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.");
 
     /**
      * The column
@@ -180,10 +181,11 @@ public class EntityProcessorCalls extends TableImpl<EntityProcessorCallsRecord> 
     public final TableField<EntityProcessorCallsRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the receiver.");
 
     /**
-     * The column <code>entity_processor.entity_processor_calls.TO</code>. Phone
-     * number of the receiver.
+     * The column <code>entity_processor.entity_processor_calls.TO</code>.
+     * Callee. An E.164 number, or a sip: URI when the leg is an agent's WebRTC
+     * endpoint.
      */
-    public final TableField<EntityProcessorCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the receiver.");
+    public final TableField<EntityProcessorCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.VARCHAR(64), this, "Callee. An E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.");
 
     /**
      * The column

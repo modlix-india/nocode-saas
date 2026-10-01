@@ -7,6 +7,7 @@ import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallSta
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,10 +45,16 @@ public class ExotelCallBackController {
         MediaType contentType = exchange.getRequest().getHeaders().getContentType();
 
         if (contentType != null && MediaType.APPLICATION_JSON.isCompatibleWith(contentType)) {
-            return exchange.getRequest()
-                    .getBody()
-                    .next()
-                    .map(dataBuffer -> ExotelCallStatusCallback.of(dataBuffer, objectMapper))
+            // Joined, not .next(): a body split across chunks would be parsed from its first chunk alone.
+            // Released in a finally: join() returns a pooled composite buffer the caller owns, and of() can throw.
+            return DataBufferUtils.join(exchange.getRequest().getBody())
+                    .map(dataBuffer -> {
+                        try {
+                            return ExotelCallStatusCallback.of(dataBuffer, objectMapper);
+                        } finally {
+                            DataBufferUtils.release(dataBuffer);
+                        }
+                    })
                     .flatMap(callback -> exotelCallService.processCallStatusCallback(access, callback))
                     .map(result -> ExotelCallStatusCallbackResponse.success());
         }
