@@ -94,4 +94,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String EMPTY_AI_RESPONSE = "empty_ai_response";
 
     public static final String EMPTY_FUNCTION_RESPONSE = "empty_function_response";
+
+    public static final String INVALID_AGGREGATION = "invalid_aggregation";
+
+    public static final String UNSUPPORTED_CONDITION = "unsupported_condition";
 }
