@@ -34,7 +34,8 @@ public class UpdateManyStorageObject extends AbstractReactiveFunction {
     private static final String CLIENT_CODE = "clientCode";
     private static final String EAGER = "eager";
     private static final String EAGER_FIELDS = "eagerFields";
-    private static final String OVERRIDE = "override";
+    /** Named and polarised to match the single Update function, not the service. */
+    private static final String ISPARTIAL = "isPartial";
     private final AppDataService appDataService;
     private final Gson gson;
 
@@ -69,8 +70,10 @@ public class UpdateManyStorageObject extends AbstractReactiveFunction {
                         Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false))),
                         EAGER_FIELDS,
                         Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true),
-                        OVERRIDE,
-                        Parameter.of(OVERRIDE, Schema.ofBoolean(OVERRIDE).setDefaultValue(new JsonPrimitive(false)))))
+                        ISPARTIAL,
+                        Parameter.of(
+                                ISPARTIAL,
+                                Schema.ofBoolean(ISPARTIAL).setDefaultValue(new JsonPrimitive(false)))))
                 .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
     }
 
@@ -88,7 +91,7 @@ public class UpdateManyStorageObject extends AbstractReactiveFunction {
 
         boolean eager = context.getArguments().get(EAGER).getAsBoolean();
 
-        boolean override = context.getArguments().get(OVERRIDE).getAsBoolean();
+        boolean isPartial = context.getArguments().get(ISPARTIAL).getAsBoolean();
 
         List<String> eagerFields = StreamSupport.stream(
                         context.getArguments()
@@ -120,7 +123,7 @@ public class UpdateManyStorageObject extends AbstractReactiveFunction {
                         StringUtil.isNullOrBlank(clientCode) ? null : clientCode,
                         storageName,
                         dataArr,
-                        override,
+                        !isPartial,
                         eager,
                         eagerFields)
                 .map(arr ->
