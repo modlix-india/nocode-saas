@@ -278,7 +278,7 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
         assertEquals(2, documentsIn(LIVE_DB, VERSION_COLLECTION).size(),
                 "a versioned storage records one version row per create");
 
-        Long deleted = asClient(appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), false));
+        Long deleted = asClient(appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), false, null));
 
         assertEquals(2L, deleted);
         assertTrue(documentsIn(LIVE_DB, UNIQUE_NAME).isEmpty());
@@ -301,7 +301,7 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
         asClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("one"), false, null));
         asClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("two"), false, null));
 
-        Long counted = asClient(appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), true));
+        Long counted = asClient(appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), true, null));
 
         assertEquals(2L, counted);
         assertEquals(2, documentsIn(LIVE_DB, UNIQUE_NAME).size(), "a dry run must not delete");
@@ -319,7 +319,7 @@ class AppDataSurfaceIntegrationTest extends AbstractIntegrationTest {
         asDraftClient(appDataService.create(APP_CODE, SYSTEM, STORAGE_NAME, row("draft row"), false, null));
 
         Long deleted = asClient(appDataService.onSurface(APP_CODE, Boolean.TRUE,
-                appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), false)));
+                appDataService.deleteByFilter(APP_CODE, SYSTEM, STORAGE_NAME, new Query(), false, null)));
 
         assertEquals(1L, deleted);
         assertTrue(documentsIn(DRAFT_DB, UNIQUE_NAME).isEmpty());

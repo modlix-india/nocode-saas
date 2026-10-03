@@ -1,0 +1,41 @@
+-- The ticket analytics endpoints read activities BY DATE, and nothing indexed ACTIVITY_DATE.
+--
+-- Measured on production 2026-10-03, EXPLAIN ANALYZE of the aggregate behind
+-- /api/entity/processor/analytics/tickets/stage-counts/sources/assigned-users:
+--
+--     Index lookup on t using IDX0_TICKETS_AC_CC   rows=161,122   (every ticket of the tenant)
+--     Index lookup on a using FK1_ACTIVITIES_TICKET_ID
+--                      rows=4.28  loops=161,121    (~690,000 activity rows read)
+--     Filter: a.ACTIVITY_DATE >= ...
+--                      rows=0.386 loops=161,121    (62,253 kept, 91% discarded)
+--     total 1,692 ms
+--
+-- It reads the WHOLE activities table to answer a 30-day question. The reason is that every
+-- existing index leads with (APP_CODE, CLIENT_CODE), and one tenant owns 161,119 of ~161,000
+-- tickets -- cardinality 1,404 on 692k rows. Those columns select nothing here, so the planner
+-- correctly judges a per-ticket probe cheaper than any index it has, and the only genuinely
+-- selective predicate, the date range, has no index at all: ACTIVITY_DATE appears only as the
+-- FOURTH column of IDX3/IDX4, behind ACTIVITY_ACTION (cardinality 18) and STAGE_ID (27).
+--
+-- Date selectivity on 691,913 rows:  7d = 13,649 (2%)   30d = 62,293 (9%)   90d = 201,183 (29%)
+--
+-- So the range is what should drive the scan. Leading on ACTIVITY_DATE lets a 30-day window read
+-- ~62k index entries instead of ~690k rows, and join back to tickets by primary key.
+--
+-- TICKET_ID and STAGE_ID are carried so the index COVERS these aggregates: they group by stage
+-- and join on ticket, so without them each of the 62k matches would still need a random primary
+-- key read into a 983MB table that does not fit comfortably in the buffer pool.
+--
+-- Cost of carrying it: activities takes ~1,949 inserts a day. One more index is not the problem
+-- that V99 was -- that dropped a DUPLICATE of an existing index, which bought nothing.
+--
+-- ALGORITHM=INPLACE, LOCK=NONE: built online, reads and writes continue throughout.
+--
+-- To roll back, do NOT drop it. Make it invisible, which is instant and reversible:
+--     ALTER TABLE `entity_processor`.`entity_processor_activities`
+--         ALTER INDEX `IDX5_ACTIVITIES_DATE_TICKET_STAGE` INVISIBLE;
+-- The planner then ignores it while the index stays built, so flipping back costs nothing.
+
+ALTER TABLE `entity_processor`.`entity_processor_activities`
+    ADD INDEX `IDX5_ACTIVITIES_DATE_TICKET_STAGE` (`ACTIVITY_DATE`, `TICKET_ID`, `STAGE_ID`),
+    ALGORITHM = INPLACE, LOCK = NONE;

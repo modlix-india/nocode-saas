@@ -33,6 +33,8 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
 
     private static final String CLIENT_CODE = "clientCode";
 
+    private static final String DELETE_VERSION = "deleteVersion";
+
     private final AppDataService appDataService;
 
     public DeleteStorageObject(AppDataService appDataService) {
@@ -58,7 +60,11 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
                         APP_CODE,
                         Parameter.of(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
                         CLIENT_CODE,
-                        Parameter.of(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))))
+                        Parameter.of(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
+                        DELETE_VERSION,
+                        Parameter.of(
+                                DELETE_VERSION,
+                                Schema.ofBoolean(DELETE_VERSION).setDefaultValue(new JsonPrimitive(false)))))
                 .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
     }
 
@@ -86,12 +92,15 @@ public class DeleteStorageObject extends AbstractReactiveFunction {
                             new JsonPrimitive(
                                     "Please provide the id for which delete" + " needs to be performed."))))));
 
+        boolean deleteVersion = context.getArguments().get(DELETE_VERSION).getAsBoolean();
+
         return appDataService
                 .delete(
                         StringUtil.isNullOrBlank(appCode) ? null : appCode,
                         StringUtil.isNullOrBlank(clientCode) ? null : clientCode,
                         storageName,
-                        dataObjectId)
+                        dataObjectId,
+                        deleteVersion)
                 .onErrorResume(exception -> exception instanceof StorageObjectNotFoundException
                         ? Mono.just(Boolean.FALSE)
                         : Mono.error(exception))

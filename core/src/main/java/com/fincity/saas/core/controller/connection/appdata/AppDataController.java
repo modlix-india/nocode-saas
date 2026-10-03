@@ -5,6 +5,7 @@ import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.commons.util.DataFileType;
@@ -51,6 +52,8 @@ public class AppDataController {
 	public static final String PATH_VARIABLE_STORAGE = "storage";
 	public static final String PATH_ID = "{storage}/{" + PATH_VARIABLE_ID + "}";
 	public static final String PATH_QUERY = "{storage}/query";
+
+	public static final String PATH_AGGREGATE = "{storage}/aggregate";
 
 	/**
 	 * Empties a storage and keeps it.
@@ -214,14 +217,34 @@ public class AppDataController {
 				.map(ResponseEntity::ok);
 	}
 
+	/**
+	 * A grouped read: filter, group, measure, filter again, page.
+	 *
+	 * Body-only, so the IGNORE_PARAMS trap above does not apply: nothing here gets
+	 * swept into a filter condition by name.
+	 */
+	@PostMapping(PATH_AGGREGATE)
+	public Mono<ResponseEntity<Page<Map<String, Object>>>> aggregate(
+			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode,
+			@RequestHeader String clientCode,
+			@RequestParam(required = false) Boolean draft,
+			@RequestBody AggregateQuery query) {
+
+		return this.service.onSurface(appCode, draft,
+						this.service.aggregate(appCode, clientCode, storageName, query))
+				.map(ResponseEntity::ok);
+	}
+
 	@DeleteMapping(PATH_ID)
 	public Mono<ResponseEntity<Boolean>> delete(@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
 			@RequestHeader String appCode, @RequestHeader String clientCode,
 			@PathVariable(PATH_VARIABLE_ID) final String id,
-			@RequestParam(required = false) Boolean draft) {
+			@RequestParam(required = false) Boolean draft,
+			@RequestParam(required = false, defaultValue = "false") Boolean deleteVersion) {
 
 		return this.service.onSurface(appCode, draft,
-						this.service.delete(appCode, clientCode, storageName, id))
+						this.service.delete(appCode, clientCode, storageName, id, deleteVersion))
 				.map(ResponseEntity::ok);
 	}
 
@@ -392,10 +415,12 @@ public class AppDataController {
 			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName, @RequestHeader String appCode,
 			@RequestHeader String clientCode, @PathVariable(PATH_VARIABLE_ID) final String versionId,
 			@RequestParam(required = false) Boolean draft,
+			@RequestParam(required = false, defaultValue = "true") Boolean includeObject,
 			@RequestBody Query query) {
 
 		return this.service.onSurface(appCode, draft,
-						this.service.readPageVersion(appCode, clientCode, storageName, versionId, query))
+						this.service.readPageVersion(appCode, clientCode, storageName, versionId, query,
+								includeObject))
 				.map(ResponseEntity::ok);
 	}
 }
