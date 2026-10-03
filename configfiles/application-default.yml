@@ -37,14 +37,29 @@ schedular:
     password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/schedular
-
 worker:
   db:
     url: jdbc:mysql://localhost:3306/worker?serverTimezone=UTC
     username: root
     password: Kiran@123
+    # `flyway` is nested under `db`, not a sibling of it. configfiles/worker.yml resolves
+    # ${worker.db.flyway.url}; with `flyway:` at the top level that placeholder stayed
+    # unresolved and the worker schema was never migrated.
     flyway:
       url: jdbc:mysql://localhost:3306/worker
+adzump:
+  db:
+    # configfiles/adzump.yml resolves ${adzump.db.*} but nothing in this file ever
+    # defined them, so adzump died at startup with:
+    #   Driver com.mysql.cj.jdbc.Driver claims to not accept jdbcUrl, ${adzump.db.url}
+    # jdbc (not r2dbc) because adzump.yml wires spring.datasource + Hikari, like worker.
+    url: jdbc:mysql://localhost:3306/adzump?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    # Nested under db, for the same reason as worker above: adzump.yml reads
+    # ${adzump.db.flyway.url}.
+    flyway:
+      url: jdbc:mysql://localhost:3306/adzump
 
 ui:
   mongo:
@@ -134,7 +149,13 @@ ai:
 
 spring:
   flyway:
-    enabled: false
+    # Was `false`. That silently beat every service's own `spring.flyway.enabled: true`
+    # (configfiles/{core,worker,security,files,message,multi,entity-processor,notification}.yml),
+    # so on a clean local stack NO migration ever ran -- every schema stayed empty and
+    # worker died on startup at `Table 'worker.worker_client_schedule_controls' doesn't exist`.
+    # Set true so each service's migrations actually apply; services that genuinely want
+    # Flyway off can still override in their own file.
+    enabled: true
   cloud:
     inetutils:
       preferred-networks:
