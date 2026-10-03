@@ -29,12 +29,15 @@ import com.fincity.saas.commons.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.commons.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.commons.core.functions.securitycontext.GetUser;
 import com.fincity.saas.commons.core.functions.securitycontext.HasAuthority;
+import com.fincity.saas.commons.core.functions.storage.AggregateStorageObject;
 import com.fincity.saas.commons.core.functions.storage.CreateManyStorageObject;
+import com.fincity.saas.commons.core.functions.storage.GetVersionDetailsStorageObject;
 import com.fincity.saas.commons.core.functions.storage.CreateStorageObject;
 import com.fincity.saas.commons.core.functions.storage.DeleteStorageObject;
 import com.fincity.saas.commons.core.functions.storage.DeleteStorageObjectWithFilter;
 import com.fincity.saas.commons.core.functions.storage.ReadPageStorageObject;
 import com.fincity.saas.commons.core.functions.storage.ReadStorageObject;
+import com.fincity.saas.commons.core.functions.storage.UpdateManyStorageObject;
 import com.fincity.saas.commons.core.functions.storage.UpdateStorageObject;
 import com.fincity.saas.commons.core.service.EventDefinitionService;
 import com.fincity.saas.commons.core.service.NotificationService;
@@ -108,6 +111,10 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction readStorage = new ReadStorageObject(appDataService, gson);
         ReactiveFunction readPageStorage = new ReadPageStorageObject(appDataService, objectMapper, gson);
         ReactiveFunction deleteByFilterStorage = new DeleteStorageObjectWithFilter(appDataService, objectMapper, gson);
+        ReactiveFunction aggregateStorage = new AggregateStorageObject(appDataService, objectMapper, gson);
+        ReactiveFunction updateManyStorage = new UpdateManyStorageObject(appDataService, gson);
+        ReactiveFunction getVersionDetailsStorage =
+                new GetVersionDetailsStorageObject(appDataService, objectMapper, gson);
 
         this.addToRepoMap(
                 createStorage,
@@ -116,7 +123,10 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
                 updateStorage,
                 readStorage,
                 readPageStorage,
-                deleteByFilterStorage);
+                deleteByFilterStorage,
+                aggregateStorage,
+                updateManyStorage,
+                getVersionDetailsStorage);
     }
 
     private void makeRESTFunctions(
