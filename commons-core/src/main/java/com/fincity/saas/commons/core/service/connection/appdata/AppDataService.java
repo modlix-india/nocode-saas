@@ -68,6 +68,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.file.DataFileReader;
 import com.fincity.saas.commons.file.DataFileWriter;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
+import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
@@ -221,9 +222,7 @@ public class AppDataService {
                         created,
                         dataService,
                         conn,
-                        BooleanUtil.safeValueOf(eager)
-                                ? storage.getRelations().keySet().stream().toList()
-                                : eagerFields));
+                        this.resolveEagerFields(storage, eager, eagerFields)));
 
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.create"));
     }
@@ -335,7 +334,9 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.<Long>builderOrAuthorised(
                         storage, ac,
-                        () -> dataService.deleteByFilter(cc, conn, storage, new Query(), dryRun),
+                        // null: a builder clear-all empties rows and keeps history, per this
+                        // method's contract. It is not a user deleting a record.
+                        () -> dataService.deleteByFilter(cc, conn, storage, new Query(), dryRun, null),
                         Storage::getDeleteAuth,
                         CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE));
 
@@ -459,7 +460,6 @@ public class AppDataService {
                 .switchIfEmpty(Mono.defer(() -> this.mongoAppDataService.estimatedRowCount(null, appCode, clientCode)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.estimatedRowCount"));
     }
-
     public Mono<List<Map<String, Object>>> createMany(
             String appCode,
             String clientCode,
@@ -476,38 +476,56 @@ public class AppDataService {
                         this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
                 (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
                         .map(ObjectWithUniqueID::getObject),
-                (ca, ac, cc, conn, dataService, storage) -> Flux.fromIterable(dataArray)
-                        .flatMapSequential(dataObject -> FlatMapUtil.flatMapMono(
-                                () -> this.processRelationsForCreate(
-                                        ac, cc, storage, dataObject, dataService, conn),
-                                updatedDataObject -> this.createWithTriggers(cc, dataService, conn, storage,
-                                        updatedDataObject))
-                                .flatMap(createdObj -> {
-                                    if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
-                                        return this.generateEvent(
-                                                ca,
+                // Gated on createAuth, exactly as create is. Writing many rows is not a
+                // reason to write them unauthorised, and this path had no check at all.
+                (ca, ac, cc, conn, dataService, storage) -> this.<List<Map<String, Object>>>genericOperation(
+                        storage,
+                        (contextAuth, hasAccess) -> Flux.fromIterable(dataArray)
+                                .flatMapSequential(dataObject -> FlatMapUtil.flatMapMono(
+                                                () -> this.processRelationsForCreate(
+                                                        ac, cc, storage, dataObject, dataService, conn),
+                                                updatedDataObject -> this.createWithTriggers(
+                                                        cc, dataService, conn, storage, updatedDataObject))
+                                        .flatMap(createdObj -> {
+                                            if (BooleanUtil.safeValueOf(storage.getGenerateEvents())) {
+                                                return this.generateEvent(
+                                                        ca,
+                                                        ac,
+                                                        cc,
+                                                        storage,
+                                                        "Create",
+                                                        Map.of("dataArr", List.of(createdObj)),
+                                                        null);
+                                            }
+                                            return Mono.just(createdObj);
+                                        })
+                                        .flatMap(createdObj -> this.fillRelatedObjects(
                                                 ac,
                                                 cc,
                                                 storage,
-                                                "Create",
-                                                Map.of("dataArr", List.of(createdObj)),
-                                                null);
-                                    }
-                                    return Mono.just(createdObj);
-                                })
-                                .flatMap(createdObj -> this.fillRelatedObjects(
-                                        ac,
-                                        cc,
-                                        storage,
-                                        createdObj,
-                                        dataService,
-                                        conn,
-                                        BooleanUtil.safeValueOf(eager)
-                                                ? storage.getRelations().keySet().stream()
-                                                        .toList()
-                                                : eagerFields)))
-                        .collectList());
+                                                createdObj,
+                                                dataService,
+                                                conn,
+                                                this.resolveEagerFields(storage, eager, eagerFields))))
+                                .collectList(),
+                        Storage::getCreateAuth,
+                        CoreMessageResourceService.FORBIDDEN_CREATE_STORAGE));
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.createMany"));
+    }
+
+    /**
+     * Which relations to load eagerly, without assuming the storage has any.
+     *
+     * {@code storage.getRelations()} is null for a storage that declares none, and
+     * the callers that dereferenced it directly threw an NPE on every eager read of
+     * such a storage. readPage guarded this; create, createMany, update and read
+     * did not.
+     */
+    private List<String> resolveEagerFields(Storage storage, Boolean eager, List<String> eagerFields) {
+        if (!BooleanUtil.safeValueOf(eager)) return eagerFields;
+        return storage.getRelations() == null
+                ? List.of()
+                : storage.getRelations().keySet().stream().toList();
     }
 
     @SuppressWarnings({ "unchecked", "SuspiciousMethodCalls" })
@@ -778,7 +796,8 @@ public class AppDataService {
         return FlatMapUtil.flatMapMono(
                 () -> this.getStorageWithKIRunValidation(storageName, appCode, clientCode)
                         .map(ObjectWithUniqueID::getObject),
-                storage -> dataService.delete(clientCode, conn, storage, id))
+                // null: this is rollback of a half-made create, not a delete worth auditing.
+                storage -> dataService.delete(clientCode, conn, storage, id, null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteCreatedRelatedObject"));
     }
 
@@ -921,11 +940,67 @@ public class AppDataService {
                         updated,
                         dataService,
                         conn,
-                        BooleanUtil.safeValueOf(eager)
-                                ? storage.getRelations().keySet().stream().toList()
-                                : eagerFields));
+                        this.resolveEagerFields(storage, eager, eagerFields)));
 
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.update"));
+    }
+
+    /**
+     * Update many rows in one call, the counterpart to {@link #createMany}.
+     *
+     * Gated on {@code updateAuth} through genericOperation, same as {@link #update}.
+     * Rows are applied sequentially rather than concurrently so that two entries
+     * touching the same row keep their order, and so triggers see a predictable
+     * sequence.
+     */
+    public Mono<List<Map<String, Object>>> updateMany(
+            String appCode,
+            String clientCode,
+            String storageName,
+            List<DataObject> dataArray,
+            Boolean override,
+            Boolean eager,
+            List<String> eagerFields) {
+
+        Mono<List<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, conn, dataService, storage) -> this.<List<Map<String, Object>>>genericOperation(
+                        storage,
+                        (contextAuth, hasAccess) -> Flux.fromIterable(dataArray)
+                                .flatMapSequential(dataObject -> FlatMapUtil.flatMapMono(
+                                                () -> this.processRelationsForUpdate(
+                                                        ac, cc, dataService, conn, storage, dataObject, override),
+                                                updatedDataObject -> this.updateWithTriggers(
+                                                        ac, cc, dataService, conn, storage, updatedDataObject,
+                                                        override),
+                                                (updatedDataObject, e) -> this.generateEvent(
+                                                        ca,
+                                                        ac,
+                                                        cc,
+                                                        storage,
+                                                        "Update",
+                                                        e.getT1(),
+                                                        e.getT2().orElse(null)))
+                                        .flatMap(updated -> this.fillRelatedObjects(
+                                                ac,
+                                                cc,
+                                                storage,
+                                                updated,
+                                                dataService,
+                                                conn,
+                                                this.resolveEagerFields(storage, eager, eagerFields))))
+                                .collectList(),
+                        Storage::getUpdateAuth,
+                        CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE));
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.updateMany"));
     }
 
     private Mono<DataObject> processRelationsForUpdate(
@@ -1109,9 +1184,7 @@ public class AppDataService {
                         read,
                         dataService,
                         conn,
-                        BooleanUtil.safeValueOf(eager)
-                                ? storage.getRelations().keySet().stream().toList()
-                                : eagerFields));
+                        this.resolveEagerFields(storage, eager, eagerFields)));
 
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.read"));
     }
@@ -1147,10 +1220,8 @@ public class AppDataService {
                                             e,
                                             dataService,
                                             conn,
-                                            BooleanUtil.safeValueOf(query.getEager())
-                                                    ? storage.getRelations().keySet().stream()
-                                                            .toList()
-                                                    : query.getEagerFields()))
+                                            this.resolveEagerFields(
+                                                    storage, query.getEager(), query.getEagerFields())))
                                     .collectList(),
                             list -> Mono.just(
                                     PageableExecutionUtils.getPage(list, page.getPageable(), page::getTotalElements)));
@@ -1159,7 +1230,37 @@ public class AppDataService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
     }
 
-    public Mono<Boolean> delete(String appCode, String clientCode, String storageName, String id) {
+    /**
+     * A grouped read over a storage.
+     *
+     * Gated on {@code readAuth}, the same bar as {@link #readPage}: an aggregate is
+     * a read, and anyone who can page the rows can already compute these numbers
+     * client side. No relation filling, because once rows are collapsed into groups
+     * there is no row left to hang a relation off.
+     */
+    public Mono<Page<Map<String, Object>>> aggregate(
+            String appCode, String clientCode, String storageName, AggregateQuery query) {
+
+        Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                (ca, ac) -> this.clientCode(clientCode),
+                (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                (ca, ac, cc, conn) -> Mono.just(
+                        this.services.get(conn == null ? DEFAULT_APP_DATA_SERVICE : conn.getConnectionSubType())),
+                (ca, ac, cc, conn, dataService) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        .map(ObjectWithUniqueID::getObject),
+                (ca, ac, cc, conn, dataService, storage) -> this.<Page<Map<String, Object>>>genericOperation(
+                        storage,
+                        (contextAuth, hasAccess) -> dataService.aggregate(cc, conn, storage, query),
+                        Storage::getReadAuth,
+                        CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
+
+        return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.aggregate"));
+    }
+
+    public Mono<Boolean> delete(
+            String appCode, String clientCode, String storageName, String id, Boolean deleteVersion) {
         Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
@@ -1177,8 +1278,8 @@ public class AppDataService {
                         // the collection resolver and produced the literal database
                         // "null_<appCode>". The delete then silently 404d.
                         (contextAuth, hasAccess) -> FlatMapUtil.flatMapMono(
-                                () -> this.deleteRelatedObjects(ac, cc, dataService, conn, storage, id),
-                                deleted -> this.deleteWithTriggers(ac, cc, dataService, conn, storage, id),
+                                () -> this.deleteRelatedObjects(ac, cc, dataService, conn, storage, id, deleteVersion),
+                                deleted -> this.deleteWithTriggers(ac, cc, dataService, conn, storage, id, deleteVersion),
                                 (deleted, e) -> {
                                     if (e.getT2().isEmpty())
                                         return Mono.just(e.getT1());
@@ -1200,7 +1301,12 @@ public class AppDataService {
     }
 
     public Mono<Long> deleteByFilter(
-            String appCode, String clientCode, String storageName, Query query, Boolean devMode) {
+            String appCode,
+            String clientCode,
+            String storageName,
+            Query query,
+            Boolean devMode,
+            Boolean deleteVersion) {
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
@@ -1212,7 +1318,8 @@ public class AppDataService {
                         .map(ObjectWithUniqueID::getObject),
                 (ca, ac, cc, conn, dataService, storage) -> this.<Long>genericOperation(
                         storage,
-                        (contextAuth, hasAccess) -> dataService.deleteByFilter(cc, conn, storage, query, devMode),
+                        (contextAuth, hasAccess) -> dataService.deleteByFilter(cc, conn, storage, query, devMode,
+                                deleteVersion),
                         Storage::getDeleteAuth,
                         CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE),
                 (ca, ac, cc, conn, dataService, storage, deletedCount) -> {
@@ -1228,7 +1335,8 @@ public class AppDataService {
             IAppDataService dataService,
             Connection conn,
             Storage storage,
-            String id) {
+            String id,
+            Boolean deleteVersion) {
         if (storage.getRelations() == null || storage.getRelations().isEmpty())
             return Mono.just(true);
 
@@ -1304,13 +1412,15 @@ public class AppDataService {
                                         appCode,
                                         clientCode,
                                         relation.getValue().getStorageName(),
-                                        o.toString()));
+                                        o.toString(),
+                                        deleteVersion));
                         } else {
                             deleteList.add(this.delete(
                                     appCode,
                                     clientCode,
                                     relation.getValue().getStorageName(),
-                                    obj.get(relation.getKey()).toString()));
+                                    obj.get(relation.getKey()).toString(),
+                                    deleteVersion));
                         }
                     }
 
@@ -1328,7 +1438,8 @@ public class AppDataService {
             IAppDataService dataService,
             Connection conn,
             Storage storage,
-            String id) {
+            String id,
+            Boolean deleteVersion) {
         boolean noBeforeDelete = storage.getTriggers() == null
                 || storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE) == null
                 || storage.getTriggers().get(StorageTriggerType.BEFORE_DELETE).isEmpty();
@@ -1338,11 +1449,12 @@ public class AppDataService {
                 || storage.getTriggers().get(StorageTriggerType.AFTER_DELETE).isEmpty();
 
         if (noBeforeDelete && noAfterDelete && !BooleanUtil.safeValueOf(storage.getGenerateEvents()))
-            return dataService.delete(clientCode, conn, storage, id).map(e -> Tuples.of(e, Optional.empty()));
+            return dataService.delete(clientCode, conn, storage, id, deleteVersion)
+                    .map(e -> Tuples.of(e, Optional.empty()));
 
         if (noBeforeDelete && noAfterDelete)
             return this.read(appCode, clientCode, storage.getName(), id, false, List.of())
-                    .flatMap(existing -> dataService.delete(clientCode, conn, storage, id)
+                    .flatMap(existing -> dataService.delete(clientCode, conn, storage, id, deleteVersion)
                             .map(e -> Tuples.of(e, Optional.of(existing))));
 
         return FlatMapUtil.flatMapMono(
@@ -1362,7 +1474,7 @@ public class AppDataService {
 
                     return this.executeTriggers(storage, StorageTriggerType.BEFORE_DELETE, args);
                 },
-                (existing, beforeDelete) -> dataService.delete(clientCode, conn, storage, id),
+                (existing, beforeDelete) -> dataService.delete(clientCode, conn, storage, id, deleteVersion),
                 (existing, beforeDelete, deleted) -> {
                     if (noAfterDelete)
                         return Mono.just(Tuples.<Boolean, Optional<Map<String, Object>>>of(
@@ -1793,7 +1905,12 @@ public class AppDataService {
     }
 
     public Mono<Page<Map<String, Object>>> readPageVersion(
-            String appCode, String clientCode, String storageName, String versionId, Query query) {
+            String appCode,
+            String clientCode,
+            String storageName,
+            String versionId,
+            Query query,
+            Boolean includeObject) {
         Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
@@ -1807,8 +1924,8 @@ public class AppDataService {
                         storage,
                         // cc, not the raw parameter: readVersion above already does
                         // this and this one was inconsistent with it.
-                        (contextAuth, hasAccess) -> dataService.readPageVersion(cc, conn, storage, versionId,
-                                query),
+                        (contextAuth, hasAccess) -> dataService.readPageVersion(
+                                cc, conn, storage, versionId, query, includeObject),
                         Storage::getReadAuth,
                         CoreMessageResourceService.FORBIDDEN_READ_STORAGE));
 

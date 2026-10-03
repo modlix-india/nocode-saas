@@ -3,6 +3,7 @@ package com.fincity.saas.commons.core.service.connection.appdata;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Query;
 
 import java.util.Map;
@@ -31,13 +32,43 @@ public interface IAppDataService {
 
     Flux<Map<String, Object>> readPageAsFlux(String clientCode, Connection conn, Storage storage, Query query);
 
-    Mono<Boolean> delete(String clientCode, Connection conn, Storage storage, String id);
+    /**
+     * A grouped read: filter, group, measure, filter again, page.
+     *
+     * Returns FLAT rows, one per group, with group keys and measures together at
+     * the top level and no nested _id. That is what lets a chart bind the result
+     * without a reshaping step in between.
+     */
+    Mono<Page<Map<String, Object>>> aggregate(
+            String clientCode, Connection conn, Storage storage, AggregateQuery query);
 
-    Mono<Long> deleteByFilter(String clientCode, Connection conn, Storage storage, Query query, Boolean devMode);
+    /**
+     * @param deleteVersion TRUE purges the row's version history. FALSE, the default on
+     *                      every caller-facing surface, writes a DELETE version row
+     *                      capturing the final state first, so an audited storage stops
+     *                      losing the fact that the row ever existed. NULL leaves version
+     *                      rows untouched, which is what internal rollback and the
+     *                      builder's clear-all want: neither is a user deleting data.
+     */
+    Mono<Boolean> delete(String clientCode, Connection conn, Storage storage, String id, Boolean deleteVersion);
+
+    Mono<Long> deleteByFilter(
+            String clientCode, Connection conn, Storage storage, Query query, Boolean devMode, Boolean deleteVersion);
 
     Mono<Map<String, Object>> readVersion(String clientCode, Connection conn, Storage storage, String versionId);
 
-    Mono<Page<Map<String, Object>>> readPageVersion(String clientCode, Connection conn, Storage storage, String versionId, Query query);
+    /**
+     * @param includeObject FALSE drops the {@code object} snapshot from each version
+     *                      row, leaving who/when/which-operation. An audit view rarely
+     *                      needs the payload and the snapshot is most of the bytes.
+     */
+    Mono<Page<Map<String, Object>>> readPageVersion(
+            String clientCode,
+            Connection conn,
+            Storage storage,
+            String versionId,
+            Query query,
+            Boolean includeObject);
 
     Mono<Boolean> checkIfExists(String clientCode, Connection conn, Storage storage, String id);
 
