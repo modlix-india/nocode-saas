@@ -3,7 +3,6 @@ package com.fincity.saas.commons.util;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +15,6 @@ import com.google.gson.JsonElement;
 public class HashUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(HashUtil.class);
-
-    private static final ConcurrentHashMap<String, MessageDigest> digestCache = new ConcurrentHashMap<>();
 
     private static final StringEncoder encoder = StringEncoder.HEX;
 
@@ -73,11 +70,9 @@ public class HashUtil {
         return longToBytes(bits);
     }
 
+    // A MessageDigest is not thread-safe: a shared instance hashed by two threads at once corrupts its
+    // buffer, so every call gets its own.
     private static MessageDigest getMessageDigest(String alg) {
-        return digestCache.computeIfAbsent(alg, HashUtil::doGetMessageDigest);
-    }
-
-    private static MessageDigest doGetMessageDigest(String alg) {
         try {
             return MessageDigest.getInstance(alg);
         } catch (NoSuchAlgorithmException e) {
