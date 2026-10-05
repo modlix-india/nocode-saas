@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.enums;
 
 public enum ConnectionSubType {
     MONGO,
+    MYSQL,
     OFFICE365,
     SENDGRID,
     WHATSAPP,

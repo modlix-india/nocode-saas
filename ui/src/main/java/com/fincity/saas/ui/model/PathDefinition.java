@@ -55,20 +55,28 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 
 	@SuppressWarnings("unchecked")
 	@Override
+	/**
+	 * {@code this} is the BASE and {@code inc} the DERIVED.
+	 *
+	 * A nested IDifferentiable is reached as existing.extractDifference(incoming),
+	 * which is the OPPOSITE way round from a document's extractDifference(base).
+	 * Every nested extract here was written the document way, so base and derived
+	 * were swapped and a derived client's lists came back as the base's.
+	 */
 	public Mono<PathDefinition> extractDifference(PathDefinition inc) {
 
 		if (inc == null) {
 			return Mono.just(this);
 		}
 
-		return FlatMapUtil.flatMapMono(
-				() -> DifferenceExtractor.extract(this.headers, inc.headers),
-				he -> DifferenceExtractor.extract(this.whitelist, inc.whitelist),
-				(he, wh) -> DifferenceExtractor.extract(this.blacklist, inc.blacklist),
-				(he, wh, bl) -> DifferenceExtractor.extract(this.referrer, inc.referrer),
-				(he, wh, bl, re) -> DifferenceExtractor.extract(this.kiRunFxDefinition, inc.kiRunFxDefinition),
-				(he, wh, bl, re, ki) -> DifferenceExtractor.extract(this.redirectionDefinition,
-						inc.redirectionDefinition),
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> DifferenceExtractor.extract(inc.headers, this.headers),
+				he -> DifferenceExtractor.extract(inc.whitelist, this.whitelist),
+				(he, wh) -> DifferenceExtractor.extract(inc.blacklist, this.blacklist),
+				(he, wh, bl) -> DifferenceExtractor.extract(inc.referrer, this.referrer),
+				(he, wh, bl, re) -> DifferenceExtractor.extract(inc.kiRunFxDefinition, this.kiRunFxDefinition),
+				(he, wh, bl, re, ki) -> DifferenceExtractor.extract(inc.redirectionDefinition,
+						this.redirectionDefinition),
 				(he, wh, bl, re, ki, rd) -> {
 					PathDefinition diff = new PathDefinition();
 
@@ -94,7 +102,7 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 			return Mono.just(this);
 		}
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 				() -> DifferenceApplicator.apply(this.headers, override.headers),
 				he -> DifferenceApplicator.apply(this.whitelist, override.whitelist),
 				(he, wh) -> DifferenceApplicator.apply(this.blacklist, override.blacklist),
@@ -110,7 +118,7 @@ public class PathDefinition implements Serializable, IDifferentiable<PathDefinit
 					this.setKiRunFxDefinition((KIRunFxDefinition) ki);
 					this.setRedirectionDefinition((RedirectionDefinition) rd);
 
-					if (override.getUriType() != null)
+					if (this.getUriType() == null)
 						this.setUriType(override.getUriType());
 
 					return Mono.just(this);

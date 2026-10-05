@@ -168,7 +168,7 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
         AbstractCondition absc = null;
 
         if (filter.size() != 0) {
-            absc = this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
+            absc = this.mapper.convertValue(StorageJson.toMap(filter), AbstractCondition.class);
         }
 
         Query dsq = new Query()

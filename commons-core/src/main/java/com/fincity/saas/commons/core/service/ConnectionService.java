@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
+import com.fincity.saas.commons.core.enums.ConnectionSubType;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
@@ -36,6 +37,32 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
     protected ConnectionService() {
         super(Connection.class);
+    }
+
+    /**
+     * Every distinct app-data connection on a given backend, across all apps.
+     *
+     * Distinct by connection DETAILS rather than by document, because one MySQL
+     * server is usually shared by many apps and sweeping it once per app would do
+     * the same work several times over. Used by migration recovery, which has to
+     * find work without being told which app it belongs to.
+     */
+    public Flux<Connection> allAppData(ConnectionSubType subType) {
+
+        return this.mongoTemplate
+                .find(
+                        new org.springframework.data.mongodb.core.query.Query(
+                                new org.springframework.data.mongodb.core.query.Criteria()
+                                        .andOperator(
+                                                org.springframework.data.mongodb.core.query.Criteria
+                                                        .where("connectionType")
+                                                        .is(ConnectionType.APP_DATA),
+                                                org.springframework.data.mongodb.core.query.Criteria
+                                                        .where("connectionSubType")
+                                                        .is(subType))),
+                        Connection.class,
+                        this.getCollectionName())
+                .distinct(c -> c.getConnectionDetails() == null ? "" : c.getConnectionDetails().toString());
     }
 
     /**

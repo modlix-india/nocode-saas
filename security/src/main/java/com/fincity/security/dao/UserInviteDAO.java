@@ -3,6 +3,7 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.Tables.SECURITY_USER_INVITE;
 import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jooq.Condition;
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Component;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.clientcheck.AbstractClientCheckDAO;
 import com.fincity.security.dao.clientcheck.ClientCheckDAOHelper;
+import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
 
@@ -97,6 +100,33 @@ public class UserInviteDAO extends AbstractClientCheckDAO<SecurityUserInviteReco
                 .where(SECURITY_PROFILE.APP_ID.eq(appId)))
                 .map(r -> r.get(SECURITY_PROFILE.ID))
                 .collectList();
+    }
+
+    /**
+     * An invite already waiting in {@code clientId} for this email or phone number.
+     * <p>
+     * The table is unique on {@code (CLIENT_ID, EMAIL_ID)} and on {@code (CLIENT_ID, PHONE_NUMBER)}, so
+     * inserting a second invite for either surfaced as a raw constraint violation (a 500). Asking first
+     * lets the caller say what is actually wrong.
+     */
+    public Mono<UserInvite> getInviteWithAnyIdentity(ULong clientId, String emailId, String phoneNumber) {
+
+        List<Condition> conditions = new ArrayList<>();
+
+        if (!StringUtil.safeIsBlank(emailId) && !User.PLACEHOLDER.equals(emailId))
+            conditions.add(SECURITY_USER_INVITE.EMAIL_ID.eq(emailId));
+
+        if (!StringUtil.safeIsBlank(phoneNumber) && !User.PLACEHOLDER.equals(phoneNumber))
+            conditions.add(SECURITY_USER_INVITE.PHONE_NUMBER.eq(phoneNumber));
+
+        if (clientId == null || conditions.isEmpty())
+            return Mono.empty();
+
+        return Mono.from(this.dslContext.selectFrom(SECURITY_USER_INVITE)
+                .where(SECURITY_USER_INVITE.CLIENT_ID.eq(clientId))
+                .and(DSL.or(conditions))
+                .limit(1))
+                .map(e -> e.into(this.pojoClass));
     }
 
     public Mono<Boolean> deleteUserInvitation(String code) {

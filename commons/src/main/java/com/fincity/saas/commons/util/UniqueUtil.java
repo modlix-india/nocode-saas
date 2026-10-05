@@ -2,11 +2,21 @@ package com.fincity.saas.commons.util;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import java.util.UUID;
 
 public class UniqueUtil {
 
 	private static final String BASE = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+	/** Crockford base32: no I, L, O or U, so a ULID cannot be misread aloud or mistyped. */
+	private static final char[] CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".toCharArray();
+
+	private static final SecureRandom RANDOM = new SecureRandom();
+
+	private static final int ULID_LENGTH = 26;
+
+	private static final int ULID_TIME_CHARS = 10;
 
 	public static String shortUUID() {
 
@@ -109,6 +119,33 @@ public class UniqueUtil {
 		}
 
 		return sb.toString();
+	}
+
+	/**
+	 * A ULID: 48 bits of millisecond timestamp then 80 bits of randomness, Crockford
+	 * base32, 26 characters, lexicographically sortable by creation time.
+	 *
+	 * This is the row id for app data on a relational backend. An auto-increment key
+	 * would be wrong on three counts: sequential ids are enumerable and per-row
+	 * authorization does not exist, the caller can supply its own id before an insert
+	 * (MongoAppDataService.create takes one from the payload) which a sequence cannot
+	 * support, and a numeric id would give _id two different shapes depending on which
+	 * backend a storage happens to sit on.
+	 */
+	public static String ulid() {
+
+		char[] out = new char[ULID_LENGTH];
+
+		long time = System.currentTimeMillis();
+		for (int i = ULID_TIME_CHARS - 1; i >= 0; i--) {
+			out[i] = CROCKFORD[(int) (time & 0x1f)];
+			time >>>= 5;
+		}
+
+		for (int i = ULID_TIME_CHARS; i < ULID_LENGTH; i++)
+			out[i] = CROCKFORD[RANDOM.nextInt(CROCKFORD.length)];
+
+		return new String(out);
 	}
 
 	private UniqueUtil() {

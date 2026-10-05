@@ -101,7 +101,7 @@ public class CreateStorageObject extends AbstractReactiveFunction {
         if (storageName == null || dataObject == null)
             return Mono.just(new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, new JsonObject())))));
 
-        Map<String, Object> dataObj = gson.fromJson(dataObject, new TypeToken<Map<String, Object>>() {}.getType());
+        Map<String, Object> dataObj = StorageJson.toMap(dataObject);
 
         return appDataService
                 .create(

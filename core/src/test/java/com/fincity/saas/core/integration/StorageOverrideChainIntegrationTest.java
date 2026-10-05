@@ -2,6 +2,9 @@ package com.fincity.saas.core.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +18,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
 import com.fincity.saas.commons.core.document.Storage;
+import com.fincity.saas.commons.core.enums.MySQLColumnType;
+import com.fincity.saas.commons.core.enums.StorageRelationConstraint;
+import com.fincity.saas.commons.core.enums.StorageRelationType;
+import com.fincity.saas.commons.core.model.StorageRelation;
+import com.fincity.saas.commons.core.model.StorageColumnDefinition;
 import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 
@@ -65,6 +73,306 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
     private <T> T asClient(Mono<T> mono, String clientCode) {
         ContextAuthentication ca = this.authFor(clientCode, allAuthoritiesFor("Storage"));
         return mono.contextWrite(ReactiveSecurityContextHolder.withAuthentication(ca)).block();
+    }
+
+    /** The same fixture, carrying the fields a backend builds a table from. */
+    private Storage storedStorage(
+            String clientCode,
+            String baseClientCode,
+            Map<String, Object> schema,
+            Map<String, StorageColumnDefinition> columnDefinitions,
+            Map<String, Storage.StorageIndex> indexes,
+            List<String> textIndexFields) {
+
+        Storage storage = new Storage();
+        storage.setName(STORAGE_NAME)
+                .setAppCode(APP_CODE)
+                .setClientCode(clientCode)
+                .setBaseClientCode(baseClientCode)
+                .setVersion(1);
+        storage.setSchema(schema == null ? null : new HashMap<>(schema));
+        storage.setColumnDefinitions(columnDefinitions);
+        storage.setIndexes(indexes);
+        storage.setTextIndexFields(textIndexFields);
+        storage.setUniqueName("testapp_" + clientCode.toLowerCase() + "_teststorage");
+        return this.insertRaw(storage);
+    }
+
+    private static Map<String, StorageColumnDefinition> decimal(String field, int precision, int scale) {
+        return Map.of(
+                field,
+                new StorageColumnDefinition()
+                        .setMysql(new StorageColumnDefinition.MySQL()
+                                .setType(MySQLColumnType.DECIMAL)
+                                .setPrecision(precision)
+                                .setScale(scale)));
+    }
+
+    private static Map<String, Storage.StorageIndex> index(String name, String field) {
+        Storage.StorageIndex idx = new Storage.StorageIndex();
+        idx.setFields(List.of(new Storage.StorageIndexField().setFieldName(field)));
+        return Map.of(name, idx);
+    }
+
+    /**
+     * The fields a backend builds a table from, merged down the same chain.
+     *
+     * These are newer than the schema and travel the same overridable machinery,
+     * which is the part worth proving: a client that pins its own DECIMAL scale has
+     * to keep it when the base moves, and a base that adds an index has to reach a
+     * client that never mentioned one. Both are decisions made per tenant, and both
+     * end up as DDL.
+     */
+    @Nested
+    @DisplayName("saving a derived storage")
+    class DerivedSave {
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a client that overrides something other than the schema can still save")
+        void deltaWithoutSchemaSaves() {
+            // A derived document stores only its DIFFERENCE from the base, so a
+            // client overriding an index or a column definition has no schema of
+            // its own - and therefore no type. The OBJECT check read
+            // schema.getType() unconditionally and threw NullPointerException, so
+            // every such save came back as a 500 with no indication why. It is the
+            // ordinary case for an override, not an edge one.
+            setInheritance(List.of(SYSTEM, MID));
+            storedStorage(SYSTEM, null, schema("title", "t"), null, null, List.of("title"));
+            Storage mid = storedStorage(MID, SYSTEM, null, null, index("byTitle", "title"), null);
+
+            Storage read = asClient(storageService.read(mid.getId()), MID);
+            read.setIndexes(index("byTitleTwo", "title"));
+
+            Storage saved = asClient(storageService.update(read), MID);
+
+            assertNotNull(saved);
+            assertTrue(saved.getIndexes().containsKey("byTitleTwo"));
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a derived client's own column definition value survives the save")
+        void derivedPinPersists() {
+            // Observed live: PUT returns 200 and the stored delta holds the BASE's
+            // number, not the one sent. A plain field on the same request persists,
+            // and the model's own differencing is correct in isolation - so this
+            // pins where the value is actually lost.
+            setInheritance(List.of(SYSTEM, MID));
+            storedStorage(SYSTEM, null, schema("title", "t"), decimal("title", 19, 4), null, null);
+            Storage mid = storedStorage(MID, SYSTEM, null, null, null, null);
+
+            Storage read = asClient(storageService.read(mid.getId()), MID);
+            read.setColumnDefinitions(decimal("title", 10, 2));
+
+            asClient(storageService.update(read), MID);
+
+            Storage after = asClient(storageService.read(mid.getId()), MID);
+
+            assertEquals(
+                    10,
+                    after.getColumnDefinitions().get("title").getMysql().getPrecision(),
+                    "the client's own precision must survive, not revert to the base's");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("the history retention numbers survive an update")
+        void retentionSurvivesUpdate() {
+            // updatableEntity is an explicit whitelist, so a field added to Storage
+            // is dropped on every save until someone remembers to list it there -
+            // silently, with a 200 and a bumped version. That is exactly what
+            // happened to these two: the editors rendered them, the save reported
+            // success, and the numbers were gone on the next read.
+            setInheritance(List.of(SYSTEM));
+            Storage base = storedStorage(SYSTEM, null, schema("title", "t"), null, null, null);
+
+            Storage read = asClient(storageService.read(base.getId()), SYSTEM);
+            read.setVersionRetentionDays(7).setVersionRetentionCount(4);
+
+            asClient(storageService.update(read), SYSTEM);
+
+            Storage after = asClient(storageService.read(base.getId()), SYSTEM);
+
+            assertEquals(7, after.getVersionRetentionDays(), "the retention age must survive the save");
+            assertEquals(4, after.getVersionRetentionCount(), "the retention count must survive the save");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("retention can be cleared back to the platform default")
+        void retentionCanBeCleared() {
+            // Blank means "use the installation default", so clearing has to reach
+            // the stored document. A whitelist that copies a value but never a null
+            // would pin the first number anyone typed, forever.
+            setInheritance(List.of(SYSTEM));
+            Storage base = storedStorage(SYSTEM, null, schema("title", "t"), null, null, null);
+
+            Storage read = asClient(storageService.read(base.getId()), SYSTEM);
+            read.setVersionRetentionDays(7);
+            asClient(storageService.update(read), SYSTEM);
+
+            Storage again = asClient(storageService.read(base.getId()), SYSTEM);
+            again.setVersionRetentionDays(null);
+            asClient(storageService.update(again), SYSTEM);
+
+            assertNull(
+                    asClient(storageService.read(base.getId()), SYSTEM).getVersionRetentionDays(),
+                    "clearing the field must reach the document, not keep the old number");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a derived storage WITH RELATIONS can be saved, which it could not before")
+        void derivedWithRelationsSaves() {
+            // The relation collision check read schema.getProperties() straight.
+            // A delta declares no schema, so that is null, and every save of a
+            // derived storage carrying relations was a 500 - which is most of them,
+            // since relations are inherited into the merged view the client edits.
+            setInheritance(List.of(SYSTEM, MID));
+
+            Map<String, StorageRelation> relations = new HashMap<>();
+            relations.put(
+                    "category",
+                    new StorageRelation()
+                            .setStorageName("categories")
+                            .setRelationType(StorageRelationType.TO_ONE)
+                            .setFieldName("_id")
+                            .setDeleteConstraint(StorageRelationConstraint.NOTHING));
+
+            // The relation target has to exist: validate reads every one of them.
+            Storage categories = new Storage();
+            categories.setName("categories").setAppCode(APP_CODE).setClientCode(SYSTEM).setVersion(1);
+            categories.setUniqueName("testapp_system_categories");
+            categories.setSchema(new HashMap<>(schema("label", "l")));
+            StorageOverrideChainIntegrationTest.this.insertRaw(categories);
+
+            storedStorage(SYSTEM, null, schema("title", "t"), null, null, null);
+            Storage mid = storedStorage(MID, SYSTEM, null, null, null, null);
+            mid.setRelations(relations);
+            StorageOverrideChainIntegrationTest.this.mongoTemplate.save(mid).block();
+
+            Storage read = asClient(storageService.read(mid.getId()), MID);
+            read.getRelations().get("category").setDeleteConstraint(StorageRelationConstraint.RESTRICT);
+
+            Storage saved = asClient(storageService.update(read), MID);
+
+            assertNotNull(saved);
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("and a base storage with no OBJECT type is still refused")
+        void baseStillValidated() {
+            // The check has to keep working where it means something: a storage
+            // that DOES declare a schema must declare an object.
+            setInheritance(List.of(SYSTEM));
+            Storage base = storedStorage(SYSTEM, null, schema("type", "STRING"), null, null, null);
+
+            Storage read = asClient(storageService.read(base.getId()), SYSTEM);
+            read.setSchema(new HashMap<>(Map.of("type", "STRING")));
+
+            assertThrows(Exception.class, () -> asClient(storageService.update(read), SYSTEM));
+        }
+    }
+
+    @Nested
+    @DisplayName("CH3: the fields a table is built from")
+    class TableShapeAcrossLevels {
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a column definition from the base reaches a leaf that never mentioned one")
+        void columnDefinitionInherited() {
+
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            storedStorage(SYSTEM, null, schema("price", "p"), decimal("price", 19, 4), null, null);
+            storedStorage(MID, SYSTEM, null, null, null, null);
+            Storage leaf = storedStorage(LEAF, MID, null, null, null, null);
+
+            Storage read = asClient(storageService.read(leaf.getId()), LEAF);
+
+            assertNotNull(read.getColumnDefinitions());
+            assertEquals(
+                    19,
+                    read.getColumnDefinitions()
+                            .get("price")
+                            .getMysql()
+                            .getPrecision());
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a leaf that pins its own scale keeps it while the base says otherwise")
+        void leafPinWins() {
+            // The reason the migration journal keys on the resolved shape rather
+            // than the storage version: these two clients want different tables
+            // from one definition, and a publish must not give the leaf the base's.
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            storedStorage(SYSTEM, null, schema("price", "p"), decimal("price", 19, 4), null, null);
+            storedStorage(MID, SYSTEM, null, null, null, null);
+            Storage leaf = storedStorage(LEAF, MID, null, decimal("price", 10, 2), null, null);
+
+            Storage read = asClient(storageService.read(leaf.getId()), LEAF);
+
+            assertEquals(
+                    10,
+                    read.getColumnDefinitions().get("price").getMysql().getPrecision());
+            assertEquals(
+                    2, read.getColumnDefinitions().get("price").getMysql().getScale());
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a mid-level definition reaches the leaf, and the leaf adds its own field")
+        void midAndLeafMerge() {
+
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            storedStorage(SYSTEM, null, schema("price", "p", "cost", "c"), null, null, null);
+            storedStorage(MID, SYSTEM, null, decimal("price", 12, 3), null, null);
+            Storage leaf = storedStorage(LEAF, MID, null, decimal("cost", 8, 2), null, null);
+
+            Storage read = asClient(storageService.read(leaf.getId()), LEAF);
+
+            assertEquals(
+                    12,
+                    read.getColumnDefinitions().get("price").getMysql().getPrecision());
+            assertEquals(
+                    8, read.getColumnDefinitions().get("cost").getMysql().getPrecision());
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("indexes and text fields merge down the chain too")
+        void indexesInherited() {
+
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            storedStorage(SYSTEM, null, schema("title", "t"), null, index("byTitle", "title"), List.of("title"));
+            storedStorage(MID, SYSTEM, null, null, null, null);
+            Storage leaf = storedStorage(LEAF, MID, null, null, index("byLeaf", "title"), null);
+
+            Storage read = asClient(storageService.read(leaf.getId()), LEAF);
+
+            assertTrue(read.getIndexes().containsKey("byTitle"), "the base index must reach the leaf");
+            assertTrue(read.getIndexes().containsKey("byLeaf"), "and the leaf keeps its own");
+            assertEquals(List.of("title"), read.getTextIndexFields());
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a storage with none of these resolves to none, not to an empty shell")
+        void absentStaysAbsent() {
+            // Worth pinning: the override machinery turns an empty merge result into
+            // null rather than an empty map, so a storage that declares nothing is
+            // indistinguishable from one that never had the field.
+            setInheritance(List.of(SYSTEM, MID));
+            storedStorage(SYSTEM, null, schema("a", "1"), null, null, null);
+            Storage mid = storedStorage(MID, SYSTEM, null, null, null, null);
+
+            Storage read = asClient(storageService.read(mid.getId()), MID);
+
+            assertNull(read.getColumnDefinitions());
+        }
     }
 
     @Nested

@@ -102,6 +102,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String PLAN_DEFAULT_PLAN_MUST_HAVE_ONE_APP = "plan_default_plan_must_have_one_app";
     public static final String PLAN_CYCLE_NOT_FOUND = "plan_cycle_not_found";
     public static final String CLIENT_MANAGER_ALREADY_EXISTS = "client_manager_already_exists";
+    public static final String USER_IDENTITY_TAKEN = "user_identity_taken";
+    public static final String USER_INVITE_PENDING = "user_invite_pending";
 
     public SecurityMessageResourceService() {
 

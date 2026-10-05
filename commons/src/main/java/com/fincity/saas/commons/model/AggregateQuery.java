@@ -43,6 +43,25 @@ public class AggregateQuery implements Serializable {
     /** Becomes the $match stage, reusing the ordinary filter vocabulary. */
     private AbstractCondition condition;
 
+    /**
+     * Relations pulled in as joins, so a group key or a measure can come from the
+     * other side.
+     *
+     * This is the only part of the query model Mongo cannot answer at all: an
+     * aggregation pipeline sees one collection. A backend that cannot join refuses
+     * rather than returning a smaller truth.
+     */
+    private List<StorageJoin> joins;
+
+    /**
+     * Questions about the children, answered per parent row.
+     *
+     * The other direction from {@code joins}: a relation is declared on the side
+     * that holds the id, so a join can only ever walk towards the parent. See
+     * {@link StorageSubQuery}.
+     */
+    private List<StorageSubQuery> subQueries;
+
     /** Empty or null collapses the whole collection into a single row. */
     private List<GroupByField> groupBy;
 

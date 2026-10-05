@@ -184,6 +184,19 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+            A real MySQL for the app-data backend's integration tests. The relational
+            autoconfiguration is excluded in application-test.yml, which is unrelated:
+            the MySQL backend builds its own pool from an APP_DATA connection document,
+            so what it needs is a server to point that document at, not Spring's
+            DataSource. mysql-connector-j is already a compile dependency for Flyway,
+            which is what Testcontainers probes readiness with.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
     <dependencyManagement>

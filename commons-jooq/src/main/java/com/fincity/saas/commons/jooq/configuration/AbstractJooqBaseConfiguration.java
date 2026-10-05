@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.jooq.configuration;
 
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 
 import org.jooq.DSLContext;
@@ -30,6 +32,12 @@ import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
+import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.ConnectionFactoryMetadata;
+import io.r2dbc.spi.ValidationDepth;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 import lombok.Getter;
 
 @Getter
@@ -43,6 +51,18 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 
     @Value("${spring.r2dbc.password}")
     protected String password;
+
+    @Value("${spring.r2dbc.pool.initial-size:5}")
+    protected int poolInitialSize;
+
+    @Value("${spring.r2dbc.pool.max-size:10}")
+    protected int poolMaxSize;
+
+    @Value("${spring.r2dbc.pool.max-idle-time:30m}")
+    protected Duration poolMaxIdleTime;
+
+    @Value("${spring.r2dbc.pool.validation-query:SELECT 1}")
+    protected String poolValidationQuery;
 
 
     protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
@@ -88,18 +108,118 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
     @Bean
     DSLContext context(ObjectProvider<MeterRegistry> meterRegistry) {
 
-        Builder props = ConnectionFactoryOptions.parse(url).mutate();
-        ConnectionFactory factory = ConnectionFactories.get(props.option(ConnectionFactoryOptions.DRIVER, "pool")
-                .option(ConnectionFactoryOptions.PROTOCOL, "mysql")
-                .option(ConnectionFactoryOptions.USER, username)
-                .option(ConnectionFactoryOptions.PASSWORD, password)
-                .build());
-
-        ConnectionPool pool = new ConnectionPool(ConnectionPoolConfiguration.builder(factory).build());
+        ConnectionPool pool = pool(
+                driverFactory(url, username, password),
+                poolInitialSize,
+                poolMaxSize,
+                poolMaxIdleTime,
+                poolValidationQuery);
 
         meterRegistry.ifAvailable(registry ->
                 new ConnectionPoolMetrics(pool, "r2dbc", Tags.empty()).bindTo(registry));
 
-        return DSL.using(pool);
+        return DSL.using(recovering(pool));
+    }
+
+    /**
+     * The DRIVER-level factory, deliberately NOT a pool.
+     *
+     * This used to force {@code DRIVER=pool} and {@code PROTOCOL=mysql}, which makes
+     * ConnectionFactories hand back an r2dbc-pool ConnectionPool - and that was then
+     * wrapped in a SECOND ConnectionPool below. Two nested pools, both on
+     * r2dbc-pool's defaults, each with its own idle connections and its own
+     * bookkeeping, and the outer one the only place any configuration could land.
+     * One pool, configured once, is the whole point of this method existing.
+     */
+    static ConnectionFactory driverFactory(String url, String username, String password) {
+
+        Builder props = ConnectionFactoryOptions.parse(url).mutate();
+
+        return ConnectionFactories.get(props.option(ConnectionFactoryOptions.USER, username)
+                .option(ConnectionFactoryOptions.PASSWORD, password)
+                .build());
+    }
+
+    /**
+     * The one pool, built from {@code spring.r2dbc.pool.*}.
+     *
+     * Those properties were set in every service's yml and read by NOBODY: the pool
+     * was built with {@code ConnectionPoolConfiguration.builder(factory).build()} and
+     * nothing else, so size, idle time and validation were all r2dbc-pool defaults
+     * however the yml was written.
+     *
+     * The validation half is not cosmetic. Without it a pooled connection whose
+     * socket the server has already dropped - after a MySQL restart, a failover or a
+     * crash - is handed straight back to the caller, and every query fails with
+     * netty's "channel not registered to an event loop" until the SERVICE is
+     * restarted. The database recovering is then not enough, which is the wrong
+     * failure mode for a pool that outlives the database. Observed across core and
+     * security on 2026-10-04.
+     */
+    static ConnectionPool pool(
+            ConnectionFactory factory, int initialSize, int maxSize, Duration maxIdleTime, String validationQuery) {
+
+        ConnectionPoolConfiguration.Builder config = ConnectionPoolConfiguration.builder(factory)
+                .initialSize(initialSize)
+                .maxSize(maxSize)
+                .maxIdleTime(maxIdleTime);
+
+        // A blank query would be sent to the server as a statement, so an operator
+        // clearing the property turns validation off rather than breaking every
+        // acquire.
+        if (validationQuery != null && !validationQuery.isBlank())
+            config.validationQuery(validationQuery).validationDepth(ValidationDepth.REMOTE);
+
+        return new ConnectionPool(config.build());
+    }
+
+    /** How many stale pooled connections one caller will quietly step over. */
+    private static final int STALE_ACQUIRE_RETRIES = 3;
+
+    /**
+     * Step over a connection the server has already hung up on.
+     *
+     * When MySQL dies abruptly, the sockets its pooled connections were using are
+     * gone but the pool still holds them. The NEXT acquire gets one and fails with
+     * netty's {@code IllegalStateException: channel not registered to an event
+     * loop} - thrown from inside validation, so {@code validationQuery} does not
+     * catch it and the error reaches the caller as a failed request.
+     *
+     * The pool does heal itself: a failed acquire discards that connection, so the
+     * damage is bounded by how many stale ones it holds, not unbounded. But bounded
+     * still means real requests failing for no reason the caller could act on, so
+     * they are retried here instead.
+     *
+     * Deliberately narrow. A genuinely unreachable server surfaces as
+     * {@code ConnectException: Connection refused}, NOT IllegalStateException, and
+     * must NOT be retried - that would turn a fast, honest failure into a slow one
+     * and hide an outage. Measured both on 2026-10-04 against a killed MySQL.
+     */
+    static ConnectionFactory recovering(ConnectionPool pool) {
+
+        return new ConnectionFactory() {
+
+            @Override
+            public Publisher<? extends Connection> create() {
+                return Mono.from(pool.create())
+                        .retryWhen(Retry.max(STALE_ACQUIRE_RETRIES).filter(AbstractJooqBaseConfiguration::isStaleChannel));
+            }
+
+            @Override
+            public ConnectionFactoryMetadata getMetadata() {
+                return pool.getMetadata();
+            }
+        };
+    }
+
+    /** True only for the dead-socket signal, never for a server that is down. */
+    static boolean isStaleChannel(Throwable error) {
+
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof IllegalStateException) return true;
+            if (t.getCause() == t) break;
+        }
+
+        return false;
     }
 }
