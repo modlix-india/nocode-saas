@@ -39,7 +39,7 @@ public class ClientManagerService
         extends AbstractJOOQDataService<SecurityClientManagerRecord, ULong, ClientManager, ClientManagerDAO> {
 
     private static final String CACHE_NAME_CLIENT_MANAGER = "clientManager";
-    private static final String AUTHORIZED_ROLE = "Authorities.ROLE_Owner or Authorities.ROLE_ClientManager";
+    private static final String AUTHORIZED_ROLE = "Authorities.ROLE_Owner or Authorities.ROLE_Client_Manager";
 
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -714,20 +715,22 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     @Override
     public Mono<User> read(ULong id) {
 
+        // Explicit <User> witnesses: javac infers them, the IDE's ECJ does not, and ECJ then writes a
+        // class whose read() throws "Unresolved compilation problem" into target/classes.
         return super.read(id)
-                .flatMap(
-                        e -> SecurityContextUtil.getUsersContextAuthentication().flatMap(ca -> {
+                .<User>flatMap(
+                        e -> SecurityContextUtil.getUsersContextAuthentication().<User>flatMap(ca -> {
                             if (id.equals(ULong.valueOf(ca.getUser().getId())))
                                 return Mono.just(e);
 
                             if (!SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities()))
-                                return Mono.defer(() -> this.forbiddenError(
+                                return Mono.defer(() -> this.<User>forbiddenError(
                                         SecurityMessageResourceService.FORBIDDEN_PERMISSION, "User READ"));
 
                             return Mono.just(e);
                         }))
                 .switchIfEmpty(
-                        Mono.defer(() -> this.forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
+                        Mono.defer(() -> this.<User>forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
     }
 
     public Mono<User> readInternal(ULong userId) {
@@ -1005,23 +1008,45 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     @Override
     protected Mono<User> updatableEntity(User entity) {
-        return this.read(entity.getId()).map(e -> {
-            e.setUserName(entity.getUserName());
-            e.setEmailId(entity.getEmailId());
-            e.setPhoneNumber(entity.getPhoneNumber());
-            e.setFirstName(entity.getFirstName());
-            e.setLastName(entity.getLastName());
-            e.setMiddleName(entity.getMiddleName());
-            e.setLocaleCode(entity.getLocaleCode());
-            // Sanitised rather than copied, so clearing it back to null is a supported thing to do:
-            // null means "use the client's zone", and somebody who moved once has to be able to stop
-            // overriding. An unreadable value would otherwise stick and be impossible to remove.
-            e.setTimeZone(TimeZoneUtil.sanitize(entity.getTimeZone()));
-            e.setStatusCode(entity.getStatusCode());
-            e.setDesignationId(entity.getDesignationId());
-            e.setReportingTo(entity.getReportingTo());
+        return Mono.zip(this.read(entity.getId()), SecurityContextUtil.getUsersContextAuthentication())
+                .map(tup -> applyUpdatableFields(tup.getT1(), entity, tup.getT2()));
+    }
+
+    /**
+     * Copies the editable fields of {@code entity} onto the stored user {@code e}.
+     * <p>
+     * Everybody may edit themselves ({@link #checkSubOrgAndRun} lets a caller through for their own
+     * id), but status, designation and reporting line are not personal details: a member who could
+     * set them could reactivate or unlock their own account, or re-parent themselves in the org
+     * chart. So a caller editing THEMSELVES without {@code User_UPDATE} keeps the stored values;
+     * their personal fields stay editable. Callers holding {@code User_UPDATE} are unaffected.
+     */
+    static User applyUpdatableFields(User e, User entity, ContextAuthentication ca) {
+
+        boolean selfWithoutUserUpdate = ca != null && ca.getUser() != null
+                && e.getId() != null
+                && e.getId().equals(ULong.valueOf(ca.getUser().getId()))
+                && !SecurityContextUtil.hasAuthority("Authorities.User_UPDATE", ca.getAuthorities());
+
+        e.setUserName(entity.getUserName());
+        e.setEmailId(entity.getEmailId());
+        e.setPhoneNumber(entity.getPhoneNumber());
+        e.setFirstName(entity.getFirstName());
+        e.setLastName(entity.getLastName());
+        e.setMiddleName(entity.getMiddleName());
+        e.setLocaleCode(entity.getLocaleCode());
+        // Sanitised rather than copied, so clearing it back to null is a supported thing to do:
+        // null means "use the client's zone", and somebody who moved once has to be able to stop
+        // overriding. An unreadable value would otherwise stick and be impossible to remove.
+        e.setTimeZone(TimeZoneUtil.sanitize(entity.getTimeZone()));
+
+        if (selfWithoutUserUpdate)
             return e;
-        });
+
+        e.setStatusCode(entity.getStatusCode());
+        e.setDesignationId(entity.getDesignationId());
+        e.setReportingTo(entity.getReportingTo());
+        return e;
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_DELETE')")
@@ -1946,35 +1971,55 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         boolean fetchDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_DESIGNATION));
         boolean fetchReportingTo = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_REPORTING_TO));
 
+        if (users == null || users.isEmpty())
+            return Mono.just(users == null ? List.of() : users);
+
+        // Every step fills a field on the user in place and hands the SAME user on, whether or not
+        // the lookup found anything. Filtering the flux, as this used to, silently dropped every
+        // user without a creator / designation / reporting manager, so a single read 500'd on
+        // getFirst() of an empty list, readByIds lost rows, and later enrichments never ran for
+        // the dropped users. concatMap keeps the page order, which flatMap did not.
         Flux<User> userFlux = Flux.fromIterable(users);
 
         if (fetchProfiles)
-            userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
+            userFlux = userFlux.concatMap(user -> this.profileService.fillUser(appCode, appId, user)
+                    .defaultIfEmpty(user));
 
         if (fetchClient)
-            userFlux = userFlux
-                    .flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
+            userFlux = userFlux.concatMap(user -> keepUser(user, user.getClientId(),
+                    id -> this.clientService.getClientInfoById(id).map(user::setClient)));
 
         if (fetchManagingClient)
-            userFlux = userFlux.flatMap(user -> this.clientService
-                    .getManagedClientOfClientById(user.getClientId())
-                    .map(user::setManagingClient));
+            userFlux = userFlux.concatMap(user -> keepUser(user, user.getClientId(),
+                    id -> this.clientService.getManagedClientOfClientById(id).map(user::setManagingClient)));
 
         if (fetchCreatedBy)
-            userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
-                    .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+            userFlux = userFlux.concatMap(user -> keepUser(user, user.getCreatedBy(),
+                    id -> this.readInternal(id).map(user::setCreatedByUser)));
 
         if (fetchDesignation)
-            userFlux = userFlux
-                    .filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
-                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId())
-                            .map(user::setDesignation));
+            userFlux = userFlux.concatMap(user -> keepUser(user, user.getDesignationId(),
+                    id -> this.designationService.readInternal(id).map(user::setDesignation)));
 
         if (fetchReportingTo)
-            userFlux = userFlux.filter(user -> user.getReportingTo() != null && user.getReportingTo().intValue() != 0)
-                    .flatMap(user -> this.readInternal(user.getReportingTo()).map(user::setReportingUser));
+            userFlux = userFlux.concatMap(user -> keepUser(user, user.getReportingTo(),
+                    id -> this.readInternal(id).map(user::setReportingUser)));
 
         return userFlux.collectList();
+    }
+
+    /**
+     * Runs one enrichment lookup for a user and always emits the user, filled or not. A null or
+     * zero id skips the lookup; a lookup that finds nothing or fails leaves the field null.
+     */
+    private static Mono<User> keepUser(User user, ULong id, Function<ULong, Mono<User>> fill) {
+
+        if (id == null || id.longValue() == 0L)
+            return Mono.just(user);
+
+        return fill.apply(id)
+                .onErrorResume(e -> Mono.empty())
+                .defaultIfEmpty(user);
     }
 
     public Mono<List<NotificationUser>> getUsersForNotification(UsersListRequest request) {
