@@ -3514,4 +3514,187 @@ class UserServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	// =========================================================================
+	// fillDetails: enrichment never drops a row
+	// =========================================================================
+
+	@Nested
+	class FillDetailsRetainsRowsTests {
+
+		private org.springframework.util.LinkedMultiValueMap<String, String> allFlags() {
+			org.springframework.util.LinkedMultiValueMap<String, String> params = new org.springframework.util.LinkedMultiValueMap<>();
+			params.add("fetchCreatedBy", "true");
+			params.add("fetchDesignation", "true");
+			params.add("fetchReportingTo", "true");
+			return params;
+		}
+
+		@Test
+		void usersWithoutCreatorDesignationOrManagerAreKeptInOrder() {
+
+			ULong creatorId = ULong.valueOf(500);
+			ULong managerId = ULong.valueOf(501);
+			ULong missingDesignationId = ULong.valueOf(998);
+			ULong missingManagerId = ULong.valueOf(999);
+
+			User full = TestDataFactory.createActiveUser(ULong.valueOf(1), BUS_CLIENT_ID);
+			full.setCreatedBy(creatorId);
+			full.setDesignationId(DESIGNATION_ID);
+			full.setReportingTo(managerId);
+
+			User bare = TestDataFactory.createActiveUser(ULong.valueOf(2), BUS_CLIENT_ID);
+
+			User dangling = TestDataFactory.createActiveUser(ULong.valueOf(3), BUS_CLIENT_ID);
+			dangling.setCreatedBy(ULong.valueOf(0));
+			dangling.setDesignationId(missingDesignationId);
+			dangling.setReportingTo(missingManagerId);
+
+			User creator = TestDataFactory.createActiveUser(creatorId, BUS_CLIENT_ID);
+			User manager = TestDataFactory.createActiveUser(managerId, BUS_CLIENT_ID);
+
+			when(dao.readInternal(creatorId)).thenReturn(Mono.just(creator));
+			when(dao.readInternal(managerId)).thenReturn(Mono.just(manager));
+			when(dao.readInternal(missingManagerId)).thenReturn(Mono.empty());
+			when(designationService.readInternal(DESIGNATION_ID))
+					.thenReturn(Mono.just(TestDataFactory.createDesignation(DESIGNATION_ID, BUS_CLIENT_ID, "Lead")));
+			when(designationService.readInternal(missingDesignationId)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.fillDetails(List.of(full, bare, dangling), allFlags()))
+					.assertNext(users -> {
+						assertEquals(3, users.size(), "no row may be dropped by enrichment");
+						assertSame(full, users.get(0));
+						assertSame(bare, users.get(1));
+						assertSame(dangling, users.get(2));
+
+						assertSame(creator, full.getCreatedByUser());
+						assertEquals("Lead", full.getDesignation().getName());
+						assertSame(manager, full.getReportingUser());
+
+						assertNull(bare.getCreatedByUser());
+						assertNull(bare.getDesignation());
+						assertNull(bare.getReportingUser());
+
+						assertNull(dangling.getCreatedByUser());
+						assertNull(dangling.getDesignation());
+						assertNull(dangling.getReportingUser());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void readByIdOfUserWithNoDesignationReturnsTheUser() {
+
+			User bare = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(bare));
+
+			StepVerifier.create(service.readById(USER_ID, allFlags()))
+					.assertNext(user -> {
+						assertSame(bare, user);
+						assertNull(user.getDesignation());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void aFailingLookupLeavesTheFieldNullAndKeepsTheRow() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setDesignationId(DESIGNATION_ID);
+
+			when(designationService.readInternal(DESIGNATION_ID))
+					.thenReturn(Mono.error(new RuntimeException("boom")));
+
+			org.springframework.util.LinkedMultiValueMap<String, String> params = new org.springframework.util.LinkedMultiValueMap<>();
+			params.add("fetchDesignation", "true");
+
+			StepVerifier.create(service.fillDetails(List.of(user), params))
+					.assertNext(users -> {
+						assertEquals(1, users.size());
+						assertNull(users.get(0).getDesignation());
+					})
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// updatableEntity: self edits cannot touch status, designation or manager
+	// =========================================================================
+
+	@Nested
+	class SelfUpdateRestrictionTests {
+
+		private User stored() {
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setStatusCode(SecurityUserStatusCode.LOCKED);
+			user.setDesignationId(DESIGNATION_ID);
+			user.setReportingTo(OTHER_USER_ID);
+			return user;
+		}
+
+		private User incoming() {
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setFirstName("New");
+			user.setLastName("Name");
+			user.setPhoneNumber("+910000000000");
+			user.setStatusCode(SecurityUserStatusCode.ACTIVE);
+			user.setDesignationId(ULong.valueOf(301));
+			user.setReportingTo(ULong.valueOf(21));
+			return user;
+		}
+
+		@Test
+		void selfWithoutUserUpdateKeepsStoredStatusDesignationAndManager() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(USER_ID, BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(stored()));
+
+			StepVerifier.create(service.updatableEntity(incoming()))
+					.assertNext(user -> {
+						assertEquals("New", user.getFirstName());
+						assertEquals("Name", user.getLastName());
+						assertEquals("+910000000000", user.getPhoneNumber());
+						assertEquals(SecurityUserStatusCode.LOCKED, user.getStatusCode());
+						assertEquals(DESIGNATION_ID, user.getDesignationId());
+						assertEquals(OTHER_USER_ID, user.getReportingTo());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void selfWithUserUpdateMayChangeThem() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(USER_ID, BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN", "Authorities.User_UPDATE"));
+			setupSecurityContext(ca);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(stored()));
+
+			StepVerifier.create(service.updatableEntity(incoming()))
+					.assertNext(user -> {
+						assertEquals(SecurityUserStatusCode.ACTIVE, user.getStatusCode());
+						assertEquals(ULong.valueOf(301), user.getDesignationId());
+						assertEquals(ULong.valueOf(21), user.getReportingTo());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void managerWithUserUpdateEditingSomeoneElseKeepsCurrentBehaviour() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(OTHER_USER_ID, BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN", "Authorities.User_READ", "Authorities.User_UPDATE"));
+			setupSecurityContext(ca);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(stored()));
+
+			StepVerifier.create(service.updatableEntity(incoming()))
+					.assertNext(user -> {
+						assertEquals(SecurityUserStatusCode.ACTIVE, user.getStatusCode());
+						assertEquals(ULong.valueOf(301), user.getDesignationId());
+						assertEquals(ULong.valueOf(21), user.getReportingTo());
+					})
+					.verifyComplete();
+		}
+	}
 }

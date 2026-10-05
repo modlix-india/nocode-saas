@@ -98,6 +98,11 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
+        // The logo is stored as <clientId>.png. With no clientId the caller is setting its own
+        // client's logo, and the name has to come from that client: naming it after the absent
+        // parameter wrote every tenant's logo to the same _clientImages/null.png.
+        ULong effectiveClientId = clientId == null ? ULong.valueOf(ca.getUser().getClientId()) : clientId;
+
         String clientCode = null;
         if (clientId == null) {
             clientCode = ca.getClientCode();
@@ -121,7 +126,7 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
             BufferedImage transformedImage = ImageTransformUtil.transformImage(sourceTuple.getT1(),
                     BufferedImage.TYPE_INT_ARGB, details);
 
-            File finalFile = tempDirectory.resolve(clientId + ".png").toFile();
+            File finalFile = tempDirectory.resolve(effectiveClientId + ".png").toFile();
             ImageIO.write(transformedImage, "png", finalFile);
 
             FileDetail fd = this.getFSService().createFileFromFile("SYSTEM",
