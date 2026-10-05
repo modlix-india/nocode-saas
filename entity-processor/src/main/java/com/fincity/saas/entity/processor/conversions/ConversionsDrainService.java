@@ -279,9 +279,35 @@ public class ConversionsDrainService {
                 .flatMap(resolved -> persistResolvedIfChanged(resolved, origAccountId, origLoginId, origDatasetId)
                         .thenReturn(resolved))
                 .flatMap(resolved -> dispatcher.dispatch(event, mapping, ticket, resolved, token))
-                .flatMap(result -> result.success()
-                        ? this.eventService.markSent(event, result.message()).thenReturn(Outcome.DISPATCHED)
-                        : this.eventService.markFailed(event, result.message()).thenReturn(Outcome.FAILED));
+                .flatMap(result -> this.recordOutcome(event, result));
+    }
+
+    /**
+     * Routes a dispatcher result to the outbox, keeping terminal failures out of the retry pool.
+     *
+     * <p>A retryable failure stays FAILED with a backoff and is picked up again. A terminal one is
+     * marked SKIPPED, which {@code findDispatchable} does not select, so it is never attempted
+     * again. That difference is what stops a configuration fault becoming an hourly load: before
+     * it existed, 60 such rows had accumulated 36,162 attempts between them.
+     *
+     * <p>The row is kept rather than deleted, with its message, so the events that never reached
+     * the platform can still be found and requeued once the underlying configuration is corrected.
+     */
+    private Mono<Outcome> recordOutcome(ConversionEvent event, DispatchResult result) {
+
+        if (result.success())
+            return this.eventService.markSent(event, result.message()).thenReturn(Outcome.DISPATCHED);
+
+        if (result.terminal()) {
+            logger.warn(
+                    "Conversion event {} will not be retried: {}. The row is kept as SKIPPED and can be"
+                            + " requeued once the cause is corrected.",
+                    event.getId(),
+                    result.message());
+            return this.eventService.markSkipped(event, result.message()).thenReturn(Outcome.SKIPPED);
+        }
+
+        return this.eventService.markFailed(event, result.message()).thenReturn(Outcome.FAILED);
     }
 
     /** Mirror of {@code MetricsSyncService.persistResolvedIfChanged} — keeps the two self-heal paths in sync. */
