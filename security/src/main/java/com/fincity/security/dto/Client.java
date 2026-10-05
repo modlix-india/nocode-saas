@@ -44,6 +44,17 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String industry;
     private SecurityClientLevelType levelType;
 
+    /*
+     * Organization details the tenant keeps about itself (the Company tab of the Organization
+     * page). Display only: none of these is a login identifier, and all of them may be null.
+     */
+    private String website;
+    private String emailId;
+    private String phoneNumber;
+    private String alternatePhoneNumber;
+    private String linkedinUrl;
+    private String description;
+
     private int activeUsers;
     private int inactiveUsers;
     private int deletedUsers;

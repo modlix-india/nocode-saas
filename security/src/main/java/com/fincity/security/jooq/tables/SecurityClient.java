@@ -197,6 +197,42 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      */
     public final TableField<SecurityClientRecord, String> TIME_ZONE = createField(DSL.name("TIME_ZONE"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.inline("Asia/Kolkata", SQLDataType.VARCHAR)), this, "IANA time zone the tenant operates on");
 
+    /**
+     * The column <code>security.security_client.WEBSITE</code>. Company website
+     * URL
+     */
+    public final TableField<SecurityClientRecord, String> WEBSITE = createField(DSL.name("WEBSITE"), SQLDataType.VARCHAR(512), this, "Company website URL");
+
+    /**
+     * The column <code>security.security_client.EMAIL_ID</code>. Company
+     * contact email
+     */
+    public final TableField<SecurityClientRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(320), this, "Company contact email");
+
+    /**
+     * The column <code>security.security_client.PHONE_NUMBER</code>. Company
+     * contact phone number
+     */
+    public final TableField<SecurityClientRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.VARCHAR(32), this, "Company contact phone number");
+
+    /**
+     * The column <code>security.security_client.ALTERNATE_PHONE_NUMBER</code>.
+     * Company alternate phone number
+     */
+    public final TableField<SecurityClientRecord, String> ALTERNATE_PHONE_NUMBER = createField(DSL.name("ALTERNATE_PHONE_NUMBER"), SQLDataType.VARCHAR(32), this, "Company alternate phone number");
+
+    /**
+     * The column <code>security.security_client.LINKEDIN_URL</code>. Company
+     * LinkedIn page URL
+     */
+    public final TableField<SecurityClientRecord, String> LINKEDIN_URL = createField(DSL.name("LINKEDIN_URL"), SQLDataType.VARCHAR(512), this, "Company LinkedIn page URL");
+
+    /**
+     * The column <code>security.security_client.DESCRIPTION</code>. About the
+     * company
+     */
+    public final TableField<SecurityClientRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "About the company");
+
     private SecurityClient(Name alias, Table<SecurityClientRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

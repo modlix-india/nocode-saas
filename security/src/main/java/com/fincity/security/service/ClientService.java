@@ -376,7 +376,7 @@ public class ClientService
                                 SecurityMessageResourceService.FORBIDDEN_CREATE,
                                 "Client under " + parent.getCode());
 
-                    return super.create(entity
+                    return super.create(trimCompanyDetails(entity)
                             .setLevelType(childLevel)
                             .setStatusCode(entity.getStatusCode() == null ? SecurityClientStatusCode.ACTIVE
                                     : entity.getStatusCode()));
@@ -566,11 +566,37 @@ public class ClientService
         if (entity == null || entity.getId() == null)
             return Mono.justOrEmpty(entity);
 
+        trimCompanyDetails(entity);
+
         return this.readInternal(entity.getId())
                 .map(existing -> entity
                         .setLevelType(existing.getLevelType())
                         .setTypeCode(existing.getTypeCode()))
                 .defaultIfEmpty(entity);
+    }
+
+    /**
+     * Trims the organization details and stores a blank one as null, so a cleared form field
+     * reads back as "not filled in" rather than as whitespace.
+     * <p>
+     * Not validated beyond that: nothing else in this service validates field formats, and these
+     * are display values, never login identifiers.
+     */
+    static Client trimCompanyDetails(Client entity) {
+
+        if (entity == null)
+            return null;
+
+        return entity.setWebsite(StringUtil.safeIsBlank(entity.getWebsite()) ? null : entity.getWebsite().trim())
+                .setEmailId(StringUtil.safeIsBlank(entity.getEmailId()) ? null : entity.getEmailId().trim())
+                .setPhoneNumber(
+                        StringUtil.safeIsBlank(entity.getPhoneNumber()) ? null : entity.getPhoneNumber().trim())
+                .setAlternatePhoneNumber(StringUtil.safeIsBlank(entity.getAlternatePhoneNumber()) ? null
+                        : entity.getAlternatePhoneNumber().trim())
+                .setLinkedinUrl(
+                        StringUtil.safeIsBlank(entity.getLinkedinUrl()) ? null : entity.getLinkedinUrl().trim())
+                .setDescription(
+                        StringUtil.safeIsBlank(entity.getDescription()) ? null : entity.getDescription().trim());
     }
 
     @Override
