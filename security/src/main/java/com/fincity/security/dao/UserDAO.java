@@ -303,6 +303,32 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(e -> e.into(User.class));
     }
 
+    /**
+     * The users of {@code clientId} itself, other than {@code excludeUserId}, who already hold ANY of
+     * the given identifiers.
+     * <p>
+     * {@link #checkUserExists} cannot answer this: it looks only at the clients {@code clientId}
+     * manages, never at {@code clientId} itself, and it needs userName, email and phone to match
+     * together. So an edit or invite that reuses one teammate's email, with any other phone, went
+     * through it unseen.
+     */
+    public Flux<User> getUsersWithAnyIdentity(ULong clientId, String userName, String emailId, String phoneNumber,
+            ULong excludeUserId) {
+
+        List<Condition> availabilityConditions = getUserAvailabilityConditions(userName, emailId, phoneNumber);
+
+        if (clientId == null || availabilityConditions.isEmpty())
+            return Flux.empty();
+
+        return Flux.from(this.dslContext.selectFrom(SECURITY_USER)
+                .where(SECURITY_USER.CLIENT_ID.eq(clientId))
+                .and(DSL.or(availabilityConditions))
+                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))
+                .and(excludeUserId == null ? DSL.noCondition() : SECURITY_USER.ID.ne(excludeUserId))
+                .limit(DUPLICATE_IDENTITY_SCAN_LIMIT))
+                .map(e -> e.into(User.class));
+    }
+
     private List<Condition> getInviteUserCheckConditions(
             ULong clientId, String userName, String emailId, String phoneNumber) {
 

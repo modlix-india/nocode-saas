@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.jooq.exception.IntegrityConstraintViolationException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -129,41 +130,14 @@ public class UserInviteService
                                         Set.of(invite.getProfileId()))
                                 .filter(BooleanUtil::safeValueOf),
 
-                (ca, invite, reportingToInSameClient, hasAccess) -> {
-                    String appCode = ca.getUrlAppCode();
-                    if (StringUtil.safeIsBlank(appCode))
-                        return Mono.just(true);
+                (ca, invite, reportingToInSameClient, hasAccess) -> this.userDao
+                        .getUsersWithAnyIdentity(invite.getClientId(), invite.getUserName(), invite.getEmailId(),
+                                invite.getPhoneNumber(), null)
+                        .collectList(),
 
-                    return this.appService.getAppByCode(appCode)
-                            .flatMap(app -> this.validateUserCheckForInvite(
-                                    app.getId(), app.getClientId(), entity.getClientId(),
-                                    entity.getUserName(), entity.getEmailId(),
-                                    entity.getPhoneNumber()))
-                            .defaultIfEmpty(true);
-                },
-
-                (ca, invite, reportingToInSameClient, hasAccess, userCheckValid) -> this.userDao
-                        .checkUserExistsForInvite(
-                                entity.getClientId(),
-                                entity.getUserName(),
-                                entity.getEmailId(),
-                                entity.getPhoneNumber())
-                        .flatMap(exists -> {
-                            if (exists)
-                                return this.addUserProfile(entity);
-
-                            invite.setInviteCode(
-                                    UUID.randomUUID().toString().replace("-", ""));
-                            return super.create(invite).flatMap(createdInvite -> {
-                                clientActivityService.createLog(createdInvite.getClientId(),
-                                        "User Invite Created",
-                                        "User invite created for " + createdInvite.getEmailId());
-                                Map<String, Object> result = new HashMap<>();
-                                result.put("userRequest", createdInvite);
-                                result.put("existingUser", Boolean.FALSE);
-                                return Mono.just(result);
-                            });
-                        }))
+                (ca, invite, reportingToInSameClient, hasAccess, existingUsers) -> existingUsers.isEmpty()
+                        ? this.createNewInvite(ca.getUrlAppCode(), invite)
+                        : this.inviteExistingUser(invite, existingUsers))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.create"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -456,16 +430,86 @@ public class UserInviteService
                 });
     }
 
-    private Mono<Map<String, Object>> addUserProfile(UserInvite invite) {
+    /**
+     * No user of the client holds any of the invite's identifiers. The app's USER_CHECK runs only now:
+     * it also counts the client's own users, and would otherwise refuse to re-invite someone who is
+     * already here instead of adding the profile to their account.
+     */
+    private Mono<Map<String, Object>> createNewInvite(String appCode, UserInvite invite) {
+
+        return FlatMapUtil.<Boolean, Boolean, Map<String, Object>>flatMapMono(
+
+                () -> StringUtil.safeIsBlank(appCode)
+                        ? Mono.just(true)
+                        : this.appService.getAppByCode(appCode)
+                                .flatMap(app -> this.validateUserCheckForInvite(
+                                        app.getId(), app.getClientId(), invite.getClientId(),
+                                        invite.getUserName(), invite.getEmailId(), invite.getPhoneNumber()))
+                                .defaultIfEmpty(true),
+
+                userCheckValid -> this.dao
+                        .getInviteWithAnyIdentity(invite.getClientId(), invite.getEmailId(), invite.getPhoneNumber())
+                        .flatMap(pending -> this.<Boolean>pendingInviteError(
+                                matchesIfGiven(invite.getEmailId(), pending.getEmailId()) ? "email" : "phone number"))
+                        .defaultIfEmpty(Boolean.TRUE),
+
+                (userCheckValid, noPendingInvite) -> {
+                    invite.setInviteCode(UUID.randomUUID().toString().replace("-", ""));
+
+                    return super.create(invite)
+                            // Another invite for the same email or phone that landed after the check above.
+                            .onErrorResume(IntegrityConstraintViolationException.class,
+                                    e -> this.pendingInviteError("email or phone number"))
+                            .flatMap(createdInvite -> {
+                                clientActivityService.createLog(createdInvite.getClientId(),
+                                        "User Invite Created",
+                                        "User invite created for " + createdInvite.getEmailId());
+                                Map<String, Object> result = new HashMap<>();
+                                result.put("userRequest", createdInvite);
+                                result.put("existingUser", Boolean.FALSE);
+                                return Mono.just(result);
+                            });
+                });
+    }
+
+    private <T> Mono<T> pendingInviteError(String identity) {
+        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                SecurityMessageResourceService.USER_INVITE_PENDING, identity);
+    }
+
+    /**
+     * An invite naming someone already in the client adds the profile to their account, but only when
+     * every identifier it gives is theirs. One that pairs a teammate's email with another phone, or mixes
+     * two teammates' identifiers, is refused: accepting it would make a second user out of the first.
+     */
+    private Mono<Map<String, Object>> inviteExistingUser(UserInvite invite, List<User> existingUsers) {
+
+        User user = existingUsers.get(0);
+
+        if (existingUsers.size() == 1
+                && matchesIfGiven(invite.getUserName(), user.getUserName())
+                && matchesIfGiven(invite.getEmailId(), user.getEmailId())
+                && matchesIfGiven(invite.getPhoneNumber(), user.getPhoneNumber()))
+            return this.addUserProfile(invite, user);
+
+        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                SecurityMessageResourceService.USER_IDENTITY_TAKEN,
+                UserService.takenIdentity(user, invite.getEmailId(), invite.getPhoneNumber()));
+    }
+
+    /** True when {@code given} is blank or a placeholder, or equals {@code stored} ignoring case. */
+    private static boolean matchesIfGiven(String given, String stored) {
+        return safeIsBlank(given) || User.PLACEHOLDER.equals(given) || given.equalsIgnoreCase(stored);
+    }
+
+    private Mono<Map<String, Object>> addUserProfile(UserInvite invite, User existingUser) {
 
         if (invite.getProfileId() == null)
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.userDao.getUserForInvite(
-                        invite.getClientId(), invite.getUserName(), invite.getEmailId(),
-                        invite.getPhoneNumber()),
+                () -> Mono.just(existingUser),
 
                 user -> this.profileService
                         .hasAccessToProfiles(user.getClientId(), Set.of(invite.getProfileId()))

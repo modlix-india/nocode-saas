@@ -487,14 +487,22 @@ public class EngineService {
      * author deleting a theme must not leave every visitor holding that cookie
      * with an unthemed app.
      */
-    private static List<Map<String, Object>> themeCandidates(Application app, String requested) {
+    static List<Map<String, Object>> themeCandidates(Application app, String requested) {
 
-        List<Map<String, Object>> ordered = orderedThemeEntries(app);
+        List<Map<String, Object>> listed = orderedThemeEntries(app);
+
+        // A `pageOnly` entry is a theme only a page names (page `properties.theme`):
+        // served when asked for by name, never as the default or a fallback. Same
+        // rule as visitorThemeEntries in the client's themeSelection.ts.
+        List<Map<String, Object>> visitor = listed.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.get("pageOnly")))
+                .toList();
+        List<Map<String, Object>> ordered = visitor.isEmpty() ? listed : visitor;
 
         if (requested == null || requested.isBlank() || ordered.isEmpty())
             return ordered;
 
-        List<Map<String, Object>> preferred = ordered.stream()
+        List<Map<String, Object>> preferred = listed.stream()
                 .filter(e -> requested.equals(e.get("name")
                         .toString()))
                 .toList();

@@ -18,7 +18,7 @@
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
-        <nocode-kirun-version>4.7.0</nocode-kirun-version>
+        <nocode-kirun-version>4.8.0</nocode-kirun-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <jooq.version>3.20.3</jooq.version>
         <r2dbc-mysql.version>1.4.2</r2dbc-mysql.version>
@@ -45,20 +45,28 @@
             <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <!--
-            Test scope only. This module builds the ConnectionFactory from the r2dbc URL, whose
-            driver is `mysql`, but the driver itself is declared by each SERVICE - so the module's
-            own classpath advertises only `[ pool ]`. That is the whole reason the old code forced
-            DRIVER=pool and accidentally nested one pool inside another.
+            Runtime scope, and this module is the one place the version is set.
 
-            Without this, R2dbcPoolConfigurationTest cannot resolve a factory and the pool sizing
-            goes back to being untested. Compile scope would be wrong: it would impose MySQL on
-            every consumer of commons-jooq.
+            This module builds a ConnectionFactory from an r2dbc URL whose driver is `mysql`,
+            and so now does the MySQL app-data backend in commons-core. Neither references an
+            io.asyncer class, so the driver is resolved purely through the SPI at runtime -
+            which is exactly the kind of dependency that is invisible until it is missing.
+
+            It used to be test scope, on the reasoning that each SERVICE declares the driver
+            itself. That held while only services opened connections, and stopped holding the
+            moment a library did: commons-core was getting the driver solely because `core`
+            happened to declare it too, which is how you end up with "Could not find delegating
+            driver [mysql]" in whichever consumer forgot. Declaring it here means a module that
+            builds MySQL connections also ships what resolves them.
+
+            Still not compile scope: nothing compiles against it, and runtime keeps it off
+            every consumer's compile classpath.
         -->
         <dependency>
             <groupId>io.asyncer</groupId>
             <artifactId>r2dbc-mysql</artifactId>
             <version>${r2dbc-mysql.version}</version>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
         <!--
             For ConnectionPoolMetrics only, so the r2dbc pool this module creates is visible in

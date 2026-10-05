@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.enums.StorageTriggerType;
+import com.fincity.saas.commons.core.model.StorageColumnDefinition;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
@@ -52,6 +53,36 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     private Boolean generateEvents;
     private Map<StorageTriggerType, List<String>> triggers;
     private Map<String, Object> fieldDefinitionMap;
+
+    /**
+     * Physical storage overrides per field, per backend.
+     *
+     * Only for fields whose schema type does not pin down how they should be stored -
+     * a DECIMAL needs a precision and a scale that no schema carries. Absent, the type
+     * mapper decides, which is what every storage does today.
+     *
+     * Not the same thing as {@link #fieldDefinitionMap}, which belongs to the form
+     * designer and holds labels and editor types.
+     */
+    /**
+     * How much row history to keep. Null means the platform default; 0 means keep
+     * everything.
+     *
+     * Both bounds apply, and a version row has to satisfy BOTH to survive: it must
+     * be among the most recent {@code versionRetentionCount} AND newer than
+     * {@code versionRetentionDays}. Either one alone leaves a hole - a count alone
+     * keeps a decade of history for a row touched twice a year, and an age alone
+     * keeps a million versions of a row rewritten every minute.
+     *
+     * They live on the definition rather than in config because the right answer is
+     * per storage: an audit-bearing ledger and a scratch cache have no business
+     * sharing a retention policy.
+     */
+    private Integer versionRetentionDays;
+
+    private Integer versionRetentionCount;
+
+    private Map<String, StorageColumnDefinition> columnDefinitions;
     private Map<String, StorageIndex> indexes;
     private List<String> textIndexFields;
 
@@ -72,6 +103,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
         this.relations = CloneUtil.cloneMapObject(store.relations);
         this.generateEvents = store.generateEvents;
         this.fieldDefinitionMap = CloneUtil.cloneMapObject(store.fieldDefinitionMap);
+        this.columnDefinitions = CloneUtil.cloneMapObject(store.columnDefinitions);
 
         this.triggers = CloneUtil.cloneMapObject(store.triggers);
 
@@ -90,7 +122,20 @@ public class Storage extends AbstractOverridableDTO<Storage> {
                         (s, r) -> DifferenceApplicator.apply(this.triggers, base.triggers),
                         (s, r, t) -> DifferenceApplicator.apply(this.fieldDefinitionMap, base.fieldDefinitionMap),
                         (s, r, t, f) -> DifferenceApplicator.apply(this.indexes, base.indexes),
-                        (s, r, t, f, i) -> DifferenceApplicator.apply(this.textIndexFields, base.textIndexFields),
+                        // Not through DifferenceApplicator. Its generic apply treats
+                        // a null override as "delete this", which is the right rule
+                        // for a key inside a delta map and the wrong one for a whole
+                        // field a derived document simply never mentioned: the Map
+                        // overload inherits the base in that case and this one did
+                        // not, so a client below the one declaring textIndexFields
+                        // lost them entirely and silently got no text index.
+                        //
+                        // A declared list replaces rather than merges. Two ordered
+                        // lists have no sensible merge, and the fields a text index
+                        // covers are a set the author chose together.
+                        (s, r, t, f, i) -> this.textIndexFields == null
+                                ? Mono.justOrEmpty(base.textIndexFields)
+                                : Mono.just(this.textIndexFields),
                         (s, r, t, f, i, tif) -> {
                             this.schema = (Map<String, Object>) s;
                             this.relations = (Map<String, StorageRelation>) r;
@@ -101,7 +146,16 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
                             this.subApplyOverride(base);
 
-                            return Mono.just(this);
+                            // Chained rather than taken as another argument: the
+                            // helper is already at the arity it supports here, and one
+                            // more field is not worth a shape nobody can read.
+                            return DifferenceApplicator.apply(this.columnDefinitions, base.columnDefinitions)
+                                    .map(cd -> (Map<String, StorageColumnDefinition>) cd)
+                                    .defaultIfEmpty(Map.of())
+                                    .map(cd -> {
+                                        this.columnDefinitions = cd.isEmpty() ? null : cd;
+                                        return this;
+                                    });
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.applyOverride"));
     }
@@ -126,6 +180,10 @@ public class Storage extends AbstractOverridableDTO<Storage> {
         if (this.onlyThruKIRun == null) this.onlyThruKIRun = base.onlyThruKIRun;
 
         if (this.generateEvents == null) this.generateEvents = base.generateEvents;
+
+        if (this.versionRetentionDays == null) this.versionRetentionDays = base.versionRetentionDays;
+
+        if (this.versionRetentionCount == null) this.versionRetentionCount = base.versionRetentionCount;
     }
 
     @SuppressWarnings("unchecked")
@@ -153,7 +211,13 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
                             this.subMakeOverride(base, obj);
 
-                            return Mono.just(obj);
+                            return DifferenceExtractor.extract(obj.columnDefinitions, base.columnDefinitions)
+                                    .map(cd -> (Map<String, StorageColumnDefinition>) cd)
+                                    .defaultIfEmpty(Map.of())
+                                    .map(cd -> {
+                                        obj.setColumnDefinitions(cd.isEmpty() ? null : cd);
+                                        return obj;
+                                    });
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
     }
@@ -178,6 +242,12 @@ public class Storage extends AbstractOverridableDTO<Storage> {
         if (CommonsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun)) obj.onlyThruKIRun = null;
 
         if (CommonsUtil.safeEquals(obj.generateEvents, base.generateEvents)) obj.generateEvents = null;
+
+        if (CommonsUtil.safeEquals(obj.versionRetentionDays, base.versionRetentionDays))
+            obj.versionRetentionDays = null;
+
+        if (CommonsUtil.safeEquals(obj.versionRetentionCount, base.versionRetentionCount))
+            obj.versionRetentionCount = null;
     }
 
     @Data

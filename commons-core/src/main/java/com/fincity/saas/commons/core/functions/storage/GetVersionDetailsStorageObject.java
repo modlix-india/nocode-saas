@@ -137,7 +137,7 @@ public class GetVersionDetailsStorageObject extends AbstractReactiveFunction {
 
         AbstractCondition condition = filter.size() == 0
                 ? null
-                : this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
+                : this.mapper.convertValue(StorageJson.toMap(filter), AbstractCondition.class);
 
         Query dsq = new Query().setCondition(condition).setPage(page).setSize(size).setCount(count);
 

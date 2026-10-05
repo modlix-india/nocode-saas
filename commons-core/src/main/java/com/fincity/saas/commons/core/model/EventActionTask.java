@@ -6,6 +6,7 @@ import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import java.io.Serial;
 import java.io.Serializable;
@@ -45,9 +46,17 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
                         params -> {
                             EventActionTask eat = new EventActionTask();
 
-                            if (inc.order == null || !inc.order.equals(this.order)) eat.order = this.order;
+                            // this is the BASE and inc is the DERIVED: a nested
+                            // IDifferentiable is reached as existing.extractDifference(incoming),
+                            // which is the OPPOSITE way round from a document's
+                            // extractDifference(base). Both halves used to be written the
+                            // document way, so a derived client that changed an order or a
+                            // type had the BASE's value stored as its delta - the save
+                            // reported success and the value snapped back. The old order
+                            // test also wrote a delta when the derived said nothing at all.
+                            if (!CommonsUtil.safeEquals(this.order, inc.order)) eat.order = inc.order;
 
-                            if (inc.type != this.type) eat.type = this.type;
+                            if (!CommonsUtil.safeEquals(this.type, inc.type)) eat.type = inc.type;
 
                             eat.parameters = (Map<String, Object>) params;
 
@@ -61,7 +70,12 @@ public class EventActionTask implements IDifferentiable<EventActionTask>, Compar
     public Mono<EventActionTask> applyOverride(EventActionTask override) {
         if (override == null) return Mono.just(this);
 
-        return FlatMapUtil.flatMapMono(
+        // flatMapMonoWithNull, not flatMapMono: DifferenceApplicator.apply returns
+        // EMPTY when both maps are null or empty, and an empty step short-circuits
+        // the whole chain - so a task carrying no parameters DISAPPEARED from the
+        // merged result instead of being applied. extractDifference already guards
+        // the same call with defaultIfEmpty; this is the other half of that.
+        return FlatMapUtil.flatMapMonoWithNull(
                         () -> DifferenceApplicator.apply(this.parameters, override.parameters), params -> {
                             if (this.key == null) this.key = override.key;
 

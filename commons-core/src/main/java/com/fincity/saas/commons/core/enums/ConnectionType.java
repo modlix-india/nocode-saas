@@ -3,7 +3,7 @@ package com.fincity.saas.commons.core.enums;
 import java.util.Set;
 
 public enum ConnectionType {
-    APP_DATA(ConnectionSubType.MONGO),
+    APP_DATA(ConnectionSubType.MONGO, ConnectionSubType.MYSQL),
 
     MAIL(ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
 

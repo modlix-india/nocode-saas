@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.oserver.core.enums;
 
 public enum ConnectionSubType {
     MONGO,
+    MYSQL,
     OFFICE365,
     SENDGRID,
     REST_API_OAUTH2,

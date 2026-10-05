@@ -37,26 +37,42 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
         this.updateConstraint = relation.updateConstraint;
     }
 
+    /**
+     * The difference, where {@code this} is the BASE and {@code inc} is the derived
+     * relation.
+     *
+     * The conditions were inverted and the wrong operand was kept: a value that
+     * DIFFERED became null, and one that matched was copied into the delta. Both
+     * halves are wrong, and together they meant a derived client could not change
+     * an inherited relation at all - the save reported success and the relation
+     * kept the base's values. For a delete constraint that decides whether a
+     * referenced row can be removed, which is not a cosmetic difference.
+     *
+     * Safe to correct: no derived storage in the fleet holds relations, so nothing
+     * stored depends on the old shape.
+     */
     @Override
     public Mono<StorageRelation> extractDifference(StorageRelation inc) {
-        if (inc == null) return Mono.just(this);
+
+        // The derived relation says nothing, so it overrides nothing.
+        if (inc == null) return Mono.just(new StorageRelation());
 
         StorageRelation diff = new StorageRelation();
 
         diff.uniqueRelationId =
-                !CommonsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId) ? null : this.uniqueRelationId;
+                CommonsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId) ? null : inc.uniqueRelationId;
 
-        diff.storageName = !CommonsUtil.safeEquals(this.storageName, inc.storageName) ? null : this.storageName;
+        diff.storageName = CommonsUtil.safeEquals(this.storageName, inc.storageName) ? null : inc.storageName;
 
-        diff.relationType = !CommonsUtil.safeEquals(this.relationType, inc.relationType) ? null : this.relationType;
+        diff.relationType = CommonsUtil.safeEquals(this.relationType, inc.relationType) ? null : inc.relationType;
 
-        diff.fieldName = !CommonsUtil.safeEquals(this.fieldName, inc.fieldName) ? null : this.fieldName;
+        diff.fieldName = CommonsUtil.safeEquals(this.fieldName, inc.fieldName) ? null : inc.fieldName;
 
         diff.deleteConstraint =
-                !CommonsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint) ? null : this.deleteConstraint;
+                CommonsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint) ? null : inc.deleteConstraint;
 
         diff.updateConstraint =
-                !CommonsUtil.safeEquals(this.updateConstraint, inc.updateConstraint) ? null : this.updateConstraint;
+                CommonsUtil.safeEquals(this.updateConstraint, inc.updateConstraint) ? null : inc.updateConstraint;
 
         return Mono.just(diff).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageRelation.extractDifference"));
     }
