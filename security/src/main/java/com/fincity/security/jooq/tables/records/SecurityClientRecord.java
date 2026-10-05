@@ -307,6 +307,108 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         return (String) get(16);
     }
 
+    /**
+     * Setter for <code>security.security_client.WEBSITE</code>. Company website
+     * URL
+     */
+    public SecurityClientRecord setWebsite(String value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.WEBSITE</code>. Company website
+     * URL
+     */
+    public String getWebsite() {
+        return (String) get(17);
+    }
+
+    /**
+     * Setter for <code>security.security_client.EMAIL_ID</code>. Company
+     * contact email
+     */
+    public SecurityClientRecord setEmailId(String value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.EMAIL_ID</code>. Company
+     * contact email
+     */
+    public String getEmailId() {
+        return (String) get(18);
+    }
+
+    /**
+     * Setter for <code>security.security_client.PHONE_NUMBER</code>. Company
+     * contact phone number
+     */
+    public SecurityClientRecord setPhoneNumber(String value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.PHONE_NUMBER</code>. Company
+     * contact phone number
+     */
+    public String getPhoneNumber() {
+        return (String) get(19);
+    }
+
+    /**
+     * Setter for <code>security.security_client.ALTERNATE_PHONE_NUMBER</code>.
+     * Company alternate phone number
+     */
+    public SecurityClientRecord setAlternatePhoneNumber(String value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.ALTERNATE_PHONE_NUMBER</code>.
+     * Company alternate phone number
+     */
+    public String getAlternatePhoneNumber() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for <code>security.security_client.LINKEDIN_URL</code>. Company
+     * LinkedIn page URL
+     */
+    public SecurityClientRecord setLinkedinUrl(String value) {
+        set(21, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.LINKEDIN_URL</code>. Company
+     * LinkedIn page URL
+     */
+    public String getLinkedinUrl() {
+        return (String) get(21);
+    }
+
+    /**
+     * Setter for <code>security.security_client.DESCRIPTION</code>. About the
+     * company
+     */
+    public SecurityClientRecord setDescription(String value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.DESCRIPTION</code>. About the
+     * company
+     */
+    public String getDescription() {
+        return (String) get(22);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -330,7 +432,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     /**
      * Create a detached, initialised SecurityClientRecord
      */
-    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry, String billingTimezone, String timeZone) {
+    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry, String billingTimezone, String timeZone, String website, String emailId, String phoneNumber, String alternatePhoneNumber, String linkedinUrl, String description) {
         super(SecurityClient.SECURITY_CLIENT);
 
         setId(id);
@@ -350,6 +452,12 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         setIndustry(industry);
         setBillingTimezone(billingTimezone);
         setTimeZone(timeZone);
+        setWebsite(website);
+        setEmailId(emailId);
+        setPhoneNumber(phoneNumber);
+        setAlternatePhoneNumber(alternatePhoneNumber);
+        setLinkedinUrl(linkedinUrl);
+        setDescription(description);
         resetTouchedOnNotNull();
     }
 }

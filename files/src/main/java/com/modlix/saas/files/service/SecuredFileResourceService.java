@@ -249,21 +249,29 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
-        ULong uid;
+        ULong selfId = ULong.valueOf(ca.getUser().getId());
 
-        if (userId == null) {
-            uid = ULong.valueOf(ca.getUser().getId());
-        } else {
+        // Your own photo needs no further check. Anyone else's needs User_UPDATE and the CALLER's
+        // client managing the TARGET user's client: isUserClientManageClient is (appCode, userId,
+        // userClientId, targetClientId). This used to pass the target as the user and the caller
+        // as the target, and on refusal went on to write _userImages/null.png instead of refusing.
+        ULong uid = userId == null || userId.equals(selfId) ? selfId : null;
+
+        if (uid == null) {
 
             User user = this.securityService.getUserInternal(userId.toBigInteger(), null);
 
-            uid = BooleanUtil
-                    .safeValueOf(
-                            this.securityService.isUserClientManageClient(ca.getUrlAppCode(), userId.toBigInteger(),
-                                    user.getClientId(), ca.getUser().getClientId()))
-                    && SecurityContextUtil.hasAuthority("Authorities.User_UPDATE",
-                            ca.getUser().getAuthorities()) ? ULong.valueOf(userId.toBigInteger()) : null;
+            if (user != null
+                    && SecurityContextUtil.hasAuthority("Authorities.User_UPDATE", ca.getUser().getAuthorities())
+                    && BooleanUtil.safeValueOf(this.securityService.isUserClientManageClient(ca.getUrlAppCode(),
+                            ca.getUser().getId(), ca.getUser().getClientId(), user.getClientId())))
+                uid = userId;
         }
+
+        if (uid == null)
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), "User Images");
+
         try {
             Path tempDirectory = Files.createTempDirectory("imageUpload");
             Path file = tempDirectory.resolve(fp.getOriginalFilename());

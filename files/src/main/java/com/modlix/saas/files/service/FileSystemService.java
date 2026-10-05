@@ -360,6 +360,11 @@ public class FileSystemService {
         String finPath = folderPath;
 
         s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(path).build());
+        try {
+            this.evictDownloadCopy(path);
+        } catch (IOException e) {
+            logger.warn("Unable to evict the downloaded copy of {}", path, e);
+        }
 
         // StreamSupport.stream(s3Client.listObjectsV2Paginator(
         // ListObjectsV2Request.builder().bucket(bucketName)
@@ -454,7 +459,7 @@ public class FileSystemService {
                             .key(key).build(),
                     RequestBody.fromInputStream(inputStream, length));
 
-            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(key)));
+            this.evictDownloadCopy(key);
             this.evictCache(clientCode);
             return this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
                     fileName, ULong.valueOf(length),
@@ -491,7 +496,7 @@ public class FileSystemService {
                     file
 
             );
-            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
+            this.evictDownloadCopy(finalKey);
 
             this.fileSystemDao
                     .createOrUpdateFileForZipUpload(existingId, this.fileSystemType, clientCode, folderId, path,
@@ -585,6 +590,38 @@ public class FileSystemService {
     public Map<String, ULong> createFolders(String clientCode, List<String> paths) {
 
         return this.fileSystemDao.createFolders(this.fileSystemType, clientCode, paths);
+    }
+
+    /**
+     * Drops the local copy {@link #getAsFile} keeps of this object, so the next read fetches the
+     * bytes just written instead of serving the old ones for the life of the process.
+     *
+     * <p>The copy lives at {@code <temp>/sha256(<parent>)/<fileName>} ({@link #createPathInTempFolder}).
+     * Writes used to delete {@code <temp>/sha256(<key>)}, a path nothing ever creates, so replacing
+     * a logo or a photo at the same path kept serving the first version this host had downloaded.
+     *
+     * <p>Only this instance's copy: another files instance keeps its own until it restarts.
+     *
+     * <p>Throws like the {@code Files.deleteIfExists} it replaces did, so the write paths keep
+     * reporting a failed eviction as a failed write rather than quietly serving stale bytes.
+     */
+    private void evictDownloadCopy(String key) throws IOException {
+
+        if (StringUtil.safeIsBlank(key))
+            return;
+
+        String normalized = key.replaceAll("//+", R2_FILE_SEPARATOR_STRING);
+        if (normalized.startsWith(R2_FILE_SEPARATOR_STRING))
+            normalized = normalized.substring(1);
+
+        Path keyPath = Path.of(normalized);
+        if (keyPath.getParent() == null || keyPath.getFileName() == null)
+            return;
+
+        Path cached = this.tempFolder.resolve(
+                Path.of(HashUtil.sha256Hash(keyPath.getParent()), keyPath.getFileName().toString()));
+
+        Files.deleteIfExists(cached);
     }
 
     private Path createPathInTempFolder(Path filePath) {
