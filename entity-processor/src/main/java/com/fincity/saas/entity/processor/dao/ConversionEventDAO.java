@@ -11,6 +11,7 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -87,6 +88,61 @@ public class ConversionEventDAO extends BaseUpdatableDAO<EntityProcessorConversi
      * Used for non-retryable conditions (ticket missing campaign attribution, dispatcher
      * not registered for platform, etc.).
      */
+    /**
+     * Moves SKIPPED events for a campaign back into the retry pool.
+     *
+     * <p>The counterpart to terminal classification. A missing pixel id stops the retries, but once
+     * the id is set on the campaign those conversions are deliverable again, and nothing else would
+     * ever pick them up: {@code findDispatchable} selects PENDING and FAILED only, by design.
+     *
+     * <p><b>ATTEMPT_COUNT is reset to zero, and that is load-bearing rather than tidy.</b> The rows
+     * this exists for carry attempt counts in the hundreds or thousands — production had one at
+     * 2,358 — so requeueing without clearing it would put them straight back over
+     * {@code MAX_ATTEMPTS} and the very first failure would skip them again. The requeue would
+     * appear to work and change nothing.
+     *
+     * <p>NEXT_ATTEMPT_AT is nulled so they are eligible on the next tick rather than inheriting a
+     * backoff from a problem that has since been fixed.
+     *
+     * <p>Scoped by campaign through the ticket, because the events table has no campaign of its own.
+     * A subquery rather than a join: it reads as the question being asked, and the ticket set per
+     * campaign is small.
+     */
+    public Mono<Integer> requeueSkippedForCampaign(ULong campaignId, String statusMessage) {
+        return Mono.from(this.dslContext
+                        .update(this.table)
+                        .set(ENTITY_PROCESSOR_CONVERSION_EVENTS.STATUS, ConversionEventStatus.PENDING)
+                        .set(ENTITY_PROCESSOR_CONVERSION_EVENTS.STATUS_MESSAGE, statusMessage)
+                        .set(ENTITY_PROCESSOR_CONVERSION_EVENTS.ATTEMPT_COUNT, 0)
+                        .setNull(ENTITY_PROCESSOR_CONVERSION_EVENTS.NEXT_ATTEMPT_AT)
+                        .setNull(ENTITY_PROCESSOR_CONVERSION_EVENTS.SENT_AT)
+                        .where(ENTITY_PROCESSOR_CONVERSION_EVENTS
+                                .STATUS
+                                .eq(ConversionEventStatus.SKIPPED)
+                                .and(ENTITY_PROCESSOR_CONVERSION_EVENTS.TICKET_ID.in(this.dslContext
+                                        .select(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ID)
+                                        .from(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS)
+                                        .where(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.CAMPAIGN_ID.eq(
+                                                campaignId))))))
+                .map(rows -> rows == null ? 0 : rows);
+    }
+
+    /** Counts what {@link #requeueSkippedForCampaign} would move, so a caller can check first. */
+    public Mono<Integer> countSkippedForCampaign(ULong campaignId) {
+        return Mono.from(this.dslContext
+                        .selectCount()
+                        .from(this.table)
+                        .where(ENTITY_PROCESSOR_CONVERSION_EVENTS
+                                .STATUS
+                                .eq(ConversionEventStatus.SKIPPED)
+                                .and(ENTITY_PROCESSOR_CONVERSION_EVENTS.TICKET_ID.in(this.dslContext
+                                        .select(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ID)
+                                        .from(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS)
+                                        .where(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.CAMPAIGN_ID.eq(
+                                                campaignId))))))
+                .map(org.jooq.Record1::value1);
+    }
+
     public Mono<Integer> markSkipped(ULong id, String statusMessage) {
         return Mono.from(this.dslContext
                         .update(this.table)
