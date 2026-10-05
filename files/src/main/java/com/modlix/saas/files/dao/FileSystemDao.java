@@ -1,7 +1,7 @@
 package com.modlix.saas.files.dao;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -165,6 +165,19 @@ public class FileSystemDao {
         return parts.toArray(new String[0]);
     }
 
+    /**
+     * A TIMESTAMP column read back as epoch seconds.
+     *
+     * <p>The driver converts TIMESTAMP values between the server's zone and the JVM's, so the
+     * LocalDateTime it hands back is wall time in the JVM's zone. Reading it as UTC was right only
+     * where the JVM runs in UTC; on an IST machine every created / modified time (and so every
+     * Last-Modified header) came out 5h30 in the future. Interpreting it in the JVM's own zone is
+     * correct everywhere, and identical to the old result on a UTC JVM.
+     */
+    static long epochSeconds(LocalDateTime dbTime) {
+        return dbTime == null ? 0L : dbTime.atZone(ZoneId.systemDefault()).toEpochSecond();
+    }
+
     public FileDetail getFileDetail(FilesFileSystemType type, String clientCode, String path) {
         String[] pathParts = splitPathParts(path);
 
@@ -177,8 +190,8 @@ public class FileSystemDao {
                         .setName(r.getName())
                         .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
                         .setSize(r.getSize() == null ? 0L : r.getSize().longValue())
-                        .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
-                        .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)));
+                        .setCreatedDate(epochSeconds(r.getCreatedAt()))
+                        .setLastModifiedTime(epochSeconds(r.getUpdatedAt())));
     }
 
     private <T> T getFileRecord(FilesFileSystemType type, String clientCode, String path,
@@ -262,8 +275,8 @@ public class FileSystemDao {
                         .setName(r.getName())
                         .setDirectory(r.getFileType() == FilesFileSystemFileType.DIRECTORY)
                         .setSize(r.getSize() == null ? 0L : r.getSize().longValue())
-                        .setCreatedDate(r.getCreatedAt().toEpochSecond(ZoneOffset.UTC))
-                        .setLastModifiedTime(r.getUpdatedAt().toEpochSecond(ZoneOffset.UTC)))
+                        .setCreatedDate(epochSeconds(r.getCreatedAt()))
+                        .setLastModifiedTime(epochSeconds(r.getUpdatedAt())))
                 .toList();
 
         var count = this.context.selectCount()
@@ -355,15 +368,33 @@ public class FileSystemDao {
         var updatedCreated = false;
 
         if (exists) {
+            // An overwrite replaces the bytes, so the record has to say so: the new SIZE (it used to
+            // keep the first upload's, and so did the response), and an UPDATED_AT from the
+            // database's own clock. LocalDateTime.now(UTC) went through the driver's JVM-zone to
+            // server-zone conversion and landed 5h30 early on an IST machine, before CREATED_AT.
+            //
+            // Scoped by CODE and TYPE as well as parent and name: for a file at a client's root the
+            // parent is NULL, and parent + name alone matched that name in every client's root, in
+            // both the static and the secured tree.
             updatedCreated = this.context.update(FILES_FILE_SYSTEM)
-                    .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                    .set(FILES_FILE_SYSTEM.UPDATED_AT, DSL.currentLocalDateTime())
+                    .set(FILES_FILE_SYSTEM.SIZE, fileLength)
                     // Rewritten on every update, so a file that stops being temporary stops
                     // expiring, and one that starts being temporary starts.
                     .set(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES, expiresAfterMinutes)
-                    .where(parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq)
-                            .orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull).and(FILES_FILE_SYSTEM.NAME.eq(name)))
+                    .where(DSL.and(
+                            parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq)
+                                    .orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull),
+                            FILES_FILE_SYSTEM.NAME.eq(name),
+                            FILES_FILE_SYSTEM.CODE.eq(clientCode),
+                            FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
+                            FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE)))
                     .execute() > 0;
-        } else {
+        }
+
+        // Also reached when the caller believed the file existed but no row matched (a stale
+        // exists cache): the object is already in the bucket, so give it a record.
+        if (!updatedCreated) {
 
             updatedCreated = this.context.insertInto(FILES_FILE_SYSTEM)
                     .set(FILES_FILE_SYSTEM.CODE, clientCode)
@@ -395,13 +426,12 @@ public class FileSystemDao {
         }
 
         if (existingId != null) {
+            // By id: the caller already resolved the row, and parent + name alone is not unique
+            // across clients. The time comes from the database for the reason given above.
             return this.context.update(FILES_FILE_SYSTEM)
-                    .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
+                    .set(FILES_FILE_SYSTEM.UPDATED_AT, DSL.currentLocalDateTime())
                     .set(FILES_FILE_SYSTEM.SIZE, fileLength)
-                    .where(DSL.and(
-                            folderId == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
-                                    : FILES_FILE_SYSTEM.PARENT_ID.eq(folderId),
-                            FILES_FILE_SYSTEM.NAME.eq(name)))
+                    .where(FILES_FILE_SYSTEM.ID.eq(existingId))
                     .execute() > 0;
         }
 

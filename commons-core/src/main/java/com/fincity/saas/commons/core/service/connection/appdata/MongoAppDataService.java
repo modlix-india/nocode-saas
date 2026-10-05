@@ -7,6 +7,7 @@ import static com.fincity.saas.commons.model.condition.FilterConditionOperator.I
 import static com.fincity.saas.commons.model.condition.FilterConditionOperator.IS_TRUE;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSchemaValidator;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -23,12 +24,18 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.CoreSchemaService;
 import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.AggregateQuery;
+import com.fincity.saas.commons.model.Aggregation;
+import com.fincity.saas.commons.model.DateEncoding;
+import com.fincity.saas.commons.model.GroupByField;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.AggregateFunction;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.util.BJsonUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -65,15 +72,20 @@ import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.bson.BsonDateTime;
@@ -105,6 +117,11 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private static final String ID = "_id";
 
     private static final String CREATED_AT = "createdAt";
+
+    private static final long AGGREGATE_MAX_SECONDS = 30L;
+
+    /** Version rows are purged in batches so a wide delete cannot build one huge $in. */
+    private static final int VERSION_PURGE_BATCH = 1000;
 
     private static final String CREATED_BY = "createdBy";
 
@@ -479,34 +496,514 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPageAsFlux"));
     }
 
+    private static final String GROUP_ID = "_id";
+
+    private static final Pattern ALIAS_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+
+    /**
+     * Epoch SECONDS for any plausible date sit near 1e9; milliseconds near 1e12.
+     * A value past this declared as seconds is a units mistake, and left alone it
+     * buckets silently into the year 56000 rather than failing.
+     */
+    private static final long EPOCH_SECONDS_SANITY_CEILING = 100_000_000_000L;
+
     @Override
-    public Mono<Boolean> delete(String clientCode, Connection conn, Storage storage, String id) {
+    public Mono<Page<Map<String, Object>>> aggregate(
+            String clientCode, Connection conn, Storage storage, AggregateQuery query) {
+
+        Pageable page = query.getPageable();
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getCollection(clientCode, conn, storage),
+                        collection -> this.validateAggregate(storage, collection, query),
+                        (collection, validated) -> this.filter(storage, query.getCondition()),
+                        (collection, validated, matchBson) -> query.getHaving() == null
+                                ? Mono.just(Filters.empty())
+                                : this.filter(storage, query.getHaving()),
+                        (collection, validated, matchBson, havingBson) ->
+                                this.runAggregate(collection, query, matchBson, havingBson, page))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.aggregate"));
+    }
+
+    private Mono<Page<Map<String, Object>>> runAggregate(
+            MongoCollection<Document> collection,
+            AggregateQuery query,
+            Bson matchBson,
+            Bson havingBson,
+            Pageable page) {
+
+        List<Bson> shared = new ArrayList<>();
+        shared.add(Aggregates.match(matchBson));
+        shared.add(this.groupStage(query));
+        shared.add(this.projectStage(query));
+        if (query.getHaving() != null) shared.add(Aggregates.match(havingBson));
+
+        List<Bson> paging = new ArrayList<>();
+        Bson sort = this.sort(page.getSort());
+        if (sort != null) paging.add(Aggregates.sort(sort));
+        paging.add(Aggregates.skip((int) page.getOffset()));
+        paging.add(Aggregates.limit(page.getPageSize()));
+
+        if (!BooleanUtil.safeValueOf(query.getCount())) {
+            List<Bson> pipeline = new ArrayList<>(shared);
+            pipeline.addAll(paging);
+
+            return this.aggregatePublisher(collection, pipeline)
+                    .map(doc -> (Map<String, Object>) doc)
+                    .collectList()
+                    .map(list -> PageableExecutionUtils.getPage(
+                            list, page, () -> page.getOffset() + (long) list.size()));
+        }
+
+        // One $facet rather than two pipelines: $group already defeats any index use
+        // after the first stage, so running it twice buys nothing and costs a second
+        // pass over the collection.
+        List<Bson> pipeline = new ArrayList<>(shared);
+        pipeline.add(new Document(
+                "$facet",
+                new Document("rows", paging).append("total", List.of(new Document("$count", "value")))));
+
+        return this.aggregatePublisher(collection, pipeline)
+                .next()
+                .map(facet -> {
+                    List<Map<String, Object>> rows = this.facetRows(facet);
+                    long total = this.facetTotal(facet);
+                    return PageableExecutionUtils.getPage(rows, page, () -> total);
+                })
+                .defaultIfEmpty(PageableExecutionUtils.getPage(List.of(), page, () -> 0L));
+    }
+
+    private Flux<Document> aggregatePublisher(MongoCollection<Document> collection, List<Bson> pipeline) {
+        // allowDiskUse because $group over a real collection routinely exceeds the
+        // 100MB in-memory limit, and maxTime so one bad grouping key cannot pin the node.
+        return Flux.from(collection
+                .aggregate(pipeline)
+                .allowDiskUse(Boolean.TRUE)
+                .maxTime(AGGREGATE_MAX_SECONDS, TimeUnit.SECONDS));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> facetRows(Document facet) {
+        Object rows = facet.get("rows");
+        if (!(rows instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(Document.class::isInstance)
+                .map(d -> (Map<String, Object>) d)
+                .toList();
+    }
+
+    private long facetTotal(Document facet) {
+        Object total = facet.get("total");
+        if (!(total instanceof List<?> list) || list.isEmpty()) return 0L;
+        if (!(list.getFirst() instanceof Document first)) return 0L;
+        Object value = first.get("value");
+        return value instanceof Number n ? n.longValue() : 0L;
+    }
+
+    private Bson groupStage(AggregateQuery query) {
+        Document group = new Document();
+
+        if (query.getGroupBy() == null || query.getGroupBy().isEmpty()) {
+            group.append(GROUP_ID, null);
+        } else {
+            Document keys = new Document();
+            for (GroupByField g : query.getGroupBy()) keys.append(g.resolvedAlias(), this.groupKeyExpression(g));
+            group.append(GROUP_ID, keys);
+        }
+
+        for (Aggregation a : query.getAggregations()) group.append(a.resolvedAlias(), this.accumulator(a));
+
+        return new Document("$group", group);
+    }
+
+    /**
+     * The group key for one field: its raw value, or a truncated date.
+     *
+     * App data dates are numbers rather than BSON dates, so $dateTrunc cannot see
+     * them directly. The value is lifted to milliseconds, turned into a date, then
+     * truncated in the caller's timezone.
+     */
+    private Object groupKeyExpression(GroupByField g) {
+        String path = "$" + g.getField();
+
+        if (g.getBucket() == null) return path;
+
+        Object millis = g.getEncoding().getToMillis() == 1L
+                ? path
+                : new Document("$multiply", List.of(path, g.getEncoding().getToMillis()));
+
+        return new Document(
+                "$dateTrunc",
+                new Document("date", new Document("$toDate", millis))
+                        .append("unit", g.getBucket().getMongoUnit())
+                        .append("timezone", g.resolvedTimezone()));
+    }
+
+    private Object accumulator(Aggregation a) {
+        if (a.getFunction() == AggregateFunction.COUNT) {
+            if (a.getField() == null || a.getField().isBlank()) return new Document("$sum", 1);
+
+            // COUNT(col) in SQL skips nulls, and $sum: 1 would not.
+            return new Document(
+                    "$sum",
+                    new Document(
+                            "$cond",
+                            List.of(
+                                    new Document(
+                                            "$in",
+                                            List.of(
+                                                    new Document("$type", "$" + a.getField()),
+                                                    List.of("missing", "null"))),
+                                    0,
+                                    1)));
+        }
+
+        String path = "$" + a.getField();
+        return switch (a.getFunction()) {
+            case SUM -> new Document("$sum", path);
+            case AVG -> new Document("$avg", path);
+            case MIN -> new Document("$min", path);
+            case MAX -> new Document("$max", path);
+            case COUNT -> new Document("$sum", 1);
+        };
+    }
+
+    /**
+     * Flatten _id back to the top level.
+     *
+     * Nested group keys would force every consumer to reshape before binding, and
+     * the chart components this exists for take a flat array of objects.
+     */
+    private Bson projectStage(AggregateQuery query) {
+        Document project = new Document(GROUP_ID, 0);
+
+        if (query.getGroupBy() != null) {
+            for (GroupByField g : query.getGroupBy()) {
+                String alias = g.resolvedAlias();
+                project.append(alias, this.projectedKey(g, alias));
+            }
+        }
+
+        for (Aggregation a : query.getAggregations()) project.append(a.resolvedAlias(), 1);
+
+        return new Document("$project", project);
+    }
+
+    private Object projectedKey(GroupByField g, String alias) {
+        String ref = "$" + GROUP_ID + "." + alias;
+
+        if (g.getBucket() == null) return ref;
+
+        // $dateTrunc hands back a BSON date. Every other timestamp this service
+        // returns is a number in the encoding it was stored in, and the client's
+        // date formatter reads nothing else, so convert back rather than leak a date.
+        Object asLong = new Document("$toLong", ref);
+        return g.getEncoding().getToMillis() == 1L
+                ? asLong
+                : new Document(
+                        "$toLong", new Document("$divide", List.of(asLong, g.getEncoding().getToMillis())));
+    }
+
+    /**
+     * Reject a malformed aggregate before it reaches Mongo.
+     *
+     * This is the security-critical step, not a convenience. Field names become
+     * pipeline paths and aliases become $project keys, so an unvalidated request
+     * is pipeline injection into app data.
+     */
+    private Mono<Boolean> validateAggregate(
+            Storage storage, MongoCollection<Document> collection, AggregateQuery query) {
+
+        if (query.getAggregations() == null || query.getAggregations().isEmpty())
+            return this.invalidAggregation("at least one aggregation is required");
+
+        if (query.getHaving() instanceof HavingCondition)
+            return this.invalidAggregation(
+                    "having must be a plain condition over the aliases; HavingCondition carries its own"
+                            + " aggregate and is not supported here");
+
+        Set<String> aliases = new LinkedHashSet<>();
+
+        if (query.getGroupBy() != null) {
+            for (GroupByField g : query.getGroupBy()) {
+                String err = this.checkGroupBy(g, aliases);
+                if (err != null) return this.invalidAggregation(err);
+            }
+        }
+
+        for (Aggregation a : query.getAggregations()) {
+            String err = this.checkAggregation(a, aliases);
+            if (err != null) return this.invalidAggregation(err);
+        }
+
+        if (query.getSort() != null) {
+            for (Sort.Order o : query.getSort()) {
+                if (!aliases.contains(o.getProperty()))
+                    return this.invalidAggregation("cannot sort on '" + o.getProperty()
+                            + "'; sort is only possible on a group key or measure alias " + aliases);
+            }
+        }
+
+        return this.validateFieldsAgainstSchema(storage, query).then(this.sanityCheckBuckets(collection, query));
+    }
+
+    private String checkGroupBy(GroupByField g, Set<String> aliases) {
+        if (g.getField() == null || g.getField().isBlank()) return "a groupBy entry has no field";
+        if (g.getField().indexOf('$') >= 0) return "field '" + g.getField() + "' may not contain '$'";
+
+        String alias = g.resolvedAlias();
+        if (!ALIAS_PATTERN.matcher(alias).matches())
+            return "alias '" + alias + "' must match " + ALIAS_PATTERN.pattern();
+        if (!aliases.add(alias)) return "duplicate alias '" + alias + "'";
+
+        if (g.getBucket() == null) {
+            if (g.getEncoding() != null)
+                return "encoding is only meaningful with a bucket, on field '" + g.getField() + "'";
+            return null;
+        }
+
+        if (g.getEncoding() == null)
+            return "field '" + g.getField() + "' is bucketed by " + g.getBucket()
+                    + " so it needs an encoding (EPOCH_SECONDS or EPOCH_MILLIS); dates are stored as"
+                    + " numbers and seconds cannot be told from milliseconds";
+
+        try {
+            ZoneId.of(g.resolvedTimezone());
+        } catch (DateTimeException e) {
+            return "'" + g.getTimezone() + "' is not a known IANA timezone";
+        }
+
+        return null;
+    }
+
+    private String checkAggregation(Aggregation a, Set<String> aliases) {
+        if (a.getFunction() == null) return "an aggregation has no function";
+
+        if (a.getFunction() != AggregateFunction.COUNT && (a.getField() == null || a.getField().isBlank()))
+            return a.getFunction() + " needs a field";
+
+        if (a.getField() != null && a.getField().indexOf('$') >= 0)
+            return "field '" + a.getField() + "' may not contain '$'";
+
+        String alias = a.resolvedAlias();
+        if (alias == null || !ALIAS_PATTERN.matcher(alias).matches())
+            return "alias '" + alias + "' must match " + ALIAS_PATTERN.pattern();
+        if (!aliases.add(alias)) return "duplicate alias '" + alias + "'";
+
+        return null;
+    }
+
+    /**
+     * Every referenced field has to be one the storage declares, and a bucketed one
+     * has to be numeric. The schema is the only thing standing between a caller and
+     * an arbitrary field path.
+     */
+    private Mono<Boolean> validateFieldsAgainstSchema(Storage storage, AggregateQuery query) {
+
+        return this.storageService.getSchema(storage).flatMap(schema -> {
+            Map<String, Schema> props = schema.getProperties();
+            if (props == null || props.isEmpty()) return Mono.just(Boolean.TRUE);
+
+            if (query.getGroupBy() != null) {
+                for (GroupByField g : query.getGroupBy()) {
+                    Schema fieldSchema = this.declaredField(props, g.getField());
+                    if (fieldSchema == null)
+                        return this.invalidAggregation(
+                                "storage " + storage.getName() + " declares no field '" + g.getField() + "'");
+
+                    if (g.getBucket() != null && !this.isNumeric(fieldSchema))
+                        return this.invalidAggregation("field '" + g.getField()
+                                + "' is bucketed as a date but is not a number in the storage schema;"
+                                + " only epoch-number dates can be bucketed");
+                }
+            }
+
+            for (Aggregation a : query.getAggregations()) {
+                if (a.getField() == null || a.getField().isBlank()) continue;
+                if (this.declaredField(props, a.getField()) == null)
+                    return this.invalidAggregation(
+                            "storage " + storage.getName() + " declares no field '" + a.getField() + "'");
+            }
+
+            return Mono.just(Boolean.TRUE);
+        })
+                .defaultIfEmpty(Boolean.TRUE);
+    }
+
+    private Schema declaredField(Map<String, Schema> props, String field) {
+        if (field == null) return null;
+        if (GROUP_ID.equals(field)) return props.get(GROUP_ID);
+
+        int dot = field.indexOf('.');
+        return props.get(dot < 0 ? field : field.substring(0, dot));
+    }
+
+    private boolean isNumeric(Schema fieldSchema) {
+        if (fieldSchema.getType() == null) return false;
+        Set<SchemaType> types = fieldSchema.getType().getAllowedSchemaTypes();
+        if (types == null) return false;
+        return types.contains(SchemaType.INTEGER)
+                || types.contains(SchemaType.LONG)
+                || types.contains(SchemaType.FLOAT)
+                || types.contains(SchemaType.DOUBLE);
+    }
+
+    /**
+     * Catch a seconds/milliseconds mix-up by looking at one real value.
+     *
+     * The schema calls both LONG, so this is the only place the mistake can be
+     * seen. Left through, milliseconds multiplied to milliseconds bucket into the
+     * year 56000: no error, a rendered chart, and nonsense.
+     */
+    private Mono<Boolean> sanityCheckBuckets(MongoCollection<Document> collection, AggregateQuery query) {
+        if (query.getGroupBy() == null || query.getGroupBy().isEmpty()) return Mono.just(Boolean.TRUE);
+
+        List<GroupByField> seconds = query.getGroupBy().stream()
+                .filter(g -> g.getBucket() != null && g.getEncoding() == DateEncoding.EPOCH_SECONDS)
+                .toList();
+
+        if (seconds.isEmpty()) return Mono.just(Boolean.TRUE);
+
+        return Flux.fromIterable(seconds)
+                .concatMap(g -> Mono.from(collection
+                                .find(Filters.exists(g.getField(), true))
+                                .projection(Projections.include(g.getField()))
+                                .first())
+                        .flatMap(doc -> {
+                            Object v = doc == null ? null : doc.get(g.getField());
+                            if (v instanceof Number n && Math.abs(n.longValue()) > EPOCH_SECONDS_SANITY_CEILING)
+                                return this.invalidAggregation("field '" + g.getField()
+                                        + "' is declared EPOCH_SECONDS but holds " + n.longValue()
+                                        + ", which is milliseconds; bucketing it as seconds would be wrong"
+                                        + " by a factor of 1000");
+                            return Mono.just(Boolean.TRUE);
+                        })
+                        .defaultIfEmpty(Boolean.TRUE))
+                .then(Mono.just(Boolean.TRUE));
+    }
+
+    private <T> Mono<T> invalidAggregation(String reason) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                CoreMessageResourceService.INVALID_AGGREGATION,
+                reason);
+    }
+
+    @Override
+    public Mono<Boolean> delete(String clientCode, Connection conn, Storage storage, String id, Boolean deleteVersion) {
         if (!ObjectId.isValid(id))
             return this.mongoObjectNotFound(
                     AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id);
 
         BsonObjectId objectId = new BsonObjectId(new ObjectId(id));
 
-        return FlatMapUtil.flatMapMono(() -> this.getCollection(clientCode, conn, storage), collection -> Mono.from(
-                                collection.findOneAndDelete(Filters.eq(ID, objectId)))
-                        .map(e -> Boolean.TRUE))
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.getCollection(clientCode, conn, storage),
+                        // Read before deleting, because the DELETE version row records the
+                        // final state and findOneAndDelete would already have thrown it away.
+                        (ca, collection) -> Mono.from(collection.find(Filters.eq(ID, objectId)).first()),
+                        (ca, collection, doc) -> this.recordDelete(clientCode, conn, storage, ca, doc, id, deleteVersion),
+                        (ca, collection, doc, versioned) -> Mono.from(
+                                        collection.findOneAndDelete(Filters.eq(ID, objectId)))
+                                .map(e -> Boolean.TRUE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.delete"))
                 .switchIfEmpty(this.mongoObjectNotFound(
                         AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, storage.getName(), id));
     }
 
     @Override
-    public Mono<Long> deleteByFilter(String clientCode, Connection conn, Storage storage, Query query, Boolean devMode) {
+    public Mono<Long> deleteByFilter(
+            String clientCode, Connection conn, Storage storage, Query query, Boolean devMode, Boolean deleteVersion) {
         AbstractCondition condition = query.getCondition();
 
         return FlatMapUtil.flatMapMono(
                         () -> this.getCollection(clientCode, conn, storage),
                         collection -> this.filter(storage, condition),
-                        (collection, bsonCondition) -> BooleanUtil.safeValueOf(devMode)
-                                ? Mono.from(collection.countDocuments(bsonCondition))
-                                : Mono.from(collection.deleteMany(bsonCondition))
-                                .map(DeleteResult::getDeletedCount))
+                        (collection, bsonCondition) -> {
+                            if (BooleanUtil.safeValueOf(devMode))
+                                return Mono.from(collection.countDocuments(bsonCondition));
+
+                            return this.recordBulkDelete(
+                                            clientCode, conn, storage, collection, bsonCondition, deleteVersion)
+                                    .then(Mono.from(collection.deleteMany(bsonCondition)))
+                                    .map(DeleteResult::getDeletedCount);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.deleteByFilter"));
+    }
+
+    /**
+     * Record one row's removal: either a DELETE version row, or the purge of its
+     * history.
+     *
+     * Does nothing for a storage that asked for neither auditing nor versioning,
+     * which is what keeps this off the hot path for the majority of storages.
+     */
+    private Mono<Boolean> recordDelete(
+            String clientCode,
+            Connection conn,
+            Storage storage,
+            ContextAuthentication ca,
+            Document doc,
+            String id,
+            Boolean deleteVersion) {
+
+        if (deleteVersion == null || !this.keepsHistory(storage) || doc == null) return Mono.just(Boolean.TRUE);
+
+        if (BooleanUtil.safeValueOf(deleteVersion))
+            return this.getVersionCollection(clientCode, conn, storage)
+                    .flatMap(vc -> Mono.from(vc.deleteMany(Filters.eq(OBJECT_ID, id))))
+                    .thenReturn(Boolean.TRUE);
+
+        // addVersion strips _id from the document it is handed, which is fine here
+        // only because the row is about to go.
+        return this.addVersion(
+                        clientCode, conn, storage, null, new BsonObjectId(new ObjectId(id)), ca, doc, "DELETE")
+                .thenReturn(Boolean.TRUE)
+                .defaultIfEmpty(Boolean.TRUE);
+    }
+
+    /**
+     * The same for a filtered bulk delete, without ever holding the whole match set.
+     *
+     * Rows are streamed: the record path versions them one at a time, and the purge
+     * path collects only ids and deletes their history in batches. Collecting every
+     * matched Document first, as the obvious version of this does, turns a wide
+     * delete into an out-of-memory risk.
+     */
+    private Mono<Boolean> recordBulkDelete(
+            String clientCode,
+            Connection conn,
+            Storage storage,
+            MongoCollection<Document> collection,
+            Bson bsonCondition,
+            Boolean deleteVersion) {
+
+        if (deleteVersion == null || !this.keepsHistory(storage)) return Mono.just(Boolean.TRUE);
+
+        if (BooleanUtil.safeValueOf(deleteVersion))
+            return this.getVersionCollection(clientCode, conn, storage)
+                    .flatMap(vc -> Flux.from(collection.find(bsonCondition).projection(Projections.include(ID)))
+                            .map(d -> d.getObjectId(ID).toHexString())
+                            .buffer(VERSION_PURGE_BATCH)
+                            .concatMap(ids -> Mono.from(vc.deleteMany(Filters.in(OBJECT_ID, ids))))
+                            .then(Mono.just(Boolean.TRUE)))
+                    .defaultIfEmpty(Boolean.TRUE);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> Flux.from(collection.find(bsonCondition))
+                        .concatMap(d -> {
+                            ObjectId oid = d.getObjectId(ID);
+                            return this.addVersion(
+                                    clientCode, conn, storage, null, new BsonObjectId(oid), ca, d, "DELETE");
+                        })
+                        .then(Mono.just(Boolean.TRUE)))
+                .defaultIfEmpty(Boolean.TRUE);
+    }
+
+    /** A storage writes version rows when it asked for auditing, versioning, or both. */
+    private boolean keepsHistory(Storage storage) {
+        return BooleanUtil.safeValueOf(storage.getIsAudited()) || BooleanUtil.safeValueOf(storage.getIsVersioned());
     }
 
     @Override
@@ -531,8 +1028,15 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     }
 
     @Override
-    public Mono<Page<Map<String, Object>>> readPageVersion(String clientCode, Connection conn, Storage storage, String objectId, Query query) {
-        Pageable page = query.getPageable();
+    public Mono<Page<Map<String, Object>>> readPageVersion(
+            String clientCode,
+            Connection conn,
+            Storage storage,
+            String objectId,
+            Query query,
+            Boolean includeObject) {
+        Query effective = this.versionQuery(query, includeObject);
+        Pageable page = effective.getPageable();
 
         // addVersion stores objectId as the hex STRING, and filterConditionFilter only coerces
         // _id and relation fields to ObjectId, so an ObjectId here never matches anything.
@@ -541,19 +1045,19 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .setValue(objectId)
                 .setOperator(FilterConditionOperator.EQUALS);
 
-        AbstractCondition condition = query.getCondition() == null
+        AbstractCondition condition = effective.getCondition() == null
                 ? objectIdFilterCondition
                 : new ComplexCondition()
-                .setConditions(List.of(objectIdFilterCondition, query.getCondition()))
+                .setConditions(List.of(objectIdFilterCondition, effective.getCondition()))
                 .setOperator(ComplexConditionOperator.AND);
 
-        Boolean count = query.getCount();
+        Boolean count = effective.getCount();
 
         return FlatMapUtil.flatMapMono(
                         () -> this.getVersionCollection(clientCode, conn, storage),
                         vCollection -> this.filter(storage, condition),
                         (vCollection, bsonCondition) -> this.applyQueryOnElements(
-                                        vCollection, query, bsonCondition, page)
+                                        vCollection, effective, bsonCondition, page)
                                 .map(doc -> this.convertBisonIds(storage, doc, Boolean.TRUE))
                                 .collectList(),
                         (vCollection, bsonCondition, list) -> BooleanUtil.safeValueOf(count)
@@ -562,6 +1066,29 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         (vCollection, bsonCondition, list, cnt) ->
                                 Mono.just(PageableExecutionUtils.getPage(list, page, cnt::longValue)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.readPageVersion"));
+    }
+
+    /**
+     * Drop the {@code object} snapshot from a version read when the caller only
+     * wants the audit trail.
+     *
+     * The snapshot is the bulk of a version row and a "who changed what, when" view
+     * never looks at it. An explicit field list from the caller wins, because they
+     * have already said exactly what they want.
+     */
+    private Query versionQuery(Query query, Boolean includeObject) {
+        if (!BooleanUtil.safeValueOf(includeObject == null ? Boolean.TRUE : includeObject)
+                && (query.getFields() == null || query.getFields().isEmpty()))
+            return new Query()
+                    .setCondition(query.getCondition())
+                    .setPage(query.getPage())
+                    .setSize(query.getSize())
+                    .setSort(query.getSort())
+                    .setCount(query.getCount())
+                    .setFields(List.of(OBJECT))
+                    .setExcludeFields(Boolean.TRUE);
+
+        return query;
     }
 
     @Override
@@ -741,10 +1268,21 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private Mono<Bson> filter(Storage storage, AbstractCondition condition) {
         if (condition == null) return Mono.just(Filters.empty());
 
-        return (condition instanceof ComplexCondition cc
-                ? this.complexConditionFilter(storage, cc)
-                : this.filterConditionFilter(storage, (FilterCondition) condition))
-                .defaultIfEmpty(Filters.empty());
+        Mono<Bson> built;
+
+        if (condition instanceof ComplexCondition cc) built = this.complexConditionFilter(storage, cc);
+        else if (condition instanceof FilterCondition fc) built = this.filterConditionFilter(storage, fc);
+        else
+            // AbstractConditionDeserializer builds a HavingCondition from any body carrying
+            // aggregateFunction, and a GroupCondition from one carrying havingConditions.
+            // Neither extends FilterCondition, so the blind cast this replaces turned a
+            // merely unsupported request into a ClassCastException and a 500.
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                    condition.getClass().getSimpleName());
+
+        return built.defaultIfEmpty(Filters.empty());
     }
 
     private Mono<Bson> complexConditionFilter(Storage storage, ComplexCondition cc) {
