@@ -87,7 +87,7 @@ public class ClientCheckDAOHelper {
 
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
-    private static final String MANAGING_ROLES = "Authorities.ROLE_Owner or Authorities.ROLE_ClientManager";
+    private static final String MANAGING_ROLES = "Authorities.ROLE_Owner or Authorities.ROLE_Client_Manager";
 
     /**
      * SQL mirror of {@code ClientService.isUserClientManageClient(ca, clientId)}:
