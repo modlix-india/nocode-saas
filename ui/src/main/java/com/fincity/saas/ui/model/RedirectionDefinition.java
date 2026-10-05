@@ -64,19 +64,19 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
 			return Mono.just(this);
 		}
 
-		if (override.getRedirectionType() != null) {
+		if (this.getRedirectionType() == null) {
 			this.setRedirectionType(override.getRedirectionType());
 		}
-		if (override.getTargetHttpMethod() != null) {
+		if (this.getTargetHttpMethod() == null) {
 			this.setTargetHttpMethod(override.getTargetHttpMethod());
 		}
-		if (override.getTargetUrl() != null) {
+		if (this.getTargetUrl() == null) {
 			this.setTargetUrl(override.getTargetUrl());
 		}
-		if (override.getValidFrom() != null) {
+		if (this.getValidFrom() == null) {
 			this.setValidFrom(override.getValidFrom());
 		}
-		if (override.getValidUntil() != null) {
+		if (this.getValidUntil() == null) {
 			this.setValidUntil(override.getValidUntil());
 		}
 

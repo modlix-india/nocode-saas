@@ -245,7 +245,7 @@ public class AggregateStorageObject extends AbstractReactiveFunction {
 
     private AbstractCondition condition(JsonObject obj) {
         if (obj == null || obj.isJsonNull() || obj.size() == 0) return null;
-        return this.mapper.convertValue(gson.fromJson(obj, Map.class), AbstractCondition.class);
+        return this.mapper.convertValue(StorageJson.toMap(obj), AbstractCondition.class);
     }
 
     private List<GroupByField> groupBy(JsonElement arg) {

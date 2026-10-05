@@ -8,6 +8,7 @@ import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 
 import lombok.Data;
@@ -47,26 +48,26 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 		if (inc == null)
 			return Mono.just(this);
 
-		return FlatMapUtil.flatMapMono(
-				() -> DifferenceExtractor.extract(this.headersMapping, inc.headersMapping),
-				hm -> DifferenceExtractor.extract(this.pathParamMapping, inc.pathParamMapping),
-				(hm, pp) -> DifferenceExtractor.extract(this.queryParamMapping, inc.queryParamMapping),
+		return FlatMapUtil.flatMapMonoWithNull(
+				() -> DifferenceExtractor.extract(inc.headersMapping, this.headersMapping),
+				hm -> DifferenceExtractor.extract(inc.pathParamMapping, this.pathParamMapping),
+				(hm, pp) -> DifferenceExtractor.extract(inc.queryParamMapping, this.queryParamMapping),
 				(hm, pp, qp) -> {
 					KIRunFxDefinition diff = new KIRunFxDefinition();
 					diff.setHeadersMapping((Map<String, String>) hm);
 					diff.setPathParamMapping((Map<String, String>) pp);
 					diff.setQueryParamMapping((Map<String, String>) qp);
 
-					if (!this.name.equals(inc.name))
-						diff.setName(this.name);
-					if (!this.namespace.equals(inc.namespace))
-						diff.setNamespace(this.namespace);
-					if (!this.functionAppCode.equals(inc.functionAppCode))
-						diff.setFunctionAppCode(this.functionAppCode);
-					if (!this.outputEventName.equals(inc.outputEventName))
-						diff.setOutputEventName(this.outputEventName);
-					if (!this.outputEventParamName.equals(inc.outputEventParamName))
-						diff.setOutputEventParamName(this.outputEventParamName);
+					if (!CommonsUtil.safeEquals(this.name, inc.name))
+						diff.setName(inc.name);
+					if (!CommonsUtil.safeEquals(this.namespace, inc.namespace))
+						diff.setNamespace(inc.namespace);
+					if (!CommonsUtil.safeEquals(this.functionAppCode, inc.functionAppCode))
+						diff.setFunctionAppCode(inc.functionAppCode);
+					if (!CommonsUtil.safeEquals(this.outputEventName, inc.outputEventName))
+						diff.setOutputEventName(inc.outputEventName);
+					if (!CommonsUtil.safeEquals(this.outputEventParamName, inc.outputEventParamName))
+						diff.setOutputEventParamName(inc.outputEventParamName);
 
 					return Mono.just(diff);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
@@ -78,7 +79,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 		if (override == null)
 			return Mono.just(this);
 
-		return FlatMapUtil.flatMapMono(
+		return FlatMapUtil.flatMapMonoWithNull(
 				() -> DifferenceApplicator.apply(this.headersMapping, override.headersMapping),
 				hm -> DifferenceApplicator.apply(this.pathParamMapping, override.pathParamMapping),
 				(hm, pp) -> DifferenceApplicator.apply(this.queryParamMapping, override.queryParamMapping),
@@ -87,15 +88,15 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 					this.setPathParamMapping((Map<String, String>) pp);
 					this.setQueryParamMapping((Map<String, String>) qp);
 
-					if (override.getName() != null)
+					if (this.getName() == null)
 						this.setName(override.getName());
-					if (override.getNamespace() != null)
+					if (this.getNamespace() == null)
 						this.setNamespace(override.getNamespace());
-					if (override.getFunctionAppCode() != null)
+					if (this.getFunctionAppCode() == null)
 						this.setFunctionAppCode(override.getFunctionAppCode());
-					if (override.getOutputEventName() != null)
+					if (this.getOutputEventName() == null)
 						this.setOutputEventName(override.getOutputEventName());
-					if (override.getOutputEventParamName() != null)
+					if (this.getOutputEventParamName() == null)
 						this.setOutputEventParamName(override.getOutputEventParamName());
 
 					return Mono.just(this);

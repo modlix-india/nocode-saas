@@ -59,6 +59,10 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
 
     public static final String STORAGE_SCHEMA_ALWAYS_OBJECT = "storage_schema_always_object";
 
+    public static final String INVALID_COLUMN_DEFINITION = "invalid_column_definition";
+
+    public static final String INVALID_STORAGE_SCHEMA = "invalid_storage_schema";
+
     public static final String STORAGE_SCHEMA_FIELD_ALREADY_EXISTS = "storage_schema_field_already_exists";
 
     public static final String STORAGE_RELATION_OBJECT_CREATION_ERROR = "storage_relation_object_creation_error";
@@ -96,6 +100,11 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String EMPTY_FUNCTION_RESPONSE = "empty_function_response";
 
     public static final String INVALID_AGGREGATION = "invalid_aggregation";
+    public static final String INVALID_JOIN = "invalid_join";
 
     public static final String UNSUPPORTED_CONDITION = "unsupported_condition";
+
+    public static final String UNSUPPORTED_ON_BACKEND = "unsupported_on_backend";
+
+    public static final String ROW_ID_REQUIRED = "row_id_required";
 }

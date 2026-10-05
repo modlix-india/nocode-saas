@@ -22,6 +22,7 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.document.AbstractSchema;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService.NameOnly;
+import com.fincity.saas.commons.mongo.util.SchemaRefs;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -157,21 +158,10 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 	/**
 	 * Every other schema in this app that this one refers to.
 	 * <p>
-	 * A schema's {@code definition} is raw KIRun Schema JSON, and a reference
-	 * is a plain {@code ref} string, never {@code $ref} - {@code $defs} is the
-	 * only dollar prefixed key KIRun has. Refs nest wherever a sub schema is
-	 * allowed: {@code properties}, {@code patternProperties},
-	 * {@code propertyNames}, {@code anyOf}/{@code allOf}/{@code oneOf},
-	 * {@code not}, {@code contains}, {@code $defs}, {@code items},
-	 * {@code additionalProperties} and {@code additionalItems}.
-	 * <p>
-	 * The walk is deliberately blind rather than field by field. {@code items}
-	 * and the two additional* fields are Gson union types whose adapters accept
-	 * a bare schema, a wrapped {@code singleSchema}/{@code tupleSchema}/
-	 * {@code schemaValue}, a raw array or a bare boolean, and only ever write
-	 * the bare form back - so stored definitions carry a mix of shapes. A
-	 * recursive walk keyed on {@code ref} is immune to all of that; a typed
-	 * reader would have to reimplement both adapters.
+	 * The walk itself lives in {@link SchemaRefs}, because storages hold the
+	 * same kind of definition and have to be walked the same way: a storage
+	 * whose table is not rebuilt when the schema it points at changes fails
+	 * silently, on the first write that hits a column of the wrong type.
 	 */
 	@Override
 	public Collection<String> getTransportDependencies(D entity) {
@@ -179,52 +169,43 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 		if (entity == null || entity.getDefinition() == null)
 			return List.of();
 
-		Set<String> refs = new LinkedHashSet<>();
-		collectRefs(entity.getDefinition(), refs);
-		return refs;
-	}
-
-	private static void collectRefs(Object node, Set<String> refs) {
-
-		if (node instanceof Map<?, ?> map) {
-			for (Map.Entry<?, ?> entry : map.entrySet()) {
-				if (REF.equals(entry.getKey()) && entry.getValue() instanceof String ref)
-					addSchemaNames(ref, refs);
-				else
-					collectRefs(entry.getValue(), refs);
-			}
-		} else if (node instanceof Iterable<?> iterable) {
-			for (Object value : iterable)
-				collectRefs(value, refs);
-		}
+		return SchemaRefs.collect(entity.getDefinition());
 	}
 
 	/**
-	 * Turns a ref string into the schema document names it could point at.
+	 * Every schema in this app that would change if the named one changed,
+	 * including the named one itself.
+	 *
+	 * Reverse reachability, not forward: the question is not what this schema
+	 * points at but what points at it. A storage may reference {@code App.Order},
+	 * which references {@code App.Money}, so editing {@code App.Money} changes the
+	 * table behind that storage even though nothing about the storage or
+	 * {@code App.Order} was touched. Following only the direct references would
+	 * find nothing and rebuild nothing.
 	 * <p>
-	 * A schema document is stored under {@code namespace + "." + name}, and
-	 * ReactiveSchemaUtil resolves an external ref by cutting at the first
-	 * {@code /} and splitting the head at its <b>last</b> dot - so the head is
-	 * already exactly the document name. The dot trimmed prefixes are emitted
-	 * too because refs written as {@code Model.UserSegment._id} exist in the
-	 * wild; only the prefix that names a real schema will match anything.
-	 * Refs starting with {@code #} are internal to the schema and are not
-	 * edges at all.
+	 * Every client's copy is walked, not just the editing client's. A derived
+	 * document stores only its difference from its base, so a reference added by
+	 * an override exists in that document alone, and reading the base would miss it.
 	 */
-	private static void addSchemaNames(String ref, Set<String> refs) {
+	public Mono<Set<String>> referencingClosure(String appCode, String schemaName) {
 
-		if (StringUtil.safeIsBlank(ref) || ref.charAt(0) == '#')
-			return;
+		if (StringUtil.safeIsBlank(appCode) || StringUtil.safeIsBlank(schemaName))
+			return Mono.just(Set.of());
 
-		int slash = ref.indexOf('/');
-		String name = slash < 0 ? ref : ref.substring(0, slash);
+		return this.mongoTemplate
+				.find(new Query(Criteria.where("appCode")
+						.is(appCode)), this.pojoClass, this.getCollectionName())
+				.collectList()
+				.map(all -> {
 
-		// A document name is namespace + "." + name, so it always has a dot.
-		// Stop once there is none left, which is the bare namespace.
-		while (name.indexOf('.') >= 0) {
-			refs.add(name);
-			name = name.substring(0, name.lastIndexOf('.'));
-		}
+					Map<String, Set<String>> refsByDocument = new HashMap<>();
+
+					for (D doc : all)
+						if (doc.getName() != null)
+							refsByDocument.put(doc.getName(), SchemaRefs.collect(doc.getDefinition()));
+
+					return SchemaRefs.referencingClosure(refsByDocument, schemaName);
+				});
 	}
 
 	public Flux<String> filterInRepo(String appCode, String clientCode, String filter) {

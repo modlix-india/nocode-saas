@@ -1830,33 +1830,45 @@ class UserServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
-		void update_ByMap_DuplicateUser_ThrowsForbidden() {
+		void update_ByMap_EmailOfAnotherUserInSameClient_ThrowsConflict() {
 
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
 
 			when(dao.getUserClientId(USER_ID)).thenReturn(Mono.just(BUS_CLIENT_ID));
 
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
 
-			when(dao.checkUserExists(eq(BUS_CLIENT_ID), anyString(), isNull(), isNull(), isNull()))
-					.thenReturn(Mono.just(true));
-
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
 					.thenReturn(Mono.just(true));
 
-			User updatedUser = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
-			when(dao.update(eq(USER_ID), any(Map.class))).thenReturn(Mono.just(updatedUser));
+			// A fresh copy per read: the PATCH mutates the one it reads, and update(User) must still see
+			// the stored email to know this edit changes it.
+			when(dao.readById(USER_ID))
+					.thenAnswer(inv -> Mono.just(TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID)));
 
-			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+			User teammate = TestDataFactory.createActiveUser(ULong.valueOf(11), BUS_CLIENT_ID);
+			teammate.setEmailId("taken@test.com");
 
-			Map<String, Object> fields = Map.of("userName", "existinguser");
+			// Only the changed email is looked up, in the user's own client, excluding the user.
+			when(dao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), isNull(), eq("taken@test.com"), isNull(),
+					eq(USER_ID)))
+					.thenReturn(Flux.just(teammate));
+
+			Map<String, Object> fields = Map.of("emailId", "taken@test.com");
 
 			StepVerifier.create(service.update(USER_ID, fields))
-					.expectErrorMatches(e -> e instanceof GenericException
-							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
 					.verify();
+
+			verify(messageResourceService).throwMessage(any(),
+					eq(SecurityMessageResourceService.USER_IDENTITY_TAKEN), eq("email"));
+			verify(dao, never()).update(any(User.class));
 		}
 	}
 
@@ -2282,7 +2294,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 	class UpdateByEntityAdditionalTests {
 
 		@Test
-		void update_ByEntity_DuplicateUser_ThrowsForbidden() {
+		void update_ByEntity_IdentityOfAnotherUserInSameClient_ThrowsConflict() {
 
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
@@ -2302,14 +2314,58 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
 
-			when(dao.checkUserExists(eq(BUS_CLIENT_ID), eq("existinguser"), eq("existing@test.com"),
-					isNull(), isNull()))
-					.thenReturn(Mono.just(true));
+			User teammate = TestDataFactory.createActiveUser(ULong.valueOf(11), BUS_CLIENT_ID);
+			teammate.setEmailId("EXISTING@test.com");
+
+			when(dao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), eq("existinguser"), eq("existing@test.com"),
+					isNull(), eq(USER_ID)))
+					.thenReturn(Flux.just(teammate));
 
 			StepVerifier.create(service.update(entity))
-					.expectErrorMatches(e -> e instanceof GenericException
-							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
 					.verify();
+
+			verify(messageResourceService).throwMessage(any(),
+					eq(SecurityMessageResourceService.USER_IDENTITY_TAKEN), eq("email"));
+		}
+
+		@Test
+		void update_ByEntity_ChangedIdentityFree_Saves() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString(),
+						ArgumentMatchers.<List<String>>any()))
+					.thenReturn(true);
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setEmailId("free@test.com");
+
+			when(dao.readById(USER_ID))
+					.thenReturn(Mono.just(TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID)));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+
+			when(dao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), isNull(), eq("free@test.com"), isNull(),
+					eq(USER_ID)))
+					.thenReturn(Flux.empty());
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.update(any(User.class))).thenReturn(Mono.just(entity));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.update(entity))
+					.assertNext(user -> assertEquals("free@test.com", user.getEmailId()))
+					.verifyComplete();
 		}
 
 		@Test
