@@ -11,11 +11,14 @@ import com.fincity.saas.entity.processor.service.ConversionActionMappingService;
 import com.fincity.saas.entity.processor.service.ConversionEventService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.commons.AbstractConnectionService;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -33,6 +36,34 @@ public class ConversionsDrainService {
 
     private static final Logger logger = LoggerFactory.getLogger(ConversionsDrainService.class);
     private static final int DEFAULT_BATCH_SIZE = 50;
+
+    /**
+     * Guards against a run being started while the previous one is still going. See the note in
+     * {@link #drainBatch(int)} for why overlapping runs are the dangerous part.
+     */
+    private final AtomicBoolean draining = new AtomicBoolean();
+
+    /**
+     * Ceiling on a single event's dispatch.
+     *
+     * <p>Measured, not chosen: a healthy batch of 50 completes in 8-9s, so an event averages about
+     * 170ms. Fifteen seconds is roughly ninety times that — long enough that it can only be reached
+     * by a dependency that is genuinely stuck, short enough that fifty of them cannot outlast the
+     * worker's five-minute interval.
+     */
+    @Value("${entity.processor.conversions.drain.perEventTimeoutSeconds:15}")
+    private long perEventTimeoutSeconds;
+
+    /**
+     * Wall-clock ceiling on the whole batch.
+     *
+     * <p>Two minutes against a five-minute dispatch interval. The gap is deliberate: the batch must
+     * finish well inside its own cadence even when every event is slow, because a job that cannot
+     * finish before it is next invoked is the failure this class caused. Worst case is this budget
+     * plus one in-flight event timeout, so about 135s.
+     */
+    @Value("${entity.processor.conversions.drain.batchBudgetSeconds:120}")
+    private long batchBudgetSeconds;
 
     private final ConversionEventService eventService;
     private final ConversionActionMappingService mappingService;
@@ -62,16 +93,81 @@ public class ConversionsDrainService {
         this.campaignDAO = campaignDAO;
     }
 
-    /** Drains one batch. Returns {@code {dispatched, failed, skipped}} counters. */
+    /**
+     * Drains one batch. Returns {@code {dispatched, failed, skipped}} counters.
+     *
+     * <h2>Why this is bounded three ways</h2>
+     *
+     * <p>On 2026-10-05 this method took production down twice. It had no per-event timeout, no
+     * wall-clock budget and no guard against overlapping runs, and the three together turn one slow
+     * partner API into a service-wide outage.
+     *
+     * <p>The sequence, from the metrics: Meta's API slowed around 12:47 (a burst of adspixels and
+     * CAPI warnings in three seconds). Because {@link #dispatchOne} is chained with
+     * {@code concatMap} — strictly one event at a time — and nothing bounded a single dispatch,
+     * a batch that normally finished in 8-9s ran past 300s. The worker calls this endpoint every
+     * five minutes, so runs stopped finishing inside their own interval and began to stack. By
+     * 13:10 ordinary reads on fifteen unrelated endpoints were timing out at nginx's 60s, while
+     * the JVM sat at idle CPU with an empty connection pool: the work was parked on an external
+     * call, holding no thread, visible to nothing.
+     *
+     * <p>{@code concatMap} is kept deliberately. Dispatch order matters for the outbox and
+     * parallelising it would multiply load on the very API that is already struggling. The fix is
+     * to bound it, not to widen it.
+     */
     public Mono<Map<String, Object>> drainBatch(int batchSize) {
+
+        return Mono.defer(() -> {
+            // One drain per instance at a time.
+            //
+            // Without this, a run that overruns the worker's five-minute tick simply gets another
+            // one laid on top of it, and they accumulate for as long as the slowness lasts. That
+            // accumulation is what turns a slow background job into a front-of-house outage.
+            //
+            // Per INSTANCE, not cluster-wide: two app instances can still drain concurrently, and
+            // that is unchanged behaviour which findDispatchable's row claiming already handles.
+            // This only stops a single instance piling runs on itself.
+            if (!this.draining.compareAndSet(false, true)) {
+                logger.warn(
+                        "Conversions drain skipped: a previous batch is still running. This means the"
+                                + " last batch overran the worker's dispatch interval.");
+                Map<String, Object> busy = new HashMap<>();
+                busy.put("dispatched", 0);
+                busy.put("failed", 0);
+                busy.put("skipped", 0);
+                busy.put("busy", true);
+                return Mono.just(busy);
+            }
+
+            return this.drainBatchGuarded(batchSize).doFinally(signal -> this.draining.set(false));
+        });
+    }
+
+    private Mono<Map<String, Object>> drainBatchGuarded(int batchSize) {
 
         AtomicInteger dispatched = new AtomicInteger();
         AtomicInteger failed = new AtomicInteger();
         AtomicInteger skipped = new AtomicInteger();
 
+        long deadline = System.nanoTime() + this.batchBudget().toNanos();
+
         return this.eventService
                 .findDispatchable(batchSize <= 0 ? DEFAULT_BATCH_SIZE : batchSize)
+                // Stop pulling new events once the budget is spent. concatMap means the source is
+                // pulled one at a time, so this is evaluated between dispatches and the batch ends
+                // at a clean boundary rather than being cancelled mid-flight. Whatever is left
+                // stays in the outbox and is picked up by the next tick, which is what an outbox
+                // is for.
+                .takeWhile(event -> System.nanoTime() < deadline)
                 .concatMap(event -> this.dispatchOne(event)
+                        // One slow event must not be able to consume the whole batch.
+                        //
+                        // Safe to retry on timeout: MetaConversionsDispatcher sends the outbox
+                        // row's own event_id, and Meta deduplicates on it, so an event that was in
+                        // fact accepted just before this fired is discarded on the resend rather
+                        // than double counted. That property is what makes failing fast here the
+                        // right call instead of waiting to be certain.
+                        .timeout(this.perEventTimeout())
                         .doOnNext(outcome -> {
                             switch (outcome) {
                                 case DISPATCHED -> dispatched.incrementAndGet();
@@ -81,13 +177,32 @@ public class ConversionsDrainService {
                         })
                         .onErrorResume(t -> this.persistFailureAndContinue(event, failed, t)))
                 .then(Mono.fromSupplier(() -> {
+                    boolean truncated = System.nanoTime() >= deadline;
+                    if (truncated)
+                        logger.warn(
+                                "Conversions drain hit its {}s budget after {} dispatched, {} failed,"
+                                        + " {} skipped; the remainder stays in the outbox.",
+                                this.batchBudget().toSeconds(),
+                                dispatched.get(),
+                                failed.get(),
+                                skipped.get());
+
                     Map<String, Object> result = new HashMap<>();
                     result.put("dispatched", dispatched.get());
                     result.put("failed", failed.get());
                     result.put("skipped", skipped.get());
+                    result.put("truncated", truncated);
                     return result;
                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConversionsDrainService.drainBatch"));
+    }
+
+    private Duration perEventTimeout() {
+        return Duration.ofSeconds(this.perEventTimeoutSeconds);
+    }
+
+    private Duration batchBudget() {
+        return Duration.ofSeconds(this.batchBudgetSeconds);
     }
 
     private enum Outcome {
