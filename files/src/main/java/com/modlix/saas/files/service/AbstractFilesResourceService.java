@@ -54,7 +54,6 @@ import com.modlix.saas.commons2.security.util.SecurityContextUtil;
 import com.modlix.saas.commons2.util.BooleanUtil;
 import com.modlix.saas.commons2.util.CommonsUtil;
 import com.modlix.saas.commons2.util.FileType;
-import com.modlix.saas.commons2.util.LongUtil;
 import com.modlix.saas.commons2.util.StringUtil;
 import com.modlix.saas.commons2.util.Tuples;
 import com.modlix.saas.commons2.util.Tuples.Tuple2;
@@ -233,7 +232,9 @@ public abstract class AbstractFilesResourceService {
             return;
         }
 
-        long modifiedSince = LongUtil.safeValueOf(request.getHeader("If-Modified-Since"), -1L);
+        // fileMillis is in fact epoch SECONDS (FileDetail.lastModifiedTime), and If-Modified-Since is
+        // an HTTP date, not a number: parsing it as a long always gave -1, so this never matched.
+        long modifiedSince = ifModifiedSinceSeconds(request);
         if (modifiedSince != -1 && fileMillis == modifiedSince) {
             sendHitResponse(response);
             return;
@@ -267,6 +268,21 @@ public abstract class AbstractFilesResourceService {
         }
     }
 
+    /** Epoch seconds, as {@code FileDetail.lastModifiedTime} holds them, to the millis a date header takes. */
+    static long lastModifiedHeaderMillis(long lastModifiedSeconds) {
+        return lastModifiedSeconds * 1000L;
+    }
+
+    /** The If-Modified-Since date in epoch seconds, or -1 when it is absent or unreadable. */
+    static long ifModifiedSinceSeconds(HttpServletRequest request) {
+        try {
+            long millis = request.getDateHeader("If-Modified-Since");
+            return millis < 0 ? -1L : millis / 1000L;
+        } catch (IllegalArgumentException ex) {
+            return -1L;
+        }
+    }
+
     public void sendFile(DownloadOptions downloadOptions, String eTag, long fileMillis,
             String path, HttpServletRequest request, HttpServletResponse response) {
 
@@ -280,7 +296,9 @@ public abstract class AbstractFilesResourceService {
         downloadOptions.setName(downloadOptions.getName() == null ? fileName : downloadOptions.getName());
 
         response.setHeader("x-cache", "MISS");
-        response.setDateHeader("Last-Modified", fileMillis);
+        // setDateHeader takes epoch millis; fileMillis is epoch seconds (FileDetail.lastModifiedTime),
+        // which sent "Wed, 21 Jan 1970 ..." for a file written today.
+        response.setDateHeader("Last-Modified", lastModifiedHeaderMillis(fileMillis));
         response.setHeader("ETag", eTag);
         if (!BooleanUtil.safeValueOf(downloadOptions.getNoCache())
                 && this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))

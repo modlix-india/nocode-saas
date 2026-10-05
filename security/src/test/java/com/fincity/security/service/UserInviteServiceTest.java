@@ -380,4 +380,32 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	// =========================================================================
+	// authority guards on the invite surface
+	// =========================================================================
+
+	@Nested
+	@DisplayName("invite authority guards")
+	class InviteAuthorityGuardTests {
+
+		private String preAuthorize(String method, Class<?>... params) throws NoSuchMethodException {
+			var annotation = UserInviteService.class.getMethod(method, params)
+					.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+			return annotation == null ? null : annotation.value();
+		}
+
+		@Test
+		@DisplayName("createInvite needs User_CREATE: an invite code is a credential for a new account")
+		void createInviteRequiresUserCreate() throws NoSuchMethodException {
+			assertEquals("hasAuthority('Authorities.User_CREATE')",
+					preAuthorize("createInvite", com.fincity.security.dto.UserInvite.class));
+		}
+
+		@Test
+		void revokeInvitationRequiresUserCreateOrDelete() throws NoSuchMethodException {
+			assertEquals("hasAnyAuthority('Authorities.User_CREATE', 'Authorities.User_DELETE')",
+					preAuthorize("revokeInvitation", String.class));
+		}
+	}
 }

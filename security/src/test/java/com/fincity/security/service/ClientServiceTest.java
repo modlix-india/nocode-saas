@@ -2222,4 +2222,104 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	// =========================================================================
+	// Organization details (website, email, phones, LinkedIn, description)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("organization details on update")
+	class CompanyDetailsTests {
+
+		private void injectObjectMapper() {
+			try {
+				var omField = service.getClass().getSuperclass().getSuperclass()
+						.getDeclaredField("objectMapper");
+				omField.setAccessible(true);
+				omField.set(service, new com.fasterxml.jackson.databind.ObjectMapper());
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to inject ObjectMapper", e);
+			}
+		}
+
+		@Test
+		@DisplayName("PUT passes the new fields through, trimmed, and still restores level and type")
+		void putPassesCompanyDetailsAndKeepsLevelAndType() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "ORG");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CLIENT);
+
+			Client incoming = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "ORG");
+			incoming.setTypeCode("SYS").setLevelType(SecurityClientLevelType.SYSTEM)
+					.setWebsite("  https://acme.example  ")
+					.setEmailId(" hello@acme.example ")
+					.setPhoneNumber("+91 98450 00000")
+					.setAlternatePhoneNumber("   ")
+					.setLinkedinUrl("https://www.linkedin.com/company/acme")
+					.setDescription("  We make anvils.  ");
+
+			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
+			when(dao.update(any(Client.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+			StepVerifier.create(service.update(incoming))
+					.assertNext(result -> {
+						assertEquals("BUS", result.getTypeCode());
+						assertEquals(SecurityClientLevelType.CLIENT, result.getLevelType());
+						assertEquals("https://acme.example", result.getWebsite());
+						assertEquals("hello@acme.example", result.getEmailId());
+						assertEquals("+91 98450 00000", result.getPhoneNumber());
+						assertNull(result.getAlternatePhoneNumber(), "a blank value is stored as null");
+						assertEquals("https://www.linkedin.com/company/acme", result.getLinkedinUrl());
+						assertEquals("We make anvils.", result.getDescription());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("a CLIENT-level owner can PATCH their own client's details but not its level or type")
+		void ownerPatchesOwnClient() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "ORG",
+					List.of("Authorities.ROLE_Owner", "Authorities.Client_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+			injectObjectMapper();
+
+			Client stored = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "ORG");
+			stored.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CLIENT);
+
+			// The map path mutates what read() returned, so hand it a fresh copy of the stored row.
+			Client readCopy = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "ORG");
+			readCopy.setTypeCode("BUS").setLevelType(SecurityClientLevelType.CLIENT);
+
+			when(dao.readById(BUS_CLIENT_ID)).thenReturn(Mono.just(readCopy));
+			when(dao.getPojoClass()).thenReturn(Mono.just(Client.class));
+			when(cacheService.<Client>cacheValueOrGet(eq("clientId"), any(), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(stored));
+			when(dao.update(any(Client.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+			Map<String, Object> fields = new java.util.HashMap<>();
+			fields.put("website", "https://acme.example");
+			fields.put("linkedinUrl", "https://www.linkedin.com/company/acme");
+			fields.put("description", "About us");
+			fields.put("levelType", "SYSTEM");
+			fields.put("typeCode", "SYS");
+
+			StepVerifier.create(service.update(BUS_CLIENT_ID, fields))
+					.assertNext(result -> {
+						assertEquals("https://acme.example", result.getWebsite());
+						assertEquals("https://www.linkedin.com/company/acme", result.getLinkedinUrl());
+						assertEquals("About us", result.getDescription());
+						assertEquals(SecurityClientLevelType.CLIENT, result.getLevelType());
+						assertEquals("BUS", result.getTypeCode());
+					})
+					.verifyComplete();
+
+			// Own client: the hierarchy is never consulted.
+			verifyNoInteractions(clientHierarchyService);
+		}
+	}
 }
