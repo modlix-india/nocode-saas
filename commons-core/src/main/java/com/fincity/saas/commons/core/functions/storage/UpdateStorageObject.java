@@ -126,7 +126,7 @@ public class UpdateStorageObject extends AbstractReactiveFunction {
                                     "Please provide the id for which delete" + " needs to be performed."))))));
 
         Map<String, Object> updatableDataObject =
-                gson.fromJson(updatableObject, new TypeToken<Map<String, Object>>() {}.getType());
+                StorageJson.toMap(updatableObject);
 
         updatableDataObject.put(ID, dataObjectId);
 

@@ -57,3 +57,4 @@ server-files/
 .claude1/
 
 logs/**
+LOG_FILE_*
