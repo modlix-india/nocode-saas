@@ -459,6 +459,8 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                             .setRelations(entity.getRelations())
                             .setFieldDefinitionMap(entity.getFieldDefinitionMap())
                             .setColumnDefinitions(entity.getColumnDefinitions())
+                            .setVersionRetentionDays(entity.getVersionRetentionDays())
+                            .setVersionRetentionCount(entity.getVersionRetentionCount())
                             .setOnlyThruKIRun(entity.getOnlyThruKIRun())
                             .setIndexes(entity.getIndexes())
                             .setTextIndexFields(entity.getTextIndexFields());

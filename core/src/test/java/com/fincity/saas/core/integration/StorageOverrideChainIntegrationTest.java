@@ -177,6 +177,52 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
 
         @Test
         @Timeout(30)
+        @DisplayName("the history retention numbers survive an update")
+        void retentionSurvivesUpdate() {
+            // updatableEntity is an explicit whitelist, so a field added to Storage
+            // is dropped on every save until someone remembers to list it there -
+            // silently, with a 200 and a bumped version. That is exactly what
+            // happened to these two: the editors rendered them, the save reported
+            // success, and the numbers were gone on the next read.
+            setInheritance(List.of(SYSTEM));
+            Storage base = storedStorage(SYSTEM, null, schema("title", "t"), null, null, null);
+
+            Storage read = asClient(storageService.read(base.getId()), SYSTEM);
+            read.setVersionRetentionDays(7).setVersionRetentionCount(4);
+
+            asClient(storageService.update(read), SYSTEM);
+
+            Storage after = asClient(storageService.read(base.getId()), SYSTEM);
+
+            assertEquals(7, after.getVersionRetentionDays(), "the retention age must survive the save");
+            assertEquals(4, after.getVersionRetentionCount(), "the retention count must survive the save");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("retention can be cleared back to the platform default")
+        void retentionCanBeCleared() {
+            // Blank means "use the installation default", so clearing has to reach
+            // the stored document. A whitelist that copies a value but never a null
+            // would pin the first number anyone typed, forever.
+            setInheritance(List.of(SYSTEM));
+            Storage base = storedStorage(SYSTEM, null, schema("title", "t"), null, null, null);
+
+            Storage read = asClient(storageService.read(base.getId()), SYSTEM);
+            read.setVersionRetentionDays(7);
+            asClient(storageService.update(read), SYSTEM);
+
+            Storage again = asClient(storageService.read(base.getId()), SYSTEM);
+            again.setVersionRetentionDays(null);
+            asClient(storageService.update(again), SYSTEM);
+
+            assertNull(
+                    asClient(storageService.read(base.getId()), SYSTEM).getVersionRetentionDays(),
+                    "clearing the field must reach the document, not keep the old number");
+        }
+
+        @Test
+        @Timeout(30)
         @DisplayName("a derived storage WITH RELATIONS can be saved, which it could not before")
         void derivedWithRelationsSaves() {
             // The relation collision check read schema.getProperties() straight.
