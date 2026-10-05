@@ -69,7 +69,15 @@ public class MetaConversionsDispatcher extends AbstractConversionsDispatcher {
 
         String datasetId = campaign.getPlatformDatasetId();
         if (datasetId == null || datasetId.isBlank()) {
-            return Mono.just(DispatchResult.fail(
+            // Terminal, not retryable. The caller has already run ensurePlatformContext to try to
+            // resolve this id from the platform; reaching here means the platform does not have one
+            // for this campaign, which is a configuration fault on the campaign rather than a
+            // transient condition. Retrying asks the same question hourly and gets the same answer:
+            // on production this single cause held 49 rows in the retry pool for 98 days.
+            //
+            // The conversion is NOT lost — the row is kept as SKIPPED with this message, so once a
+            // pixel id is set on the campaign the affected events can be identified and requeued.
+            return Mono.just(DispatchResult.failTerminal(
                     "Meta CAPI requires platform_dataset_id (pixel id) on the campaign; was null", null));
         }
 

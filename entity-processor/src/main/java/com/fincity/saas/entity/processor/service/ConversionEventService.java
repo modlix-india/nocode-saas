@@ -22,6 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -41,8 +44,16 @@ public class ConversionEventService
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
+    private static final Logger logger = LoggerFactory.getLogger(ConversionEventService.class);
+
     private static final long BACKOFF_BASE_SECONDS = 30L;
     private static final long BACKOFF_CAP_SECONDS = 3600L;
+
+    /**
+     * How many times a retryable failure is retried before it is treated as permanent. See
+     * {@link #markFailed} for why a ceiling is needed at all.
+     */
+    private static final int MAX_ATTEMPTS = 50;
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
@@ -122,8 +133,42 @@ public class ConversionEventService
                 .then();
     }
 
+    /**
+     * Records a retryable failure — unless it has been retried too many times, in which case it
+     * stops being retryable.
+     *
+     * <h2>Why there is a cap</h2>
+     *
+     * <p>{@code findDispatchable} selects {@code STATUS IN (PENDING, FAILED)} and {@link #backoff}
+     * tops out at one hour, so before this cap a FAILED row was retried hourly for as long as it
+     * existed. Terminal classification at the dispatcher handles the causes we have recognised; this
+     * is the backstop for the ones we have not.
+     *
+     * <p>It is needed because the gap is not hypothetical. On production 2026-10-05, alongside the
+     * 49 rows with a missing pixel id, there were 10 rows failing on a Meta 400 and one on a Google
+     * click-window rejection — all permanent, none recognised as such, between them part of 36,162
+     * wasted attempts over 98 days. Each attempt makes live platform calls, and sixty of them
+     * arriving together each hour is what turned a dead letter into an outage.
+     *
+     * <p>Fifty attempts is deliberately generous: with this backoff that is roughly two days of
+     * retries, far longer than any outage or token refresh a conversion should have to survive. If
+     * something is still failing after two days it is not waiting on a transient condition.
+     */
     public Mono<Void> markFailed(ConversionEvent event, String message) {
         int next = event.getAttemptCount() == null ? 1 : event.getAttemptCount() + 1;
+
+        if (next >= MAX_ATTEMPTS) {
+            logger.warn(
+                    "Conversion event {} has failed {} times and will no longer be retried: {}."
+                            + " Marking SKIPPED; the row is kept and can be requeued once the cause is"
+                            + " corrected.",
+                    event.getId(),
+                    next,
+                    message);
+            return this.markSkipped(
+                    event, "Gave up after " + next + " attempts. Last error: " + message);
+        }
+
         return this.dao
                 .markStatus(
                         event.getId(),
@@ -142,6 +187,30 @@ public class ConversionEventService
      */
     public Mono<Void> markSkipped(ConversionEvent event, String message) {
         return this.dao.markSkipped(event.getId(), message).then();
+    }
+
+    /**
+     * Puts a campaign's SKIPPED conversions back in the retry pool, for use once the cause of the
+     * skip has been corrected.
+     *
+     * <p>Terminal classification is deliberately one-way — nothing re-selects a SKIPPED row — so
+     * without this, correcting a campaign's pixel id would fix future conversions and silently
+     * leave the historical ones undelivered. That is the whole reason skipped rows are kept rather
+     * than deleted.
+     *
+     * <p>Returns how many rows were moved, so the caller can tell "fixed, 49 queued" from
+     * "nothing to do".
+     */
+    public Mono<Integer> requeueSkippedForCampaign(ULong campaignId) {
+        return this.dao
+                .countSkippedForCampaign(campaignId)
+                .flatMap(count -> count == 0
+                        ? Mono.just(0)
+                        : this.dao
+                                .requeueSkippedForCampaign(
+                                        campaignId, "Requeued after the campaign configuration was corrected")
+                                .doOnNext(moved -> logger.info(
+                                        "Requeued {} skipped conversion event(s) for campaign {}", moved, campaignId)));
     }
 
     /** Exponential backoff with cap: 30s, 60s, 120s, ..., max 1h. */
