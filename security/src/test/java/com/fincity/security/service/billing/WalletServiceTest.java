@@ -47,6 +47,7 @@ import com.fincity.security.service.AbstractServiceUnitTest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -82,6 +83,8 @@ class WalletServiceTest extends AbstractServiceUnitTest {
     private EventCreationService ecService;
     @Mock
     private SecurityMessageResourceService messageResourceService;
+    @Mock
+    private ClientUrlService clientUrlService;
 
     private WalletService service;
 
@@ -98,7 +101,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
     @BeforeEach
     void setUp() {
         service = new WalletService(txnDAO, meteringCountDAO, configService, appService, clientService,
-                clientHierarchyService, cacheService, ecService, messageResourceService);
+                clientHierarchyService, cacheService, ecService, messageResourceService, clientUrlService);
         injectDao(service, walletDAO);
         setupCacheService(cacheService);
         setupMessageResourceService(messageResourceService);
@@ -252,6 +255,48 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             lenient().when(clientService.getClientInfoById(M_CLIENT))
                     .thenReturn(Mono.just(TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS",
                             SecurityClientStatusCode.ACTIVE)));
+            lenient().when(clientService.getManagedClientOfClientById(M_CLIENT))
+                    .thenReturn(Mono.just(TestDataFactory.createClient(C_CLIENT, "CCCC", "BUS",
+                            SecurityClientStatusCode.ACTIVE)));
+            lenient().when(clientUrlService.getAppUrlInternal("adzump", APP_ID, C_CLIENT))
+                    .thenReturn(Mono.just("https://adzump.example"));
+        }
+
+        @Test
+        void lowBalanceEventCarriesTheAppUrlForTheEmail() {
+            AppBillingConfig cfg = config()
+                    .setUserTokensPerMonth(BigDecimal.valueOf(WINDOWS_IN_JUNE * 30))
+                    .setLowBalanceThreshold(BigDecimal.valueOf(400));
+            Wallet w = wallet(BigDecimal.valueOf(420), SecurityWalletStatus.ACTIVE, (byte) 0);
+            stubCharge(cfg, w, BigDecimal.valueOf(30));
+
+            StepVerifier.create(service.charge(req(BigDecimal.ONE, BillingActionKeys.USER)))
+                    .assertNext(r -> assertTrue(r.lowBalanceCrossed()))
+                    .verifyComplete();
+
+            verify(ecService).createEvent(org.mockito.ArgumentMatchers.argThat(e -> e != null
+                    && EventNames.WALLET_LOW_BALANCE.equals(e.getEventName())
+                    && "https://adzump.example".equals(e.getData().get("urlPrefix"))
+                    && "MMMM".equals(e.getData().get("clientCode"))
+                    && BigDecimal.valueOf(390).equals(e.getData().get("balance"))));
+        }
+
+        @Test
+        void walletEventStillRaisedWhenAppUrlCannotBeResolved() {
+            AppBillingConfig cfg = config().setUserTokensPerMonth(BigDecimal.valueOf(WINDOWS_IN_JUNE * 30));
+            Wallet w = wallet(BigDecimal.valueOf(10), SecurityWalletStatus.ACTIVE, (byte) 0);
+            stubCharge(cfg, w, BigDecimal.valueOf(30));
+            when(clientService.getManagedClientOfClientById(M_CLIENT))
+                    .thenReturn(Mono.error(new IllegalStateException("no hierarchy row")));
+            when(clientUrlService.getAppUrlInternal("adzump", APP_ID, M_CLIENT)).thenReturn(Mono.empty());
+
+            StepVerifier.create(service.charge(req(BigDecimal.ONE, BillingActionKeys.USER)))
+                    .assertNext(r -> assertTrue(r.suspended()))
+                    .verifyComplete();
+
+            verify(ecService).createEvent(org.mockito.ArgumentMatchers.argThat(e -> e != null
+                    && EventNames.WALLET_SUSPENDED.equals(e.getEventName())
+                    && "".equals(e.getData().get("urlPrefix"))));
         }
 
         @Test

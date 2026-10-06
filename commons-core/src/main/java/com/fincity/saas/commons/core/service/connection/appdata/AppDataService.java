@@ -60,6 +60,7 @@ import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutReport;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.TenantProgress;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
@@ -298,7 +299,7 @@ public class AppDataService {
      * definition really is saved, the report says which tenants are behind, and
      * re-running is what carries them forward.
      */
-    public Mono<FanOutReport> reconcileStorageDdl(String appCode, String clientCode, Storage storage) {
+    public Mono<FanOutReport> reconcileStorageDdl(String appCode, Storage storage) {
 
         if (storage == null || StringUtil.safeIsBlank(storage.getUniqueName()))
             return Mono.just(FanOutReport.empty());
@@ -306,11 +307,28 @@ public class AppDataService {
         return SecurityContextUtil.getUsersContextAuthentication()
                 .map(ca -> ca.getUser() == null ? null : ca.getUser().getUserName())
                 .defaultIfEmpty("system")
+                // EVERY server the app uses, not the saving client's. A client may
+                // bring its own database, and the fan-out discovers tenants from the
+                // schemas on ONE server - so reading a single connection migrated
+                // whoever happened to share a host with the author and silently left
+                // the rest on the old shape. Deduplicated by connection details, so
+                // the ordinary single-server app still does exactly one sweep.
                 .flatMap(by -> this.connectionService
-                        .read("appData", appCode, clientCode, ConnectionType.APP_DATA)
-                        .filter(conn -> conn.getConnectionSubType() == ConnectionSubType.MYSQL)
-                        .flatMap(conn -> this.mySQLAppDataService.reconcile(conn, appCode, storage, by))
-                        .defaultIfEmpty(FanOutReport.empty()))
+                        .allAppData(ConnectionSubType.MYSQL, appCode)
+                        .concatMap(conn -> this.mySQLAppDataService
+                                .reconcile(conn, appCode, storage, by)
+                                // One unreachable server must not stop the others.
+                                // They are independent databases, and a report that
+                                // covers three of four is worth more than an error.
+                                .onErrorResume(e -> {
+                                    logger.error(
+                                            "Could not reconcile {} on connection {}",
+                                            storage.getName(),
+                                            conn.getId(),
+                                            e);
+                                    return Mono.just(FanOutReport.empty());
+                                }))
+                        .reduce(FanOutReport.empty(), FanOutReport::merge))
                 .onErrorResume(e -> {
                     logger.error("Could not reconcile tables for storage {} in {}", storage.getName(), appCode, e);
                     return Mono.just(FanOutReport.empty());
@@ -351,6 +369,125 @@ public class AppDataService {
                                 Storage::getReadAuth,
                                 CoreMessageResourceService.FORBIDDEN_READ_STORAGE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.migrationStatus"));
+    }
+
+    /**
+     * Where each tenant's table has come apart from its definition.
+     *
+     * Answers the question {@code migrationStatus} cannot: that one reads the
+     * journal, so it knows about migrations that were attempted. This reads the
+     * schemas themselves, so it also finds the tenant nobody migrated - unreachable
+     * at the time, built by hand, or provisioned before the storage existed - which
+     * is the case the journal has nothing to say about.
+     *
+     * Read only. Nothing here issues a statement.
+     *
+     * Gated on write access to the APP, not on the storage's {@code readAuth}, for
+     * the reasons in {@link #builderOnly}. The short version is that this reports on
+     * every client's schema at once, so a per-client runtime authority is not a
+     * description of what it can see.
+     */
+    public Mono<List<MySQLDrift.Report>> drift(String appCode, String clientCode, String storageName) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.builderOnly(ac),
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                                .map(ObjectWithUniqueID::getObject),
+                        // Every server the app uses. A client may bring its own
+                        // database, and inspecting one server would report the rest
+                        // as fine because it never looked at them - the same blind
+                        // spot reconcileStorageDdl had. An app with no MySQL
+                        // connection yields nothing here, which is the right answer
+                        // for a Mongo app rather than a 501.
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.drift(conn, ac, storage))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
+                // An app with no appData connection runs on Mongo and has no table to
+                // drift. Without this the chain completes empty and the caller gets a
+                // 200 with no body at all, which reads like a fault rather than "none".
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.drift"));
+    }
+
+    /**
+     * Put the drift right.
+     *
+     * {@code approved} is the human decision and it is one of the two controls:
+     * without it only the additive half runs and the rest comes back in
+     * {@code withheld} for somebody to read. Nothing infers approval - a caller that
+     * does not pass it does not get the destructive statements, however drifted the
+     * table is.
+     *
+     * The other control is who may call at all, and that is {@link #builderOnly}.
+     */
+    public Mono<List<MySQLDrift.DriftRepair>> repairDrift(
+            String appCode, String clientCode, String storageName, boolean approved) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.builderOnly(ac),
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                                .map(ObjectWithUniqueID::getObject),
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.repairDrift(conn, ac, storage, approved))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.repairDrift"));
+    }
+
+    /**
+     * Write access to the application, and nothing else will do.
+     *
+     * Not {@link #genericOperation} with the storage's own authority, and not
+     * {@link #builderOrAuthorised} either, for three reasons that only apply to the
+     * drift pair:
+     *
+     * <ol>
+     * <li><b>A blank authority admits everyone.</b>
+     * {@code SecurityContextUtil.hasAuthority(null, ...)} returns TRUE by design, and
+     * a storage states no {@code deleteAuth} unless somebody wrote one - which is
+     * most of them. On a row delete that is the intended default. On a statement that
+     * can {@code DROP COLUMN} it means the gate is not there at all.</li>
+     * <li><b>The blast radius is every client, not the caller's.</b> Tenants are
+     * discovered from the schemas the app has on the server, so one call reports on -
+     * and an approved one alters - schemas belonging to clients the caller may never
+     * have heard of. A per-client runtime authority does not describe that, so it
+     * cannot gate it.</li>
+     * <li><b>It reaches the draft surface.</b> Draft schemas are in the same sweep,
+     * and every other route that can touch draft goes through {@link #onSurface},
+     * which requires exactly this check.</li>
+     * </ol>
+     *
+     * An OR with the storage's authority - what {@code clearAllRows} does - would
+     * undo all three, so this is a replacement rather than an addition. There is no
+     * runtime path into either route to keep working: nothing in a running app asks
+     * about its own table's shape.
+     */
+    private Mono<Boolean> builderOnly(String appCode) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> this.securityService
+                        .hasWriteAccess(appCode, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE))
+                .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                        ? Mono.just(Boolean.TRUE)
+                        : this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE, appCode))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.builderOnly"));
     }
 
     /**

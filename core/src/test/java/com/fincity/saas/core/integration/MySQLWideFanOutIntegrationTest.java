@@ -344,7 +344,7 @@ class MySQLWideFanOutIntegrationTest extends AbstractMySQLSpringIntegrationTest 
     private FanOutReport reconcile() {
         Storage storage = this.asSystem(this.storageService.read(STORAGE_NAME, APP_CODE, SYSTEM))
                 .getObject();
-        return this.asSystem(this.appDataService.reconcileStorageDdl(APP_CODE, SYSTEM, storage));
+        return this.asSystem(this.appDataService.reconcileStorageDdl(APP_CODE, storage));
     }
 
     private void whenSchemaWidensTo(int maxLength) {

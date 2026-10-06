@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.service.connection.appdata;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
@@ -35,8 +36,10 @@ import com.fincity.saas.commons.core.service.CoreSchemaService;
 import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutReport;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MigrationOutcome;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLColumn;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLColumnNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.util.function.Tuple2;
@@ -386,7 +389,7 @@ public class MySQLAppDataService implements IAppDataService {
         String table = storage.getUniqueName();
         DSLContext ctx = this.context(conn);
 
-        return this.storageService.getResolvedSchema(storage).flatMap(schema -> {
+        return this.physicalSchema(storage).flatMap(schema -> {
             List<MySQLColumn> columns = MySQLTypeMapper.columns(schema, defs(storage));
 
             return Mono.from(ctx.query("CREATE DATABASE IF NOT EXISTS `" + db + "`"))
@@ -445,8 +448,7 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.fromIterable(tenants)
                 .concatMap(db -> this.storageService
                         .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
-                        .flatMap(tenantStorage -> this.storageService
-                                .getResolvedSchema(tenantStorage)
+                        .flatMap(tenantStorage -> this.physicalSchema(tenantStorage)
                                 .flatMap(schema -> this.syncIndexes(conn, db, tenantStorage, schema)))
                         .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
                         .onErrorResume(e -> {
@@ -489,6 +491,38 @@ public class MySQLAppDataService implements IAppDataService {
         DSLContext ctx = this.context(conn);
         String table = storage.getUniqueName();
 
+        return this.plannedIndexStatements(conn, db, storage, schema).flatMap(statements -> {
+            if (statements.isEmpty()) return Mono.just(Boolean.TRUE);
+
+            return Flux.fromIterable(statements)
+                    .concatMap(sql -> Mono.from(ctx.query(sql))
+                            .thenReturn(Boolean.TRUE)
+                            // One index failing is not a reason to fail the
+                            // write. A FULLTEXT index over a column that is
+                            // not text is the usual cause, and the query
+                            // that wanted it will say so far more clearly
+                            // than a failed insert would.
+                            .onErrorResume(e -> {
+                                logger.error("Could not apply index on {}.{}: {}", db, table, sql, e);
+                                return Mono.just(Boolean.FALSE);
+                            }))
+                    .then(Mono.just(Boolean.TRUE));
+        });
+    }
+
+    /**
+     * The index DDL this table is missing, without running any of it.
+     *
+     * Split out so the drift report and the publish path cannot disagree about what
+     * is wrong: both read this one method, and a report that was computed a
+     * different way from the repair is a report nobody should act on.
+     */
+    private Mono<List<String>> plannedIndexStatements(
+            Connection conn, String db, Storage storage, Schema schema) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
         Set<String> columns = new java.util.LinkedHashSet<>(parentColumns(schema, defs(storage)));
 
         List<MySQLIndexes.Index> desired = MySQLIndexes.desired(storage, columns);
@@ -501,33 +535,31 @@ public class MySQLAppDataService implements IAppDataService {
                             .map(MySQLForeignKeys.ForeignKey::column)
                             .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
 
-                    List<String> statements = MySQLIndexes.sync(db, table, existing, desired, keyColumns);
-                    if (statements.isEmpty()) return Mono.just(Boolean.TRUE);
-
-                    return Flux.fromIterable(statements)
-                            .concatMap(sql -> Mono.from(ctx.query(sql))
-                                    .thenReturn(Boolean.TRUE)
-                                    // One index failing is not a reason to fail the
-                                    // write. A FULLTEXT index over a column that is
-                                    // not text is the usual cause, and the query
-                                    // that wanted it will say so far more clearly
-                                    // than a failed insert would.
-                                    .onErrorResume(e -> {
-                                        logger.error("Could not apply index on {}.{}: {}", db, table, sql, e);
-                                        return Mono.just(Boolean.FALSE);
-                                    }))
-                            .then(Mono.just(Boolean.TRUE));
+                    return Mono.just(MySQLIndexes.sync(db, table, existing, desired, keyColumns));
                 });
     }
 
     private Mono<Boolean> syncForeignKeys(Connection conn, String db, Storage storage) {
 
+        return this.desiredForeignKeys(conn, db, storage)
+                .flatMap(desired -> this.applyForeignKeys(conn, db, storage.getUniqueName(), desired));
+    }
+
+    /**
+     * The constraints this table should carry, with each relation's target resolved
+     * for this tenant.
+     *
+     * Separated from applying them so the drift report can ask what is missing
+     * without installing anything. An empty list is a real answer, not "nothing to
+     * do": a relation whose constraint was set back to NOTHING leaves a key behind
+     * that has to come off, or it keeps refusing deletes nobody is asking it to
+     * refuse.
+     */
+    private Mono<List<MySQLForeignKeys.ForeignKey>> desiredForeignKeys(
+            Connection conn, String db, Storage storage) {
+
         Map<String, StorageRelation> enforceable = enforceableRelations(storage);
-        if (enforceable.isEmpty())
-            // Nothing is wanted, but something may still be there from a relation
-            // whose constraint was just set back to NOTHING, and that has to come
-            // off or it keeps refusing deletes nobody is asking it to refuse.
-            return this.applyForeignKeys(conn, db, storage.getUniqueName(), List.of());
+        if (enforceable.isEmpty()) return Mono.just(List.of());
 
         String clientCode = clientCodeOf(db, storage.getAppCode());
 
@@ -553,11 +585,21 @@ public class MySQLAppDataService implements IAppDataService {
                             return Mono.empty();
                         }))
                 .collectMap(Tuple2::getT1, Tuple2::getT2)
-                .flatMap(targets -> this.applyForeignKeys(
-                        conn,
-                        db,
-                        storage.getUniqueName(),
-                        MySQLForeignKeys.desired(storage.getUniqueName(), enforceable, targets)));
+                .map(targets -> MySQLForeignKeys.desired(storage.getUniqueName(), enforceable, targets));
+    }
+
+    /**
+     * The constraint DDL this table is missing, without running any of it. The
+     * report half of {@link #applyForeignKeys}, reading the same two inputs.
+     */
+    private Mono<List<String>> plannedForeignKeyStatements(Connection conn, String db, Storage storage) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
+        return this.desiredForeignKeys(conn, db, storage)
+                .flatMap(desired -> MySQLForeignKeys.existing(ctx, db, table)
+                        .map(existing -> MySQLForeignKeys.sync(db, table, existing, desired)));
     }
 
     static Map<String, StorageRelation> enforceableRelations(Storage storage) {
@@ -585,8 +627,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         DSLContext ctx = this.context(conn);
 
-        return this.storageService
-                .getResolvedSchema(target)
+        return this.physicalSchema(target)
                 .flatMap(schema -> Mono.from(ctx.query("USE `" + db + "`; "
                                 + MySQLTablePlanner.createTable(
                                         target.getUniqueName(),
@@ -767,6 +808,138 @@ public class MySQLAppDataService implements IAppDataService {
     }
 
     /**
+     * What every tenant's table has that its definition does not, and the reverse.
+     *
+     * The gap {@code reconcile} leaves. A definition change reconciles the tenants
+     * reachable at the time; one that was unreachable, or whose table was built by
+     * hand, or that was transported in at an older shape, stays wrong and nothing
+     * says so. Every other code path asks the DEFINITION what the table looks like,
+     * so the table is only consulted when a query fails.
+     *
+     * Read only. Nothing here issues a statement, which is what makes it safe to run
+     * on a fleet to find out how bad things are before deciding anything.
+     */
+    public Mono<List<MySQLDrift.Report>> drift(Connection conn, String appCode, Storage storage) {
+
+        if (conn == null) return Mono.just(List.of());
+
+        // Every schema the app has, not only the ones holding this table. A tenant
+        // that MISSES the table is the case the reconciler exists for, and asking
+        // information_schema for tables that exist is how it stayed invisible.
+        return MySQLTableInspector.tenantSchemas(this.context(conn), appCode)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(db -> this.driftFor(conn, appCode, storage, db))
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.drift"));
+    }
+
+    /**
+     * One tenant's report, built from the same four inputs the publish path uses.
+     *
+     * Deliberately reuses {@code plannedIndexStatements} and
+     * {@code plannedForeignKeyStatements} rather than recomputing: a report derived
+     * differently from the repair is a report that can be confidently wrong.
+     *
+     * A tenant whose definition does not resolve is left OUT of the list rather than
+     * reported as drifted. "Nothing resolved" would diff every existing column as a
+     * drop, and offering that as a repair is the one mistake here that cannot be
+     * undone.
+     */
+    private Mono<MySQLDrift.Report> driftFor(Connection conn, String appCode, Storage storage, String db) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
+        return this.storageService
+                .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
+                .flatMap(tenantStorage -> FlatMapUtil.flatMapMono(
+                        () -> this.physicalSchema(tenantStorage),
+                        schema -> MySQLTableInspector.tableExists(ctx, db, table),
+                        (schema, exists) -> Boolean.TRUE.equals(exists)
+                                ? FlatMapUtil.flatMapMono(
+                                        () -> MySQLTableInspector.columns(ctx, db, table),
+                                        existing -> this.plannedIndexStatements(conn, db, tenantStorage, schema),
+                                        (existing, indexes) ->
+                                                this.plannedForeignKeyStatements(conn, db, tenantStorage),
+                                        (existing, indexes, keys) -> Mono.just(MySQLDrift.of(
+                                                db,
+                                                table,
+                                                true,
+                                                existing,
+                                                MySQLTypeMapper.columns(
+                                                        schema, defs(tenantStorage)),
+                                                indexes,
+                                                keys)))
+                                : Mono.just(MySQLDrift.of(
+                                        db, table, false, List.of(), List.of(), List.of(), List.of()))))
+                // Each surface resolves its own definition, exactly as the column
+                // plan does, or the draft table is reported against the published
+                // shape and looks drifted when it is not.
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
+                .onErrorResume(e -> {
+                    logger.error("Could not read drift for {} on {}", storage.getName(), db, e);
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Apply what the drift report found, on every tenant.
+     *
+     * Without {@code approved} this runs only the half that cannot lose anything -
+     * widening columns, additive indexes and keys - and reports the rest as withheld
+     * so somebody can read the actual statements before deciding. With it, the lot.
+     *
+     * Per tenant and statement by statement, because a fleet-wide repair where one
+     * schema fails must not stop the others: they are independent databases and
+     * partial completion is the normal state, exactly as it is for a migration.
+     */
+    public Mono<List<MySQLDrift.DriftRepair>> repairDrift(
+            Connection conn, String appCode, Storage storage, boolean approved) {
+
+        if (conn == null) return Mono.just(List.of());
+
+        return this.drift(conn, appCode, storage)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(report -> this.repairOne(conn, report, approved))
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.repairDrift"));
+    }
+
+    private Mono<MySQLDrift.DriftRepair> repairOne(
+            Connection conn, MySQLDrift.Report report, boolean approved) {
+
+        List<String> plan = MySQLDrift.repairStatements(report, approved);
+        List<String> withheld = MySQLDrift.withheldStatements(report, approved);
+
+        // A missing table is never created here. Creating it is ensureTable's job and
+        // it needs the whole definition, not a diff against nothing. It is still
+        // carried on the result rather than reported as "nothing to do", because a
+        // tenant with no table is the loudest thing a drift run can find.
+        if (plan.isEmpty())
+            return Mono.just(new MySQLDrift.DriftRepair(
+                    report.db(), !report.tableExists(), List.of(), withheld, List.of()));
+
+        DSLContext ctx = this.context(conn);
+        List<String> applied = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+
+        return Flux.fromIterable(plan)
+                .concatMap(sql -> Mono.from(ctx.query(sql))
+                        .then(Mono.fromRunnable(() -> applied.add(sql)))
+                        // One statement failing is not a reason to abandon the rest.
+                        // They are independent repairs, and the ones that CAN land
+                        // should, with the failures named rather than implied by a
+                        // shorter list.
+                        .onErrorResume(e -> {
+                            logger.error("Drift repair failed on {}: {}", report.db(), sql, e);
+                            failed.add(sql);
+                            return Mono.empty();
+                        }))
+                .then(Mono.fromSupplier(() ->
+                        new MySQLDrift.DriftRepair(report.db(), false, applied, withheld, failed)));
+    }
+
+    /**
      * The columns each tenant should have, resolved separately for every one.
      *
      * Per client and not once, because the definition is overridable: SYSTEM, a
@@ -783,13 +956,12 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.fromIterable(tenants)
                 .concatMap(db -> this.storageService
                         .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
-                        .flatMap(tenantStorage -> this.storageService
-                                .getResolvedSchema(tenantStorage)
+                        .flatMap(tenantStorage -> this.physicalSchema(tenantStorage)
                                 // The tenant's OWN definitions. They are overridable
                                 // like everything else on a storage, so a client that
                                 // pinned its own DECIMAL scale keeps it while the base
                                 // moves under it.
-                                .map(sc -> MySQLTypeMapper.columns(sc, tenantStorage.getColumnDefinitions())))
+                                .map(sc -> MySQLTypeMapper.columns(sc, defs(tenantStorage))))
                         // Each surface resolves its own definition. The draft document
                         // is a different document, so reading it under the live flag
                         // would shape the draft table from the published definition and
@@ -911,9 +1083,9 @@ public class MySQLAppDataService implements IAppDataService {
                                 this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (db, schema, repo) ->
                                 this.writeValidator.validate(dataObject.getData(), storage, schema, repo),
-                        (db, schema, repo, validated) -> this.storageService.getResolvedSchema(storage),
+                        (db, schema, repo, validated) -> this.physicalSchema(storage),
                         (db, schema, repo, validated, resolved) -> {
-                            Map<String, Object> row = new LinkedHashMap<>(dataObject.getData());
+                            Map<String, Object> row = MySQLColumnNames.toColumns(dataObject.getData());
 
                             // A caller may supply its own id, exactly as the Mongo backend
                             // allows; otherwise mint one. Never an auto-increment key.
@@ -950,7 +1122,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.readRow(conn, db, storage, schema, id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.read"));
     }
@@ -974,7 +1146,8 @@ public class MySQLAppDataService implements IAppDataService {
                         .select()
                         .from(this.table(db, storage))
                         .where(idField().eq(id)))
-                .map(r -> this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals));
+                .map(r -> MySQLColumnNames.toFields(
+                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
     }
 
     @Override
@@ -997,12 +1170,12 @@ public class MySQLAppDataService implements IAppDataService {
                                 this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (db, schema, repo) ->
                                 this.writeValidator.validate(dataObject.getData(), storage, schema, repo),
-                        (db, schema, repo, validated) -> this.storageService.getResolvedSchema(storage),
+                        (db, schema, repo, validated) -> this.physicalSchema(storage),
                         (db, schema, repo, validated, resolved) -> {
                             Map<Field<?>, Object> values = new LinkedHashMap<>();
                             this.codec
                                     .encode(
-                                            dataObject.getData(),
+                                            MySQLColumnNames.toColumns(dataObject.getData()),
                                             MySQLTypeMapper.jsonColumns(resolved, defs(storage)),
                                             MySQLTypeMapper.dateStringColumns(resolved, defs(storage)),
                                             MySQLTypeMapper.decimalColumns(resolved, defs(storage)))
@@ -1036,7 +1209,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         // Read before, write after. The version has to be built from
                         // the row that is about to go, so it is READ first - there is
                         // nothing to read afterwards. It is WRITTEN only once the
@@ -1273,18 +1446,19 @@ public class MySQLAppDataService implements IAppDataService {
                                         + relation.getStorageName() + "', which does not resolve for this client")),
                 target -> this.canRead(target),
                 (target, allowed) -> this.ensureTable(conn, clientCode, target),
-                (target, allowed, targetDb) -> this.storageService.getResolvedSchema(target),
+                (target, allowed, targetDb) -> this.physicalSchema(target),
                 (target, allowed, targetDb, targetSchema) -> Mono.just(new JoinedTable(
                         join.resolvedAlias(),
                         DSL.table(DSL.name(targetDb, target.getUniqueName())),
                         join.getRelation(),
                         StringUtil.safeIsBlank(relation.getFieldName())
                                 ? MySQLTypeMapper.ID_COLUMN
-                                : relation.getFieldName(),
+                                : MySQLColumnNames.column(relation.getFieldName()),
                         join.getType() == null ? com.fincity.saas.commons.model.JoinType.LEFT : join.getType(),
                         columnTypes(targetSchema, defs(target)),
                         MySQLTypeMapper.jsonColumns(targetSchema, defs(target)),
-                        MySQLTypeMapper.dateStringColumns(targetSchema, defs(target)))));
+                        MySQLTypeMapper.dateStringColumns(targetSchema, defs(target)),
+                        MySQLColumnNames.fieldNames(targetSchema))));
     }
 
     /**
@@ -1341,7 +1515,7 @@ public class MySQLAppDataService implements IAppDataService {
         return FlatMapUtil.flatMapMono(
                 () -> this.canRead(child),
                 allowed -> this.ensureTable(conn, clientCode, child),
-                (allowed, childDb) -> this.storageService.getResolvedSchema(child),
+                (allowed, childDb) -> this.physicalSchema(child),
                 (allowed, childDb, childSchema) -> {
 
                     Set<String> childJson = MySQLTypeMapper.jsonColumns(childSchema, defs(child));
@@ -1375,7 +1549,7 @@ public class MySQLAppDataService implements IAppDataService {
                             MySQLSubQueryPlanner.KEY,
                             StringUtil.safeIsBlank(relation.getFieldName())
                                     ? MySQLTypeMapper.ID_COLUMN
-                                    : relation.getFieldName(),
+                                    : MySQLColumnNames.column(relation.getFieldName()),
                             MySQLSubQueryPlanner.measures(sq),
                             !Boolean.FALSE.equals(sq.getRequired())));
                 });
@@ -1461,6 +1635,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         Set<String> columns = parentColumns(schema, defs);
         return storage.getTextIndexFields().stream()
+                .map(MySQLColumnNames::column)
                 .filter(columns::contains)
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
     }
@@ -1479,7 +1654,19 @@ public class MySQLAppDataService implements IAppDataService {
      * becomes text on the next.
      */
     private static Map<String, StorageColumnDefinition> defs(Storage storage) {
-        return storage == null ? null : storage.getColumnDefinitions();
+        return storage == null ? null : MySQLColumnNames.columnDefinitions(storage.getColumnDefinitions());
+    }
+
+    /**
+     * The resolved schema keyed by column rather than by field.
+     *
+     * The only way this backend reads a schema, so that a field whose name is not an
+     * identifier ("IFSC Code") reaches the DDL, the indexes and the drift check as
+     * the column it is stored in. Rows are translated back with
+     * {@link MySQLColumnNames#toFields} before they leave.
+     */
+    private Mono<Schema> physicalSchema(Storage storage) {
+        return this.storageService.getResolvedSchema(storage).map(MySQLColumnNames::physical);
     }
 
     private static Map<String, String> columnTypes(Schema schema, Map<String, StorageColumnDefinition> defs) {
@@ -1505,7 +1692,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.resolveAttached(
                                 conn, db, clientCode, storage, schema, query.getJoins(), query.getSubQueries()),
                         (db, schema, joins) ->
@@ -1525,8 +1712,7 @@ public class MySQLAppDataService implements IAppDataService {
         Pageable page = query.getPageable();
 
         return this.ensureTable(conn, clientCode, storage)
-                .flatMapMany(db -> this.storageService
-                        .getResolvedSchema(storage)
+                .flatMapMany(db -> this.physicalSchema(storage)
                         .flatMapMany(schema -> this
                                 .resolveAttached(
                                         conn, db, clientCode, storage, schema, query.getJoins(),
@@ -1568,7 +1754,8 @@ public class MySQLAppDataService implements IAppDataService {
             return Flux.from(order.isEmpty()
                             ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                             : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
-                    .map(r -> this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals));
+                    .map(r -> MySQLColumnNames.toFields(
+                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
         }
 
         List<Field<?>> selection =
@@ -1585,7 +1772,8 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.from(order.isEmpty()
                         ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                         : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
-                .map(r -> this.decodeJoined(new LinkedHashMap<>(r.intoMap()), json, dates, decimals, attached));
+                .map(r -> MySQLColumnNames.toFields(
+                        this.decodeJoined(new LinkedHashMap<>(r.intoMap()), json, dates, decimals, attached), schema));
     }
 
     /**
@@ -1648,7 +1836,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         if (query.getFields() == null || query.getFields().isEmpty()) return all;
 
-        Set<String> named = new java.util.LinkedHashSet<>(query.getFields());
+        Set<String> named = columnsNamed(query.getFields());
 
         if (BooleanUtil.safeValueOf(query.getExcludeFields())) {
             all.removeIf(named::contains);
@@ -1728,7 +1916,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         if (query.getFields() == null || query.getFields().isEmpty()) return List.of();
 
-        Set<String> named = new java.util.LinkedHashSet<>(query.getFields());
+        Set<String> named = columnsNamed(query.getFields());
 
         if (!BooleanUtil.safeValueOf(query.getExcludeFields())) {
             List<Field<?>> out = new java.util.ArrayList<>();
@@ -1767,10 +1955,23 @@ public class MySQLAppDataService implements IAppDataService {
      */
     private static boolean addressable(String name, Set<String> known, Set<String> jsonColumns) {
 
-        if (known.contains(name)) return true;
+        // Known holds columns, and a sort names fields: "IFSC Code" is known as
+        // IFSC_Code, and on a joined side as alias.IFSC_Code.
+        if (known.contains(name) || known.contains(MySQLColumnNames.column(name))) return true;
 
         int dot = name.indexOf('.');
-        return dot > 0 && dot < name.length() - 1 && jsonColumns.contains(name.substring(0, dot));
+        if (dot <= 0 || dot >= name.length() - 1) return false;
+
+        String head = name.substring(0, dot);
+        return jsonColumns.contains(MySQLColumnNames.column(head))
+                || known.contains(head + "." + MySQLColumnNames.column(name.substring(dot + 1)));
+    }
+
+    /** The columns a field list names, in order. */
+    private static Set<String> columnsNamed(List<String> fields) {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        fields.forEach(f -> out.add(MySQLColumnNames.column(f)));
+        return out;
     }
 
     static List<OrderField<?>> order(Schema schema, Sort sort) {
@@ -1818,7 +2019,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.resolveAttached(
                                 conn, db, clientCode, storage, schema, query.getJoins(), query.getSubQueries()),
                         (db, schema, joins) -> this.checkAggregateFields(storage, schema, query, joins),
@@ -1976,11 +2177,19 @@ public class MySQLAppDataService implements IAppDataService {
      * column on another table. The join aliases decide which, and they cannot
      * collide with a parent column because the planner refuses that.
      */
-    private static String head(String field, Map<String, String> columns) {
+    static String head(String field, Map<String, String> columns) {
         if (columns.containsKey(field)) return field;
 
+        // The query names fields and the map holds columns: "IFSC Code" is known as
+        // IFSC_Code, and on a joined side as alias.IFSC_Code.
+        String column = MySQLColumnNames.column(field);
+        if (columns.containsKey(column)) return column;
+
         int dot = field.indexOf('.');
-        return dot < 0 ? field : field.substring(0, dot);
+        if (dot < 0) return column;
+
+        String joined = field.substring(0, dot) + "." + MySQLColumnNames.column(field.substring(dot + 1));
+        return columns.containsKey(joined) ? joined : MySQLColumnNames.column(field.substring(0, dot));
     }
 
 
@@ -2043,7 +2252,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> {
                             Set<String> json = MySQLTypeMapper.jsonColumns(schema, defs(storage));
 

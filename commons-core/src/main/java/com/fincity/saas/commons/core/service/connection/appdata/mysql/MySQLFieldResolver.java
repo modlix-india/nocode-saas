@@ -6,6 +6,7 @@ import java.util.Set;
 import org.jooq.Field;
 import org.jooq.impl.DSL;
 
+
 /**
  * Turns a field name in a query into the SQL that reads it.
  *
@@ -76,6 +77,11 @@ public final class MySQLFieldResolver {
         return this.textColumns;
     }
 
+    /** Whether this name is a JSON column on the parent, which an array always is. */
+    public boolean isJsonColumn(String column) {
+        return this.jsonColumns.contains(MySQLColumnNames.column(column));
+    }
+
     public Field<Object> qualified(String column) {
         return this.parentAlias == null
                 ? DSL.field(DSL.name(column))
@@ -108,7 +114,7 @@ public final class MySQLFieldResolver {
         SubQueryTable sub = this.subQueries.get(head);
         if (sub != null) return sub.measure(tail);
 
-        if (this.jsonColumns.contains(head)) return MySQLFilterBuilder.jsonPath(this.parentColumn(head), name, tail);
+        if (this.isJsonColumn(head)) return MySQLFilterBuilder.jsonPath(this.parentColumn(head), name, tail);
 
         // A field name may legitimately contain a dot, and rewriting one that matches
         // neither an alias nor a JSON column would break a filter that works today.
@@ -124,15 +130,20 @@ public final class MySQLFieldResolver {
 
         // A JSON path on the far side of a join, which is the one case where three
         // segments are meaningful rather than a mistake.
-        if (join.jsonColumns().contains(column))
+        if (join.jsonColumns().contains(MySQLColumnNames.column(column)))
             return MySQLFilterBuilder.jsonPath(join.column(column), tail, tail.substring(dot + 1));
 
         return join.column(tail);
     }
 
+    /**
+     * A query names fields and the table has columns, which differ for a field such
+     * as "IFSC Code"; see {@link MySQLColumnNames#column}.
+     */
     private Field<Object> parentColumn(String name) {
+        String column = MySQLColumnNames.column(name);
         return this.parentAlias == null
-                ? DSL.field(DSL.name(name))
-                : DSL.field(DSL.name(this.parentAlias, name));
+                ? DSL.field(DSL.name(column))
+                : DSL.field(DSL.name(this.parentAlias, column));
     }
 }

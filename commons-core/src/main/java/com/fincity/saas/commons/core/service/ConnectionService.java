@@ -66,6 +66,48 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     }
 
     /**
+     * Every distinct app-data server ONE APP uses, on a given backend.
+     *
+     * The app-scoped twin of {@link #allAppData(ConnectionSubType)}. An appData
+     * connection is an overridable document like any other, so a client may bring
+     * its own database: {@code ConnectionService.read} accepts a connection whose
+     * clientCode matches, or an app-level one, which means two clients of the same
+     * app can legitimately sit on two different MySQL servers.
+     *
+     * Anything that reconciles or inspects TABLES has to walk all of them. Reading
+     * one connection and sweeping the schemas on its server silently skips every
+     * tenant hosted elsewhere - the definition saves, the report comes back empty
+     * for them, and their tables keep the old shape until a write hits a column
+     * that is not there.
+     *
+     * Distinct by connection DETAILS, like its sibling, so the common case - every
+     * client on the platform's own datasource through {@code useDefaultConnection}
+     * - collapses to a single sweep rather than one per client.
+     */
+    public Flux<Connection> allAppData(ConnectionSubType subType, String appCode) {
+
+        if (StringUtil.safeIsBlank(appCode)) return Flux.empty();
+
+        return this.mongoTemplate
+                .find(
+                        new org.springframework.data.mongodb.core.query.Query(
+                                new org.springframework.data.mongodb.core.query.Criteria()
+                                        .andOperator(
+                                                org.springframework.data.mongodb.core.query.Criteria
+                                                        .where("connectionType")
+                                                        .is(ConnectionType.APP_DATA),
+                                                org.springframework.data.mongodb.core.query.Criteria
+                                                        .where("connectionSubType")
+                                                        .is(subType),
+                                                org.springframework.data.mongodb.core.query.Criteria
+                                                        .where("appCode")
+                                                        .is(appCode))),
+                        Connection.class,
+                        this.getCollectionName())
+                .distinct(c -> c.getConnectionDetails() == null ? "" : c.getConnectionDetails().toString());
+    }
+
+    /**
      * Refuse a connection pointing anywhere inside our own network before it is
      * stored. Both write paths go through here: create below, and update via
      * {@link #updatableEntity(Connection)}.

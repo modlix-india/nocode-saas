@@ -13,6 +13,7 @@ public class EventNames {
     public static final String USER_RESET_PASSWORD_REQUEST = "USER_RESET_$_REQUEST";
     public static final String USER_CODE_GENERATION = "USER_CODE_GENERATION";
     public static final String USER_OTP_GENERATE = "USER_OTP_GENERATE";
+    public static final String USER_INVITED = "USER_INVITED";
 
     public static final String INVOICE_CREATED = "INVOICE_CREATED";
     public static final String INVOICE_GENERATED = "INVOICE_GENERATED";
