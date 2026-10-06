@@ -61,10 +61,7 @@ class MySQLDriftReconcilerIntegrationTest extends AbstractMySQLSpringIntegration
                 .thenReturn(Mono.just(List.of(SYSTEM)));
 
         ctx = mysql();
-        exec("DROP DATABASE IF EXISTS `" + TENANT + "`");
-        // The draft sibling too. The missing-table tests create it, and a schema
-        // that survives into the next test changes how many reports come back.
-        exec("DROP DATABASE IF EXISTS `" + TENANT + "_draft`");
+        this.dropTenants();
         this.givenConnection();
         this.givenStorage();
         this.writeBook("Dune");
@@ -137,6 +134,27 @@ class MySQLDriftReconcilerIntegrationTest extends AbstractMySQLSpringIntegration
         row.put("title", title);
         row.put("isbn", "1");
         this.asClient(this.appDataService.create(APP_CODE, SYSTEM, BOOKS, new DataObject().setData(row), false, null));
+    }
+
+    /**
+     * Every schema of this app, not just SYSTEM's.
+     *
+     * Drift reports one entry per tenant schema it finds, and the container is shared
+     * by every test class in the run. MySQLTenantMigrationSafetyIntegrationTest and
+     * MySQLSchemaChangeIntegrationTest leave their own client's schema behind, so
+     * dropping only {@link #TENANT} passed alone and failed in CI with two reports
+     * where one was expected. The draft siblings go too: the missing-table tests
+     * create one.
+     */
+    private void dropTenants() {
+        List<String> existing = Flux.from(ctx.resultQuery(
+                        "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE '%\\_"
+                                + APP_CODE + "' OR SCHEMA_NAME LIKE '%\\_" + APP_CODE + "_draft'"))
+                .map(r -> String.valueOf(r.get(0)))
+                .collectList()
+                .block();
+
+        for (String db : existing) exec("DROP DATABASE IF EXISTS `" + db + "`");
     }
 
     private List<MySQLDrift.Report> reports() {
