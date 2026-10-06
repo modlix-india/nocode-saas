@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.service.connection.appdata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,6 +66,97 @@ class StorageFieldNamesTest {
             // MySQL stops at 64 characters.
             assertFalse(StorageFieldNames.valid("a".repeat(64)));
             assertTrue(StorageFieldNames.valid("a".repeat(63)));
+        }
+    }
+
+    @Nested
+    @DisplayName("names that arrive from outside")
+    class Received {
+
+        /** What the HDFC collection webhook sends, and what cxapp's schemas declare. */
+        private static final List<String> HDFC = List.of(
+                "Alert Sequence No", "Virtual Account ", "Account number", "Debit Credit", "Amount",
+                "Remitter Name", "Remitter Account", "Remitter Bank", "User Reference Number", "Cheque No",
+                "Mnemonic Code", "Value Date", "IFSC Code", "Transaction Description", "Transaction Date",
+                "paymentId");
+
+        @Test
+        @DisplayName("a schema of spaced names saves, which it did on Mongo for years")
+        void spacedNamesSave() {
+            Map<String, Schema> props = new java.util.LinkedHashMap<>();
+            HDFC.forEach(n -> props.put(n, Schema.ofString(n)));
+
+            assertEquals(List.of(), StorageFieldNames.problems(Schema.ofObject("t").setProperties(props), Set.of()));
+        }
+
+        @Test
+        @DisplayName("each is stored in a column that is an identifier")
+        void normalised() {
+            assertEquals("IFSC_Code", StorageFieldNames.column("IFSC Code"));
+            assertEquals("Virtual_Account_", StorageFieldNames.column("Virtual Account "));
+            assertEquals("_2fast", StorageFieldNames.column("2fast"));
+            assertEquals("a_b", StorageFieldNames.column("a-b"));
+            HDFC.forEach(n -> assertTrue(StorageFieldNames.valid(StorageFieldNames.column(n)), n));
+        }
+
+        @Test
+        @DisplayName("an identifier is its own column, so no existing column moves")
+        void identity() {
+            assertEquals("amount", StorageFieldNames.column("amount"));
+            assertEquals("_id", StorageFieldNames.column("_id"));
+            assertEquals("a".repeat(63), StorageFieldNames.column("a".repeat(63)));
+        }
+
+        @Test
+        @DisplayName("a long name is cut to fit, and two that share a prefix stay apart")
+        void long_() {
+            String a = "x ".repeat(40) + "one";
+            String b = "x ".repeat(40) + "two";
+
+            assertEquals(63, StorageFieldNames.column(a).length());
+            assertTrue(StorageFieldNames.valid(StorageFieldNames.column(a)));
+            assertNotEquals(StorageFieldNames.column(a), StorageFieldNames.column(b));
+        }
+
+        @Test
+        @DisplayName("two fields that would share a column are refused, naming both")
+        void collision() {
+            Map<String, Schema> props = new java.util.LinkedHashMap<>();
+            props.put("Debit Credit", Schema.ofString("a"));
+            props.put("Debit_Credit", Schema.ofString("b"));
+
+            List<String> problems = StorageFieldNames.problems(Schema.ofObject("t").setProperties(props), Set.of());
+
+            assertEquals(1, problems.size());
+            assertTrue(problems.getFirst().contains("Debit Credit"), problems.getFirst());
+            assertTrue(problems.getFirst().contains("Debit_Credit"), problems.getFirst());
+        }
+
+        @Test
+        @DisplayName("and so is one that would land on the row id")
+        void collidesWithId() {
+            assertEquals(
+                    1,
+                    StorageFieldNames.problems(
+                                    Schema.ofObject("t").setProperties(Map.of("-id", Schema.ofString("x"))), Set.of())
+                            .size());
+        }
+
+        @Test
+        @DisplayName("what would break a backend other than as a column is still refused")
+        void stillRefused() {
+            assertFalse(StorageFieldNames.storable("$where"));
+            assertFalse(StorageFieldNames.storable("address.city"));
+            assertFalse(StorageFieldNames.storable(HOSTILE));
+            assertFalse(StorageFieldNames.storable("tab\there"));
+            assertFalse(StorageFieldNames.storable(" "));
+            assertFalse(StorageFieldNames.storable(null));
+        }
+
+        @Test
+        @DisplayName("a relation key still has to be an identifier")
+        void relationsStayStrict() {
+            assertEquals(1, StorageFieldNames.problems(Schema.ofObject("t"), Set.of("my customer")).size());
         }
     }
 

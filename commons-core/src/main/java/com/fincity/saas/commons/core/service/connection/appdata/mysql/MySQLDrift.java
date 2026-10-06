@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.service.connection.appdata.mysql;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +36,7 @@ public final class MySQLDrift {
             List<String> indexStatements,
             List<String> foreignKeyStatements) {
 
+        @JsonProperty("clean")
         public boolean clean() {
             return this.tableExists
                     && this.columns.isEmpty()
@@ -43,6 +45,7 @@ public final class MySQLDrift {
         }
 
         /** The column changes that must never run unasked. */
+        @JsonProperty("dangerous")
         public List<SchemaChange> dangerous() {
             return this.columns.stream().filter(SchemaChange::needsDataCheck).toList();
         }
@@ -51,6 +54,7 @@ public final class MySQLDrift {
          * Index and key DROPs. Reversible - the definition can rebuild them - but still
          * a change to a live table that somebody should agree to.
          */
+        @JsonProperty("drops")
         public List<String> drops() {
             List<String> out = new ArrayList<>();
             for (String s : this.indexStatements) if (isDrop(s)) out.add(s);
@@ -59,10 +63,12 @@ public final class MySQLDrift {
         }
 
         /** True when repairing this would do something irreversible or lossy. */
+        @JsonProperty("needsApproval")
         public boolean needsApproval() {
             return !this.dangerous().isEmpty() || !this.drops().isEmpty() || !this.tableExists;
         }
 
+        @JsonProperty("summary")
         public String summary() {
             if (this.clean()) return this.db + "." + this.table + ": in sync";
             if (!this.tableExists) return this.db + "." + this.table + ": table is MISSING";
@@ -70,6 +76,47 @@ public final class MySQLDrift {
                     + this.dangerous().size() + " needing approval), " + this.indexStatements.size()
                     + " index statement(s), " + this.foreignKeyStatements.size() + " key statement(s)";
         }
+    }
+
+    /**
+     * What a repair actually did on one tenant.
+     *
+     * {@code withheld} is the point of the record. A repair run without approval is
+     * supposed to leave the dangerous half alone, and the caller has to be able to
+     * see WHAT it left rather than infer it from a count - that list is the argument
+     * for granting approval, and the thing to read before granting it.
+     */
+    public record DriftRepair(
+            String db, boolean tableMissing, List<String> applied, List<String> withheld, List<String> failed) {
+
+        /**
+         * A table that is not there is not repaired, and must not read as a clean
+         * run. Nothing here creates one - that is {@code ensureTable}'s job and it
+         * needs the whole definition, not a diff against nothing - so the honest
+         * answer is to carry the fact out and let the caller act on it.
+         */
+        @JsonProperty("complete")
+        public boolean complete() {
+            return !this.tableMissing && this.failed.isEmpty() && this.withheld.isEmpty();
+        }
+    }
+
+    /**
+     * The statements an approved repair would run that this one will not.
+     *
+     * Computed as the difference rather than tracked separately, so it cannot drift
+     * from what {@link #repairStatements} actually withholds.
+     */
+    public static List<String> withheldStatements(Report report, boolean approved) {
+
+        if (approved) return List.of();
+
+        List<String> full = repairStatements(report, true);
+        List<String> safe = repairStatements(report, false);
+
+        List<String> out = new ArrayList<>(full);
+        out.removeAll(safe);
+        return out;
     }
 
     private static boolean isDrop(String statement) {
@@ -113,9 +160,16 @@ public final class MySQLDrift {
      * unapproved repair can be run on anything without reading the report first and
      * still cannot lose a column, a key or a row.
      *
-     * With approval it returns the lot, in an order that does not trip over itself:
-     * keys first, because an index backing a foreign key cannot be dropped while the
-     * key is still on it.
+     * The order is the whole difficulty, and it is not one order but two pulling
+     * opposite ways. A key has to come OFF before the index backing it can be
+     * dropped, and a column has to be THERE before an index or a key can be put on
+     * it. Emitting keys and indexes as one block ahead of the columns - which is what
+     * this did - satisfies the first and breaks the second: adding a field and an
+     * index on it in the same edit planned the index first and failed on a column
+     * that did not exist yet.
+     *
+     * So the plan runs outside in: everything that comes off, then the columns, then
+     * everything that goes back on.
      */
     public static List<String> repairStatements(Report report, boolean approved) {
 
@@ -123,13 +177,20 @@ public final class MySQLDrift {
 
         List<String> out = new ArrayList<>();
 
-        for (String s : report.foreignKeyStatements()) if (approved || !isDrop(s)) out.add(s);
-        for (String s : report.indexStatements()) if (approved || !isDrop(s)) out.add(s);
+        // Off first, keys before the indexes they sit on.
+        if (approved) {
+            for (String s : report.foreignKeyStatements()) if (isDrop(s)) out.add(s);
+            for (String s : report.indexStatements()) if (isDrop(s)) out.add(s);
+        }
 
         for (SchemaChange change : report.columns()) {
             if (change.needsDataCheck() && !approved) continue;
             out.add(columnDdl(report.db(), report.table(), change));
         }
+
+        // Back on, indexes before the keys that need them.
+        for (String s : report.indexStatements()) if (!isDrop(s)) out.add(s);
+        for (String s : report.foreignKeyStatements()) if (!isDrop(s)) out.add(s);
 
         return out;
     }

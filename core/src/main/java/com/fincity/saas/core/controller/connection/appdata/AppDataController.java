@@ -5,6 +5,7 @@ import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.TenantProgress;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Query;
@@ -68,6 +69,8 @@ public class AppDataController {
 
 	public static final String PATH_COPY_TO_DRAFT = "{storage}/copyToDraft";
 	public static final String PATH_MIGRATION_STATUS = "{storage}/migrationStatus";
+	public static final String PATH_DRIFT = "{storage}/drift";
+	public static final String PATH_DRIFT_REPAIR = "{storage}/drift/repair";
 
 	// Here id is version's ID
 	public static final String PATH_VERSION_ID = "{storage}/version/{" + PATH_VARIABLE_ID + "}";
@@ -343,6 +346,35 @@ public class AppDataController {
 			@RequestHeader String appCode, @RequestHeader String clientCode) {
 
 		return this.service.migrationStatus(appCode, clientCode, storageName)
+				.map(ResponseEntity::ok);
+	}
+
+	/**
+	 * What each tenant's table actually looks like against what its definition says.
+	 *
+	 * Reads the tables, where migrationStatus reads the journal, so this is the one
+	 * that finds a tenant nobody ever migrated. Issues no statements.
+	 */
+	@GetMapping(PATH_DRIFT)
+	public Mono<ResponseEntity<List<MySQLDrift.Report>>> drift(
+			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode) {
+
+		return this.service.drift(appCode, clientCode, storageName)
+				.map(ResponseEntity::ok);
+	}
+
+	/**
+	 * Apply the repair. {@code approve} defaults to false, so the destructive half
+	 * has to be asked for in as many words and comes back as `withheld` until it is.
+	 */
+	@PostMapping(PATH_DRIFT_REPAIR)
+	public Mono<ResponseEntity<List<MySQLDrift.DriftRepair>>> repairDrift(
+			@PathVariable(PATH_VARIABLE_STORAGE) final String storageName,
+			@RequestHeader String appCode, @RequestHeader String clientCode,
+			@RequestParam(required = false, defaultValue = "false") Boolean approve) {
+
+		return this.service.repairDrift(appCode, clientCode, storageName, Boolean.TRUE.equals(approve))
 				.map(ResponseEntity::ok);
 	}
 

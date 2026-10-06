@@ -909,7 +909,7 @@ public class ClientRegistrationService {
                         },
 
                         (ca, app, appRegIntegrationToken, appRegIntegration, registerRequest) -> this
-                                .socialCallbackDestination(appRegIntegrationToken, appRegIntegration, urlPrefix)
+                                .socialCallbackDestination(appRegIntegrationToken)
                                 .flatMap(destination -> {
 
                                     UriComponentsBuilder uriBuilder = UriComponentsBuilder
@@ -939,28 +939,31 @@ public class ClientRegistrationService {
      * different domain. Getting that wrong is not a redirect nuisance: the browser arrives on
      * an app that knows nothing about the state, and the sign-in silently ends there.
      * <p>
-     * Falls back to the integration's configured loginUri/signupUri on the callback host, which
-     * is the old behaviour, only when there is nothing better: no redirectUrl, an untrusted
-     * one, or an app whose own URL cannot be resolved.
+     * With no redirectUrl, or one that is not the app's own, the user lands on the app's own
+     * root. There is no fallback to the integration's loginUri/signupUri on the broker: that
+     * hung the user's email and a spendable state off the broker's host, where nothing redeems
+     * them. An app whose URL cannot be resolved is an error, because there is nowhere safe left.
      */
-    private Mono<String> socialCallbackDestination(AppRegistrationIntegrationToken appRegIntegrationToken,
-                                                   AppRegistrationIntegration appRegIntegration, String urlPrefix) {
+    private Mono<String> socialCallbackDestination(AppRegistrationIntegrationToken appRegIntegrationToken) {
 
         Map<String, Object> rp = appRegIntegrationToken.getRequestParam();
-        String fallback = urlPrefix + legacySocialUri(appRegIntegration, rp);
+        Object appCode = rp == null ? null : rp.get("appCode");
+        if (appCode == null)
+            return this.regError("The sign-in did not say which app it started from");
 
-        if (rp == null)
-            return Mono.just(fallback);
+        Mono<String> appRoot = this.clientUrlService.getAppUrl(appCode.toString(), (String) rp.get("clientCode"))
+                .filter(appUrl -> !safeIsBlank(appUrl))
+                .switchIfEmpty(Mono.defer(() -> this.regError("No address is on record for the app " + appCode)));
 
         String customerRedirectUrl = (String) rp.get("redirectUrl");
         if (safeIsBlank(customerRedirectUrl))
-            return Mono.just(fallback);
+            return appRoot.map(appUrl -> appUrl + "/");
 
         URI uri;
         try {
             uri = URI.create(customerRedirectUrl);
         } catch (IllegalArgumentException e) {
-            return Mono.just(fallback);
+            return appRoot.map(appUrl -> appUrl + "/");
         }
 
         String scheme = uri.getScheme() == null ? null : uri.getScheme().toLowerCase();
@@ -968,35 +971,18 @@ public class ClientRegistrationService {
         // A mobile wrapper cannot receive an https redirect into its embedded WebView, so it
         // passes a custom scheme. Only the app that started this flow can claim it.
         if (scheme != null && !scheme.equals("http") && !scheme.equals("https"))
-            return Mono.just(isAllowedCustomScheme(scheme, rp) ? customerRedirectUrl : fallback);
-
-        Object appCode = rp.get("appCode");
-        if (appCode == null)
-            return Mono.just(fallback);
+            return isAllowedCustomScheme(scheme, rp) ? Mono.just(customerRedirectUrl)
+                    : appRoot.map(appUrl -> appUrl + "/");
 
         // No scheme means a path, e.g. "/accountHome". Resolve it against the app's own URL.
         if (scheme == null) {
             String path = customerRedirectUrl.startsWith("/") ? customerRedirectUrl : "/" + customerRedirectUrl;
-            return this.clientUrlService.getAppUrl(appCode.toString(), (String) rp.get("clientCode"))
-                    .filter(appUrl -> !safeIsBlank(appUrl))
-                    .map(appUrl -> appUrl + path)
-                    .defaultIfEmpty(fallback);
+            return appRoot.map(appUrl -> appUrl + path);
         }
 
         return this.isAppsOwnHost(uri, appCode.toString())
-                .map(allowed -> Boolean.TRUE.equals(allowed) ? customerRedirectUrl : fallback);
-    }
-
-    /**
-     * The pre-redirect behaviour: the integration's own configured login or signup page, on the
-     * callback host. Only reached when the calling app gave us nothing usable to return to.
-     */
-    private static String legacySocialUri(AppRegistrationIntegration appRegIntegration, Map<String, Object> rp) {
-
-        Object signup = rp == null ? null : rp.getOrDefault("signup", "false");
-        boolean isSignup = "true".equals(String.valueOf(signup));
-
-        return isSignup ? appRegIntegration.getSignupUri() : appRegIntegration.getLoginUri();
+                .flatMap(allowed -> Boolean.TRUE.equals(allowed) ? Mono.just(customerRedirectUrl)
+                        : appRoot.map(appUrl -> appUrl + "/"));
     }
 
     /**
@@ -1081,7 +1067,7 @@ public class ClientRegistrationService {
                         // them to the broker's own login page instead stranded them on a
                         // different app, which reads as the cancel having broken something.
                         (appRegIntegrationToken, appRegIntegration) -> this
-                                .socialCallbackDestination(appRegIntegrationToken, appRegIntegration, urlPrefix)
+                                .socialCallbackDestination(appRegIntegrationToken)
                                 .flatMap(destination -> {
 
                                     UriComponentsBuilder uriBuilder = UriComponentsBuilder
