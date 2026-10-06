@@ -29,6 +29,9 @@ import com.fincity.saas.commons.model.JoinType;
  *                     most of what anyone joins for
  * @param jsonColumns  of those, the ones holding JSON
  * @param dateColumns  of those, the ones the schema calls a STRING and stores as a date
+ * @param fieldNames   column to field, for the target's columns whose names differ from
+ *                     the field they store, so the joined object comes back keyed the
+ *                     way the target declared it. Empty for nearly every storage
  */
 public record JoinedTable(
         String alias,
@@ -38,7 +41,24 @@ public record JoinedTable(
         JoinType type,
         java.util.Map<String, String> columnTypes,
         Set<String> jsonColumns,
-        Set<String> dateColumns) {
+        Set<String> dateColumns,
+        java.util.Map<String, String> fieldNames) {
+
+    public JoinedTable {
+        fieldNames = fieldNames == null ? java.util.Map.of() : fieldNames;
+    }
+
+    public JoinedTable(
+            String alias,
+            Table<?> table,
+            String parentField,
+            String targetField,
+            JoinType type,
+            java.util.Map<String, String> columnTypes,
+            Set<String> jsonColumns,
+            Set<String> dateColumns) {
+        this(alias, table, parentField, targetField, type, columnTypes, jsonColumns, dateColumns, null);
+    }
 
     public Set<String> columns() {
         return this.columnTypes.keySet();
@@ -50,8 +70,9 @@ public record JoinedTable(
                 .eq(DSL.field(DSL.name(this.alias, this.targetField)));
     }
 
+    /** Takes a field or a column; a column is its own field name's column. */
     public Field<Object> column(String name) {
-        return DSL.field(DSL.name(this.alias, name));
+        return DSL.field(DSL.name(this.alias, MySQLColumnNames.column(name)));
     }
 
     /**

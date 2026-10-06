@@ -39,6 +39,7 @@ import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutRepo
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MigrationOutcome;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLColumn;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLColumnNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.util.function.Tuple2;
@@ -388,7 +389,7 @@ public class MySQLAppDataService implements IAppDataService {
         String table = storage.getUniqueName();
         DSLContext ctx = this.context(conn);
 
-        return this.storageService.getResolvedSchema(storage).flatMap(schema -> {
+        return this.physicalSchema(storage).flatMap(schema -> {
             List<MySQLColumn> columns = MySQLTypeMapper.columns(schema, defs(storage));
 
             return Mono.from(ctx.query("CREATE DATABASE IF NOT EXISTS `" + db + "`"))
@@ -447,8 +448,7 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.fromIterable(tenants)
                 .concatMap(db -> this.storageService
                         .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
-                        .flatMap(tenantStorage -> this.storageService
-                                .getResolvedSchema(tenantStorage)
+                        .flatMap(tenantStorage -> this.physicalSchema(tenantStorage)
                                 .flatMap(schema -> this.syncIndexes(conn, db, tenantStorage, schema)))
                         .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
                         .onErrorResume(e -> {
@@ -627,8 +627,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         DSLContext ctx = this.context(conn);
 
-        return this.storageService
-                .getResolvedSchema(target)
+        return this.physicalSchema(target)
                 .flatMap(schema -> Mono.from(ctx.query("USE `" + db + "`; "
                                 + MySQLTablePlanner.createTable(
                                         target.getUniqueName(),
@@ -854,7 +853,7 @@ public class MySQLAppDataService implements IAppDataService {
         return this.storageService
                 .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
                 .flatMap(tenantStorage -> FlatMapUtil.flatMapMono(
-                        () -> this.storageService.getResolvedSchema(tenantStorage),
+                        () -> this.physicalSchema(tenantStorage),
                         schema -> MySQLTableInspector.tableExists(ctx, db, table),
                         (schema, exists) -> Boolean.TRUE.equals(exists)
                                 ? FlatMapUtil.flatMapMono(
@@ -868,7 +867,7 @@ public class MySQLAppDataService implements IAppDataService {
                                                 true,
                                                 existing,
                                                 MySQLTypeMapper.columns(
-                                                        schema, tenantStorage.getColumnDefinitions()),
+                                                        schema, defs(tenantStorage)),
                                                 indexes,
                                                 keys)))
                                 : Mono.just(MySQLDrift.of(
@@ -957,13 +956,12 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.fromIterable(tenants)
                 .concatMap(db -> this.storageService
                         .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
-                        .flatMap(tenantStorage -> this.storageService
-                                .getResolvedSchema(tenantStorage)
+                        .flatMap(tenantStorage -> this.physicalSchema(tenantStorage)
                                 // The tenant's OWN definitions. They are overridable
                                 // like everything else on a storage, so a client that
                                 // pinned its own DECIMAL scale keeps it while the base
                                 // moves under it.
-                                .map(sc -> MySQLTypeMapper.columns(sc, tenantStorage.getColumnDefinitions())))
+                                .map(sc -> MySQLTypeMapper.columns(sc, defs(tenantStorage))))
                         // Each surface resolves its own definition. The draft document
                         // is a different document, so reading it under the live flag
                         // would shape the draft table from the published definition and
@@ -1085,9 +1083,9 @@ public class MySQLAppDataService implements IAppDataService {
                                 this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (db, schema, repo) ->
                                 this.writeValidator.validate(dataObject.getData(), storage, schema, repo),
-                        (db, schema, repo, validated) -> this.storageService.getResolvedSchema(storage),
+                        (db, schema, repo, validated) -> this.physicalSchema(storage),
                         (db, schema, repo, validated, resolved) -> {
-                            Map<String, Object> row = new LinkedHashMap<>(dataObject.getData());
+                            Map<String, Object> row = MySQLColumnNames.toColumns(dataObject.getData());
 
                             // A caller may supply its own id, exactly as the Mongo backend
                             // allows; otherwise mint one. Never an auto-increment key.
@@ -1124,7 +1122,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.readRow(conn, db, storage, schema, id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.read"));
     }
@@ -1148,7 +1146,8 @@ public class MySQLAppDataService implements IAppDataService {
                         .select()
                         .from(this.table(db, storage))
                         .where(idField().eq(id)))
-                .map(r -> this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals));
+                .map(r -> MySQLColumnNames.toFields(
+                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
     }
 
     @Override
@@ -1171,12 +1170,12 @@ public class MySQLAppDataService implements IAppDataService {
                                 this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
                         (db, schema, repo) ->
                                 this.writeValidator.validate(dataObject.getData(), storage, schema, repo),
-                        (db, schema, repo, validated) -> this.storageService.getResolvedSchema(storage),
+                        (db, schema, repo, validated) -> this.physicalSchema(storage),
                         (db, schema, repo, validated, resolved) -> {
                             Map<Field<?>, Object> values = new LinkedHashMap<>();
                             this.codec
                                     .encode(
-                                            dataObject.getData(),
+                                            MySQLColumnNames.toColumns(dataObject.getData()),
                                             MySQLTypeMapper.jsonColumns(resolved, defs(storage)),
                                             MySQLTypeMapper.dateStringColumns(resolved, defs(storage)),
                                             MySQLTypeMapper.decimalColumns(resolved, defs(storage)))
@@ -1210,7 +1209,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         // Read before, write after. The version has to be built from
                         // the row that is about to go, so it is READ first - there is
                         // nothing to read afterwards. It is WRITTEN only once the
@@ -1447,18 +1446,19 @@ public class MySQLAppDataService implements IAppDataService {
                                         + relation.getStorageName() + "', which does not resolve for this client")),
                 target -> this.canRead(target),
                 (target, allowed) -> this.ensureTable(conn, clientCode, target),
-                (target, allowed, targetDb) -> this.storageService.getResolvedSchema(target),
+                (target, allowed, targetDb) -> this.physicalSchema(target),
                 (target, allowed, targetDb, targetSchema) -> Mono.just(new JoinedTable(
                         join.resolvedAlias(),
                         DSL.table(DSL.name(targetDb, target.getUniqueName())),
                         join.getRelation(),
                         StringUtil.safeIsBlank(relation.getFieldName())
                                 ? MySQLTypeMapper.ID_COLUMN
-                                : relation.getFieldName(),
+                                : MySQLColumnNames.column(relation.getFieldName()),
                         join.getType() == null ? com.fincity.saas.commons.model.JoinType.LEFT : join.getType(),
                         columnTypes(targetSchema, defs(target)),
                         MySQLTypeMapper.jsonColumns(targetSchema, defs(target)),
-                        MySQLTypeMapper.dateStringColumns(targetSchema, defs(target)))));
+                        MySQLTypeMapper.dateStringColumns(targetSchema, defs(target)),
+                        MySQLColumnNames.fieldNames(targetSchema))));
     }
 
     /**
@@ -1515,7 +1515,7 @@ public class MySQLAppDataService implements IAppDataService {
         return FlatMapUtil.flatMapMono(
                 () -> this.canRead(child),
                 allowed -> this.ensureTable(conn, clientCode, child),
-                (allowed, childDb) -> this.storageService.getResolvedSchema(child),
+                (allowed, childDb) -> this.physicalSchema(child),
                 (allowed, childDb, childSchema) -> {
 
                     Set<String> childJson = MySQLTypeMapper.jsonColumns(childSchema, defs(child));
@@ -1549,7 +1549,7 @@ public class MySQLAppDataService implements IAppDataService {
                             MySQLSubQueryPlanner.KEY,
                             StringUtil.safeIsBlank(relation.getFieldName())
                                     ? MySQLTypeMapper.ID_COLUMN
-                                    : relation.getFieldName(),
+                                    : MySQLColumnNames.column(relation.getFieldName()),
                             MySQLSubQueryPlanner.measures(sq),
                             !Boolean.FALSE.equals(sq.getRequired())));
                 });
@@ -1635,6 +1635,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         Set<String> columns = parentColumns(schema, defs);
         return storage.getTextIndexFields().stream()
+                .map(MySQLColumnNames::column)
                 .filter(columns::contains)
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
     }
@@ -1653,7 +1654,19 @@ public class MySQLAppDataService implements IAppDataService {
      * becomes text on the next.
      */
     private static Map<String, StorageColumnDefinition> defs(Storage storage) {
-        return storage == null ? null : storage.getColumnDefinitions();
+        return storage == null ? null : MySQLColumnNames.columnDefinitions(storage.getColumnDefinitions());
+    }
+
+    /**
+     * The resolved schema keyed by column rather than by field.
+     *
+     * The only way this backend reads a schema, so that a field whose name is not an
+     * identifier ("IFSC Code") reaches the DDL, the indexes and the drift check as
+     * the column it is stored in. Rows are translated back with
+     * {@link MySQLColumnNames#toFields} before they leave.
+     */
+    private Mono<Schema> physicalSchema(Storage storage) {
+        return this.storageService.getResolvedSchema(storage).map(MySQLColumnNames::physical);
     }
 
     private static Map<String, String> columnTypes(Schema schema, Map<String, StorageColumnDefinition> defs) {
@@ -1679,7 +1692,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.resolveAttached(
                                 conn, db, clientCode, storage, schema, query.getJoins(), query.getSubQueries()),
                         (db, schema, joins) ->
@@ -1699,8 +1712,7 @@ public class MySQLAppDataService implements IAppDataService {
         Pageable page = query.getPageable();
 
         return this.ensureTable(conn, clientCode, storage)
-                .flatMapMany(db -> this.storageService
-                        .getResolvedSchema(storage)
+                .flatMapMany(db -> this.physicalSchema(storage)
                         .flatMapMany(schema -> this
                                 .resolveAttached(
                                         conn, db, clientCode, storage, schema, query.getJoins(),
@@ -1742,7 +1754,8 @@ public class MySQLAppDataService implements IAppDataService {
             return Flux.from(order.isEmpty()
                             ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                             : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
-                    .map(r -> this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals));
+                    .map(r -> MySQLColumnNames.toFields(
+                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
         }
 
         List<Field<?>> selection =
@@ -1759,7 +1772,8 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.from(order.isEmpty()
                         ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                         : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
-                .map(r -> this.decodeJoined(new LinkedHashMap<>(r.intoMap()), json, dates, decimals, attached));
+                .map(r -> MySQLColumnNames.toFields(
+                        this.decodeJoined(new LinkedHashMap<>(r.intoMap()), json, dates, decimals, attached), schema));
     }
 
     /**
@@ -1822,7 +1836,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         if (query.getFields() == null || query.getFields().isEmpty()) return all;
 
-        Set<String> named = new java.util.LinkedHashSet<>(query.getFields());
+        Set<String> named = columnsNamed(query.getFields());
 
         if (BooleanUtil.safeValueOf(query.getExcludeFields())) {
             all.removeIf(named::contains);
@@ -1902,7 +1916,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         if (query.getFields() == null || query.getFields().isEmpty()) return List.of();
 
-        Set<String> named = new java.util.LinkedHashSet<>(query.getFields());
+        Set<String> named = columnsNamed(query.getFields());
 
         if (!BooleanUtil.safeValueOf(query.getExcludeFields())) {
             List<Field<?>> out = new java.util.ArrayList<>();
@@ -1941,10 +1955,23 @@ public class MySQLAppDataService implements IAppDataService {
      */
     private static boolean addressable(String name, Set<String> known, Set<String> jsonColumns) {
 
-        if (known.contains(name)) return true;
+        // Known holds columns, and a sort names fields: "IFSC Code" is known as
+        // IFSC_Code, and on a joined side as alias.IFSC_Code.
+        if (known.contains(name) || known.contains(MySQLColumnNames.column(name))) return true;
 
         int dot = name.indexOf('.');
-        return dot > 0 && dot < name.length() - 1 && jsonColumns.contains(name.substring(0, dot));
+        if (dot <= 0 || dot >= name.length() - 1) return false;
+
+        String head = name.substring(0, dot);
+        return jsonColumns.contains(MySQLColumnNames.column(head))
+                || known.contains(head + "." + MySQLColumnNames.column(name.substring(dot + 1)));
+    }
+
+    /** The columns a field list names, in order. */
+    private static Set<String> columnsNamed(List<String> fields) {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        fields.forEach(f -> out.add(MySQLColumnNames.column(f)));
+        return out;
     }
 
     static List<OrderField<?>> order(Schema schema, Sort sort) {
@@ -1992,7 +2019,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> this.resolveAttached(
                                 conn, db, clientCode, storage, schema, query.getJoins(), query.getSubQueries()),
                         (db, schema, joins) -> this.checkAggregateFields(storage, schema, query, joins),
@@ -2217,7 +2244,7 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getResolvedSchema(storage),
+                        db -> this.physicalSchema(storage),
                         (db, schema) -> {
                             Set<String> json = MySQLTypeMapper.jsonColumns(schema, defs(storage));
 

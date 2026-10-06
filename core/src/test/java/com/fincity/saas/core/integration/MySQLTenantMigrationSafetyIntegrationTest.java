@@ -297,7 +297,7 @@ class MySQLTenantMigrationSafetyIntegrationTest extends AbstractMySQLSpringInteg
             // No decisions first, and nothing to undo. The tenants that are done are
             // recognised as done, and the one that was behind catches up.
             FanOutReport report = asClient(
-                    appDataService.reconcileStorageDdl(APP_CODE, SYSTEM, storage), SYSTEM);
+                    appDataService.reconcileStorageDdl(APP_CODE, storage), SYSTEM);
 
             assertNotNull(report);
             assertTrue(report.allClean(), report.summary());
@@ -323,7 +323,7 @@ class MySQLTenantMigrationSafetyIntegrationTest extends AbstractMySQLSpringInteg
             Storage storage = asClient(storageService.read(STORAGE_NAME, APP_CODE, SYSTEM), SYSTEM)
                     .getObject();
             FanOutReport report = asClient(
-                    appDataService.reconcileStorageDdl(APP_CODE, SYSTEM, storage), SYSTEM);
+                    appDataService.reconcileStorageDdl(APP_CODE, storage), SYSTEM);
 
             // Learning about one bad tenant, fixing it, and then learning about the
             // next is how a 71-way publish turns into a week.

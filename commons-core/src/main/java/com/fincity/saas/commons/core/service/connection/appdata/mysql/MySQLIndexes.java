@@ -131,8 +131,10 @@ public final class MySQLIndexes {
         List<Sort.Direction> directions = new ArrayList<>();
 
         for (StorageIndexField field : index.getFields()) {
-            if (field == null || !columns.contains(field.getFieldName())) return null;
-            cols.add(field.getFieldName());
+            // Written against the field, built against the column it is stored in.
+            String column = field == null ? null : StorageFieldNames.column(field.getFieldName());
+            if (column == null || !columns.contains(column)) return null;
+            cols.add(column);
             directions.add(field.getDirection() == null ? Sort.Direction.ASC : field.getDirection());
         }
 
@@ -143,7 +145,10 @@ public final class MySQLIndexes {
 
         if (textFields == null || textFields.isEmpty()) return null;
 
-        List<String> cols = textFields.stream().filter(columns::contains).toList();
+        List<String> cols = textFields.stream()
+                .map(StorageFieldNames::column)
+                .filter(columns::contains)
+                .toList();
         if (cols.isEmpty()) return null;
 
         return new Index(FULLTEXT_NAME, cols, List.of(), false, true);

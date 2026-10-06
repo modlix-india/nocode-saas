@@ -299,7 +299,7 @@ public class AppDataService {
      * definition really is saved, the report says which tenants are behind, and
      * re-running is what carries them forward.
      */
-    public Mono<FanOutReport> reconcileStorageDdl(String appCode, String clientCode, Storage storage) {
+    public Mono<FanOutReport> reconcileStorageDdl(String appCode, Storage storage) {
 
         if (storage == null || StringUtil.safeIsBlank(storage.getUniqueName()))
             return Mono.just(FanOutReport.empty());
@@ -307,11 +307,28 @@ public class AppDataService {
         return SecurityContextUtil.getUsersContextAuthentication()
                 .map(ca -> ca.getUser() == null ? null : ca.getUser().getUserName())
                 .defaultIfEmpty("system")
+                // EVERY server the app uses, not the saving client's. A client may
+                // bring its own database, and the fan-out discovers tenants from the
+                // schemas on ONE server - so reading a single connection migrated
+                // whoever happened to share a host with the author and silently left
+                // the rest on the old shape. Deduplicated by connection details, so
+                // the ordinary single-server app still does exactly one sweep.
                 .flatMap(by -> this.connectionService
-                        .read("appData", appCode, clientCode, ConnectionType.APP_DATA)
-                        .filter(conn -> conn.getConnectionSubType() == ConnectionSubType.MYSQL)
-                        .flatMap(conn -> this.mySQLAppDataService.reconcile(conn, appCode, storage, by))
-                        .defaultIfEmpty(FanOutReport.empty()))
+                        .allAppData(ConnectionSubType.MYSQL, appCode)
+                        .concatMap(conn -> this.mySQLAppDataService
+                                .reconcile(conn, appCode, storage, by)
+                                // One unreachable server must not stop the others.
+                                // They are independent databases, and a report that
+                                // covers three of four is worth more than an error.
+                                .onErrorResume(e -> {
+                                    logger.error(
+                                            "Could not reconcile {} on connection {}",
+                                            storage.getName(),
+                                            conn.getId(),
+                                            e);
+                                    return Mono.just(FanOutReport.empty());
+                                }))
+                        .reduce(FanOutReport.empty(), FanOutReport::merge))
                 .onErrorResume(e -> {
                     logger.error("Could not reconcile tables for storage {} in {}", storage.getName(), appCode, e);
                     return Mono.just(FanOutReport.empty());
@@ -377,16 +394,21 @@ public class AppDataService {
                         ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
                         (ca, ac) -> this.clientCode(clientCode),
                         (ca, ac, cc) -> this.builderOnly(ac),
-                        (ca, ac, cc, allowed) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
-                        (ca, ac, cc, allowed, conn) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
                                 .map(ObjectWithUniqueID::getObject),
-                        (ca, ac, cc, allowed, conn, storage) -> conn != null
-                                        && conn.getConnectionSubType() == ConnectionSubType.MYSQL
-                                ? this.mySQLAppDataService.drift(conn, ac, storage)
-                                // Mongo has no table to come apart from the
-                                // definition. An empty list says that; a 501 would
-                                // imply the question was wrong to ask.
-                                : Mono.just(List.<MySQLDrift.Report>of()))
+                        // Every server the app uses. A client may bring its own
+                        // database, and inspecting one server would report the rest
+                        // as fine because it never looked at them - the same blind
+                        // spot reconcileStorageDdl had. An app with no MySQL
+                        // connection yields nothing here, which is the right answer
+                        // for a Mongo app rather than a 501.
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.drift(conn, ac, storage))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
                 // An app with no appData connection runs on Mongo and has no table to
                 // drift. Without this the chain completes empty and the caller gets a
                 // 200 with no body at all, which reads like a fault rather than "none".
@@ -413,13 +435,15 @@ public class AppDataService {
                         ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
                         (ca, ac) -> this.clientCode(clientCode),
                         (ca, ac, cc) -> this.builderOnly(ac),
-                        (ca, ac, cc, allowed) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
-                        (ca, ac, cc, allowed, conn) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
                                 .map(ObjectWithUniqueID::getObject),
-                        (ca, ac, cc, allowed, conn, storage) -> conn != null
-                                        && conn.getConnectionSubType() == ConnectionSubType.MYSQL
-                                ? this.mySQLAppDataService.repairDrift(conn, ac, storage, approved)
-                                : Mono.just(List.<MySQLDrift.DriftRepair>of()))
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.repairDrift(conn, ac, storage, approved))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
                 .defaultIfEmpty(List.of())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.repairDrift"));
     }
