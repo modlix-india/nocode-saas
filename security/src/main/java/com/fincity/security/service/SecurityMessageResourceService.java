@@ -104,6 +104,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String CLIENT_MANAGER_ALREADY_EXISTS = "client_manager_already_exists";
     public static final String USER_IDENTITY_TAKEN = "user_identity_taken";
     public static final String USER_INVITE_PENDING = "user_invite_pending";
+    public static final String NAME_MANDATORY = "name_mandatory";
+    public static final String NAME_TAKEN = "name_taken";
 
     public SecurityMessageResourceService() {
 

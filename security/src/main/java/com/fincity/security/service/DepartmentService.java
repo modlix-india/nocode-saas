@@ -2,6 +2,7 @@ package com.fincity.security.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,9 +77,11 @@ public class DepartmentService
                             .filter(BooleanUtil::safeValueOf)
                             .map(x -> entity);
                 },
-                (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+                (ca, managed) -> this.checkName(entity.getClientId(), entity.getName(), null).map(entity::setName),
 
-                (ca, managed, sameClient) -> super.create(entity).map(created -> {
+                (ca, managed, named) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+
+                (ca, managed, named, sameClient) -> super.create(entity).map(created -> {
                     clientActivityService.createLog(created.getClientId(),
                             "Department Create", "Department created: " + created.getName());
                     return created;
@@ -93,6 +96,27 @@ public class DepartmentService
             return Mono.just(true);
 
         return this.dao.checkSameClient(clientId, departmentId).filter(BooleanUtil::safeValueOf);
+    }
+
+    /**
+     * The trimmed name, or a 400 when it is blank and a 409 when another department of the client already has it.
+     * Unchecked, the NOT NULL column and the CLIENT_ID + NAME unique key both reach the caller as a 500.
+     */
+    private Mono<String> checkName(ULong clientId, Object name, ULong id) {
+
+        String trimmed = name == null ? "" : name.toString().trim();
+
+        if (trimmed.isEmpty())
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.NAME_MANDATORY, DEPARTMENT);
+
+        return this.dao.isNameTaken(clientId, trimmed, id)
+                .flatMap(taken -> BooleanUtil.safeValueOf(taken)
+                        ? this.securityMessageResourceService.<String>throwMessage(
+                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                SecurityMessageResourceService.NAME_TAKEN, DEPARTMENT, trimmed)
+                        : Mono.just(trimmed));
     }
 
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
@@ -116,8 +140,18 @@ public class DepartmentService
 
                 managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                (managed, canBeUpdated) -> super.update(entity),
-                (managed, canBeUpdated, updatedDepartment) -> {
+                // Also reached from update(key, fields), which applies the patch and calls this.
+                (managed, canBeUpdated) -> this.dao.readById(entity.getId())
+                        .flatMap(existing -> Objects.equals(existing.getName(), entity.getName())
+                                ? Mono.just(true)
+                                : this.checkName(existing.getClientId(), entity.getName(), entity.getId())
+                                        .map(name -> {
+                                            entity.setName(name);
+                                            return true;
+                                        })),
+
+                (managed, canBeUpdated, named) -> super.update(entity),
+                (managed, canBeUpdated, named, updatedDepartment) -> {
                     clientActivityService.createLog(updatedDepartment.getClientId(),
                             "Department Update", "Department updated: " + updatedDepartment.getName());
                     return this.cacheService
