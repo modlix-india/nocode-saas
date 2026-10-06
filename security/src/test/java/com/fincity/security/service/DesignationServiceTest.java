@@ -96,6 +96,9 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 		org.springframework.util.ReflectionUtils.setField(activityField, service, clientActivityService);
 
 		setupMessageResourceService(securityMessageResourceService);
+
+		// No other row has the name unless a test says so.
+		lenient().when(dao.isNameTaken(any(), anyString(), any())).thenReturn(Mono.just(false));
 		setupCacheService(cacheService);
 	}
 
@@ -554,6 +557,99 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 						assertEquals("Solo", result.getFirst().getName());
 					})
 					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// name checks (QA-0027: blank and duplicate names used to reach the caller as a 500)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("name checks")
+	class NameCheckTests {
+
+		private boolean status(Throwable e, HttpStatus status) {
+			return e instanceof GenericException g && g.getStatusCode() == status;
+		}
+
+		@Test
+		void create_BlankName_BadRequest() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Designation desg = TestDataFactory.createDesignation(null, CLIENT_ID, "   ");
+
+			StepVerifier.create(service.create(desg))
+					.expectErrorMatches(e -> status(e, HttpStatus.BAD_REQUEST))
+					.verify();
+
+			verify(dao, never()).create(any(Designation.class));
+		}
+
+		@Test
+		void create_NameTaken_Conflict() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Designation desg = TestDataFactory.createDesignation(null, CLIENT_ID, "Sales");
+			when(dao.isNameTaken(CLIENT_ID, "Sales", null)).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.create(desg))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
+					.verify();
+
+			verify(dao, never()).create(any(Designation.class));
+		}
+
+		@Test
+		void create_TrimsName() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Designation desg = TestDataFactory.createDesignation(null, CLIENT_ID, "  Sales  ");
+			when(dao.create(any(Designation.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+			StepVerifier.create(service.create(desg))
+					.assertNext(result -> assertEquals("Sales", result.getName()))
+					.verifyComplete();
+
+			verify(dao).isNameTaken(CLIENT_ID, "Sales", null);
+		}
+
+		@Test
+		void update_RenameToTakenName_Conflict() {
+
+			Designation entity = TestDataFactory.createDesignation(DESIGNATION_ID, CLIENT_ID, "Sales");
+			Designation existing = TestDataFactory.createDesignation(DESIGNATION_ID, CLIENT_ID, "Marketing");
+
+			lenient().when(dao.checkSameClient(eq(CLIENT_ID), isNull(), isNull(), isNull())).thenReturn(Mono.just(true));
+			when(dao.canBeUpdated(DESIGNATION_ID)).thenReturn(Mono.just(true));
+			when(dao.readById(DESIGNATION_ID)).thenReturn(Mono.just(existing));
+			when(dao.isNameTaken(CLIENT_ID, "Sales", DESIGNATION_ID)).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
+					.verify();
+
+			verify(dao, never()).update(any(Designation.class));
+		}
+
+		@Test
+		void update_UnchangedName_NotChecked() {
+
+			Designation entity = TestDataFactory.createDesignation(DESIGNATION_ID, CLIENT_ID, "Sales");
+			Designation existing = TestDataFactory.createDesignation(DESIGNATION_ID, CLIENT_ID, "Sales");
+
+			lenient().when(dao.checkSameClient(eq(CLIENT_ID), isNull(), isNull(), isNull())).thenReturn(Mono.just(true));
+			when(dao.canBeUpdated(DESIGNATION_ID)).thenReturn(Mono.just(true));
+			when(dao.readById(DESIGNATION_ID)).thenReturn(Mono.just(existing));
+			when(dao.update(any(Designation.class))).thenReturn(Mono.just(entity));
+
+			StepVerifier.create(service.update(entity))
+					.assertNext(result -> assertEquals("Sales", result.getName()))
+					.verifyComplete();
+
+			verify(dao, never()).isNameTaken(any(), anyString(), any());
 		}
 	}
 }
