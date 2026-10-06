@@ -31,6 +31,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.testcontainers.containers.MySQLContainer;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -82,8 +83,12 @@ class MySQLBringYourOwnDatabaseIntegrationTest extends AbstractMySQLSpringIntegr
         first = mysql();
         second = secondCtx();
 
-        exec(first, "DROP DATABASE IF EXISTS `" + SYSTEM + "_" + APP_CODE + "`");
-        exec(second, "DROP DATABASE IF EXISTS `" + OTHER + "_" + APP_CODE + "`");
+        // Every schema of the app on both servers, not just the two this test makes.
+        // The first server is shared with every other test class in the run, and
+        // drift reports one entry per schema it finds there, so a client schema left
+        // behind by an earlier class turned up in the deduplication count.
+        dropTenants(first);
+        dropTenants(second);
 
         this.givenStorage("STRING", 40);
         this.givenConnections();
@@ -118,6 +123,17 @@ class MySQLBringYourOwnDatabaseIntegrationTest extends AbstractMySQLSpringIntegr
                 SQLDialect.MYSQL);
 
         return second;
+    }
+
+    private static void dropTenants(DSLContext ctx) {
+        List<String> existing = Flux.from(ctx.resultQuery(
+                        "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE '%\\_"
+                                + APP_CODE + "' OR SCHEMA_NAME LIKE '%\\_" + APP_CODE + "_draft'"))
+                .map(r -> String.valueOf(r.get(0)))
+                .collectList()
+                .block();
+
+        for (String db : existing) exec(ctx, "DROP DATABASE IF EXISTS `" + db + "`");
     }
 
     private static void exec(DSLContext ctx, String sql) {
