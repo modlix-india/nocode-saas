@@ -12,8 +12,10 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.jooq.exception.DataAccessException;
+import org.jooq.exception.IntegrityConstraintViolationException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -121,7 +123,8 @@ public class ProfileService
                 },
 
                 (ca, hasAppAccess, clientAlsoHasAppAccess, managed) -> clientHierarchyService
-                        .getClientHierarchy(entity.getClientId()),
+                        .getClientHierarchy(entity.getClientId())
+                        .flatMap(hierarchy -> this.checkName(entity, hierarchy).thenReturn(hierarchy)),
 
                 (ca, hasAppAccess, clientAlsoHasAppAccess, managed,
                         clientHierarchy) -> this.dao.hasAccessToRoles(entity.getAppId(),
@@ -144,6 +147,14 @@ public class ProfileService
                                 .nullFieldsMatchingRoot(cleanedEntity, clientHierarchy)
                                 .flatMap(prepared -> this.dao.createUpdateProfile(prepared,
                                         ULong.valueOf(ca.getUser().getId()), clientHierarchy))
+                                // The (NAME, APP_ID) unique key spans every client on purpose: a profile name is
+                                // what gated content checks, so no other organisation may reuse one. A name only
+                                // an unrelated organisation has is refused here, not by checkName.
+                                .onErrorResume(IntegrityConstraintViolationException.class,
+                                        e -> this.securityMessageResourceService.throwMessage(
+                                                msg -> new GenericException(HttpStatus.CONFLICT, msg, e),
+                                                SecurityMessageResourceService.NAME_TAKEN, PROFILE,
+                                                entity.getName()))
                                 .flatMap(this::fillProfileArrangements)
 
         )
@@ -153,6 +164,47 @@ public class ProfileService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
                                 StringFormatter.format(msg, PROFILE))))));
+    }
+
+    /**
+     * Trims the name, then refuses it when blank (400) or when another profile this client sees in the app
+     * already has it (409). A blank name is fine on an override of an ancestor's profile: it inherits that
+     * profile's name.
+     */
+    private Mono<Boolean> checkName(Profile entity, ClientHierarchy hierarchy) {
+
+        String name = entity.getName() == null ? "" : entity.getName().trim();
+        boolean override = entity.getRootProfileId() != null
+                || (entity.getId() != null && !hierarchy.getClientId().equals(entity.getClientId()));
+
+        if (name.isEmpty()) {
+            if (override)
+                return Mono.just(true);
+
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.NAME_MANDATORY, PROFILE);
+        }
+
+        entity.setName(name);
+        ULong self = profileIdentity(entity);
+
+        return this.dao.readAll(entity.getAppId(), hierarchy, PageRequest.of(0, Integer.MAX_VALUE))
+                .flatMap(page -> page.getContent().stream()
+                        .filter(other -> self == null || !self.equals(profileIdentity(other)))
+                        .filter(other -> other.getName() != null && other.getName().trim().equalsIgnoreCase(name))
+                        .findFirst()
+                        .map(other -> this.securityMessageResourceService.<Boolean>throwMessage(
+                                msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                SecurityMessageResourceService.NAME_TAKEN, PROFILE, name))
+                        .orElse(Mono.just(true)));
+    }
+
+    /**
+     * The profile a row stands for: the root it overrides, or itself.
+     */
+    private static ULong profileIdentity(Profile profile) {
+        return profile.getRootProfileId() != null ? profile.getRootProfileId() : profile.getId();
     }
 
     private Mono<Profile> nullFieldsMatchingRoot(Profile entity, ClientHierarchy hierarchy) {

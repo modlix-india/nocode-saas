@@ -89,6 +89,9 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 		org.springframework.util.ReflectionUtils.setField(activityField, service, clientActivityService);
 
 		setupMessageResourceService(securityMessageResourceService);
+
+		// No other row has the name unless a test says so.
+		lenient().when(dao.isNameTaken(any(), anyString(), any())).thenReturn(Mono.just(false));
 		setupCacheService(cacheService);
 	}
 
@@ -423,6 +426,99 @@ class DepartmentServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.readByIds(List.of(DEPT_ID, deptId2), queryParams))
 					.assertNext(result -> assertEquals(2, result.size()))
 					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// name checks (QA-0027: blank and duplicate names used to reach the caller as a 500)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("name checks")
+	class NameCheckTests {
+
+		private boolean status(Throwable e, HttpStatus status) {
+			return e instanceof GenericException g && g.getStatusCode() == status;
+		}
+
+		@Test
+		void create_BlankName_BadRequest() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Department dept = TestDataFactory.createDepartment(null, CLIENT_ID, "   ");
+
+			StepVerifier.create(service.create(dept))
+					.expectErrorMatches(e -> status(e, HttpStatus.BAD_REQUEST))
+					.verify();
+
+			verify(dao, never()).create(any(Department.class));
+		}
+
+		@Test
+		void create_NameTaken_Conflict() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Department dept = TestDataFactory.createDepartment(null, CLIENT_ID, "Sales");
+			when(dao.isNameTaken(CLIENT_ID, "Sales", null)).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.create(dept))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
+					.verify();
+
+			verify(dao, never()).create(any(Department.class));
+		}
+
+		@Test
+		void create_TrimsName() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			Department dept = TestDataFactory.createDepartment(null, CLIENT_ID, "  Sales  ");
+			when(dao.create(any(Department.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+			StepVerifier.create(service.create(dept))
+					.assertNext(result -> assertEquals("Sales", result.getName()))
+					.verifyComplete();
+
+			verify(dao).isNameTaken(CLIENT_ID, "Sales", null);
+		}
+
+		@Test
+		void update_RenameToTakenName_Conflict() {
+
+			Department entity = TestDataFactory.createDepartment(DEPT_ID, CLIENT_ID, "Sales");
+			Department existing = TestDataFactory.createDepartment(DEPT_ID, CLIENT_ID, "Marketing");
+
+			lenient().when(dao.checkSameClient(eq(CLIENT_ID), isNull())).thenReturn(Mono.just(true));
+			when(dao.canBeUpdated(DEPT_ID)).thenReturn(Mono.just(true));
+			when(dao.readById(DEPT_ID)).thenReturn(Mono.just(existing));
+			when(dao.isNameTaken(CLIENT_ID, "Sales", DEPT_ID)).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
+					.verify();
+
+			verify(dao, never()).update(any(Department.class));
+		}
+
+		@Test
+		void update_UnchangedName_NotChecked() {
+
+			Department entity = TestDataFactory.createDepartment(DEPT_ID, CLIENT_ID, "Sales");
+			Department existing = TestDataFactory.createDepartment(DEPT_ID, CLIENT_ID, "Sales");
+
+			lenient().when(dao.checkSameClient(eq(CLIENT_ID), isNull())).thenReturn(Mono.just(true));
+			when(dao.canBeUpdated(DEPT_ID)).thenReturn(Mono.just(true));
+			when(dao.readById(DEPT_ID)).thenReturn(Mono.just(existing));
+			when(dao.update(any(Department.class))).thenReturn(Mono.just(entity));
+
+			StepVerifier.create(service.update(entity))
+					.assertNext(result -> assertEquals("Sales", result.getName()))
+					.verifyComplete();
+
+			verify(dao, never()).isNameTaken(any(), anyString(), any());
 		}
 	}
 }

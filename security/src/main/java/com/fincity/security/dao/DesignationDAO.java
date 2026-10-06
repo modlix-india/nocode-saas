@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -40,6 +41,20 @@ public class DesignationDAO extends AbstractUpdatableClientCheckDAO<SecurityDesi
     @Override
     protected Field<ULong> getClientIDField() {
         return SECURITY_DESIGNATION.CLIENT_ID;
+    }
+
+    /**
+     * Whether another row of {@code clientId} already has this name; {@code excludeId} (the row being
+     * edited) is left out. Compared through the column's case-insensitive collation, as the
+     * CLIENT_ID + NAME unique key is.
+     */
+    public Mono<Boolean> isNameTaken(ULong clientId, String name, ULong excludeId) {
+        Condition condition = SECURITY_DESIGNATION.CLIENT_ID.eq(clientId).and(SECURITY_DESIGNATION.NAME.eq(name));
+        if (excludeId != null)
+            condition = condition.and(SECURITY_DESIGNATION.ID.ne(excludeId));
+
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_DESIGNATION).where(condition))
+                .map(r -> r.value1() > 0);
     }
 
     public Mono<Boolean> checkSameClient(ULong clientId, ULong parentDesignationId, ULong nextDesignationId,

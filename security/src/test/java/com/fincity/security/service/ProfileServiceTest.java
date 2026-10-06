@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.jooq.exception.IntegrityConstraintViolationException;
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -101,6 +102,9 @@ class ProfileServiceTest extends AbstractServiceUnitTest {
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
 		setupSoxLogService(soxLogService);
+
+		// create's name check lists the profiles the client sees; none clash unless a test says so.
+		lenient().when(dao.readAll(any(), any(), any())).thenReturn(Mono.just(new PageImpl<>(List.of())));
 	}
 
 	@Nested
@@ -1682,6 +1686,115 @@ class ProfileServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.getRolesForAssignmentInApp(appCode))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// =========================================================================
+	// name checks (QA-0027: blank and duplicate names used to reach the caller as a 500)
+	// =========================================================================
+
+	@Nested
+	class NameCheckTests {
+
+		private ClientHierarchy systemSetup() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(appService.hasReadAccess(eq(APP_ID), any())).thenReturn(Mono.just(true));
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID)).thenReturn(Mono.just(hierarchy));
+			return hierarchy;
+		}
+
+		private boolean status(Throwable e, HttpStatus status) {
+			return e instanceof GenericException g && g.getStatusCode() == status;
+		}
+
+		@Test
+		void create_BlankName_BadRequest() {
+
+			systemSetup();
+			Profile profile = TestDataFactory.createProfile(null, null, APP_ID, "  ");
+			profile.setArrangement(Map.of());
+
+			StepVerifier.create(service.create(profile))
+					.expectErrorMatches(e -> status(e, HttpStatus.BAD_REQUEST))
+					.verify();
+
+			verify(dao, never()).createUpdateProfile(any(), any(), any());
+		}
+
+		@Test
+		void create_NameTheClientAlreadySees_Conflict() {
+
+			ClientHierarchy hierarchy = systemSetup();
+			Profile profile = TestDataFactory.createProfile(null, null, APP_ID, " sales manager ");
+			profile.setArrangement(Map.of());
+
+			Profile visible = TestDataFactory.createProfile(ULong.valueOf(201), SYSTEM_CLIENT_ID, APP_ID,
+					"Sales Manager");
+			when(dao.readAll(eq(APP_ID), eq(hierarchy), any()))
+					.thenReturn(Mono.just(new PageImpl<>(List.of(visible))));
+
+			StepVerifier.create(service.create(profile))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
+					.verify();
+
+			verify(dao, never()).createUpdateProfile(any(), any(), any());
+		}
+
+		@Test
+		void save_OwnProfileKeepingItsName_NoConflict() {
+
+			ClientHierarchy hierarchy = systemSetup();
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID, "Sales Manager");
+			profile.setArrangement(Map.of());
+
+			Profile itself = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID, "Sales Manager");
+			when(dao.readAll(eq(APP_ID), eq(hierarchy), any()))
+					.thenReturn(Mono.just(new PageImpl<>(List.of(itself))));
+			when(dao.hasAccessToRoles(eq(APP_ID), eq(hierarchy), any(Profile.class))).thenReturn(Mono.just(true));
+			when(dao.createUpdateProfile(any(Profile.class), any(ULong.class), eq(hierarchy)))
+					.thenReturn(Mono.just(profile));
+
+			StepVerifier.create(service.create(profile))
+					.assertNext(result -> assertEquals("Sales Manager", result.getName()))
+					.verifyComplete();
+		}
+
+		@Test
+		void override_BlankName_InheritsTheRootName() {
+
+			ClientHierarchy hierarchy = systemSetup();
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID, null);
+			profile.setRootProfileId(ULong.valueOf(150));
+			profile.setArrangement(Map.of());
+
+			when(dao.hasAccessToRoles(eq(APP_ID), eq(hierarchy), any(Profile.class))).thenReturn(Mono.just(true));
+			when(dao.readRootProfile(ULong.valueOf(150), hierarchy, false)).thenReturn(Mono.empty());
+			lenient().when(dao.isBeingUsedByManagingClients(any(), any(), any())).thenReturn(Mono.just(false));
+			when(dao.createUpdateProfile(any(Profile.class), any(ULong.class), eq(hierarchy)))
+					.thenReturn(Mono.just(profile));
+
+			StepVerifier.create(service.create(profile))
+					.assertNext(result -> assertEquals(PROFILE_ID, result.getId()))
+					.verifyComplete();
+
+			verify(dao, never()).readAll(any(), any(), any());
+		}
+
+		@Test
+		void create_NameAnotherOrganisationUses_Conflict() {
+
+			ClientHierarchy hierarchy = systemSetup();
+			Profile profile = TestDataFactory.createProfile(null, null, APP_ID, "Sales");
+			profile.setArrangement(Map.of());
+
+			when(dao.hasAccessToRoles(eq(APP_ID), eq(hierarchy), any(Profile.class))).thenReturn(Mono.just(true));
+			when(dao.createUpdateProfile(any(Profile.class), any(ULong.class), eq(hierarchy)))
+					.thenReturn(Mono.error(new IntegrityConstraintViolationException("Duplicate entry")));
+
+			StepVerifier.create(service.create(profile))
+					.expectErrorMatches(e -> status(e, HttpStatus.CONFLICT))
 					.verify();
 		}
 	}
