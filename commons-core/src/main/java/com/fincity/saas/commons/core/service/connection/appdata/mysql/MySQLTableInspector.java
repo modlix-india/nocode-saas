@@ -73,6 +73,33 @@ public final class MySQLTableInspector {
                 .collectList();
     }
 
+    /**
+     * Every schema this app has on this server, whether or not it holds a given
+     * table.
+     *
+     * {@link #tenantsWithTable} answers "who has this table", which is the right
+     * question for a migration - there is nothing to alter where there is no table.
+     * It is the wrong question for drift: a tenant that was unreachable when its
+     * storage changed, or that was provisioned before the storage existed, has a
+     * schema full of other tables and is MISSING this one, and looking only at
+     * tables that exist is precisely how it stays invisible.
+     *
+     * A client with no schema at all is still not listed, and does not need to be:
+     * the database is created on demand, so no schema means the app has never
+     * written anything for that client, and the first write builds the table at the
+     * current shape.
+     */
+    public static Mono<List<String>> tenantSchemas(DSLContext ctx, String appCode) {
+
+        String sql = "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA"
+                + " WHERE SCHEMA_NAME LIKE '%\\_" + appCode + "' OR SCHEMA_NAME LIKE '%\\_" + appCode
+                + IAppDataService.DRAFT_DB_SUFFIX + "' ORDER BY SCHEMA_NAME";
+
+        return Flux.from(ctx.resultQuery(sql))
+                .map(r -> String.valueOf(r.get(0)))
+                .collectList();
+    }
+
     static boolean isMigrationTemp(String column) {
         int i = column.lastIndexOf(MySQLMigrationPlanner.NEW_SUFFIX);
         if (i < 0) return false;

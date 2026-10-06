@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.service.connection.appdata;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
@@ -35,6 +36,7 @@ import com.fincity.saas.commons.core.service.CoreSchemaService;
 import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutReport;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MigrationOutcome;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLColumn;
 import org.slf4j.Logger;
@@ -489,6 +491,38 @@ public class MySQLAppDataService implements IAppDataService {
         DSLContext ctx = this.context(conn);
         String table = storage.getUniqueName();
 
+        return this.plannedIndexStatements(conn, db, storage, schema).flatMap(statements -> {
+            if (statements.isEmpty()) return Mono.just(Boolean.TRUE);
+
+            return Flux.fromIterable(statements)
+                    .concatMap(sql -> Mono.from(ctx.query(sql))
+                            .thenReturn(Boolean.TRUE)
+                            // One index failing is not a reason to fail the
+                            // write. A FULLTEXT index over a column that is
+                            // not text is the usual cause, and the query
+                            // that wanted it will say so far more clearly
+                            // than a failed insert would.
+                            .onErrorResume(e -> {
+                                logger.error("Could not apply index on {}.{}: {}", db, table, sql, e);
+                                return Mono.just(Boolean.FALSE);
+                            }))
+                    .then(Mono.just(Boolean.TRUE));
+        });
+    }
+
+    /**
+     * The index DDL this table is missing, without running any of it.
+     *
+     * Split out so the drift report and the publish path cannot disagree about what
+     * is wrong: both read this one method, and a report that was computed a
+     * different way from the repair is a report nobody should act on.
+     */
+    private Mono<List<String>> plannedIndexStatements(
+            Connection conn, String db, Storage storage, Schema schema) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
         Set<String> columns = new java.util.LinkedHashSet<>(parentColumns(schema, defs(storage)));
 
         List<MySQLIndexes.Index> desired = MySQLIndexes.desired(storage, columns);
@@ -501,33 +535,31 @@ public class MySQLAppDataService implements IAppDataService {
                             .map(MySQLForeignKeys.ForeignKey::column)
                             .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
 
-                    List<String> statements = MySQLIndexes.sync(db, table, existing, desired, keyColumns);
-                    if (statements.isEmpty()) return Mono.just(Boolean.TRUE);
-
-                    return Flux.fromIterable(statements)
-                            .concatMap(sql -> Mono.from(ctx.query(sql))
-                                    .thenReturn(Boolean.TRUE)
-                                    // One index failing is not a reason to fail the
-                                    // write. A FULLTEXT index over a column that is
-                                    // not text is the usual cause, and the query
-                                    // that wanted it will say so far more clearly
-                                    // than a failed insert would.
-                                    .onErrorResume(e -> {
-                                        logger.error("Could not apply index on {}.{}: {}", db, table, sql, e);
-                                        return Mono.just(Boolean.FALSE);
-                                    }))
-                            .then(Mono.just(Boolean.TRUE));
+                    return Mono.just(MySQLIndexes.sync(db, table, existing, desired, keyColumns));
                 });
     }
 
     private Mono<Boolean> syncForeignKeys(Connection conn, String db, Storage storage) {
 
+        return this.desiredForeignKeys(conn, db, storage)
+                .flatMap(desired -> this.applyForeignKeys(conn, db, storage.getUniqueName(), desired));
+    }
+
+    /**
+     * The constraints this table should carry, with each relation's target resolved
+     * for this tenant.
+     *
+     * Separated from applying them so the drift report can ask what is missing
+     * without installing anything. An empty list is a real answer, not "nothing to
+     * do": a relation whose constraint was set back to NOTHING leaves a key behind
+     * that has to come off, or it keeps refusing deletes nobody is asking it to
+     * refuse.
+     */
+    private Mono<List<MySQLForeignKeys.ForeignKey>> desiredForeignKeys(
+            Connection conn, String db, Storage storage) {
+
         Map<String, StorageRelation> enforceable = enforceableRelations(storage);
-        if (enforceable.isEmpty())
-            // Nothing is wanted, but something may still be there from a relation
-            // whose constraint was just set back to NOTHING, and that has to come
-            // off or it keeps refusing deletes nobody is asking it to refuse.
-            return this.applyForeignKeys(conn, db, storage.getUniqueName(), List.of());
+        if (enforceable.isEmpty()) return Mono.just(List.of());
 
         String clientCode = clientCodeOf(db, storage.getAppCode());
 
@@ -553,11 +585,21 @@ public class MySQLAppDataService implements IAppDataService {
                             return Mono.empty();
                         }))
                 .collectMap(Tuple2::getT1, Tuple2::getT2)
-                .flatMap(targets -> this.applyForeignKeys(
-                        conn,
-                        db,
-                        storage.getUniqueName(),
-                        MySQLForeignKeys.desired(storage.getUniqueName(), enforceable, targets)));
+                .map(targets -> MySQLForeignKeys.desired(storage.getUniqueName(), enforceable, targets));
+    }
+
+    /**
+     * The constraint DDL this table is missing, without running any of it. The
+     * report half of {@link #applyForeignKeys}, reading the same two inputs.
+     */
+    private Mono<List<String>> plannedForeignKeyStatements(Connection conn, String db, Storage storage) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
+        return this.desiredForeignKeys(conn, db, storage)
+                .flatMap(desired -> MySQLForeignKeys.existing(ctx, db, table)
+                        .map(existing -> MySQLForeignKeys.sync(db, table, existing, desired)));
     }
 
     static Map<String, StorageRelation> enforceableRelations(Storage storage) {
@@ -764,6 +806,138 @@ public class MySQLAppDataService implements IAppDataService {
 
         return MySQLTableInspector.tenantsWithTable(ctx, appCode, storage.getUniqueName())
                 .flatMap(tenants -> MySQLFanOut.status(ctx, tenants, storage.getName()));
+    }
+
+    /**
+     * What every tenant's table has that its definition does not, and the reverse.
+     *
+     * The gap {@code reconcile} leaves. A definition change reconciles the tenants
+     * reachable at the time; one that was unreachable, or whose table was built by
+     * hand, or that was transported in at an older shape, stays wrong and nothing
+     * says so. Every other code path asks the DEFINITION what the table looks like,
+     * so the table is only consulted when a query fails.
+     *
+     * Read only. Nothing here issues a statement, which is what makes it safe to run
+     * on a fleet to find out how bad things are before deciding anything.
+     */
+    public Mono<List<MySQLDrift.Report>> drift(Connection conn, String appCode, Storage storage) {
+
+        if (conn == null) return Mono.just(List.of());
+
+        // Every schema the app has, not only the ones holding this table. A tenant
+        // that MISSES the table is the case the reconciler exists for, and asking
+        // information_schema for tables that exist is how it stayed invisible.
+        return MySQLTableInspector.tenantSchemas(this.context(conn), appCode)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(db -> this.driftFor(conn, appCode, storage, db))
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.drift"));
+    }
+
+    /**
+     * One tenant's report, built from the same four inputs the publish path uses.
+     *
+     * Deliberately reuses {@code plannedIndexStatements} and
+     * {@code plannedForeignKeyStatements} rather than recomputing: a report derived
+     * differently from the repair is a report that can be confidently wrong.
+     *
+     * A tenant whose definition does not resolve is left OUT of the list rather than
+     * reported as drifted. "Nothing resolved" would diff every existing column as a
+     * drop, and offering that as a repair is the one mistake here that cannot be
+     * undone.
+     */
+    private Mono<MySQLDrift.Report> driftFor(Connection conn, String appCode, Storage storage, String db) {
+
+        DSLContext ctx = this.context(conn);
+        String table = storage.getUniqueName();
+
+        return this.storageService
+                .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
+                .flatMap(tenantStorage -> FlatMapUtil.flatMapMono(
+                        () -> this.storageService.getResolvedSchema(tenantStorage),
+                        schema -> MySQLTableInspector.tableExists(ctx, db, table),
+                        (schema, exists) -> Boolean.TRUE.equals(exists)
+                                ? FlatMapUtil.flatMapMono(
+                                        () -> MySQLTableInspector.columns(ctx, db, table),
+                                        existing -> this.plannedIndexStatements(conn, db, tenantStorage, schema),
+                                        (existing, indexes) ->
+                                                this.plannedForeignKeyStatements(conn, db, tenantStorage),
+                                        (existing, indexes, keys) -> Mono.just(MySQLDrift.of(
+                                                db,
+                                                table,
+                                                true,
+                                                existing,
+                                                MySQLTypeMapper.columns(
+                                                        schema, tenantStorage.getColumnDefinitions()),
+                                                indexes,
+                                                keys)))
+                                : Mono.just(MySQLDrift.of(
+                                        db, table, false, List.of(), List.of(), List.of(), List.of()))))
+                // Each surface resolves its own definition, exactly as the column
+                // plan does, or the draft table is reported against the published
+                // shape and looks drifted when it is not.
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
+                .onErrorResume(e -> {
+                    logger.error("Could not read drift for {} on {}", storage.getName(), db, e);
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Apply what the drift report found, on every tenant.
+     *
+     * Without {@code approved} this runs only the half that cannot lose anything -
+     * widening columns, additive indexes and keys - and reports the rest as withheld
+     * so somebody can read the actual statements before deciding. With it, the lot.
+     *
+     * Per tenant and statement by statement, because a fleet-wide repair where one
+     * schema fails must not stop the others: they are independent databases and
+     * partial completion is the normal state, exactly as it is for a migration.
+     */
+    public Mono<List<MySQLDrift.DriftRepair>> repairDrift(
+            Connection conn, String appCode, Storage storage, boolean approved) {
+
+        if (conn == null) return Mono.just(List.of());
+
+        return this.drift(conn, appCode, storage)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(report -> this.repairOne(conn, report, approved))
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.repairDrift"));
+    }
+
+    private Mono<MySQLDrift.DriftRepair> repairOne(
+            Connection conn, MySQLDrift.Report report, boolean approved) {
+
+        List<String> plan = MySQLDrift.repairStatements(report, approved);
+        List<String> withheld = MySQLDrift.withheldStatements(report, approved);
+
+        // A missing table is never created here. Creating it is ensureTable's job and
+        // it needs the whole definition, not a diff against nothing. It is still
+        // carried on the result rather than reported as "nothing to do", because a
+        // tenant with no table is the loudest thing a drift run can find.
+        if (plan.isEmpty())
+            return Mono.just(new MySQLDrift.DriftRepair(
+                    report.db(), !report.tableExists(), List.of(), withheld, List.of()));
+
+        DSLContext ctx = this.context(conn);
+        List<String> applied = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+
+        return Flux.fromIterable(plan)
+                .concatMap(sql -> Mono.from(ctx.query(sql))
+                        .then(Mono.fromRunnable(() -> applied.add(sql)))
+                        // One statement failing is not a reason to abandon the rest.
+                        // They are independent repairs, and the ones that CAN land
+                        // should, with the failures named rather than implied by a
+                        // shorter list.
+                        .onErrorResume(e -> {
+                            logger.error("Drift repair failed on {}: {}", report.db(), sql, e);
+                            failed.add(sql);
+                            return Mono.empty();
+                        }))
+                .then(Mono.fromSupplier(() ->
+                        new MySQLDrift.DriftRepair(report.db(), false, applied, withheld, failed)));
     }
 
     /**

@@ -76,6 +76,11 @@ public final class MySQLFieldResolver {
         return this.textColumns;
     }
 
+    /** Whether this name is a JSON column on the parent, which an array always is. */
+    public boolean isJsonColumn(String column) {
+        return this.jsonColumns.contains(column);
+    }
+
     public Field<Object> qualified(String column) {
         return this.parentAlias == null
                 ? DSL.field(DSL.name(column))

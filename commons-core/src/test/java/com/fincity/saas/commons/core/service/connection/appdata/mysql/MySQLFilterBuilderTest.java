@@ -247,11 +247,23 @@ class MySQLFilterBuilderTest {
         }
 
         @Test
-        void matchOperatorsThrow() {
+        @DisplayName("MATCH still refuses a match operator it has no SQL for")
+        void unsupportedMatchOperatorThrows() {
+            // MATCH and MATCH_ALL work now, but not with every match operator: IN
+            // inside an array has no containment or per-element form here, and
+            // answering it wrongly is worse than refusing it.
+            FilterCondition c = fc("a", FilterConditionOperator.MATCH, "x");
+            c.setMatchOperator(FilterConditionOperator.IN);
+
+            UnsupportedFilterException e = assertThrows(UnsupportedFilterException.class, () -> sql(c));
+            assertTrue(e.getDetail().contains("IN"), e.getDetail());
+        }
+
+        @Test
+        @DisplayName("MATCH_ALL with nothing to match is refused rather than matching everything")
+        void matchAllNeedsValues() {
             assertThrows(
-                    UnsupportedFilterException.class, () -> sql(fc("a", FilterConditionOperator.MATCH, "x")));
-            assertThrows(
-                    UnsupportedFilterException.class, () -> sql(fc("a", FilterConditionOperator.MATCH_ALL, "x")));
+                    UnsupportedFilterException.class, () -> sql(fc("a", FilterConditionOperator.MATCH_ALL, null)));
         }
 
         @Test
