@@ -99,10 +99,10 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
-     * The column <code>message.message_exotel_calls.SID</code>. Unique
-     * identifier for the call.
+     * The column <code>message.message_exotel_calls.SID</code>. Provider call
+     * id.
      */
-    public final TableField<MessageExotelCallsRecord, String> SID = createField(DSL.name("SID"), SQLDataType.CHAR(32).nullable(false), this, "Unique identifier for the call.");
+    public final TableField<MessageExotelCallsRecord, String> SID = createField(DSL.name("SID"), SQLDataType.CHAR(32).nullable(false), this, "Provider call id.");
 
     /**
      * The column <code>message.message_exotel_calls.PARENT_CALL_SID</code>.
@@ -130,10 +130,10 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the caller's phone number.");
 
     /**
-     * The column <code>message.message_exotel_calls.FROM</code>. Phone number
-     * of the caller.
+     * The column <code>message.message_exotel_calls.FROM</code>. Caller. An
+     * E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
-    public final TableField<MessageExotelCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the caller.");
+    public final TableField<MessageExotelCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.VARCHAR(64), this, "Caller. An E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.");
 
     /**
      * The column <code>message.message_exotel_calls.TO_DIAL_CODE</code>. Dial
@@ -142,10 +142,10 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the receiver's phone number.");
 
     /**
-     * The column <code>message.message_exotel_calls.TO</code>. Phone number of
-     * the receiver.
+     * The column <code>message.message_exotel_calls.TO</code>. Callee. An E.164
+     * number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
-    public final TableField<MessageExotelCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the receiver.");
+    public final TableField<MessageExotelCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.VARCHAR(64), this, "Callee. An E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.");
 
     /**
      * The column <code>message.message_exotel_calls.CALLER_ID</code>. Caller ID

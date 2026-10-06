@@ -332,6 +332,13 @@
                                             <includeExpression>.*\.PAYLOAD</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.PROVIDER_METADATA</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.dispatch.DispatchEventType</userType>
                                             <includeExpression>.*\.EVENT_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
@@ -395,6 +402,19 @@
                                             <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.call.CallStatus</userType>
+                                            <includeExpression>.*message_telecmi_calls\.CALL_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*message_telecmi_calls\.(TELECMI_CALL_REQUEST|TELECMI_CALL_RESPONSE|TELECMI_HTTP_FLOW_REQUEST|LEG1_CDR|LEG2_CDR)</includeExpression>
                                         </forcedType>
                                     </forcedTypes>
                                 </database>

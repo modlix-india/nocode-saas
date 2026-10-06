@@ -11,6 +11,7 @@ public enum ConnectionSubType {
     REST_API_AUTH,
     SMTP,
     EXOTEL,
+    TELECMI,
     OPENAI,
     GEMINI,
     CLAUDE,

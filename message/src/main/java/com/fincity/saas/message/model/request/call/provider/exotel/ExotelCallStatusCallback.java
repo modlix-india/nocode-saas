@@ -1,5 +1,6 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,31 +32,41 @@ public class ExotelCallStatusCallback implements Serializable {
     @Serial
     private static final long serialVersionUID = 3500927590328043740L;
 
+    // The aliases carry exactly the keys the WebRTC callback was observed to send; an unmapped key is dropped
+    // in silence. Add one only when a live payload shows it.
     @JsonProperty("CallSid")
     private String callSid;
 
     @JsonProperty("DateUpdated")
+    @JsonAlias("UpdatedAt")
     private String dateUpdated;
 
     @JsonProperty("Status")
+    @JsonAlias("CallStatus")
     private ExotelCallStatus status;
 
     @JsonProperty("RecordingUrl")
+    @JsonAlias("CallRecordings")
     private String recordingUrl;
 
     @JsonProperty("EventType")
+    @JsonAlias("CallDetail")
     private String eventType;
 
     @JsonProperty("DateCreated")
+    @JsonAlias("CreatedAt")
     private String dateCreated;
 
     @JsonProperty("To")
+    @JsonAlias("ToNumber")
     private String to;
 
     @JsonProperty("From")
+    @JsonAlias("FromNumber")
     private String from;
 
     @JsonProperty("PhoneNumberSid")
+    @JsonAlias("VirtualNumber")
     private String phoneNumberSid;
 
     @JsonProperty("StartTime")
@@ -65,6 +76,7 @@ public class ExotelCallStatusCallback implements Serializable {
     private String endTime;
 
     @JsonProperty("ConversationDuration")
+    @JsonAlias("TotalDuration")
     private Long conversationDuration;
 
     @JsonProperty("Direction")

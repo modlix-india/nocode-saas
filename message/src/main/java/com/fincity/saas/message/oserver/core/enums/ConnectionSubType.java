@@ -10,6 +10,7 @@ public enum ConnectionSubType {
     REST_API_AUTH,
     SMTP,
     EXOTEL,
+    TELECMI,
     WHATSAPP;
 
     public String getProvider() {

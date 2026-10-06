@@ -1,5 +1,7 @@
 package com.fincity.saas.message.model.request.dispatch;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.saas.message.enums.call.CallStatus;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -52,6 +54,13 @@ public class CallEventDispatch implements Serializable {
 
     /** The provider's own status string, as sent, e.g. {@code in-progress}. */
     private String callStatus;
+
+    /**
+     * The status already mapped onto {@link CallStatus}, for providers whose status is derived from several legs.
+     * The consumer prefers it over {@code callStatus} when present.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private CallStatus normalizedCallStatus;
 
     private String leg1Status;
     private String leg2Status;

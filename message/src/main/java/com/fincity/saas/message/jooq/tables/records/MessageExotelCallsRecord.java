@@ -110,8 +110,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Setter for <code>message.message_exotel_calls.SID</code>. Unique
-     * identifier for the call.
+     * Setter for <code>message.message_exotel_calls.SID</code>. Provider call
+     * id.
      */
     public MessageExotelCallsRecord setSid(String value) {
         set(5, value);
@@ -119,8 +119,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Getter for <code>message.message_exotel_calls.SID</code>. Unique
-     * identifier for the call.
+     * Getter for <code>message.message_exotel_calls.SID</code>. Provider call
+     * id.
      */
     public String getSid() {
         return (String) get(5);
@@ -197,8 +197,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Setter for <code>message.message_exotel_calls.FROM</code>. Phone number
-     * of the caller.
+     * Setter for <code>message.message_exotel_calls.FROM</code>. Caller. An
+     * E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
     public MessageExotelCallsRecord setFrom(String value) {
         set(10, value);
@@ -206,8 +206,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Getter for <code>message.message_exotel_calls.FROM</code>. Phone number
-     * of the caller.
+     * Getter for <code>message.message_exotel_calls.FROM</code>. Caller. An
+     * E.164 number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
     public String getFrom() {
         return (String) get(10);
@@ -231,8 +231,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Setter for <code>message.message_exotel_calls.TO</code>. Phone number of
-     * the receiver.
+     * Setter for <code>message.message_exotel_calls.TO</code>. Callee. An E.164
+     * number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
     public MessageExotelCallsRecord setTo(String value) {
         set(12, value);
@@ -240,8 +240,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Getter for <code>message.message_exotel_calls.TO</code>. Phone number of
-     * the receiver.
+     * Getter for <code>message.message_exotel_calls.TO</code>. Callee. An E.164
+     * number, or a sip: URI when the leg is an agent's WebRTC endpoint.
      */
     public String getTo() {
         return (String) get(12);

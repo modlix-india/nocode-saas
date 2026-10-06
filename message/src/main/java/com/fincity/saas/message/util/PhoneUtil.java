@@ -26,6 +26,33 @@ public class PhoneUtil {
         return DEFAULT_CALLING_CODE;
     }
 
+    /**
+     * Whether two values name the same phone, normalised through {@link #parse} since the provider echoes numbers
+     * back in its own shape. Unparseable values (SIP URI, extension) compare on their last ten digits, or exactly
+     * when shorter.
+     *
+     * <p>That fallback is region-blind by design: safe only because this integration is scoped to one country.
+     */
+    public static boolean isSameNumber(String left, String right) {
+
+        PhoneNumber parsedLeft = parse(left);
+        PhoneNumber parsedRight = parse(right);
+
+        if (parsedLeft != null && parsedRight != null)
+            return StringUtil.safeEquals(parsedLeft.getNumber(), parsedRight.getNumber());
+
+        String digitsLeft = digitsOf(left);
+        String digitsRight = digitsOf(right);
+
+        if (digitsLeft.length() < 10 || digitsRight.length() < 10) return digitsLeft.equals(digitsRight);
+
+        return digitsLeft.substring(digitsLeft.length() - 10).equals(digitsRight.substring(digitsRight.length() - 10));
+    }
+
+    private static String digitsOf(String value) {
+        return value == null ? "" : value.replaceAll("\\D", "");
+    }
+
     public static PhoneNumber parse(String phoneNumber) {
         return parse(null, phoneNumber);
     }

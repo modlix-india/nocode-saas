@@ -19,7 +19,7 @@ public enum ConnectionType {
 
     TEXT(ConnectionSubType.WHATSAPP),
 
-    CALL(ConnectionSubType.EXOTEL);
+    CALL(ConnectionSubType.EXOTEL, ConnectionSubType.TELECMI);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 

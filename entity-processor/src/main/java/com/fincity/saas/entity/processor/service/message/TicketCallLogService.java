@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.service.message;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -14,11 +16,11 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.message.CallEventRequest;
 import com.fincity.saas.entity.processor.oserver.message.enums.call.CallStatus;
 import com.fincity.saas.entity.processor.oserver.message.enums.call.ExotelCallStatus;
+import com.fincity.saas.entity.processor.oserver.message.model.BrowserDialRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
@@ -133,6 +135,68 @@ public class TicketCallLogService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallLogService.makeCall"));
     }
 
+    /**
+     * Places a call to a deal's customer from the agent's browser softphone. The ticket is read under the caller's
+     * access and the number taken from it, so an agent can ring only deals they can see; the message service has
+     * no user-scoped ticket lookup, which is why this lives here.
+     *
+     * <p>The browser's provider token can still reach the dial API directly: this constrains the sanctioned path,
+     * so every UI call is logged against a deal the agent could see.
+     */
+    public Mono<Call> makeBrowserCall(Identity ticketId, String connectionName) {
+
+        return FlatMapUtil.flatMapMono(
+                        this.ticketService::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, ticketId),
+                        (ProcessorAccess access, Ticket ticket) ->
+                                this.placeFromBrowser(access, ticket, connectionName),
+                        (ProcessorAccess access, Ticket ticket, Map<String, Object> placed) ->
+                                this.recordPlacedCall(access, ticket, connectionName, placed))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallLogService.makeBrowserCall"));
+    }
+
+    /**
+     * Hands the dial to the message service with the deal's number. The agent comes from {@code access}, never the
+     * request, or one agent could dial as another.
+     */
+    private Mono<Map<String, Object>> placeFromBrowser(ProcessorAccess access, Ticket ticket, String connectionName) {
+
+        if (ticket.getPhoneNumber() == null || ticket.getPhoneNumber().isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "phoneNumber");
+
+        if (connectionName == null || connectionName.isBlank())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "connectionName");
+
+        if (access.getUserId() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "userId");
+
+        // Null when the stored number will not parse, which the blank check above does not catch.
+        PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
+
+        if (to == null || to.getNumber() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    Ticket.Fields.phoneNumber);
+
+        // The browser dial API takes one E.164 string, which PhoneUtil.parse already produces.
+        BrowserDialRequest request = new BrowserDialRequest()
+                .setConnectionName(connectionName)
+                .setUserId(access.getUserId().toBigInteger())
+                .setToNumber(to.getNumber());
+
+        return this.feignMessageService.browserDialInternal(access.getAppCode(), access.getClientCode(), request);
+    }
+
     private Mono<Map<String, Object>> place(
             ProcessorAccess access, Ticket ticket, String connectionName, String callerId) {
 
@@ -144,10 +208,18 @@ public class TicketCallLogService {
 
         PhoneNumber to = PhoneNumber.of(ticket.getDialCode(), ticket.getPhoneNumber());
 
-        Map<String, Object> request = new java.util.HashMap<>();
+        if (to == null || to.getNumber() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    Ticket.Fields.phoneNumber);
+
+        Map<String, Object> request = new HashMap<>();
         request.put("toNumber", Map.of("countryCode", to.getCountryCode(), "number", to.getNumber()));
         if (connectionName != null && !connectionName.isBlank()) request.put("connectionName", connectionName);
         if (callerId != null && !callerId.isBlank()) request.put("callerId", callerId);
+        // Never from the request: TeleCMI rings this user's mobile first. Exotel ignores it.
+        if (access.getUserId() != null) request.put("userId", access.getUserId().toBigInteger());
 
         return this.feignMessageService.makeCallInternal(access.getAppCode(), access.getClientCode(), request);
     }
@@ -166,9 +238,10 @@ public class TicketCallLogService {
                 .setTicketId(ticket.getId())
                 .setProductId(ticket.getProductId())
                 .setConnectionName(connectionName)
-                .setCallProvider(EXOTEL_PROVIDER)
                 .setOutbound(true);
 
+        // TeleCMI's placed call names its provider; Exotel's does not.
+        if (call.getCallProvider() == null) call.setCallProvider(EXOTEL_PROVIDER);
         if (call.getDirection() == null) call.setDirection(DIRECTION_OUTBOUND);
 
         return this.upsert(access.getAppCode(), access.getClientCode(), call);
@@ -183,6 +256,7 @@ public class TicketCallLogService {
     public Mono<Call> recordIncomingCall(
             ProcessorAccess access,
             Ticket ticket,
+            String callProvider,
             String providerCallId,
             String connectionName,
             PhoneNumber from,
@@ -194,7 +268,7 @@ public class TicketCallLogService {
                 .setTicketId(ticket.getId())
                 .setProductId(ticket.getProductId())
                 .setConnectionName(connectionName)
-                .setCallProvider(EXOTEL_PROVIDER)
+                .setCallProvider(callProvider)
                 .setOutbound(false)
                 .setDirection(DIRECTION_INBOUND)
                 .setCallStatus(CallStatus.ORIGINATE)
@@ -238,7 +312,8 @@ public class TicketCallLogService {
      */
     public Mono<Call> accept(String appCode, String clientCode, CallEventRequest request) {
 
-        if (request == null || request.getProviderCallId() == null
+        if (request == null
+                || request.getProviderCallId() == null
                 || request.getProviderCallId().isBlank())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

@@ -20,14 +20,16 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletRequest;
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
-import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.message.TicketCallLogService;
+import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +61,13 @@ public class TicketCallService implements IRepositoryProvider {
 
     private static final String DEFAULT_CALL_SOURCE = "Social Media";
     private static final String DEFAULT_CALL_SUB_SOURCE = "Website Phone";
+
+    /** TeleCMI's inbound HTTP-flow form fields. */
+    public static final String TELECMI_FLOW_FROM = "from";
+
+    public static final String TELECMI_FLOW_TO = "to";
+    public static final String TELECMI_FLOW_CMIUUID = "cmiuuid";
+    public static final String TELECMI_FLOW_APP_ID = "appid";
 
     public TicketCallService(
             TicketService ticketService,
@@ -127,70 +136,132 @@ public class TicketCallService implements IRepositoryProvider {
         PhoneNumber from = PhoneNumber.of(exotelRequest.getFrom());
         PhoneNumber callerId = PhoneNumber.of(exotelRequest.getTo());
 
-        return FlatMapUtil.flatMapMono(
-                        () -> productCommService
-                                .getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId)
-                                .doOnNext(productComm -> logger.info(
-                                        "Found ProductComm for callerId: {}, productId: {}, connectionName: {}",
-                                        callerId.getNumber(),
-                                        productComm.getProductId(),
-                                        productComm.getConnectionName()))
-                                .switchIfEmpty(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
-                                        callerId.getNumber())),
-                        productComm -> ticketService
-                                .getTicket(access, productComm.getProductId(), from, null)
-                                .doOnNext(ticket -> logger.info(
-                                        "Found existing ticket - ticketId: {}, productId: {}, assignedUserId: {}",
-                                        ticket.getId(),
-                                        ticket.getProductId(),
-                                        ticket.getAssignedUserId()))
-                                .flatMap(ticket -> ticketService.validateAssignedUser(access, ticket))
-                                .switchIfEmpty(Mono.defer(() -> this.createExotelTicket(access, from, productComm))),
-                        (productComm, ticket) -> {
-                            logger.info(
-                                    "Connecting call - ticketId: {}, connectionName: {}, assignedUserId: {}",
-                                    ticket.getId(),
-                                    productComm.getConnectionName(),
-                                    ticket.getAssignedUserId());
-                            return messageService.connectCall(
-                                    appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
-                                            .setProviderIncomingRequest(providerIncomingRequest)
-                                            .setConnectionName(productComm.getConnectionName())
-                                            .setUserId(ticket.getAssignedUserId()));
-                        },
-                        (ProductComm productComm, Ticket ticket, ExotelConnectAppletResponse response) -> {
-                            logger.info("Call connected successfully - ticketId: {}", ticket.getId());
-                            // Written here rather than left to the first status callback, because
-                            // this is the only point at which the deal is known for certain. The
-                            // callback carries a provider call id and phone numbers, so deriving
-                            // the deal from it later would be the phone-number guess this whole
-                            // move exists to stop.
-                            return this.callLogService
-                                    .recordIncomingCall(
-                                            access,
-                                            ticket,
-                                            exotelRequest.getCallSid(),
-                                            productComm.getConnectionName(),
-                                            from,
-                                            callerId,
-                                            Map.copyOf(providerIncomingRequest))
-                                    .then(this.logCall(access, ticket))
-                                    .thenReturn(response);
-                        })
+        return this.incomingCall(
+                        access,
+                        ConnectionSubType.EXOTEL,
+                        exotelRequest.getCallSid(),
+                        from,
+                        callerId,
+                        providerIncomingRequest,
+                        request -> messageService.connectCall(appCode, clientCode, request))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallService.incomingExotelCall"));
     }
 
-    private Mono<Ticket> createExotelTicket(ProcessorAccess access, PhoneNumber from, ProductComm productComm) {
+    /**
+     * Answers TeleCMI's inbound HTTP flow with the same deal-first routing as Exotel's. The request is verified by
+     * the message service first, because an unknown caller gets a new deal before anyone is rung, so a forged
+     * request would otherwise leave a deal behind.
+     */
+    public Mono<Map<String, Object>> incomingTelecmiCall(
+            String appCode, String clientCode, String token, Map<String, String> flowRequest) {
+
+        if (flowRequest == null || flowRequest.isEmpty())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "providerIncomingRequest");
+
+        for (String field : List.of(TELECMI_FLOW_FROM, TELECMI_FLOW_TO, TELECMI_FLOW_CMIUUID))
+            if (flowRequest.get(field) == null || flowRequest.get(field).isBlank())
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.MISSING_PARAMETERS,
+                        field);
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, true, null, null);
+
+        Map<String, String> verification = new HashMap<>();
+        verification.put("token", token);
+        verification.put("appId", flowRequest.get(TELECMI_FLOW_APP_ID));
+
+        return FlatMapUtil.flatMapMono(
+                        () -> messageService.verifyTelecmiFlow(appCode, clientCode, verification),
+                        verified -> this.incomingCall(
+                                access,
+                                ConnectionSubType.TELECMI,
+                                flowRequest.get(TELECMI_FLOW_CMIUUID),
+                                PhoneNumber.of(flowRequest.get(TELECMI_FLOW_FROM)),
+                                PhoneNumber.of(flowRequest.get(TELECMI_FLOW_TO)),
+                                flowRequest,
+                                request -> messageService.connectCallReply(appCode, clientCode, request)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketCallService.incomingTelecmiCall"));
+    }
+
+    /**
+     * The inbound routing both providers share: product from the number dialled, deal from the caller's number
+     * (created when there is none), the deal's agent connected, and the call recorded against the deal.
+     */
+    private <R> Mono<R> incomingCall(
+            ProcessorAccess access,
+            ConnectionSubType provider,
+            String providerCallId,
+            PhoneNumber from,
+            PhoneNumber callerId,
+            Map<String, String> providerIncomingRequest,
+            Function<IncomingCallRequest, Mono<R>> connect) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> productCommService
+                        .getByPhoneNumber(access, CALL_CONNECTION, provider, callerId)
+                        .doOnNext(productComm -> logger.info(
+                                "Found ProductComm for callerId: {}, productId: {}, connectionName: {}",
+                                callerId.getNumber(),
+                                productComm.getProductId(),
+                                productComm.getConnectionName()))
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
+                                callerId.getNumber())),
+                productComm -> ticketService
+                        .getTicket(access, productComm.getProductId(), from, null)
+                        .doOnNext(ticket -> logger.info(
+                                "Found existing ticket - ticketId: {}, productId: {}, assignedUserId: {}",
+                                ticket.getId(),
+                                ticket.getProductId(),
+                                ticket.getAssignedUserId()))
+                        .flatMap(ticket -> ticketService.validateAssignedUser(access, ticket))
+                        .switchIfEmpty(Mono.defer(() -> this.createCallTicket(access, from, productComm))),
+                (productComm, ticket) -> {
+                    logger.info(
+                            "Connecting call - ticketId: {}, connectionName: {}, assignedUserId: {}",
+                            ticket.getId(),
+                            productComm.getConnectionName(),
+                            ticket.getAssignedUserId());
+                    return connect.apply((IncomingCallRequest) new IncomingCallRequest()
+                            .setProviderIncomingRequest(providerIncomingRequest)
+                            .setConnectionName(productComm.getConnectionName())
+                            .setUserId(ticket.getAssignedUserId()));
+                },
+                (ProductComm productComm, Ticket ticket, R response) -> {
+                    logger.info("Call connected successfully - ticketId: {}", ticket.getId());
+                    // Written here rather than left to the first status callback, because
+                    // this is the only point at which the deal is known for certain. The
+                    // callback carries a provider call id and phone numbers, so deriving
+                    // the deal from it later would be the phone-number guess this whole
+                    // move exists to stop.
+                    return this.callLogService
+                            .recordIncomingCall(
+                                    access,
+                                    ticket,
+                                    provider.name(),
+                                    providerCallId,
+                                    productComm.getConnectionName(),
+                                    from,
+                                    callerId,
+                                    Map.copyOf(providerIncomingRequest))
+                            .then(this.logCall(access, ticket))
+                            .thenReturn(response);
+                });
+    }
+
+    private Mono<Ticket> createCallTicket(ProcessorAccess access, PhoneNumber from, ProductComm productComm) {
 
         ULong productId = productComm.getProductId();
 
         logger.info("Creating new ticket for productId: {}, from: {}", productId, from.getNumber());
 
         String source = productComm.getSource() != null ? productComm.getSource() : DEFAULT_CALL_SOURCE;
-        String subSource =
-                productComm.getSubSource() != null ? productComm.getSubSource() : DEFAULT_CALL_SUB_SOURCE;
+        String subSource = productComm.getSubSource() != null ? productComm.getSubSource() : DEFAULT_CALL_SUB_SOURCE;
 
         return this.productService
                 .readById(access, productId)

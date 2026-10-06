@@ -6,6 +6,8 @@ import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
@@ -117,6 +119,8 @@ public class ExotelPassThruCallback implements Serializable {
                 status -> status.getDisplayName().equals(formData.getFirst("DialCallStatus")),
                 callback::setDialCallStatus);
 
+        callback.setLegs(legsFrom(formData));
+
         String digits = formData.getFirst("digits");
         if (digits != null) {
             digits = digits.trim();
@@ -125,5 +129,32 @@ public class ExotelPassThruCallback implements Serializable {
         }
 
         return callback;
+    }
+
+    /**
+     * Reads the indexed leg entries ({@code Legs[0][OnCallDuration]} and so on), which no form binder
+     * reassembles. Stops at the first missing index rather than scanning a body whose size the provider controls.
+     */
+    private static List<Map<String, Object>> legsFrom(MultiValueMap<String, String> formData) {
+
+        List<Map<String, Object>> legs = new ArrayList<>();
+
+        for (int index = 0; ; index++) {
+
+            String prefix = "Legs[" + index + "][";
+            Map<String, Object> leg = new LinkedHashMap<>();
+
+            for (Map.Entry<String, List<String>> entry : formData.entrySet()) {
+                String key = entry.getKey();
+                if (!key.startsWith(prefix) || !key.endsWith("]")) continue;
+                leg.put(
+                        key.substring(prefix.length(), key.length() - 1),
+                        entry.getValue().getFirst());
+            }
+
+            if (leg.isEmpty()) return legs;
+
+            legs.add(leg);
+        }
     }
 }

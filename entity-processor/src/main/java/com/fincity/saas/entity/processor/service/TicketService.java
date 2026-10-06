@@ -1023,7 +1023,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                     return activityService
                             .acReInquiry(access, ticket, null, source, subSource)
-                            .then(super.throwDuplicateError(access, ticket));
+                            .then(super.<Boolean>throwDuplicateError(access, ticket));
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
