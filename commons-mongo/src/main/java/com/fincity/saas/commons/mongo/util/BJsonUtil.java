@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.mongo.util;
 
+import java.math.BigDecimal;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.stream.StreamSupport;
@@ -83,20 +84,8 @@ public class BJsonUtil {
 			if (jp.isString())
 				return new BsonString(jp.getAsString());
 
-			if (jp.isNumber()) {
-
-				Double bd = jp.getAsNumber()
-						.doubleValue();
-				if (bd.doubleValue() == bd.intValue()) {
-					return new BsonInt32(bd.intValue());
-				} else if (bd.doubleValue() == bd.longValue()) {
-					return new BsonInt64(bd.longValue());
-				} else if (bd.doubleValue() == bd.floatValue()) {
-					return new BsonDouble(bd.floatValue()); // float value type
-				} 
-
-				return new BsonDouble(bd); // returing as double value
-			}
+			if (jp.isNumber())
+				return number(jp);
 
 			return new BsonString(jp.getAsString());
 		}
@@ -104,6 +93,44 @@ public class BJsonUtil {
 		return new BsonString(value.getAsString());
 	}
 
+	/**
+	 * The narrowest BSON number that holds this value exactly.
+	 *
+	 * Decided from the literal rather than from a double. The previous version
+	 * computed {@code getAsNumber().doubleValue()} first and chose the BSON type by
+	 * comparing that double against its own int and long values - so any integer
+	 * beyond a double's exact range, 2^53, was already rounded before anything was
+	 * decided, and 9007199254740993 was stored as 9007199254740992 with nothing
+	 * reporting it. Every value written through the app data API passes here.
+	 *
+	 * An integral value still collapses to an integer type, including one written
+	 * as 3.0. That is long-standing behaviour for every storage on the platform and
+	 * is deliberately left alone: changing what a whole-numbered DOUBLE is stored as
+	 * would change what reads back for 219 live storages, which is not something a
+	 * precision fix should carry with it.
+	 */
+	private static BsonValue number(JsonPrimitive jp) {
+
+		String text = jp.getAsString();
+
+		try {
+			BigDecimal value = new BigDecimal(text);
+
+			if (value.stripTrailingZeros()
+					.scale() <= 0) {
+
+				long l = value.longValueExact();
+				return l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE ? new BsonInt32((int) l) : new BsonInt64(l);
+			}
+		} catch (NumberFormatException | ArithmeticException e) {
+			// Not a number this can hold exactly - too large for a long, or a
+			// literal BigDecimal will not take. A double is the honest fallback.
+		}
+
+		return new BsonDouble(jp.getAsDouble());
+	}
+
 	private BJsonUtil() {
+
 	}
 }

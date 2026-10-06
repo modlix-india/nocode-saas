@@ -99,7 +99,7 @@ public class CreateManyStorageObject extends AbstractReactiveFunction {
         }
 
         List<Map<String, Object>> dataList =
-                gson.fromJson(dataArray, new TypeToken<List<Map<String, Object>>>() {}.getType());
+                StorageJson.toMapList(dataArray);
 
         List<DataObject> dataArr = dataList.stream()
                 .map(dataObj -> {

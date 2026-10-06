@@ -13,11 +13,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.mq.events.EventCreationService;
+import com.fincity.saas.commons.mq.events.EventNames;
+import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserInviteDAO;
@@ -25,6 +29,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.testutil.TestDataFactory;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -71,6 +76,12 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private DesignationService designationService;
 
+	@Mock
+	private EventCreationService ecService;
+
+	@Mock
+	private ClientUrlService clientUrlService;
+
 	private static final ULong USER_ID = ULong.valueOf(10);
 	private static final ULong PROFILE_ID = ULong.valueOf(100);
 	private static final ULong REPORTING_TO_ID = ULong.valueOf(20);
@@ -79,7 +90,8 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 	void setUp() {
 		service = new UserInviteService(msgService, clientService, authenticationService, userDao, soxLogService,
 				profileService, appService, clientHierarchyService, clientActivityService, orgStructureService,
-				designationService);
+				designationService, ecService, clientUrlService);
+		lenient().when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
 		lenient().when(orgStructureService.evict(any())).thenReturn(Mono.just(Boolean.TRUE));
 
 		var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
@@ -109,9 +121,11 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 			UserInvite created = new UserInvite();
 			created.setId(ULong.valueOf(1));
 
-			when(userDao.checkUserExistsForInvite(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
-					isNull()))
-					.thenReturn(Mono.just(false));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
+					isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("test@example.com"), isNull()))
+					.thenReturn(Mono.empty());
 			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
 
 			StepVerifier.create(service.createInvite(invite))
@@ -140,9 +154,11 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
 					.thenReturn(Mono.just(true));
-			when(userDao.checkUserExistsForInvite(eq(BUS_CLIENT_ID), eq("testuser"), eq("test@example.com"),
-					isNull()))
-					.thenReturn(Mono.just(false));
+			when(userDao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), eq("testuser"), eq("test@example.com"),
+					isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(BUS_CLIENT_ID), eq("test@example.com"), isNull()))
+					.thenReturn(Mono.empty());
 			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
 
 			StepVerifier.create(service.createInvite(invite))
@@ -192,9 +208,11 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 			created.setId(ULong.valueOf(1));
 
 			when(userDao.readById(REPORTING_TO_ID)).thenReturn(Mono.just(reportingUser));
-			when(userDao.checkUserExistsForInvite(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
-					isNull()))
-					.thenReturn(Mono.just(false));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
+					isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("test@example.com"), isNull()))
+					.thenReturn(Mono.empty());
 			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
 
 			StepVerifier.create(service.createInvite(invite))
@@ -235,15 +253,13 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 
 			User existingUser = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
 			existingUser.setEmailId("existing@example.com");
+			existingUser.setUserName("existinguser");
 
 			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
 					.thenReturn(Mono.just(true));
-			when(userDao.checkUserExistsForInvite(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
-					eq("existing@example.com"), isNull()))
-					.thenReturn(Mono.just(true));
-			when(userDao.getUserForInvite(eq(SYSTEM_CLIENT_ID), eq("existinguser"), eq("existing@example.com"),
-					isNull()))
-					.thenReturn(Mono.just(existingUser));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
+					eq("existing@example.com"), isNull(), isNull()))
+					.thenReturn(Flux.just(existingUser));
 			when(userDao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
 
 			StepVerifier.create(service.createInvite(invite))
@@ -257,6 +273,129 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		@DisplayName("a new invite raises USER_INVITED with the flat data the invite mail template reads")
+		void createInvite_NewInvite_RaisesUserInvitedEvent() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setUrlAppCode("leadzump");
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("new@example.com");
+			invite.setFirstName("Asha");
+			invite.setProfileId(PROFILE_ID);
+
+			UserInvite created = new UserInvite();
+			created.setId(ULong.valueOf(5));
+			created.setClientId(SYSTEM_CLIENT_ID);
+			created.setEmailId("new@example.com");
+			created.setFirstName("Asha");
+			created.setProfileId(PROFILE_ID);
+			created.setInviteCode("abc123");
+
+			com.fincity.security.dto.App app = new com.fincity.security.dto.App();
+			app.setId(ULong.valueOf(7));
+			com.fincity.security.dto.Profile profile = new com.fincity.security.dto.Profile();
+			profile.setName("Sales Manager");
+
+			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("new@example.com"), isNull(),
+					isNull())).thenReturn(Flux.empty());
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.just(app));
+			when(appService.getProperties(isNull(), eq(ULong.valueOf(7)), isNull(), eq(AppService.APP_PROP_USER_CHECK)))
+					.thenReturn(Mono.just(java.util.Map.of()));
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("new@example.com"), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(profile));
+			when(clientUrlService.getAppUrlInternal("leadzump", ULong.valueOf(7), SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just("https://chulha.leadzump.ai"));
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.FALSE, result.get("existingUser")))
+					.verifyComplete();
+
+			ArgumentCaptor<EventQueObject> event = ArgumentCaptor.forClass(EventQueObject.class);
+			verify(ecService).createEvent(event.capture());
+			assertEquals(EventNames.USER_INVITED, event.getValue().getEventName());
+			assertEquals("leadzump", event.getValue().getAppCode());
+			var data = event.getValue().getData();
+			assertEquals("Asha", data.get("firstName"));
+			assertEquals("new@example.com", data.get("emailId"));
+			assertEquals("Sales Manager", data.get("profileName"));
+			assertEquals("abc123", data.get("inviteCode"));
+			assertEquals("https://chulha.leadzump.ai", data.get("urlPrefix"));
+			assertEquals("false", data.get("userExisted"));
+		}
+
+		@Test
+		@DisplayName("an existing user who gets the profile raises USER_INVITED with userExisted = \"true\"")
+		void createInvite_ExistingUser_RaisesEventWithUserExisted() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setUrlAppCode("leadzump");
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("existing@example.com");
+			invite.setUserName("existinguser");
+			invite.setProfileId(PROFILE_ID);
+
+			User existingUser = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			existingUser.setEmailId("existing@example.com");
+			existingUser.setUserName("existinguser");
+			existingUser.setFirstName("Ravi");
+
+			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
+					eq("existing@example.com"), isNull(), isNull()))
+					.thenReturn(Flux.just(existingUser));
+			when(userDao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.empty());
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.TRUE, result.get("existingUser")))
+					.verifyComplete();
+
+			ArgumentCaptor<EventQueObject> event = ArgumentCaptor.forClass(EventQueObject.class);
+			verify(ecService).createEvent(event.capture());
+			var data = event.getValue().getData();
+			assertEquals("true", data.get("userExisted"));
+			assertEquals("Ravi", data.get("firstName"));
+			assertEquals("", data.get("urlPrefix"));
+			assertEquals("", data.get("profileName"));
+		}
+
+		@Test
+		@DisplayName("the invite stands when the event cannot be queued")
+		void createInvite_EventFails_InviteStillCreated() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setUrlAppCode("leadzump");
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("new@example.com");
+
+			UserInvite created = new UserInvite();
+			created.setId(ULong.valueOf(6));
+			created.setClientId(SYSTEM_CLIENT_ID);
+			created.setEmailId("new@example.com");
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("new@example.com"), isNull(),
+					isNull())).thenReturn(Flux.empty());
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("new@example.com"), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
+			when(ecService.createEvent(any())).thenReturn(Mono.error(new RuntimeException("queue down")));
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.FALSE, result.get("existingUser")))
+					.verifyComplete();
+		}
+
+		@Test
 		void createInvite_ExistingUserNoProfile_ReturnsEmpty() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
@@ -266,9 +405,13 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 			invite.setUserName("existinguser");
 			// no profileId set
 
-			when(userDao.checkUserExistsForInvite(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
-					eq("existing@example.com"), isNull()))
-					.thenReturn(Mono.just(true));
+			User existingUser = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			existingUser.setEmailId("existing@example.com");
+			existingUser.setUserName("existinguser");
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
+					eq("existing@example.com"), isNull(), isNull()))
+					.thenReturn(Flux.just(existingUser));
 
 			// addUserProfile returns empty when profileId is null
 			StepVerifier.create(service.createInvite(invite))
@@ -292,9 +435,11 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 
 			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
 					.thenReturn(Mono.just(true));
-			when(userDao.checkUserExistsForInvite(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
-					isNull()))
-					.thenReturn(Mono.just(false));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("testuser"), eq("test@example.com"),
+					isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("test@example.com"), isNull()))
+					.thenReturn(Mono.empty());
 			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
 
 			StepVerifier.create(service.createInvite(invite))
@@ -320,6 +465,118 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.createInvite(invite))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void createInvite_ExistingUsersEmailWithOtherPhone_ThrowsConflictNamingEmail() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("existing@example.com");
+			invite.setPhoneNumber("+910000000001");
+			invite.setProfileId(PROFILE_ID);
+
+			User existingUser = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			existingUser.setEmailId("Existing@Example.com");
+			existingUser.setPhoneNumber("+919999999999");
+
+			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("existing@example.com"),
+					eq("+910000000001"), isNull()))
+					.thenReturn(Flux.just(existingUser));
+
+			// Used to miss the user (email AND phone had to match) and insert an invite, which then hit
+			// the invite table's unique key and came back as a 500.
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(msgService).throwMessage(any(), eq(SecurityMessageResourceService.USER_IDENTITY_TAKEN),
+					eq("email"));
+			verify(dao, never()).create(any(UserInvite.class));
+			verify(userDao, never()).addProfileToUser(any(), any());
+		}
+
+		@Test
+		void createInvite_IdentitiesOfTwoUsers_ThrowsConflict() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("a@example.com");
+			invite.setPhoneNumber("+910000000002");
+
+			User a = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			a.setEmailId("a@example.com");
+			a.setPhoneNumber("+910000000001");
+			User b = TestDataFactory.createActiveUser(ULong.valueOf(11), SYSTEM_CLIENT_ID);
+			b.setEmailId("b@example.com");
+			b.setPhoneNumber("+910000000002");
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("a@example.com"),
+					eq("+910000000002"), isNull()))
+					.thenReturn(Flux.just(a, b));
+
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(dao, never()).create(any(UserInvite.class));
+		}
+
+		@Test
+		void createInvite_PendingInviteForPhone_ThrowsConflictNamingPhone() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("new@example.com");
+			invite.setPhoneNumber("+910000000003");
+
+			UserInvite pending = new UserInvite();
+			pending.setEmailId("other@example.com");
+			pending.setPhoneNumber("+910000000003");
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("new@example.com"),
+					eq("+910000000003"), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("new@example.com"), eq("+910000000003")))
+					.thenReturn(Mono.just(pending));
+
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(msgService).throwMessage(any(), eq(SecurityMessageResourceService.USER_INVITE_PENDING),
+					eq("phone number"));
+			verify(dao, never()).create(any(UserInvite.class));
+		}
+
+		@Test
+		void createInvite_InsertHitsUniqueKey_ThrowsConflict() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("race@example.com");
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("race@example.com"),
+					isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("race@example.com"), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.error(
+					new org.jooq.exception.IntegrityConstraintViolationException("Duplicate entry")));
+
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
 					.verify();
 		}
 	}

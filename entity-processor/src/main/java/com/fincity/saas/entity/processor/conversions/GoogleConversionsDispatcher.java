@@ -79,12 +79,20 @@ public class GoogleConversionsDispatcher extends AbstractConversionsDispatcher {
         // never the right target -- using it produced INVALID_CUSTOMER_FOR_CLICK in prod.
         String customerId = extractCustomerId(mapping.getPlatformActionId());
         if (customerId == null) {
-            return Mono.just(DispatchResult.fail(
+            // Terminal: a malformed platformActionId is a fault in the mapping record, and the next
+            // attempt reads the same record. Retrying it hourly is what kept 60 unrelated rows in
+            // the pool for 98 days before this distinction existed.
+            return Mono.just(DispatchResult.failTerminal(
                     "Google mapping.platformActionId missing or malformed; expected customers/{id}/conversionActions/{id} but got: "
                             + mapping.getPlatformActionId(),
                     null));
         }
         if (this.googleDeveloperToken == null || this.googleDeveloperToken.isBlank()) {
+            // Deliberately NOT terminal, unlike the check above. This is a missing SERVER property,
+            // not bad data: someone sets it, the service restarts, and the very next attempt
+            // succeeds. Marking it terminal would permanently discard every conversion that
+            // happened to be dispatched during a configuration gap, which is a worse failure than
+            // retrying -- silent data loss instead of a visible backlog.
             return Mono.just(DispatchResult.fail(
                     "ai.adzump.googleAds.developerToken is not configured", null));
         }

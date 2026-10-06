@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,7 @@ import com.fincity.security.model.billing.WalletStatusView;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
 import com.fincity.security.service.ClientService;
+import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -82,11 +84,13 @@ public class WalletService
     private final CacheService cacheService;
     private final EventCreationService ecService;
     private final SecurityMessageResourceService messageResourceService;
+    private final ClientUrlService clientUrlService;
 
     public WalletService(WalletTransactionDAO txnDAO, MeteringCountDAO meteringCountDAO,
             AppBillingConfigService configService, AppService appService,
             ClientService clientService, ClientHierarchyService clientHierarchyService, CacheService cacheService,
-            EventCreationService ecService, SecurityMessageResourceService messageResourceService) {
+            EventCreationService ecService, SecurityMessageResourceService messageResourceService,
+            @Lazy ClientUrlService clientUrlService) {
         this.txnDAO = txnDAO;
         this.meteringCountDAO = meteringCountDAO;
         this.configService = configService;
@@ -96,6 +100,7 @@ public class WalletService
         this.cacheService = cacheService;
         this.ecService = ecService;
         this.messageResourceService = messageResourceService;
+        this.clientUrlService = clientUrlService;
     }
 
     // ---------------------------------------------------------------------
@@ -759,12 +764,24 @@ public class WalletService
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByIdInternal(wallet.getAppId()),
                 app -> this.clientService.getClientInfoById(wallet.getClientId()),
-                (app, client) -> {
+                // For the "buy tokens" link in the email. Same rule as invoices: the app URL
+                // lives under the managing client. Best-effort, a missing URL only drops the link.
+                (app, client) -> this.clientService.getManagedClientOfClientById(wallet.getClientId())
+                        .map(mgmt -> mgmt.getId() != null ? mgmt.getId() : wallet.getClientId())
+                        .onErrorResume(e -> Mono.just(wallet.getClientId()))
+                        .defaultIfEmpty(wallet.getClientId())
+                        .flatMap(urlClientId -> this.clientUrlService.getAppUrlInternal(app.getAppCode(),
+                                wallet.getAppId(), urlClientId))
+                        .onErrorResume(e -> Mono.just(""))
+                        .defaultIfEmpty(""),
+                (app, client, urlPrefix) -> {
                     Map<String, Object> data = new HashMap<>();
                     data.put("walletId", wallet.getId());
                     data.put("appCode", app.getAppCode());
                     data.put("clientCode", client.getCode());
+                    data.put("clientName", client.getName() == null ? "" : client.getName());
                     data.put("balance", balanceAfter);
+                    data.put("urlPrefix", urlPrefix);
                     EventQueObject evt = new EventQueObject()
                             .setAppCode(app.getAppCode())
                             .setClientCode(client.getCode())

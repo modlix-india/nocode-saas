@@ -863,7 +863,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
                                 .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
                                         managingClientId, userName, emailId, phoneNumber, "INDV", key));
-                        case "BUS", "SYS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
+                        // Checked in update(User), which super.update(key, fields) ends in: that is
+                        // where the stored identifiers are known, so only the changed ones are compared.
+                        case "BUS", "SYS" -> Mono.just(Boolean.FALSE);
                         default -> Mono.empty();
                     };
                 },
@@ -931,12 +933,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         entity.getPhoneNumber(),
                                         "INDV",
                                         entity.getId()));
-                        case "BUS", "SYS" -> this.dao.checkUserExists(
-                                entity.getClientId(),
-                                entity.getUserName(),
-                                entity.getEmailId(),
-                                entity.getPhoneNumber(),
-                                null);
+                        case "BUS", "SYS" -> this.checkIdentityFreeInClient(existingUser, entity);
                         default -> Mono.empty();
                     };
                 },
@@ -979,6 +976,45 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                                 updatedUser.getClientId(), existingUser.getReportingTo(), updatedUser.getReportingTo()))
                                         .<User>map(evicted -> updatedUser)))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
+    }
+
+    /**
+     * Refuses, with a 409 naming the field, an edit that gives a user a userName, email or phone number
+     * another user of the same client already has.
+     * <p>
+     * Only the identifiers this edit changes are compared: the Edit user popup resends the unchanged
+     * ones, and a pair of users who already share one must still be editable.
+     */
+    private Mono<Boolean> checkIdentityFreeInClient(User existingUser, User entity) {
+
+        String userName = Objects.equals(existingUser.getUserName(), entity.getUserName()) ? null
+                : entity.getUserName();
+        String emailId = Objects.equals(existingUser.getEmailId(), entity.getEmailId()) ? null : entity.getEmailId();
+        String phoneNumber = Objects.equals(existingUser.getPhoneNumber(), entity.getPhoneNumber()) ? null
+                : entity.getPhoneNumber();
+
+        return this.dao.getUsersWithAnyIdentity(entity.getClientId(), userName, emailId, phoneNumber, entity.getId())
+                .next()
+                .flatMap(other -> this.securityMessageResourceService.<Boolean>throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.USER_IDENTITY_TAKEN,
+                        takenIdentity(other, emailId, phoneNumber)))
+                .defaultIfEmpty(Boolean.FALSE);
+    }
+
+    /**
+     * Which of the given identifiers {@code other} already holds, worded for a message; the user name
+     * when it is neither the email nor the phone. Compared ignoring case, as the columns' collation does.
+     */
+    static String takenIdentity(User other, String emailId, String phoneNumber) {
+
+        if (emailId != null && emailId.equalsIgnoreCase(other.getEmailId()))
+            return "email";
+
+        if (phoneNumber != null && phoneNumber.equalsIgnoreCase(other.getPhoneNumber()))
+            return "phone number";
+
+        return "user name";
     }
 
     private Mono<Integer> evictCache(ULong userId, ULong clientId) {

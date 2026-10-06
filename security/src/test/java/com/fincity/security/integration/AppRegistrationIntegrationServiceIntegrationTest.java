@@ -476,8 +476,10 @@ class AppRegistrationIntegrationServiceIntegrationTest extends AbstractIntegrati
 						assertThat(uriString).contains("openid");
 						assertThat(uriString).contains("response_type=code");
 						assertThat(uriString).contains("state=test-state-google-12345");
-						assertThat(uriString).contains("access_type=offline");
-						assertThat(uriString).contains("prompt=consent");
+						// Online access only: no refresh token is ever issued to us.
+						assertThat(uriString).doesNotContain("access_type=offline");
+						assertThat(uriString).doesNotContain("prompt=consent");
+						assertThat(uriString).contains("prompt=select_account");
 					})
 					.verifyComplete();
 		}

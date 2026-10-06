@@ -179,12 +179,39 @@ public class FileSystemService {
         if (exists)
             return filePath.toFile();
 
-        s3Client.getObject(
-                GetObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(finalPath.toString())
-                        .build(),
-                ResponseTransformer.toFile(filePath));
+        // Each caller downloads into a file of its own and renames it into place.
+        // ResponseTransformer.toFile refuses a path that already exists, so when
+        // several requests miss on the same file at once (a page asking for eight
+        // resized copies of a just uploaded icon) all but the first failed, and
+        // a reader arriving mid-download could be handed a half written file.
+        Path partPath;
+        try {
+            partPath = Files.createTempFile(filePath.getParent(), filePath.getFileName().toString(), ".part");
+            Files.delete(partPath);
+        } catch (IOException e) {
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error in creating temporary file for : " + filePath, e);
+        }
+
+        try {
+            s3Client.getObject(
+                    GetObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(finalPath.toString())
+                            .build(),
+                    ResponseTransformer.toFile(partPath));
+
+            Files.move(partPath, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error in moving downloaded file into place : " + filePath, e);
+        } finally {
+            try {
+                Files.deleteIfExists(partPath);
+            } catch (IOException e) {
+                logger.debug("Unable to delete partial download {}", partPath, e);
+            }
+        }
 
         return filePath.toFile();
     }

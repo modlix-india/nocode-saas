@@ -59,6 +59,9 @@ import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.service.ConnectionService;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutReport;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.MySQLDrift;
+import com.fincity.saas.commons.core.service.connection.appdata.mysql.TenantProgress;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.CoreSchemaService;
@@ -103,6 +106,23 @@ import reactor.util.function.Tuples;
 @Service
 public class AppDataService {
 
+    /** Reactor context key for how deep a chain of cascading deletes has gone. */
+    private static final String CASCADE_DEPTH = "appdata.cascade.depth";
+
+    private static final int MAX_CASCADE_DEPTH = 8;
+
+    /**
+     * How many relation hops one eager request may ask for.
+     *
+     * Relations point at each other freely, so a dotted path can describe a loop.
+     * The bound is on the PATH, not on data volume: each level is still one query
+     * per relation over the distinct objects of the level above.
+     */
+    private static final int MAX_EAGER_DEPTH = 5;
+
+    /** Rows per round of a cascade. Large enough to be one query for any normal fan-out. */
+    private static final int CASCADE_BATCH = 500;
+
     private static final ConnectionSubType DEFAULT_APP_DATA_SERVICE = ConnectionSubType.MONGO;
     private static final Logger logger = LoggerFactory.getLogger(AppDataService.class);
     private static final String DATA_OBJECT_KEY = "dataObject";
@@ -132,6 +152,9 @@ public class AppDataService {
 
     @Autowired
     private MongoAppDataService mongoAppDataService;
+
+    @Autowired
+    private MySQLAppDataService mySQLAppDataService;
 
     @Autowired
     private CoreSchemaService schemaService;
@@ -183,6 +206,7 @@ public class AppDataService {
     @PostConstruct
     public void init() {
         this.services.put(ConnectionSubType.MONGO, mongoAppDataService);
+        this.services.put(ConnectionSubType.MYSQL, mySQLAppDataService);
     }
 
     public Mono<Map<String, Object>> create(
@@ -248,8 +272,222 @@ public class AppDataService {
         return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
                 .map(Optional::of)
                 .defaultIfEmpty(Optional.empty())
-                .flatMap(conn -> this.mongoAppDataService.dropDraftDatabase(conn.orElse(null), appCode, clientCode))
+                // Dispatched like every other operation. Hardcoding Mongo here meant
+                // deleting a MySQL-backed app dropped a Mongo database that was never
+                // there and left the tenant's draft schemas standing.
+                .flatMap(conn -> this.services
+                        .get(conn.isEmpty() ? DEFAULT_APP_DATA_SERVICE : conn.get().getConnectionSubType())
+                        .dropDraftDatabase(conn.orElse(null), appCode, clientCode))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftData"));
+    }
+
+    /**
+     * Bring a storage's tables into line with its definition, on whichever backend
+     * the app is on.
+     *
+     * Mongo needs nothing: a collection has no declared shape, so a definition change
+     * is already in effect the moment it is saved. MySQL does, and the gap between
+     * the two is the whole reason this method exists rather than the publish path
+     * simply assuming the data follows the definition.
+     *
+     * Returns a report rather than a boolean because a MySQL app's storage is spread
+     * over one schema per tenant, each migrated independently, and partial completion
+     * across that fan-out is a normal state rather than a failure.
+     *
+     * Never fails the caller. A definition save that succeeded must not be reported
+     * as having failed because one tenant out of seventy could not be migrated: the
+     * definition really is saved, the report says which tenants are behind, and
+     * re-running is what carries them forward.
+     */
+    public Mono<FanOutReport> reconcileStorageDdl(String appCode, Storage storage) {
+
+        if (storage == null || StringUtil.safeIsBlank(storage.getUniqueName()))
+            return Mono.just(FanOutReport.empty());
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .map(ca -> ca.getUser() == null ? null : ca.getUser().getUserName())
+                .defaultIfEmpty("system")
+                // EVERY server the app uses, not the saving client's. A client may
+                // bring its own database, and the fan-out discovers tenants from the
+                // schemas on ONE server - so reading a single connection migrated
+                // whoever happened to share a host with the author and silently left
+                // the rest on the old shape. Deduplicated by connection details, so
+                // the ordinary single-server app still does exactly one sweep.
+                .flatMap(by -> this.connectionService
+                        .allAppData(ConnectionSubType.MYSQL, appCode)
+                        .concatMap(conn -> this.mySQLAppDataService
+                                .reconcile(conn, appCode, storage, by)
+                                // One unreachable server must not stop the others.
+                                // They are independent databases, and a report that
+                                // covers three of four is worth more than an error.
+                                .onErrorResume(e -> {
+                                    logger.error(
+                                            "Could not reconcile {} on connection {}",
+                                            storage.getName(),
+                                            conn.getId(),
+                                            e);
+                                    return Mono.just(FanOutReport.empty());
+                                }))
+                        .reduce(FanOutReport.empty(), FanOutReport::merge))
+                .onErrorResume(e -> {
+                    logger.error("Could not reconcile tables for storage {} in {}", storage.getName(), appCode, e);
+                    return Mono.just(FanOutReport.empty());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.reconcileStorageDdl"));
+    }
+
+    /**
+     * How far each tenant got with this storage's last migration.
+     *
+     * Read only, and gated on the same readAuth as reading the rows: it exposes
+     * tenant schema names and migration state, which is less than the data itself
+     * but is still this storage's business.
+     *
+     * The sweep logs when it finds something, which answers "did anything break" for
+     * whoever is watching the logs at the time. This answers "is anything behind
+     * RIGHT NOW", which is the question asked after a deploy, usually by somebody
+     * who was not watching.
+     */
+    public Mono<List<TenantProgress>> migrationStatus(String appCode, String clientCode, String storageName) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
+                        (ca, ac, cc, conn) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                                .map(ObjectWithUniqueID::getObject),
+                        (ca, ac, cc, conn, storage) -> this.<List<TenantProgress>>genericOperation(
+                                storage,
+                                (contextAuth, hasAccess) -> conn != null
+                                                && conn.getConnectionSubType() == ConnectionSubType.MYSQL
+                                        ? this.mySQLAppDataService.migrationStatus(conn, ac, storage)
+                                        // Mongo has no migrations, so there is nothing
+                                        // to be behind on. An empty list says that
+                                        // better than a 501 would.
+                                        : Mono.just(List.<TenantProgress>of()),
+                                Storage::getReadAuth,
+                                CoreMessageResourceService.FORBIDDEN_READ_STORAGE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.migrationStatus"));
+    }
+
+    /**
+     * Where each tenant's table has come apart from its definition.
+     *
+     * Answers the question {@code migrationStatus} cannot: that one reads the
+     * journal, so it knows about migrations that were attempted. This reads the
+     * schemas themselves, so it also finds the tenant nobody migrated - unreachable
+     * at the time, built by hand, or provisioned before the storage existed - which
+     * is the case the journal has nothing to say about.
+     *
+     * Read only. Nothing here issues a statement.
+     *
+     * Gated on write access to the APP, not on the storage's {@code readAuth}, for
+     * the reasons in {@link #builderOnly}. The short version is that this reports on
+     * every client's schema at once, so a per-client runtime authority is not a
+     * description of what it can see.
+     */
+    public Mono<List<MySQLDrift.Report>> drift(String appCode, String clientCode, String storageName) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.builderOnly(ac),
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                                .map(ObjectWithUniqueID::getObject),
+                        // Every server the app uses. A client may bring its own
+                        // database, and inspecting one server would report the rest
+                        // as fine because it never looked at them - the same blind
+                        // spot reconcileStorageDdl had. An app with no MySQL
+                        // connection yields nothing here, which is the right answer
+                        // for a Mongo app rather than a 501.
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.drift(conn, ac, storage))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
+                // An app with no appData connection runs on Mongo and has no table to
+                // drift. Without this the chain completes empty and the caller gets a
+                // 200 with no body at all, which reads like a fault rather than "none".
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.drift"));
+    }
+
+    /**
+     * Put the drift right.
+     *
+     * {@code approved} is the human decision and it is one of the two controls:
+     * without it only the additive half runs and the rest comes back in
+     * {@code withheld} for somebody to read. Nothing infers approval - a caller that
+     * does not pass it does not get the destructive statements, however drifted the
+     * table is.
+     *
+     * The other control is who may call at all, and that is {@link #builderOnly}.
+     */
+    public Mono<List<MySQLDrift.DriftRepair>> repairDrift(
+            String appCode, String clientCode, String storageName, boolean approved) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.builderOnly(ac),
+                        (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
+                                .map(ObjectWithUniqueID::getObject),
+                        (ca, ac, cc, allowed, storage) -> this.connectionService
+                                .allAppData(ConnectionSubType.MYSQL, ac)
+                                .concatMap(conn -> this.mySQLAppDataService.repairDrift(conn, ac, storage, approved))
+                                .collectList()
+                                .map(lists -> lists.stream()
+                                        .flatMap(List::stream)
+                                        .toList()))
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.repairDrift"));
+    }
+
+    /**
+     * Write access to the application, and nothing else will do.
+     *
+     * Not {@link #genericOperation} with the storage's own authority, and not
+     * {@link #builderOrAuthorised} either, for three reasons that only apply to the
+     * drift pair:
+     *
+     * <ol>
+     * <li><b>A blank authority admits everyone.</b>
+     * {@code SecurityContextUtil.hasAuthority(null, ...)} returns TRUE by design, and
+     * a storage states no {@code deleteAuth} unless somebody wrote one - which is
+     * most of them. On a row delete that is the intended default. On a statement that
+     * can {@code DROP COLUMN} it means the gate is not there at all.</li>
+     * <li><b>The blast radius is every client, not the caller's.</b> Tenants are
+     * discovered from the schemas the app has on the server, so one call reports on -
+     * and an approved one alters - schemas belonging to clients the caller may never
+     * have heard of. A per-client runtime authority does not describe that, so it
+     * cannot gate it.</li>
+     * <li><b>It reaches the draft surface.</b> Draft schemas are in the same sweep,
+     * and every other route that can touch draft goes through {@link #onSurface},
+     * which requires exactly this check.</li>
+     * </ol>
+     *
+     * An OR with the storage's authority - what {@code clearAllRows} does - would
+     * undo all three, so this is a replacement rather than an addition. There is no
+     * runtime path into either route to keep working: nothing in a running app asks
+     * about its own table's shape.
+     */
+    private Mono<Boolean> builderOnly(String appCode) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> this.securityService
+                        .hasWriteAccess(appCode, ca.getClientCode())
+                        .defaultIfEmpty(Boolean.FALSE))
+                .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                        ? Mono.just(Boolean.TRUE)
+                        : this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                CoreMessageResourceService.FORBIDDEN_UPDATE_STORAGE, appCode))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.builderOnly"));
     }
 
     /**
@@ -263,7 +501,9 @@ public class AppDataService {
         return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
                 .map(Optional::of)
                 .defaultIfEmpty(Optional.empty())
-                .flatMap(conn -> this.mongoAppDataService.dropDraftStorage(clientCode, conn.orElse(null), storage))
+                .flatMap(conn -> this.services
+                        .get(conn.isEmpty() ? DEFAULT_APP_DATA_SERVICE : conn.get().getConnectionSubType())
+                        .dropDraftStorage(clientCode, conn.orElse(null), storage))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.dropDraftStorageData"));
     }
 
@@ -521,14 +761,31 @@ public class AppDataService {
      * such a storage. readPage guarded this; create, createMany, update and read
      * did not.
      */
+    /**
+     * What to expand: what the caller NAMED, or every relation if they just said
+     * "eager".
+     *
+     * An explicit list now wins over the flag. It used to be the other way round -
+     * eager=true threw the named fields away and substituted every top-level
+     * relation - so a caller who passed both silently got something other than what
+     * they asked for, and a nested path like {@code category.parent} was flattened
+     * to {@code category} before anything could act on it.
+     *
+     * eager=true on its own still means every relation, one level deep, which is
+     * what it has always meant and what every existing caller relies on.
+     */
     private List<String> resolveEagerFields(Storage storage, Boolean eager, List<String> eagerFields) {
+
+        if (eagerFields != null && !eagerFields.isEmpty()) return eagerFields;
+
         if (!BooleanUtil.safeValueOf(eager)) return eagerFields;
+
         return storage.getRelations() == null
                 ? List.of()
                 : storage.getRelations().keySet().stream().toList();
     }
 
-    @SuppressWarnings({ "unchecked", "SuspiciousMethodCalls" })
+    /** One row, filled the same way a page is. */
     private Mono<Map<String, Object>> fillRelatedObjects(
             String appCode,
             String clientCode,
@@ -537,70 +794,247 @@ public class AppDataService {
             IAppDataService dataService,
             Connection conn,
             List<String> eagerFields) {
-        if ((storage.getRelations() == null || storage.getRelations().isEmpty())
-                || (eagerFields == null || eagerFields.isEmpty()))
-            return Mono.just(created);
 
-        List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> relationList = prepareMonosForPage(
-                appCode, clientCode, storage, dataService, conn, eagerFields, created);
-
-        return FlatMapUtil.flatMapMono(
-                () -> Flux.fromIterable(relationList).flatMap(e -> e).collectList(), tuples -> {
-                    for (Tuple3<String, StorageRelationType, List<Map<String, Object>>> tuple : tuples) {
-                        if (tuple.getT2() == StorageRelationType.TO_MANY) {
-                            List<String> oldList = (List<String>) created.get(tuple.getT1());
-                            created.put(
-                                    tuple.getT1(),
-                                    tuple.getT3().stream()
-                                            .sorted(Comparator.comparingInt(a -> oldList.indexOf(a.get("_id"))))
-                                            .toList());
-                        } else {
-                            if (tuple.getT3().isEmpty())
-                                created.remove(tuple.getT1());
-                            else
-                                created.put(tuple.getT1(), tuple.getT3().getFirst());
-                        }
-                    }
-
-                    return Mono.just(created);
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.fillRelatedObjects"));
+        return this.fillRelatedObjects(
+                        appCode, clientCode, storage, List.of(created), dataService, conn, eagerFields)
+                .map(rows -> rows.isEmpty() ? created : rows.getFirst());
     }
 
-    private List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> prepareMonosForPage(
+    /**
+     * Expand the named relations of every row in one pass.
+     *
+     * Per PAGE rather than per row, which is the whole shape of this method. Run
+     * per row it issued one query for every row and every eager field - twenty rows
+     * with two relations was forty round trips to fetch, at most, forty distinct
+     * objects. Gathering the ids first collapses that to one query per field, and
+     * the saving grows with the page rather than staying constant.
+     *
+     * Two things that are not optimisations:
+     *
+     * The target storage is read through {@link #genericOperation} against its own
+     * {@code readAuth}. It used to be handed straight to the backend, so a storage
+     * the caller could not read was readable through anything that pointed at it.
+     * Joins and subqueries have always checked; this was the one that did not.
+     *
+     * The fetch is no longer capped. It used to ask for fifty, applied to a lookup
+     * BY ID, so a row with more children than that silently lost the rest and the
+     * response looked exactly like a row that only had fifty. The bound now is the
+     * number of ids the rows actually hold, which is the honest one.
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<List<Map<String, Object>>> fillRelatedObjects(
             String appCode,
             String clientCode,
             Storage storage,
+            List<Map<String, Object>> rows,
             IAppDataService dataService,
             Connection conn,
-            List<String> eagerFields,
-            Map<String, Object> created) {
-        List<Mono<Tuple3<String, StorageRelationType, List<Map<String, Object>>>>> relationList = new ArrayList<>();
+            List<String> eagerFields) {
 
-        for (String key : eagerFields) {
-            StorageRelation relation = storage.getRelations().get(key);
-            Query query = new Query();
-            query.setSize(50);
-            List<String> value = new ArrayList<>();
-            if (created.get(key) instanceof List<?> lst) {
-                value = lst.stream().map(Object::toString).toList();
-            } else if (created.get(key) instanceof String id) {
-                value = List.of(id);
+        return this.fillRelatedObjects(
+                appCode, clientCode, storage, rows, dataService, conn, eagerTree(eagerFields), 0);
+    }
+
+    /**
+     * A relation only has to be named once however many rows reference it.
+     *
+     * {@code eagerFields} are PATHS, so {@code category.parent} expands the category
+     * of every row and then the parent of every category. The nesting is free in the
+     * output because {@link #applyRelated} inlines the very objects this map holds -
+     * expanding them expands what the caller already has.
+     *
+     * Each level costs one query per relation, NOT one per row and certainly not one
+     * per row per level: the recursion runs over the DISTINCT objects fetched, so a
+     * category shared by a hundred rows has its own parent fetched once. A page of
+     * twenty rows two levels deep is two queries, which is the only reason depth is
+     * affordable at all.
+     */
+    private Mono<List<Map<String, Object>>> fillRelatedObjects(
+            String appCode,
+            String clientCode,
+            Storage storage,
+            List<Map<String, Object>> rows,
+            IAppDataService dataService,
+            Connection conn,
+            Map<String, Map<String, Object>> tree,
+            int depth) {
+
+        if (rows == null || rows.isEmpty()) return Mono.just(rows == null ? List.of() : rows);
+
+        if (storage.getRelations() == null || storage.getRelations().isEmpty() || tree == null || tree.isEmpty())
+            return Mono.just(rows);
+
+        // Relations can point at each other - a book's author's latest book - so a
+        // path deep enough to loop has to stop somewhere. It stops rather than
+        // erroring: the caller asked for too much expansion, not for a failure, and
+        // the rows they get back are correct to the depth they were given.
+        if (depth >= MAX_EAGER_DEPTH) return Mono.just(rows);
+
+        List<String> fields =
+                tree.keySet().stream().filter(f -> storage.getRelations().containsKey(f)).toList();
+
+        if (fields.isEmpty()) return Mono.just(rows);
+
+        return Flux.fromIterable(fields)
+                .concatMap(field -> this.relatedObjectsFor(appCode, clientCode, storage, rows, dataService, conn,
+                                field)
+                        .flatMap(fetched -> {
+                            applyRelated(rows, fetched.field(), fetched.type(), fetched.byId());
+
+                            Map<String, Object> nested = tree.get(field);
+                            if (nested == null || nested.isEmpty() || fetched.byId().isEmpty())
+                                return Mono.just(Boolean.TRUE);
+
+                            return this.fillRelatedObjects(
+                                            appCode,
+                                            clientCode,
+                                            fetched.target(),
+                                            List.copyOf(fetched.byId().values()),
+                                            dataService,
+                                            conn,
+                                            (Map<String, Map<String, Object>>) (Map<String, ?>) nested,
+                                            depth + 1)
+                                    .thenReturn(Boolean.TRUE);
+                        }))
+                .then(Mono.just(rows))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.fillRelatedObjects"));
+    }
+
+    /**
+     * Turn {@code ["category.parent", "category.owner", "author"]} into a tree.
+     *
+     * Paths rather than a nested request object because eagerFields is already a
+     * flat list of strings on every caller and every KIRun signature, and a dotted
+     * path extends that without changing any of them. Siblings merge, so naming
+     * {@code category.parent} and {@code category.owner} expands category once.
+     */
+    static Map<String, Map<String, Object>> eagerTree(List<String> eagerFields) {
+
+        Map<String, Map<String, Object>> root = new java.util.LinkedHashMap<>();
+        if (eagerFields == null) return root;
+
+        for (String path : eagerFields) {
+            if (path == null || path.isBlank()) continue;
+
+            Map<String, Map<String, Object>> level = root;
+            for (String segment : path.split("\\.")) {
+                String name = segment.trim();
+                if (name.isEmpty()) break;
+                level = (Map<String, Map<String, Object>>) (Map<String, ?>)
+                        level.computeIfAbsent(name, k -> new java.util.LinkedHashMap<>());
             }
-            query.setCondition(new FilterCondition()
-                    .setField("_id")
-                    .setOperator(FilterConditionOperator.IN)
-                    .setMultiValue(value));
-            relationList.add(FlatMapUtil.flatMapMono(
-                    () -> this.getStorageForRelation(relation.getStorageName(), appCode, clientCode)
-                            .map(ObjectWithUniqueID::getObject),
-                    storageObj -> dataService
-                            .readPageAsFlux(clientCode, conn, storageObj, query)
-                            .collectList()
-                            .map(e -> Tuples.of(key, relation.getRelationType(), e)))
-                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.prepareMonosForPage")));
         }
-        return relationList;
+
+        return root;
+    }
+
+    /** One relation's objects, by id, with the storage they came from. */
+    private record RelatedFetch(
+            String field,
+            StorageRelationType type,
+            Map<String, Map<String, Object>> byId,
+            Storage target) {}
+
+    /** Every object the page references through one relation, by id. */
+    private Mono<RelatedFetch> relatedObjectsFor(
+            String appCode,
+            String clientCode,
+            Storage storage,
+            List<Map<String, Object>> rows,
+            IAppDataService dataService,
+            Connection conn,
+            String field) {
+
+        StorageRelation relation = storage.getRelations().get(field);
+
+        Set<String> ids = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> row : rows) collectIds(row.get(field), ids);
+
+        if (ids.isEmpty())
+            return this.getStorageForRelation(relation.getStorageName(), appCode, clientCode)
+                    .map(ObjectWithUniqueID::getObject)
+                    .map(target -> new RelatedFetch(field, relation.getRelationType(), Map.of(), target))
+                    .defaultIfEmpty(new RelatedFetch(field, relation.getRelationType(), Map.of(), null));
+
+        Query query = new Query();
+        // Exactly as many as are referenced. A lookup by id cannot return more.
+        query.setSize(ids.size());
+        query.setCondition(new FilterCondition()
+                .setField("_id")
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(List.copyOf(ids)));
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getStorageForRelation(relation.getStorageName(), appCode, clientCode)
+                                .map(ObjectWithUniqueID::getObject),
+                        target -> this.<List<Map<String, Object>>>genericOperation(
+                                target,
+                                (ca, hasAccess) -> dataService
+                                        .readPageAsFlux(clientCode, conn, target, query)
+                                        .collectList(),
+                                Storage::getReadAuth,
+                                CoreMessageResourceService.FORBIDDEN_READ_STORAGE),
+                        (target, objects) -> {
+                            Map<String, Map<String, Object>> byId = new java.util.LinkedHashMap<>();
+                            for (Map<String, Object> o : objects) {
+                                Object id = o.get("_id");
+                                if (id != null) byId.put(id.toString(), o);
+                            }
+                            return Mono.just(new RelatedFetch(field, relation.getRelationType(), byId, target));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.relatedObjectsFor"));
+    }
+
+    private static void collectIds(Object value, Set<String> into) {
+
+        if (value instanceof List<?> list) {
+            for (Object o : list) if (o != null) into.add(o.toString());
+            return;
+        }
+
+        if (value != null) into.add(value.toString());
+    }
+
+    /**
+     * Put the fetched objects back, each row in the order that row declared.
+     *
+     * Order is a property of the row, not of the fetch, which is why it is applied
+     * here rather than by sorting the result set. The previous version sorted the
+     * fetched list by its position in one row's id list - correct for a single row,
+     * and meaningless once the same fetch serves a page, which is how an ordinary
+     * five-element relation came back shuffled.
+     *
+     * An id with no object is dropped rather than left as a bare id: the field is
+     * either expanded or it is not, and a list holding both shapes is worse than
+     * one missing an element that no longer exists.
+     */
+    @SuppressWarnings("unchecked")
+    private static void applyRelated(
+            List<Map<String, Object>> rows,
+            String field,
+            StorageRelationType type,
+            Map<String, Map<String, Object>> byId) {
+
+        for (Map<String, Object> row : rows) {
+            Object value = row.get(field);
+            if (value == null) continue;
+
+            if (type == StorageRelationType.TO_MANY) {
+                List<Object> declared = value instanceof List<?> list ? (List<Object>) list : List.of(value);
+                row.put(
+                        field,
+                        declared.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .map(id -> byId.get(id.toString()))
+                                .filter(java.util.Objects::nonNull)
+                                .toList());
+                continue;
+            }
+
+            Map<String, Object> object = byId.get(value.toString());
+            if (object == null) row.remove(field);
+            else row.put(field, object);
+        }
     }
 
     private Mono<Map<String, Object>> generateEvent(
@@ -752,7 +1186,11 @@ public class AppDataService {
             return Mono.just(dataObject);
 
         return FlatMapUtil.flatMapMono(
-                () -> Flux.fromIterable(relationList).flatMap(e -> e).collectList(), list -> {
+                // concatMap, not flatMap. The ids are written back to the row in the
+                // order they arrive, so interleaving them shuffles the stored array -
+                // and the order of a TO_MANY is the author's data, not an accident of
+                // how fast each related object happened to be created.
+                () -> Flux.fromIterable(relationList).concatMap(e -> e).collectList(), list -> {
                     List<RelationDataObject> errorObjects = list.stream()
                             .filter(e -> !Objects.isNull(e.getException()))
                             .toList();
@@ -1022,7 +1460,7 @@ public class AppDataService {
         return FlatMapUtil.flatMapMono(
                 () -> this.read(
                         appCode, clientCode, storage.getName(), dob.get("_id").toString(), false, List.of()),
-                existing -> Flux.fromIterable(relationList).flatMap(e -> e).collectList(),
+                existing -> Flux.fromIterable(relationList).concatMap(e -> e).collectList(),
                 (existing, list) -> {
                     List<RelationDataObject> errorObjects = list.stream()
                             .filter(e -> !Objects.isNull(e.getException()))
@@ -1042,6 +1480,16 @@ public class AppDataService {
 
                         StorageRelation relation = storage.getRelations().get(e.getKey());
 
+                        // NOT the SQL ON UPDATE, and deliberately left as it is.
+                        // SQL fires ON UPDATE when the REFERENCED key changes, and
+                        // the referenced key here is _id: a ULID assigned at insert
+                        // that nothing rewrites, so a real ON UPDATE clause can
+                        // never fire on either backend. What this does instead is
+                        // delete the row that an override update just detached,
+                        // which is an ownership operation no database can do for us
+                        // and is genuinely useful. The name is the problem rather
+                        // than the behaviour; every relation in the fleet declares
+                        // NOTHING, so nothing depends on it yet either way.
                         if (relation.getUpdateConstraint() == StorageRelationConstraint.CASCADE) {
                             if (!override)
                                 continue;
@@ -1211,20 +1659,16 @@ public class AppDataService {
                     if (storage.getRelations() == null || storage.getRelations().isEmpty())
                         return Mono.just(page);
 
-                    return FlatMapUtil.flatMapMono(
-                            () -> Flux.fromIterable(page.getContent())
-                                    .flatMap(e -> this.fillRelatedObjects(
-                                            ac,
-                                            cc,
-                                            storage,
-                                            e,
-                                            dataService,
-                                            conn,
-                                            this.resolveEagerFields(
-                                                    storage, query.getEager(), query.getEagerFields())))
-                                    .collectList(),
-                            list -> Mono.just(
-                                    PageableExecutionUtils.getPage(list, page.getPageable(), page::getTotalElements)));
+                    return this.fillRelatedObjects(
+                                    ac,
+                                    cc,
+                                    storage,
+                                    page.getContent(),
+                                    dataService,
+                                    conn,
+                                    this.resolveEagerFields(storage, query.getEager(), query.getEagerFields()))
+                            .map(list -> PageableExecutionUtils.getPage(
+                                    list, page.getPageable(), page::getTotalElements));
                 });
 
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.readPage"));
@@ -1329,6 +1773,25 @@ public class AppDataService {
         return mono.contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteByFilter"));
     }
 
+    /**
+     * Enforce the delete constraints that point AT this row, before it goes.
+     *
+     * The direction is the one SQL uses, and it is the opposite of what this method
+     * used to do. A constraint is declared on the relation that holds the reference -
+     * {@code blogs.category -> blogCategories} - and it protects the REFERENCED row:
+     * deleting a category is what RESTRICT refuses and what CASCADE propagates from.
+     * Written the other way round, deleting a blog would have deleted its category,
+     * which is not what either word means to anyone who has used a database and is
+     * not something a foreign key could ever express.
+     *
+     * Nothing in the fleet moves as a result. Every relation that exists declares
+     * NOTHING, so the first storage to mean either word gets the meaning it expects
+     * rather than inheriting one from before.
+     *
+     * The relation is found by looking backwards, because the referencing side is the
+     * only side that declares it; {@code storagesReferencing} is cached per app for
+     * exactly that reason.
+     */
     private Mono<Boolean> deleteRelatedObjects(
             String appCode,
             String clientCode,
@@ -1337,100 +1800,227 @@ public class AppDataService {
             Storage storage,
             String id,
             Boolean deleteVersion) {
-        if (storage.getRelations() == null || storage.getRelations().isEmpty())
-            return Mono.just(true);
 
-        return FlatMapUtil.flatMapMono(
-                () -> this.read(appCode, clientCode, storage.getName(), id, false, null),
-                obj -> {
-                    List<Mono<Tuple3<Boolean, String, String>>> restrictList = new ArrayList<>();
-
-                    for (Entry<String, StorageRelation> relation : storage.getRelations().entrySet()) {
-                        if (relation.getValue().getDeleteConstraint() == StorageRelationConstraint.NOTHING
-                                || relation.getValue().getDeleteConstraint() == StorageRelationConstraint.CASCADE
-                                || obj.get(relation.getKey()) == null)
-                            continue;
-
-                        if (obj.get(relation.getKey()) instanceof List lst) {
-                            for (Object o : lst)
-                                restrictList.add(this.storageService
-                                        .read(relation.getValue().getStorageName(), appCode, clientCode)
-                                        .map(ObjectWithUniqueID::getObject)
-                                        .flatMap(inStorage -> dataService.checkIfExists(clientCode, conn, inStorage,
-                                                o.toString()))
-                                        .map(s -> Tuples.of(
-                                                s, relation.getValue().getStorageName(), o.toString())));
-                        } else {
-                            restrictList.add(this.storageService
-                                    .read(relation.getValue().getStorageName(), appCode, clientCode)
-                                    .map(ObjectWithUniqueID::getObject)
-                                    .flatMap(inStorage -> dataService
-                                            .checkIfExists(
-                                                    clientCode,
-                                                    conn,
-                                                    inStorage,
-                                                    obj.get(relation.getKey())
-                                                            .toString())
-                                            .map(s -> Tuples.of(
-                                                    s,
-                                                    relation.getValue().getStorageName(),
-                                                    obj.get(relation.getKey())
-                                                            .toString()))));
-                        }
-                    }
-
-                    return Flux.fromIterable(restrictList)
-                            .flatMap(e -> e)
-                            .collectList()
-                            .flatMap(lst -> {
-                                List<Tuple3<Boolean, String, String>> errorList = lst.stream()
-                                        .filter(Tuple2::getT1)
-                                        .toList();
-
-                                if (errorList.isEmpty())
-                                    return Mono.just(true);
-
-                                return this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        CoreMessageResourceService.CANNOT_DELETE_STORAGE_WITH_RESTRICT,
-                                        errorList.stream()
-                                                .map(e -> e.getT2() + ":" + e.getT3())
-                                                .toList());
-                            });
-                },
-                (obj, restrict) -> {
-                    List<Mono<Boolean>> deleteList = new ArrayList<>();
-
-                    for (Entry<String, StorageRelation> relation : storage.getRelations().entrySet()) {
-                        if (relation.getValue().getDeleteConstraint() != StorageRelationConstraint.CASCADE
-                                || obj.get(relation.getKey()) == null)
-                            continue;
-
-                        if (obj.get(relation.getKey()) instanceof List lst) {
-                            for (Object o : lst)
-                                deleteList.add(this.delete(
-                                        appCode,
-                                        clientCode,
-                                        relation.getValue().getStorageName(),
-                                        o.toString(),
-                                        deleteVersion));
-                        } else {
-                            deleteList.add(this.delete(
-                                    appCode,
-                                    clientCode,
-                                    relation.getValue().getStorageName(),
-                                    obj.get(relation.getKey()).toString(),
-                                    deleteVersion));
-                        }
-                    }
-
-                    return Flux.fromIterable(deleteList)
-                            .flatMap(e -> e)
-                            .collectList()
-                            .map(e -> true);
-                })
+        return this.storageService
+                .storagesReferencing(appCode, storage.getName())
+                .flatMap(names -> names.isEmpty()
+                        ? Mono.just(Boolean.TRUE)
+                        : this.enforceReferencingConstraints(
+                                appCode, clientCode, dataService, conn, storage, names, id, deleteVersion))
+                .defaultIfEmpty(Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.deleteRelatedObjects"));
     }
+
+    private Mono<Boolean> enforceReferencingConstraints(
+            String appCode,
+            String clientCode,
+            IAppDataService dataService,
+            Connection conn,
+            Storage storage,
+            List<String> referencing,
+            String id,
+            Boolean deleteVersion) {
+
+        return Flux.fromIterable(referencing)
+                // A name the index carries that this client does not resolve comes
+                // back EMPTY and is skipped by concatMap on its own. Errors are
+                // deliberately NOT swallowed here: a constraint that quietly stops
+                // running because Mongo hiccuped is a constraint that is not a
+                // constraint, and the caller would see the delete succeed.
+                .concatMap(name ->
+                        this.storageService.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject))
+                .flatMapIterable(child -> declaredRelations(child, storage.getName()))
+                // Asked of the backend, per relation, and asked about the TABLE
+                // rather than the definition. A relation that could be a foreign key
+                // but has none - because orphan rows blocked the ADD CONSTRAINT, or
+                // because the target stopped resolving - comes back false here and
+                // the service enforces it after all. Answered from the definition
+                // alone, this is where a constraint quietly became nobody's job.
+                .filterWhen(r -> dataService
+                        .enforcesRelationConstraint(clientCode, conn, r.child(), r.field(), r.relation())
+                        .map(enforced -> !enforced))
+                .collectList()
+                .flatMap(all -> this.applyConstraints(appCode, clientCode, dataService, conn, all, id, deleteVersion));
+    }
+
+    /**
+     * Every relation pointing at this storage that asks for something on delete.
+     *
+     * Only the declaration is read here; who carries it out is decided one step
+     * later, because that question needs the database and this one does not. A
+     * relation declaring NOTHING is dropped now so the backend is never asked about
+     * it - which, for every relation in the fleet as it stands, means never asked at
+     * all.
+     */
+    private static List<ReferencingRelation> declaredRelations(Storage child, String targetStorageName) {
+
+        List<ReferencingRelation> out = new ArrayList<>();
+        if (child.getRelations() == null) return out;
+
+        child.getRelations().forEach((field, relation) -> {
+            if (relation == null || !targetStorageName.equals(relation.getStorageName())) return;
+
+            StorageRelationConstraint constraint = relation.getDeleteConstraint();
+            if (constraint == null || constraint == StorageRelationConstraint.NOTHING) return;
+
+            out.add(new ReferencingRelation(child, field, relation));
+        });
+
+        return out;
+    }
+
+    /**
+     * Every RESTRICT is counted before any CASCADE deletes anything.
+     *
+     * Two passes rather than one loop, because a cascade that has already removed
+     * half a storage cannot be undone when the next relation turns out to refuse the
+     * delete. The counts are also reported together, so an author fixing this is told
+     * about all of the blocking storages instead of one per attempt.
+     */
+    private Mono<Boolean> applyConstraints(
+            String appCode,
+            String clientCode,
+            IAppDataService dataService,
+            Connection conn,
+            List<ReferencingRelation> relations,
+            String id,
+            Boolean deleteVersion) {
+
+        if (relations.isEmpty()) return Mono.just(Boolean.TRUE);
+
+        List<ReferencingRelation> restrict = relations.stream()
+                .filter(r -> r.constraint() == StorageRelationConstraint.RESTRICT)
+                .toList();
+
+        List<ReferencingRelation> cascade = relations.stream()
+                .filter(r -> r.constraint() == StorageRelationConstraint.CASCADE)
+                .toList();
+
+        return Flux.fromIterable(restrict)
+                .concatMap(r -> dataService
+                        .countReferencing(clientCode, conn, r.child(), r.field(), r.many(), id)
+                        .map(count -> Tuples.of(r.child().getName() + "." + r.field(), count)))
+                .filter(t -> t.getT2() > 0)
+                .collectList()
+                .flatMap(blocking -> {
+                    if (!blocking.isEmpty())
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                CoreMessageResourceService.CANNOT_DELETE_STORAGE_WITH_RESTRICT,
+                                blocking.stream()
+                                        .map(t -> t.getT1() + " (" + t.getT2() + ")")
+                                        .toList());
+
+                    // Every cascade target is checked for permission BEFORE any of
+                    // them loses a row. Checked only as each delete ran - which is
+                    // what happens inside delete() - a caller who may remove orders
+                    // but not invoices would take the orders out and then be
+                    // refused, leaving a half-cascaded parent that is now harder to
+                    // reason about than either outcome.
+                    //
+                    // The database path cannot ask this question at all: ON DELETE
+                    // CASCADE has no caller. That difference is real and documented
+                    // rather than papered over, which is also why a cascade whose
+                    // child owes triggers or versions stays here in the first place.
+                    return this.cascadesAllowed(cascade)
+                            .flatMap(allowed -> Flux.fromIterable(cascade)
+                                    .concatMap(r -> this.cascadeDelete(
+                                            appCode, clientCode, dataService, conn, r, id, deleteVersion))
+                                    .then(Mono.just(Boolean.TRUE)));
+                });
+    }
+
+    /**
+     * Delete the referencing rows in batches, through the ordinary delete.
+     *
+     * Through {@link #delete} and not straight at the backend, so a cascaded row gets
+     * its own triggers, its own event, its own version row and its own constraints -
+     * a chain of cascades is the normal case, not an exotic one. The depth guard is
+     * there because a pair of storages can point at each other, and two CASCADEs
+     * facing each other would otherwise walk until the stack gave out.
+     */
+    private Mono<Boolean> cascadeDelete(
+            String appCode,
+            String clientCode,
+            IAppDataService dataService,
+            Connection conn,
+            ReferencingRelation r,
+            String id,
+            Boolean deleteVersion) {
+
+        return Mono.deferContextual(ctx -> {
+            int depth = ctx.getOrDefault(CASCADE_DEPTH, 0);
+
+            if (depth >= MAX_CASCADE_DEPTH)
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        CoreMessageResourceService.CANNOT_DELETE_STORAGE_WITH_RESTRICT,
+                        List.of(r.child().getName() + "." + r.field() + " (cascade deeper than "
+                                + MAX_CASCADE_DEPTH + ", the relations point at each other)"));
+
+            return dataService
+                    .idsReferencing(clientCode, conn, r.child(), r.field(), r.many(), id, CASCADE_BATCH)
+                    .flatMap(ids -> ids.isEmpty()
+                            ? Mono.just(Boolean.TRUE)
+                            : Flux.fromIterable(ids)
+                                    .concatMap(childId -> this.delete(
+                                            appCode, clientCode, r.child().getName(), childId, deleteVersion))
+                                    .then()
+                                    // Around the child deletes ONLY. Wrapped around
+                                    // the next batch as well, the depth would count
+                                    // batches rather than nesting, and a cascade over
+                                    // more than eight batches of children would abort
+                                    // claiming the relations point at each other.
+                                    .contextWrite(c -> c.put(CASCADE_DEPTH, depth + 1))
+                                    .then(ids.size() < CASCADE_BATCH
+                                            ? Mono.just(Boolean.TRUE)
+                                            : Mono.defer(() -> this.cascadeDelete(
+                                                    appCode, clientCode, dataService, conn, r, id, deleteVersion))));
+        });
+    }
+
+    /**
+     * Whether the caller may delete from every storage a cascade would reach.
+     *
+     * One pass over the distinct child storages rather than one per row, because
+     * the answer cannot change between rows of the same storage.
+     */
+    private Mono<Boolean> cascadesAllowed(List<ReferencingRelation> cascade) {
+
+        if (cascade.isEmpty()) return Mono.just(Boolean.TRUE);
+
+        Map<String, Storage> byName = new java.util.LinkedHashMap<>();
+        for (ReferencingRelation r : cascade) byName.putIfAbsent(r.child().getName(), r.child());
+
+        return SecurityContextUtil.getUsersContextAuthentication().flatMap(ca -> {
+            List<String> refused = byName.values().stream()
+                    .filter(child -> !SecurityContextUtil.hasAuthority(
+                            child.getDeleteAuth(), ca.getUser().getAuthorities()))
+                    .map(Storage::getName)
+                    .toList();
+
+            if (refused.isEmpty()) return Mono.just(Boolean.TRUE);
+
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    CoreMessageResourceService.FORBIDDEN_DELETE_STORAGE,
+                    String.join(", ", refused));
+        });
+    }
+
+    /** One relation that points at the row being deleted, and what it asks for. */
+    private record ReferencingRelation(Storage child, String field, StorageRelation relation) {
+
+        /** A JSON array on MySQL and a real array on Mongo; either way, not a scalar. */
+        boolean many() {
+            return this.relation.getRelationType() == StorageRelationType.TO_MANY;
+        }
+
+        StorageRelationConstraint constraint() {
+            return this.relation.getDeleteConstraint();
+        }
+    }
+
 
     private Mono<Tuple2<Boolean, Optional<Map<String, Object>>>> deleteWithTriggers(
             String appCode,

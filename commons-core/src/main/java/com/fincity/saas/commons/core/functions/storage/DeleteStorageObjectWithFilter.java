@@ -101,7 +101,7 @@ public class DeleteStorageObjectWithFilter extends AbstractReactiveFunction {
 
         AbstractCondition condition = filter.isEmpty()
                 ? null
-                : this.mapper.convertValue(gson.fromJson(filter, Map.class), AbstractCondition.class);
+                : this.mapper.convertValue(StorageJson.toMap(filter), AbstractCondition.class);
 
         Query dsq = new Query().setExcludeFields(false).setFields(List.of()).setCondition(condition);
 

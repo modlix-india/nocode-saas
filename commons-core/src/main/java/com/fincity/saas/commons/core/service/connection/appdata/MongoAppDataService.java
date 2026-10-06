@@ -8,16 +8,12 @@ import static com.fincity.saas.commons.model.condition.FilterConditionOperator.I
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSchemaValidator;
-import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.nocode.kirun.engine.repository.reactive.KIRunReactiveSchemaRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.document.Storage.StorageIndex;
 import com.fincity.saas.commons.core.exception.StorageObjectNotFoundException;
-import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
@@ -159,12 +155,15 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             FilterConditionOperator.STRING_LOOSE_EQUAL,
             "$regex");
     private final Map<String, MongoClient> mongoClients = new HashMap<>();
+    private final StorageWriteValidator writeValidator;
+
     private final StorageService storageService;
     private final CoreSchemaService schemaService;
     private final CacheService cacheService;
     private final MongoClient defaultClient;
     private final CoreMessageResourceService msgService;
     private final Gson gson;
+    private final VersionRetentionDefaults retentionDefaults;
 
     @Autowired(required = false) // NOSONAR
     @Qualifier("subRedisAsyncCommand")
@@ -182,13 +181,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             CacheService cacheService,
             CoreMessageResourceService msgService,
             Gson gson,
-            MongoClient defaultClient) {
+            StorageWriteValidator writeValidator,
+            MongoClient defaultClient,
+            VersionRetentionDefaults retentionDefaults) {
+        this.writeValidator = writeValidator;
         this.storageService = storageService;
         this.schemaService = schemaService;
         this.cacheService = cacheService;
         this.msgService = msgService;
         this.gson = gson;
         this.defaultClient = defaultClient;
+        this.retentionDefaults = retentionDefaults;
     }
 
     @PostConstruct
@@ -240,11 +243,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         (ca, collection, schema, appSchemaRepo) ->
                                 this.handleRelationsAndValidate(dataObject.getData(), storage, schema, appSchemaRepo),
                         (ca, collection, schema, appSchemaRepo, je) -> {
-                            Document document = BJsonUtil.from(
-                                    storage.getRelations() != null
-                                            ? storage.getRelations().keySet()
-                                            : Set.of(),
-                                    je);
+                            Document document = MongoValueCodec.encode(
+                                    BJsonUtil.from(
+                                            storage.getRelations() != null
+                                                    ? storage.getRelations().keySet()
+                                                    : Set.of(),
+                                            je),
+                                    storage.getColumnDefinitions());
 
                             if (givenId != null) document.append(ID, givenId);
 
@@ -369,11 +374,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         (ca, collection, schema, appSchemaRepo, overridableObject, je) ->
                                 Mono.from(collection.replaceOne(
                                         Filters.eq(ID, objectId),
-                                        BJsonUtil.from(
-                                                storage.getRelations() != null
-                                                        ? storage.getRelations().keySet()
-                                                        : Set.of(),
-                                                je))),
+                                        MongoValueCodec.encode(
+                                                BJsonUtil.from(
+                                                        storage.getRelations() != null
+                                                                ? storage.getRelations().keySet()
+                                                                : Set.of(),
+                                                        je),
+                                                storage.getColumnDefinitions()))),
                         (ca, collection, schema, appSchemaRepo, overridableObject, je, result) -> Mono.from(collection
                                         .find(Filters.eq(ID, objectId))
                                         .first())
@@ -392,25 +399,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Mono<JsonObject> handleRelationsAndValidate(
             Map<String, Object> objectMap, Storage storage, Schema schema, ReactiveRepository<Schema> appSchemaRepo) {
-        JsonObject job = this.gson.toJsonTree(objectMap).getAsJsonObject();
-
-        Map<String, JsonElement> relations = new HashMap<>();
-        if (storage.getRelations() != null && !storage.getRelations().isEmpty())
-            storage.getRelations().forEach((key, relation) -> {
-                if (job.has(key)) relations.put(key, job.remove(key));
-            });
-
-        return ReactiveSchemaValidator.validate(
-                        null,
-                        schema,
-                        new ReactiveHybridRepository<>(
-                                new KIRunReactiveSchemaRepository(), new CoreSchemaRepository(), appSchemaRepo),
-                        job)
-                .map(JsonElement::getAsJsonObject)
-                .map(validatedJsonObject -> {
-                    relations.forEach(validatedJsonObject::add);
-                    return validatedJsonObject;
-                });
+        return this.writeValidator.validate(objectMap, storage, schema, appSchemaRepo);
     }
 
     private Mono<InsertOneResult> addVersion(
@@ -445,7 +434,60 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         storage.getAppCode(),
                         storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
                         storage.getUniqueName())
-                .flatMap(collection -> Mono.from(collection.insertOne(versionDocument)));
+                // Keep the InsertOneResult the caller expects: the trim runs after the
+                // insert but must not change what this method returns.
+                .flatMap(collection -> Mono.from(collection.insertOne(versionDocument))
+                        .flatMap(inserted ->
+                                this.trimVersions(collection, storage, objectId).thenReturn(inserted)));
+    }
+
+    /**
+     * Keep one row's history inside its retention policy.
+     *
+     * The same policy and the same two bounds as the MySQL backend - the two
+     * disagreeing about how long history survives would be a difference nobody
+     * discovers until they go looking for a version that is not there.
+     *
+     * Trimmed per OBJECT, so each statement touches only the history of the row
+     * just written rather than sweeping the collection. The count bound reads the
+     * timestamp of the Nth newest and deletes everything strictly older, so rows
+     * sharing that exact millisecond survive: a burst inside one millisecond can
+     * leave slightly more than N, which is the right way to be wrong.
+     *
+     * Failures are swallowed on purpose. Trimming is housekeeping; failing the
+     * caller's write over it would turn a good write into an error they cannot act
+     * on.
+     */
+    private Mono<Boolean> trimVersions(
+            MongoCollection<Document> versions, Storage storage, Object objectId) {
+
+        VersionRetention retention = this.retentionDefaults.forStorage(storage);
+
+        if (retention.keepsEverything() || objectId == null) return Mono.just(Boolean.TRUE);
+
+        Mono<Boolean> byAge = !retention.trimsByAge()
+                ? Mono.just(Boolean.TRUE)
+                : Mono.from(versions.deleteMany(Filters.and(
+                                Filters.eq(OBJECT_ID, objectId),
+                                Filters.lt(CREATED_AT, new BsonDateTime(retention.cutoffEpochMillis())))))
+                        .thenReturn(Boolean.TRUE)
+                        .defaultIfEmpty(Boolean.TRUE);
+
+        Mono<Boolean> byCount = !retention.trimsByCount()
+                ? Mono.just(Boolean.TRUE)
+                : Mono.from(versions.find(Filters.eq(OBJECT_ID, objectId))
+                                .sort(Sorts.descending(CREATED_AT))
+                                .skip(retention.count() - 1)
+                                .limit(1))
+                        .flatMap(oldestKept -> Mono.from(versions.deleteMany(Filters.and(
+                                        Filters.eq(OBJECT_ID, objectId),
+                                        Filters.lt(CREATED_AT, oldestKept.get(CREATED_AT)))))
+                                .thenReturn(Boolean.TRUE))
+                        .defaultIfEmpty(Boolean.TRUE);
+
+        return byAge.then(byCount)
+                .onErrorResume(e -> Mono.just(Boolean.TRUE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.trimVersions"));
     }
 
     @Override
@@ -466,6 +508,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Mono<Page<Map<String, Object>>> readPage(String clientCode, Connection conn, Storage storage, Query query) {
+        Mono<Page<Map<String, Object>>> refused = this.refuseIfUnsupported(query);
+        if (refused != null) return refused;
+
         Pageable page = query.getPageable();
         AbstractCondition condition = query.getCondition();
         Boolean count = query.getCount();
@@ -486,6 +531,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     @Override
     public Flux<Map<String, Object>> readPageAsFlux(String clientCode, Connection conn, Storage storage, Query query) {
+        Mono<Map<String, Object>> refused = this.refuseIfUnsupported(query);
+        if (refused != null) return refused.flux();
+
         Pageable page = query.getPageable();
         AbstractCondition condition = query.getCondition();
 
@@ -498,7 +546,6 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private static final String GROUP_ID = "_id";
 
-    private static final Pattern ALIAS_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
     /**
      * Epoch SECONDS for any plausible date sit near 1e9; milliseconds near 1e12.
@@ -507,9 +554,46 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
      */
     private static final long EPOCH_SECONDS_SANITY_CEILING = 100_000_000_000L;
 
+    /**
+     * A join is the one thing this backend cannot do at all.
+     *
+     * An aggregation pipeline sees one collection, and a find sees one collection.
+     * Ignoring the joins and answering anyway would be the worst outcome available:
+     * a filter on the other side would simply not be applied, so the caller gets MORE
+     * rows than they asked for and nothing says so.
+     */
+    private <T> Mono<T> refuseJoins() {
+        return this.refuse("joins");
+    }
+
+    private <T> Mono<T> refuse(String what) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.NOT_IMPLEMENTED, msg),
+                CoreMessageResourceService.UNSUPPORTED_ON_BACKEND,
+                what,
+                "Mongo");
+    }
+
+    /**
+     * Joins and subqueries both reach a second collection, which a pipeline cannot.
+     *
+     * Ignoring either and answering anyway is the worst outcome available: a filter
+     * on the other side simply would not be applied, so the caller gets MORE rows
+     * than they asked for and nothing says so.
+     */
+    private <T> Mono<T> refuseIfUnsupported(Query query) {
+        if (query.getJoins() != null && !query.getJoins().isEmpty()) return this.refuse("joins");
+        if (query.getSubQueries() != null && !query.getSubQueries().isEmpty()) return this.refuse("subqueries");
+        return null;
+    }
+
     @Override
     public Mono<Page<Map<String, Object>>> aggregate(
             String clientCode, Connection conn, Storage storage, AggregateQuery query) {
+
+        if (query.getJoins() != null && !query.getJoins().isEmpty()) return this.refuse("joins");
+        if (query.getSubQueries() != null && !query.getSubQueries().isEmpty())
+            return this.refuse("subqueries");
 
         Pageable page = query.getPageable();
 
@@ -714,83 +798,24 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     private Mono<Boolean> validateAggregate(
             Storage storage, MongoCollection<Document> collection, AggregateQuery query) {
 
-        if (query.getAggregations() == null || query.getAggregations().isEmpty())
-            return this.invalidAggregation("at least one aggregation is required");
+        // The shape, alias and field-name rules are shared with the MySQL backend.
+        // Two backends checking that separately is how one of them ends up slightly
+        // more permissive than the other, and this is the step that stands between a
+        // caller and an arbitrary field path.
+        String shared = AggregateQueryValidator.check(query);
+        if (shared != null) return this.invalidAggregation(shared);
 
-        if (query.getHaving() instanceof HavingCondition)
-            return this.invalidAggregation(
-                    "having must be a plain condition over the aliases; HavingCondition carries its own"
-                            + " aggregate and is not supported here");
-
-        Set<String> aliases = new LinkedHashSet<>();
-
-        if (query.getGroupBy() != null) {
-            for (GroupByField g : query.getGroupBy()) {
-                String err = this.checkGroupBy(g, aliases);
-                if (err != null) return this.invalidAggregation(err);
-            }
-        }
-
-        for (Aggregation a : query.getAggregations()) {
-            String err = this.checkAggregation(a, aliases);
-            if (err != null) return this.invalidAggregation(err);
-        }
-
-        if (query.getSort() != null) {
-            for (Sort.Order o : query.getSort()) {
-                if (!aliases.contains(o.getProperty()))
-                    return this.invalidAggregation("cannot sort on '" + o.getProperty()
-                            + "'; sort is only possible on a group key or measure alias " + aliases);
-            }
-        }
+        // Mongo-only, and the reason it is not shared: app data dates here are plain
+        // numbers, so bucketing cannot work without being told the encoding. On a
+        // relational backend a date column is a date and the question does not arise.
+        if (query.getGroupBy() != null)
+            for (GroupByField g : query.getGroupBy())
+                if (g.getBucket() != null && g.getEncoding() == null)
+                    return this.invalidAggregation("field '" + g.getField() + "' is bucketed by " + g.getBucket()
+                            + " so it needs an encoding (EPOCH_SECONDS or EPOCH_MILLIS); dates are stored as"
+                            + " numbers and seconds cannot be told from milliseconds");
 
         return this.validateFieldsAgainstSchema(storage, query).then(this.sanityCheckBuckets(collection, query));
-    }
-
-    private String checkGroupBy(GroupByField g, Set<String> aliases) {
-        if (g.getField() == null || g.getField().isBlank()) return "a groupBy entry has no field";
-        if (g.getField().indexOf('$') >= 0) return "field '" + g.getField() + "' may not contain '$'";
-
-        String alias = g.resolvedAlias();
-        if (!ALIAS_PATTERN.matcher(alias).matches())
-            return "alias '" + alias + "' must match " + ALIAS_PATTERN.pattern();
-        if (!aliases.add(alias)) return "duplicate alias '" + alias + "'";
-
-        if (g.getBucket() == null) {
-            if (g.getEncoding() != null)
-                return "encoding is only meaningful with a bucket, on field '" + g.getField() + "'";
-            return null;
-        }
-
-        if (g.getEncoding() == null)
-            return "field '" + g.getField() + "' is bucketed by " + g.getBucket()
-                    + " so it needs an encoding (EPOCH_SECONDS or EPOCH_MILLIS); dates are stored as"
-                    + " numbers and seconds cannot be told from milliseconds";
-
-        try {
-            ZoneId.of(g.resolvedTimezone());
-        } catch (DateTimeException e) {
-            return "'" + g.getTimezone() + "' is not a known IANA timezone";
-        }
-
-        return null;
-    }
-
-    private String checkAggregation(Aggregation a, Set<String> aliases) {
-        if (a.getFunction() == null) return "an aggregation has no function";
-
-        if (a.getFunction() != AggregateFunction.COUNT && (a.getField() == null || a.getField().isBlank()))
-            return a.getFunction() + " needs a field";
-
-        if (a.getField() != null && a.getField().indexOf('$') >= 0)
-            return "field '" + a.getField() + "' may not contain '$'";
-
-        String alias = a.resolvedAlias();
-        if (alias == null || !ALIAS_PATTERN.matcher(alias).matches())
-            return "alias '" + alias + "' must match " + ALIAS_PATTERN.pattern();
-        if (!aliases.add(alias)) return "duplicate alias '" + alias + "'";
-
-        return null;
     }
 
     /**
@@ -915,6 +940,9 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
     @Override
     public Mono<Long> deleteByFilter(
             String clientCode, Connection conn, Storage storage, Query query, Boolean devMode, Boolean deleteVersion) {
+        Mono<Long> refused = this.refuseIfUnsupported(query);
+        if (refused != null) return refused;
+
         AbstractCondition condition = query.getCondition();
 
         return FlatMapUtil.flatMapMono(
@@ -1101,6 +1129,47 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                                 collection.countDocuments(Filters.eq(ID, objectId)))
                         .map(e -> e > 0))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.checkIfExists"));
+    }
+
+    /**
+     * One filter for both relation shapes, which is a property of Mongo rather
+     * than a shortcut.
+     *
+     * A TO_MANY relation is an array of ObjectIds and a TO_ONE is a single one,
+     * and {@code Filters.eq} on an array field matches when any ELEMENT equals the
+     * value. So the same expression answers both questions, and that is exactly
+     * what the MySQL backend cannot do, where the array is a JSON document.
+     */
+    @Override
+    public Mono<Long> countReferencing(
+            String clientCode, Connection conn, Storage child, String field, boolean many, String id) {
+
+        if (!ObjectId.isValid(id)) return Mono.just(0L);
+
+        return this.getCollection(clientCode, conn, child)
+                .flatMap(collection -> Mono.from(collection.countDocuments(referenceFilter(field, id))))
+                .defaultIfEmpty(0L)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.countReferencing"));
+    }
+
+    @Override
+    public Mono<java.util.List<String>> idsReferencing(
+            String clientCode, Connection conn, Storage child, String field, boolean many, String id, int limit) {
+
+        if (!ObjectId.isValid(id)) return Mono.just(java.util.List.of());
+
+        return this.getCollection(clientCode, conn, child)
+                .flatMapMany(collection -> collection
+                        .find(referenceFilter(field, id))
+                        .projection(com.mongodb.client.model.Projections.include(ID))
+                        .limit(limit))
+                .map(doc -> doc.getObjectId(ID).toHexString())
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.idsReferencing"));
+    }
+
+    private static org.bson.conversions.Bson referenceFilter(String field, String id) {
+        return Filters.eq(field, new BsonObjectId(new ObjectId(id)));
     }
 
     @Override
@@ -1315,6 +1384,24 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         }
 
         if (fc.getField() == null) return Mono.empty();
+
+        // A field name is a KEY in the query document here, so a name that is really
+        // an operator is an operator. See StorageFieldNames.safeQueryPath.
+        if (!StorageFieldNames.safeQueryPath(fc.getField()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                    "a field named " + fc.getField());
+
+        // And the value lands in the same document, so a map with an operator key
+        // there changes the comparison out from under the operator whitelist.
+        if (!StorageFieldNames.safeFilterValue(fc.getValue())
+                || !StorageFieldNames.safeFilterValue(fc.getToValue())
+                || !StorageFieldNames.safeFilterValue(fc.getMultiValue()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                    "an operator in the value of " + fc.getField());
 
         if (fc.getOperator() == IS_FALSE || fc.getOperator() == IS_TRUE)
             return Mono.just(Filters.eq(
@@ -1576,6 +1663,10 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
     private Map<String, Object> convertBisonIds(Storage storage, Document document, boolean isVersion) {
         this.convertBisonId(document, ID);
+
+        // Before the version handling below, which owns createdAt and turns that
+        // one date into epoch seconds rather than text.
+        if (!isVersion) MongoValueCodec.decode(document);
 
         if (isVersion) {
             this.convertBisonId(document, OBJECT_ID);
