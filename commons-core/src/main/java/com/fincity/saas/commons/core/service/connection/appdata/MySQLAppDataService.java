@@ -2177,11 +2177,19 @@ public class MySQLAppDataService implements IAppDataService {
      * column on another table. The join aliases decide which, and they cannot
      * collide with a parent column because the planner refuses that.
      */
-    private static String head(String field, Map<String, String> columns) {
+    static String head(String field, Map<String, String> columns) {
         if (columns.containsKey(field)) return field;
 
+        // The query names fields and the map holds columns: "IFSC Code" is known as
+        // IFSC_Code, and on a joined side as alias.IFSC_Code.
+        String column = MySQLColumnNames.column(field);
+        if (columns.containsKey(column)) return column;
+
         int dot = field.indexOf('.');
-        return dot < 0 ? field : field.substring(0, dot);
+        if (dot < 0) return column;
+
+        String joined = field.substring(0, dot) + "." + MySQLColumnNames.column(field.substring(dot + 1));
+        return columns.containsKey(joined) ? joined : MySQLColumnNames.column(field.substring(0, dot));
     }
 
 
