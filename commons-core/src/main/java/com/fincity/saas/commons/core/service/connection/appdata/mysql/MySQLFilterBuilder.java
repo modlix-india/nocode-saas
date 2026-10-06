@@ -13,6 +13,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 
 /**
  * Translates the platform's {@link AbstractCondition} vocabulary into SQL.
@@ -138,10 +139,9 @@ public final class MySQLFilterBuilder {
             case TEXT_SEARCH:
                 return textSearch(fc, resolver);
             case MATCH:
+                return match(fc, resolver);
             case MATCH_ALL:
-                throw new UnsupportedFilterException(fc.getOperator()
-                        + " matches inside an array, which needs JSON_CONTAINS and a decision about how array"
-                        + " fields are stored");
+                return matchAll(fc, resolver);
             default:
                 break;
         }
@@ -193,6 +193,174 @@ public final class MySQLFilterBuilder {
 
         Condition condition = DSL.condition(sql.toString(), bindings.toArray());
         return fc.isNegate() ? condition.not() : condition;
+    }
+
+    /**
+     * At least one element of an array satisfies the match operator.
+     *
+     * Mongo's {@code $elemMatch}. An ARRAY is one JSON column here - the type mapper
+     * stores it "whole as JSON" - so the array is addressable and the only question
+     * was which SQL answers each operator:
+     *
+     * <ul>
+     * <li>EQUALS is containment, which {@code JSON_CONTAINS} answers directly and can
+     * use an index on a generated column later.</li>
+     * <li>LIKE is {@code JSON_SEARCH}, whose whole purpose is a LIKE over the strings
+     * in a document. It returns the path of the first hit, so "matched" is "not
+     * null".</li>
+     * <li>The comparisons have no containment form, so the array is unrolled with
+     * {@code JSON_TABLE} and the comparison runs per element. An element that will
+     * not convert to the compared type yields NULL and simply does not match, which
+     * is the right reading of "greater than 5" over a mixed array.</li>
+     * </ul>
+     */
+    private static Condition match(FilterCondition fc, MySQLFieldResolver resolver) {
+
+        Field<Object> array = arrayField(fc.getField(), resolver);
+        FilterConditionOperator op =
+                fc.getMatchOperator() == null ? FilterConditionOperator.EQUALS : fc.getMatchOperator();
+
+        require(fc.getValue(), "MATCH needs a value");
+
+        Condition c =
+                switch (op) {
+                    case EQUALS -> jsonContains(array, jsonLiteral(fc.getValue()));
+                    case LIKE -> jsonSearch(array, fc.getValue().toString());
+                    case STRING_LOOSE_EQUAL -> jsonSearch(array, "%" + fc.getValue() + "%");
+                    case GREATER_THAN, GREATER_THAN_EQUAL, LESS_THAN, LESS_THAN_EQUAL -> elementCompare(
+                            array, op, fc.getValue());
+                    default -> throw new UnsupportedFilterException(
+                            "MATCH cannot use a match operator of " + op + " on this backend");
+                };
+
+        return fc.isNegate() ? c.not() : c;
+    }
+
+    /**
+     * Every supplied value is present in the array. Mongo's {@code $all}.
+     *
+     * One {@code JSON_CONTAINS} with an ARRAY candidate, which is true only when every
+     * element of the candidate is contained - not a conjunction of single-value
+     * checks, which would say the same thing in more statements.
+     */
+    private static Condition matchAll(FilterCondition fc, MySQLFieldResolver resolver) {
+
+        Field<Object> array = arrayField(fc.getField(), resolver);
+
+        List<?> values = fc.getMultiValue() != null && !fc.getMultiValue().isEmpty()
+                ? fc.getMultiValue()
+                : fc.getValue() == null ? List.of() : List.of(fc.getValue());
+
+        if (values.isEmpty())
+            throw new UnsupportedFilterException("MATCH_ALL needs either multiValue or a value");
+
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) json.append(',');
+            json.append(jsonLiteral(values.get(i)));
+        }
+        json.append(']');
+
+        Condition c = jsonContains(array, json.toString());
+        return fc.isNegate() ? c.not() : c;
+    }
+
+    /**
+     * The array itself, as JSON.
+     *
+     * Not {@link #jsonPath}, which wraps the extract in {@code JSON_UNQUOTE} to get a
+     * comparable scalar. That is right for a leaf and wrong here: unquoting an array
+     * hands the JSON functions a string that merely looks like one, and
+     * {@code JSON_CONTAINS} then fails on it rather than searching it.
+     */
+    private static Field<Object> arrayField(String name, MySQLFieldResolver resolver) {
+
+        if (name == null || name.isBlank())
+            throw new UnsupportedFilterException("a filter condition has no field");
+
+        int dot = name.indexOf('.');
+        if (dot <= 0 || dot == name.length() - 1) return resolver.resolve(name);
+
+        String head = name.substring(0, dot);
+        if (!resolver.isJsonColumn(head))
+            throw new UnsupportedFilterException(
+                    "'" + name + "' is not an array on this storage, so it cannot be matched inside");
+
+        StringBuilder expr = new StringBuilder("$");
+        for (String seg : name.substring(dot + 1).split("\\.")) {
+            if (!PATH_SEGMENT.matcher(seg).matches())
+                throw new UnsupportedFilterException("'" + name + "' is not a usable JSON path");
+            expr.append('.').append(seg);
+        }
+
+        return DSL.field(
+                "json_extract({0}, {1})", Object.class, resolver.resolve(head), DSL.inline(expr.toString()));
+    }
+
+    private static Condition jsonContains(Field<Object> array, String candidateJson) {
+        return DSL.condition("json_contains({0}, cast({1} as json))", array, DSL.val(candidateJson));
+    }
+
+    private static Condition jsonSearch(Field<Object> array, String pattern) {
+        return DSL.condition("json_search({0}, 'one', {1}) is not null", array, DSL.val(pattern));
+    }
+
+    private static Condition elementCompare(Field<Object> array, FilterConditionOperator op, Object value) {
+
+        // The column type decides what the comparison MEANS. A number compared as
+        // text makes 9 greater than 10, which is the kind of wrong that looks right
+        // in a small test and fails on real data.
+        String columnType = value instanceof Number ? "decimal(38,10)" : "char(1024)";
+
+        String comparison =
+                switch (op) {
+                    case GREATER_THAN -> ">";
+                    case GREATER_THAN_EQUAL -> ">=";
+                    case LESS_THAN -> "<";
+                    default -> "<=";
+                };
+
+        // Counted rather than EXISTS, and this is not a style choice. On MySQL
+        // 8.4.11 an EXISTS whose subquery is a JSON_TABLE over an outer column
+        // silently matches NOTHING - no error, no warning, an empty result that
+        // looks like "no rows qualify". The identical subquery as a scalar count
+        // correlates correctly. Verified against the server, both forms, on the
+        // same three rows.
+        return DSL.condition(
+                "(select count(*) from json_table({0}, '$[*]' columns (v " + columnType
+                        + " path '$')) as jt where jt.v " + comparison + " {1}) > 0",
+                array,
+                DSL.val(value));
+    }
+
+    /**
+     * A value as a JSON literal, which is what both JSON_CONTAINS candidates need.
+     *
+     * Written out rather than handed to a JSON library because the only shapes that
+     * reach here are scalars, and a dependency for four cases is not worth the reader
+     * having to go and check what it does with them.
+     */
+    private static String jsonLiteral(Object value) {
+
+        if (value == null) throw new UnsupportedFilterException("a match value cannot be null");
+
+        if (value instanceof Number || value instanceof Boolean) return value.toString();
+
+        StringBuilder out = new StringBuilder("\"");
+        for (char ch : value.toString().toCharArray()) {
+            switch (ch) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (ch < 0x20) out.append(String.format("\\u%04x", (int) ch));
+                    else out.append(ch);
+                }
+            }
+        }
+        return out.append('"').toString();
     }
 
     private static Condition positive(FilterCondition fc, Field<Object> field, MySQLFieldResolver resolver) {

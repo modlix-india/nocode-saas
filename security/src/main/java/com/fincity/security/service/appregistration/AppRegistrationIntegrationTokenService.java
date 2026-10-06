@@ -61,8 +61,8 @@ public class AppRegistrationIntegrationTokenService extends
      * that refused sign-in; and a failed registration must leave it spendable too, or a
      * transient error costs the user their whole trip through the provider.
      * <p>
-     * Clearing {@code STATE} rather than deleting the row keeps the provider tokens and the
-     * audit trail, and the column's UNIQUE key makes the update its own lock: exactly one
+     * Clearing {@code STATE} rather than deleting the row keeps the audit trail (no provider
+     * tokens are ever stored on it), and the column's UNIQUE key makes the update its own lock: exactly one
      * concurrent caller can see a row count of 1, so two tabs racing the same arrival cannot
      * both win. Not routed through {@code update()} on purpose, since
      * {@link #updatableEntity(AppRegistrationIntegrationToken)} copies a fixed field list that
@@ -76,12 +76,11 @@ public class AppRegistrationIntegrationTokenService extends
     public Mono<AppRegistrationIntegrationToken> updatableEntity(AppRegistrationIntegrationToken entity) {
         return this.read(entity.getId())
                 .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication().map(ca -> {
-                    existing.setAuthCode(entity.getAuthCode());
-                    existing.setToken(entity.getToken());
-                    existing.setRefreshToken(entity.getRefreshToken());
-                    existing.setExpiresAt(entity.getExpiresAt());
+                    // Only the verified identity. The provider's code and tokens are never
+                    // stored (the privacy policy says so), so they are not copied even if a
+                    // caller sets them; AUTH_CODE, TOKEN, REFRESH_TOKEN, EXPIRES_AT and
+                    // TOKEN_METADATA stay null.
                     existing.setUsername(entity.getUsername());
-                    existing.setTokenMetadata(entity.getTokenMetadata());
                     existing.setUserMetadata(entity.getUserMetadata());
                     return existing;
                 }));

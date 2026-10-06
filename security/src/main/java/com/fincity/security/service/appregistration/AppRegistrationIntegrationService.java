@@ -1,7 +1,6 @@
 package com.fincity.security.service.appregistration;
 
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
 
@@ -147,13 +146,18 @@ public class AppRegistrationIntegrationService
         return FlatMapUtil.flatMapMono(
 
                 () -> {
+                    // Online access only. Sign-in reads the profile once, inside the callback,
+                    // and never calls Google again, so it has no use for a refresh token; asking
+                    // for one (access_type=offline, which needs prompt=consent to be honoured)
+                    // only gave us a long-lived credential to hold. select_account keeps the
+                    // account chooser that prompt=consent used to force.
                     URI authUri = UriComponentsBuilder.fromUriString("https://accounts.google.com/o/oauth2/v2/auth")
                             .queryParam(CLIENT_ID, appRegIntg.getIntgId())
                             .queryParam(REDIRECT_URI, callBackURL)
                             .queryParam("scope", "email profile openid")
                             .queryParam("response_type", "code")
-                            .queryParam("state", state).queryParam("access_type", "offline")
-                            .queryParam("prompt", "consent").build().toUri();
+                            .queryParam("state", state)
+                            .queryParam("prompt", "select_account").build().toUri();
 
                     return Mono.just(authUri);
                 },
@@ -219,17 +223,11 @@ public class AppRegistrationIntegrationService
 
                 tokenObj -> this.getGoogleUserInfo(tokenObj.get(ACCESS_TOKEN).toString()),
 
+                // The access token has done its one job by now: it fetched the profile above.
+                // Only the verified identity is kept; no code or token from Google is stored.
                 (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
                         .update(appRegIntgToken
-                                .setAuthCode(request.getQueryParams().getFirst("code"))
-                                .setToken(tokenObj.getOrDefault(ACCESS_TOKEN, "").toString())
-                                .setRefreshToken(tokenObj.get("refresh_token").toString())
-                                .setExpiresAt(
-                                        LocalDateTime.now().plusSeconds(Long
-                                                .parseLong(tokenObj.get(
-                                                                "expires_in").toString())))
                                 .setUsername(userObj.getOrDefault("email", "").toString())
-                                .setTokenMetadata(tokenObj)
                                 .setUserMetadata(userObj)),
 
                 (tokenObj, userObj, updatedAppRegIntgToken) -> {
@@ -277,17 +275,10 @@ public class AppRegistrationIntegrationService
 
                 tokenObj -> this.getMetaUserInfo(tokenObj.getOrDefault(ACCESS_TOKEN, null).toString()),
 
+                // As with Google: the token fetched the profile above and is not stored.
                 (tokenObj, userObj) -> this.appRegistrationIntegrationTokenService
                         .update(appRegIntgToken
-                                .setAuthCode(request.getQueryParams().getFirst("code"))
-                                .setToken(tokenObj.get(ACCESS_TOKEN).toString())
-                                .setExpiresAt(
-                                        LocalDateTime.now().plusSeconds(Long
-                                                .parseLong(tokenObj.get(
-                                                                "expires_in")
-                                                        .toString())))
                                 .setUsername(userObj.getOrDefault("email", "").toString())
-                                .setTokenMetadata(tokenObj)
                                 .setUserMetadata(userObj)),
 
                 (tokenObj, userObj, updatedAppRegIntgToken) -> {

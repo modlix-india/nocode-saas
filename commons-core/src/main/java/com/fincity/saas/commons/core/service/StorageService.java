@@ -611,7 +611,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
         return this.readInternal(name, appCode, clientCode)
                 .map(ObjectWithUniqueID::getObject)
                 .flatMap(storage -> this.evictSchemaCaches(storage.getUniqueName())
-                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, clientCode, storage)))
+                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, storage)))
                 .thenReturn(Boolean.TRUE)
                 // A storage that no longer resolves has nothing to rebuild, and a save
                 // that worked must not be reported as failed because the rebuild after
@@ -679,7 +679,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                 .flatMap(closure -> this.storagesUsing(appCode, closure))
                 .flatMapMany(Flux::fromIterable)
                 .concatMap(storage -> this.evictSchemaCaches(storage.getUniqueName())
-                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, clientCode, storage))
+                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, storage))
                         .thenReturn(storage.getName()))
                 .distinct()
                 .collectList()

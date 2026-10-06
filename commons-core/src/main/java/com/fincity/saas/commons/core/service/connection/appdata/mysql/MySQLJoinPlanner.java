@@ -188,7 +188,7 @@ public final class MySQLJoinPlanner {
             // than left holding the raw id - also what eager does, and the reason is
             // that a dangling id looks like data while an absent key looks like what
             // it is.
-            if (matched) out.put(join.alias(), side);
+            if (matched) out.put(join.alias(), MySQLColumnNames.toFields(side, join.fieldNames()));
             else out.remove(join.alias());
         }
 

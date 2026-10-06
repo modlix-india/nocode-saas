@@ -136,23 +136,83 @@ class MySQLDriftTest {
         }
     }
 
-    /**
-     * An index backing a foreign key cannot be dropped while the key is still on it,
-     * so the key statements have to come first or an approved repair fails halfway.
-     */
-    @Test
-    @DisplayName("Keys are planned before indexes")
-    void keysBeforeIndexes() {
+    @Nested
+    @DisplayName("The order the plan runs in")
+    class PlanOrder {
 
-        MySQLDrift.Report r = report(
-                List.of(col("_id", "VARCHAR(40)")),
-                List.of(col("_id", "VARCHAR(40)")),
-                List.of("DROP INDEX `rel_x` ON `T_app`.`thing`"),
-                List.of("ALTER TABLE `T_app`.`thing` DROP FOREIGN KEY `fk_x`"));
+        /**
+         * An index backing a foreign key cannot be dropped while the key is still on
+         * it, so the key statements have to come first or an approved repair fails
+         * halfway.
+         */
+        @Test
+        @DisplayName("Dropped keys come before the indexes they sit on")
+        void keysBeforeIndexes() {
 
-        List<String> plan = MySQLDrift.repairStatements(r, true);
+            MySQLDrift.Report r = report(
+                    List.of(col("_id", "VARCHAR(40)")),
+                    List.of(col("_id", "VARCHAR(40)")),
+                    List.of("DROP INDEX `rel_x` ON `T_app`.`thing`"),
+                    List.of("ALTER TABLE `T_app`.`thing` DROP FOREIGN KEY `fk_x`"));
 
-        assertTrue(plan.get(0).contains("DROP FOREIGN KEY"));
-        assertTrue(plan.get(1).startsWith("DROP INDEX"));
+            List<String> plan = MySQLDrift.repairStatements(r, true);
+
+            assertTrue(plan.get(0).contains("DROP FOREIGN KEY"));
+            assertTrue(plan.get(1).startsWith("DROP INDEX"));
+        }
+
+        /**
+         * The other half, and the one that was wrong: adding a field and an index on
+         * it in the same edit planned the index FIRST, against a column that did not
+         * exist yet. MySQL fails the statement outright, so an unapproved repair -
+         * the one anybody can run - died on its own plan.
+         */
+        @Test
+        @DisplayName("A new column comes before the index and the key that need it")
+        void columnsBeforeTheThingsThatNeedThem() {
+
+            MySQLDrift.Report r = report(
+                    List.of(col("_id", "VARCHAR(40)")),
+                    List.of(col("_id", "VARCHAR(40)"), col("owner", "CHAR(26)")),
+                    List.of("CREATE INDEX `rel_owner` ON `T_app`.`thing` (`owner`)"),
+                    List.of("ALTER TABLE `T_app`.`thing` ADD CONSTRAINT `fk_owner` FOREIGN KEY (`owner`)"
+                            + " REFERENCES `o` (`_id`)"));
+
+            List<String> plan = MySQLDrift.repairStatements(r, false);
+
+            assertEquals(3, plan.size());
+            assertTrue(plan.get(0).contains("ADD COLUMN `owner`"), "the column has to exist first");
+            assertTrue(plan.get(1).startsWith("CREATE INDEX"), "then the index on it");
+            assertTrue(plan.get(2).contains("ADD CONSTRAINT"), "then the key that needs the index");
+        }
+
+        /**
+         * Both rules at once, which is the shape a real reconcile produces: something
+         * comes off, the columns move, and something goes back on.
+         */
+        @Test
+        @DisplayName("Drops, then columns, then adds")
+        void outsideIn() {
+
+            MySQLDrift.Report r = report(
+                    List.of(col("_id", "VARCHAR(40)")),
+                    List.of(col("_id", "VARCHAR(40)"), col("owner", "CHAR(26)")),
+                    List.of(
+                            "DROP INDEX `stale` ON `T_app`.`thing`",
+                            "CREATE INDEX `rel_owner` ON `T_app`.`thing` (`owner`)"),
+                    List.of(
+                            "ALTER TABLE `T_app`.`thing` DROP FOREIGN KEY `fk_old`",
+                            "ALTER TABLE `T_app`.`thing` ADD CONSTRAINT `fk_owner` FOREIGN KEY (`owner`)"
+                                    + " REFERENCES `o` (`_id`)"));
+
+            List<String> plan = MySQLDrift.repairStatements(r, true);
+
+            assertEquals(5, plan.size());
+            assertTrue(plan.get(0).contains("DROP FOREIGN KEY"));
+            assertTrue(plan.get(1).startsWith("DROP INDEX"));
+            assertTrue(plan.get(2).contains("ADD COLUMN `owner`"));
+            assertTrue(plan.get(3).startsWith("CREATE INDEX"));
+            assertTrue(plan.get(4).contains("ADD CONSTRAINT"));
+        }
     }
 }
