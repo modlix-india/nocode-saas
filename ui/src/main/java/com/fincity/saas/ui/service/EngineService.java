@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -115,6 +116,19 @@ public class EngineService {
         this.securityService = securityService;
     }
 
+    /**
+     * Application and page responses are `no-cache` rather than `ui.resourceCacheAge`:
+     * both depend on who is asking (a protected page answers with the login page
+     * for an anonymous visitor, the application inlines its shell page or the
+     * forbidden page), and the login token lives in the client's localStorage, not
+     * in anything the browser cache keys on. With a freshness lifetime the browser
+     * reused a logged-in definition without asking for a week after the token was
+     * gone. Revalidating every time costs one request that the ETag answers with an
+     * empty 304 when nothing changed.
+     *
+     * Style and theme keep the lifetime: neither depends on the login (the theme is
+     * a query parameter, so it is part of the browser's cache key).
+     */
     public Mono<ResponseEntity<Application>> readApplication(String eTag, String appCode, String clientCode) {
 
         return LogUtil.isDraft().flatMap(draft -> this.securityService.getAppStatusByCode(appCode)
@@ -126,15 +140,48 @@ public class EngineService {
     private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode,
             boolean draft) {
 
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .map(ContextAuthentication::isAuthenticated)
+                .defaultIfEmpty(Boolean.FALSE)
+                .flatMap(authenticated -> this.internalReadApplication(eTag, appCode, clientCode, draft,
+                        applicationAuthKey(authenticated)));
+    }
+
+    /**
+     * The application's body depends on the login (its inlined shell page, or the
+     * forbidden page when the app has a permission) and its uniqueId changes with
+     * it, but the server cache below is looked up by the uniqueId the CLIENT sends.
+     * Without the login in the key, a browser that kept the logged-in uniqueId
+     * after its token was cleared got the logged-in definition straight back from
+     * the cache. The page read carries the same dimension in its uniqueId
+     * (`lg-`/`nlg-`); here it goes in the cache key instead, so the ETag format
+     * the browsers already hold does not change.
+     */
+    private static String applicationAuthKey(boolean authenticated) {
+        return authenticated ? "lg" : "nlg";
+    }
+
+    private Mono<ObjectWithUniqueID<Application>> readApplicationForResponse(String appCode, String clientCode,
+            boolean draft) {
+
+        return this.appService.read(appCode, appCode, clientCode)
+                .map(e -> withoutPlan(e, Application::new))
+                .map(e -> {
+                    e.getObject().setUrlClientCode(clientCode);
+                    return e;
+                })
+                .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)));
+    }
+
+    private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode,
+            boolean draft, String authKey) {
+
         if (eTag == null || eTag.isEmpty()) {
-            return this.appService.read(appCode, appCode, clientCode)
-                    .map(e -> withoutPlan(e, Application::new))
-                .map(e -> {e.getObject().setUrlClientCode(clientCode); return e;})
-                    .map(e -> new ObjectWithUniqueID<>(e.getObject(), draftUid(e.getUniqueId(), draft)))
+            return this.readApplicationForResponse(appCode, clientCode, draft)
                     .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, clientCode,
-                            e.getUniqueId()))
+                            authKey, e.getUniqueId()))
                     .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
-                            : ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
+                            : ResponseEntityUtils.makeRevalidateResponseEntity(e, eTag))
                     .defaultIfEmpty(APPLICATION_NOT_FOUND);
         }
 
@@ -143,13 +190,16 @@ public class EngineService {
         // cache key.
         String uid = draftUid(eTag.startsWith("W/") ? eTag.substring(2) : eTag, draft);
 
+        // The same read as the branch above. This one used to skip urlClientCode,
+        // so a changed app served from here (after an edit or a restart) went out
+        // without it; with the application now revalidated on every load this is
+        // the branch most loads take.
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_APPLICATION + "-" + appCode,
-                        () -> this.appService.read(appCode, appCode, clientCode)
-                                .map(e -> withoutPlan(e, Application::new)),
-                        clientCode, uid)
+                        () -> this.readApplicationForResponse(appCode, clientCode, draft),
+                        clientCode, authKey, uid)
                 .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
-                        : ResponseEntityUtils.makeResponseEntity(e, uid, cacheAge))
+                        : ResponseEntityUtils.makeRevalidateResponseEntity(e, uid))
                 .defaultIfEmpty(APPLICATION_NOT_FOUND);
     }
 
@@ -236,7 +286,7 @@ public class EngineService {
                                     page.getUniqueId()),
 
                             (ca, page, page2) -> draft ? ResponseEntityUtils.makeDraftResponseEntity(page2, eTag)
-                                    : ResponseEntityUtils.makeResponseEntity(page2, eTag, cacheAge))
+                                    : ResponseEntityUtils.makeRevalidateResponseEntity(page2, eTag))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Empty)"))
                     .defaultIfEmpty(PAGE_NOT_FOUND);
 
@@ -256,7 +306,7 @@ public class EngineService {
                                                 .map(e -> withoutPlan(e, Page::new)),
                                         clientCode, pageName, nUid)
                                 .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, nUid)
-                                        : ResponseEntityUtils.makeResponseEntity(e, nUid, cacheAge)))
+                                        : ResponseEntityUtils.makeRevalidateResponseEntity(e, nUid)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EngineController.page (eTag Not Empty)"))
                 .defaultIfEmpty(PAGE_NOT_FOUND);

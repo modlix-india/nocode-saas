@@ -157,6 +157,40 @@ class ClientActivityServiceTest extends AbstractServiceUnitTest {
                             && ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
                     .verify();
         }
+
+        // QA-0207: an empty Add activity form posted {"clientId":4418} and the NOT NULL
+        // ACTIVITY_NAME column turned it into a 500.
+
+        @Test
+        @DisplayName("throws BAD_REQUEST without touching the DB when activityName is missing")
+        void create_MissingActivityName_ThrowsBadRequest() {
+
+            ClientActivity entity = new ClientActivity().setClientId(CLIENT_ID);
+
+            StepVerifier.create(service.create(entity))
+                    .expectErrorMatches(e -> e instanceof GenericException ge
+                            && ge.getStatusCode() == HttpStatus.BAD_REQUEST
+                            && SecurityMessageResourceService.NAME_MANDATORY.equals(ge.getMessage()))
+                    .verify();
+
+            verify(dao, never()).create(any(ClientActivity.class));
+            verifyNoInteractions(clientService);
+        }
+
+        @Test
+        @DisplayName("throws BAD_REQUEST when activityName is blank")
+        void create_BlankActivityName_ThrowsBadRequest() {
+
+            ClientActivity entity = new ClientActivity().setClientId(CLIENT_ID).setActivityName("   ")
+                    .setDescription("a note");
+
+            StepVerifier.create(service.create(entity))
+                    .expectErrorMatches(e -> e instanceof GenericException ge
+                            && ge.getStatusCode() == HttpStatus.BAD_REQUEST)
+                    .verify();
+
+            verify(dao, never()).create(any(ClientActivity.class));
+        }
     }
 
     // =========================================================================
