@@ -295,7 +295,9 @@ class DraftSurfaceIntegrationTest extends AbstractIntegrationTest {
 
             assertEquals("no-store", draftResp.getHeaders().getFirst("Cache-Control"),
                     "a draft must not be cached by the browser for the live seven-day window");
-            assertTrue(liveResp.getHeaders().getFirst("Cache-Control").startsWith("max-age"));
+            // Live pages revalidate on every use (QA-0125): the body depends on the
+            // login, and a freshness lifetime let the browser reuse it unasked.
+            assertEquals("no-cache", liveResp.getHeaders().getFirst("Cache-Control"));
         }
 
         @Test

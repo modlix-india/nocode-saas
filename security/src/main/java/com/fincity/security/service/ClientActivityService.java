@@ -56,6 +56,14 @@ public class ClientActivityService
     @Override
     public Mono<ClientActivity> create(ClientActivity entity) {
 
+        // ACTIVITY_NAME is NOT NULL. Without this check an empty Add activity form
+        // reached the insert and came back as a 500 ("Field 'ACTIVITY_NAME' doesn't
+        // have a default value") instead of telling the user what is missing.
+        if (entity == null || entity.getActivityName() == null || entity.getActivityName().isBlank())
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.NAME_MANDATORY, "Activity");
+
         return FlatMapUtil.flatMapMono(
 
                 SecurityContextUtil::getUsersContextAuthentication,
