@@ -123,7 +123,7 @@ class EngineDraftSurfaceIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     @Timeout(60)
-    @DisplayName("the application read is no-store on draft and cacheable on live")
+    @DisplayName("the application read is no-store on draft and revalidated on live")
     void applicationCacheHeaders() {
 
         setInheritance(List.of(SYSTEM));
@@ -137,8 +137,10 @@ class EngineDraftSurfaceIntegrationTest extends AbstractIntegrationTest {
 
         assertEquals("no-store", onDraft.getHeaders().getFirst("Cache-Control"),
                 "a draft app definition was handed to the browser with a seven day cache life");
-        assertTrue(onLive.getHeaders().getFirst("Cache-Control").contains("max-age"),
-                "the live response stopped being cacheable: " + onLive.getHeaders().getFirst("Cache-Control"));
+        // no-cache, not a lifetime (QA-0125): the app inlines a login-dependent shell,
+        // so the browser must ask every time; the ETag keeps that a 304.
+        assertEquals("no-cache", onLive.getHeaders().getFirst("Cache-Control"),
+                "the live application response is not revalidated: " + onLive.getHeaders().getFirst("Cache-Control"));
     }
 
     @Test
