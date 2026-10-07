@@ -505,8 +505,13 @@ public class UserInviteService
                 ? Mono.just("")
                 : this.profileService.readInternal(invite.getProfileId()).map(Profile::getName).defaultIfEmpty("");
 
+        // The invited client's own URL, else the host the invite was sent from: a client without its own URL
+        // (a leadzump channel partner) signs in on its manager's, and an empty prefix mailed "http:///inviteUser/..".
         Mono<String> urlPrefix = this.appService.getAppByCode(appCode)
                 .flatMap(app -> this.clientUrlService.getAppUrlInternal(appCode, app.getId(), invite.getClientId()))
+                .filter(url -> !StringUtil.safeIsBlank(url))
+                .switchIfEmpty(Mono.defer(() -> this.clientUrlService.getAppUrl(appCode, null)))
+                .filter(url -> !StringUtil.safeIsBlank(url))
                 .defaultIfEmpty("");
 
         return Mono.zip(profileName, urlPrefix)

@@ -329,6 +329,64 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		@DisplayName("an invited client without its own URL gets the URL of the host the invite was sent from")
+		void createInvite_InvitedClientWithoutUrl_UsesTheRequestHostUrl() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setUrlAppCode("leadzump");
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("new@example.com");
+			invite.setFirstName("Asha");
+			invite.setProfileId(PROFILE_ID);
+
+			UserInvite created = new UserInvite();
+			created.setId(ULong.valueOf(5));
+			created.setClientId(SYSTEM_CLIENT_ID);
+			created.setEmailId("new@example.com");
+			created.setFirstName("Asha");
+			created.setProfileId(PROFILE_ID);
+			created.setInviteCode("abc123");
+
+			com.fincity.security.dto.App app = new com.fincity.security.dto.App();
+			app.setId(ULong.valueOf(7));
+			com.fincity.security.dto.Profile profile = new com.fincity.security.dto.Profile();
+			profile.setName("Sales Manager");
+
+			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq("new@example.com"), isNull(),
+					isNull())).thenReturn(Flux.empty());
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.just(app));
+			when(appService.getProperties(isNull(), eq(ULong.valueOf(7)), isNull(), eq(AppService.APP_PROP_USER_CHECK)))
+					.thenReturn(Mono.just(java.util.Map.of()));
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("new@example.com"), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.just(profile));
+			// A channel partner client has no URL of its own (QA-0061: the mail linked "http:///inviteUser/..").
+			when(clientUrlService.getAppUrlInternal("leadzump", ULong.valueOf(7), SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(""));
+			when(clientUrlService.getAppUrl("leadzump", null)).thenReturn(Mono.just("https://dev.leadzump.ai"));
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.FALSE, result.get("existingUser")))
+					.verifyComplete();
+
+			ArgumentCaptor<EventQueObject> event = ArgumentCaptor.forClass(EventQueObject.class);
+			verify(ecService).createEvent(event.capture());
+			assertEquals(EventNames.USER_INVITED, event.getValue().getEventName());
+			assertEquals("leadzump", event.getValue().getAppCode());
+			var data = event.getValue().getData();
+			assertEquals("Asha", data.get("firstName"));
+			assertEquals("new@example.com", data.get("emailId"));
+			assertEquals("Sales Manager", data.get("profileName"));
+			assertEquals("abc123", data.get("inviteCode"));
+			assertEquals("https://dev.leadzump.ai", data.get("urlPrefix"));
+			assertEquals("false", data.get("userExisted"));
+		}
+
+		@Test
 		@DisplayName("an existing user who gets the profile raises USER_INVITED with userExisted = \"true\"")
 		void createInvite_ExistingUser_RaisesEventWithUserExisted() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
@@ -353,6 +411,7 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 			when(userDao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
 			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.empty());
 			when(appService.getAppByCode("leadzump")).thenReturn(Mono.empty());
+			when(clientUrlService.getAppUrl("leadzump", null)).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.createInvite(invite))
 					.assertNext(result -> assertEquals(Boolean.TRUE, result.get("existingUser")))
