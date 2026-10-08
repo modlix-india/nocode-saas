@@ -7,10 +7,12 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import jakarta.mail.Address;
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
@@ -94,16 +96,27 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                                 Transport.send(message, message.getAllRecipients());
 
                                 return Mono.just(true);
+                            } catch (SendFailedException sfe) {
+                                // The server refused the recipients (an address on the provider's suppression
+                                // list, a missing or malformed one). The connection works, so this is "not sent"
+                                // for the caller to handle (SendEmail's `sent` output), not a server error.
+                                logger.warn("Recipients refused : {}", sfe.getMessage());
+
+                                return Mono.just(reachedAnyone(sfe));
                             } catch (MessagingException mex) {
                                 logger.error("Error while sending : {}", mex.getMessage(), mex);
 
-                                return this.msgService.throwMessage(
+                                return this.msgService.<Boolean>throwMessage(
                                         msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, mex),
                                         CoreMessageResourceService.MAIL_SEND_ERROR,
                                         mex.getMessage());
                             }
                         })
-                .map(e -> true)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
+    }
+
+    static boolean reachedAnyone(SendFailedException sfe) {
+        Address[] sent = sfe.getValidSentAddresses();
+        return sent != null && sent.length > 0;
     }
 }

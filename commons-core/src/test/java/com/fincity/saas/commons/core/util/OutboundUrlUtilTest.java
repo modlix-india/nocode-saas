@@ -266,4 +266,78 @@ class OutboundUrlUtilTest {
                 "encodingMode", "URI_COMPONENT",
                 "defaultHeaders", Map.of("Content-Type", "application/json"))));
     }
+
+    /**
+     * A database address names a server the backend opens a DRIVER against, not
+     * something the HTTP client fetches, so "only http and https" was the wrong
+     * sentence to say about it - and saying it meant a Mongo app-data connection
+     * could not be created at all, to anywhere.
+     *
+     * Allowed past the scheme gate, and then held to exactly the same host rules.
+     */
+    @Nested
+    @DisplayName("Database addresses")
+    class DatabaseSchemes {
+
+        @Test
+        @DisplayName("a public Mongo host is allowed")
+        void publicMongoAllowed() {
+            allows("url", "mongodb://user:pw@cluster.example.com:27017/admin");
+            allows("url", "mongodb+srv://user:pw@cluster.example.com/admin?retryWrites=true");
+        }
+
+        @Test
+        @DisplayName("every member of a replica set is checked, not just the first")
+        void replicaSetMembers() {
+            allows("url", "mongodb://a.example.com:27017,b.example.com:27017/db");
+
+            // The second node is the private one. Checking only the first would
+            // let the whole set through on the strength of a public name.
+            refuses("url", "mongodb://a.example.com:27017,10.0.0.5:27017/db");
+        }
+
+        @Test
+        @DisplayName("loopback and the private ranges are still refused")
+        void privateStillRefused() {
+            refuses("url", "mongodb://localhost:27017/admin");
+            refuses("url", "mongodb://127.0.0.1:27017/admin");
+            refuses("url", "mongodb://10.1.2.3:27017/admin");
+            refuses("url", "mongodb://192.168.1.10:27017/admin");
+            refuses("url", "mongodb://172.16.0.9:27017/admin");
+        }
+
+        @Test
+        @DisplayName("our own VCN and the metadata service are still refused")
+        void oracleAndMetadataStillRefused() {
+            refuses("url", "mongodb://db.sub01.vcn01.oraclevcn.com:27017/admin");
+            refuses("url", "mongodb://169.254.169.254:27017/admin");
+            refuses("url", "mongodb+srv://mongo.internal/admin");
+        }
+
+        /**
+         * A password may contain an '@', so the host is whatever follows the LAST
+         * one. Splitting on the first would read the password's tail as the host
+         * and check the wrong string.
+         */
+        @Test
+        @DisplayName("credentials are not mistaken for the host")
+        void credentialsAreNotTheHost() {
+            refuses("url", "mongodb://user:p@ss@127.0.0.1:27017/admin");
+            allows("url", "mongodb://user:p@ss@cluster.example.com:27017/admin");
+        }
+
+        @Test
+        @DisplayName("an address with no host at all is refused")
+        void noHost() {
+            refuses("url", "mongodb:///admin");
+            refuses("url", "mongodb://@/admin");
+        }
+
+        @Test
+        @DisplayName("a non-database scheme is still refused")
+        void otherSchemesUnchanged() {
+            refuses("url", "redis://cluster.example.com:6379");
+            refuses("url", "ftp://files.example.com/x");
+        }
+    }
 }
