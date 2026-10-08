@@ -31,6 +31,7 @@ import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.model.DataObject;
 import com.fincity.saas.commons.core.model.StorageColumnDefinition;
 import com.fincity.saas.commons.core.model.StorageRelation;
+import com.fincity.saas.commons.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.CoreSchemaService;
 import com.fincity.saas.commons.core.service.StorageService;
@@ -1124,7 +1125,20 @@ public class MySQLAppDataService implements IAppDataService {
                         () -> this.ensureTable(conn, clientCode, storage),
                         db -> this.physicalSchema(storage),
                         (db, schema) -> this.readRow(conn, db, storage, schema, id))
+                // A missing row must not complete empty: AppDataService.genericOperation turns
+                // an empty result into FORBIDDEN_READ_STORAGE, a 403 for what is a 404. Raise
+                // what the Mongo backend raises, which ReadStorageObject and friends catch.
+                .switchIfEmpty(Mono.defer(() -> this.objectNotFound(storage, id)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.read"));
+    }
+
+    /** The same not-found error MongoAppDataService raises for a missing object. */
+    <T> Mono<T> objectNotFound(Storage storage, String id) {
+        return this.msgService.throwMessage(
+                msg -> new StorageObjectNotFoundException(HttpStatus.NOT_FOUND, msg),
+                AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
+                storage.getName(),
+                id);
     }
 
     /**

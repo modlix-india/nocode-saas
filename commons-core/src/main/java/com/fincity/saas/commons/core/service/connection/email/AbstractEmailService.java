@@ -55,10 +55,14 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
 
         boolean isBlankExpression = StringUtil.safeIsBlank(template.getToExpression());
 
-        if (toAddresses != null && !toAddresses.isEmpty()) {
-            if (isBlankExpression) return Mono.just(toAddresses);
-            addresses.addAll(toAddresses);
-        }
+        // Blank entries are not addresses. Dropping them here (not only in SendEmail) keeps
+        // the "No Send Addresses Found." guard below meaningful for every caller: a list of
+        // blanks with no toExpression used to be returned as is, skipping the guard.
+        if (toAddresses != null)
+            toAddresses.stream()
+                    .filter(a -> !StringUtil.safeIsBlank(a))
+                    .map(String::trim)
+                    .forEach(addresses::add);
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> Mono.just(addresses),
@@ -71,7 +75,7 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
 
                                         for (String addr : addrs) {
                                             if (StringUtil.safeIsBlank(addr)) continue;
-                                            addrList.add(addr);
+                                            addrList.add(addr.trim());
                                         }
                                         return addrList;
                                     });

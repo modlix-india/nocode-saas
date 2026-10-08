@@ -433,7 +433,23 @@ public class CallRequest extends AbstractReactiveFunction {
                 gson.toJsonTree(obj.getStatus()))))));
     }
 
-    private Mono<FunctionOutput> makeErrorResponseFunctionOutput(RestResponse obj) {
+    /**
+     * Status reported when the call failed WITHOUT an HTTP response to take a status from
+     * (timeout, refused target, DNS failure, a bug on our side). 500 rather than 0: apps test
+     * {@code statusCode >= 400} to detect failure, and 0 would read as "not an error" there.
+     * A FeignException that carries a real status (see {@link #exceptionStatus}) reports that.
+     */
+    static final int NO_RESPONSE_STATUS = 500;
+
+    /**
+     * A failed call emits ERROR <i>and</i> a paired {@code output}. Apps rely on the paired
+     * output firing, so it stays; both carry the remote's real numeric status, which the
+     * signature declares as a number. The paired output used to send {@code statusCode {}}.
+     *
+     * Package-private for the unit test.
+     */
+    Mono<FunctionOutput> makeErrorResponseFunctionOutput(RestResponse obj) {
+        JsonElement status = gson.toJsonTree(obj.getStatus());
         return Mono.just(new FunctionOutput(List.of(
                 EventResult.of(
                         Event.ERROR,
@@ -443,57 +459,48 @@ public class CallRequest extends AbstractReactiveFunction {
                                 EVENT_HEADERS,
                                 gson.toJsonTree(obj.getHeaders()),
                                 STATUS_CODE,
-                                gson.toJsonTree(obj.getStatus()))),
+                                status)),
                 EventResult.outputOf(Map.of(
                         EVENT_DATA,
                         gson.toJsonTree(Map.of()),
                         EVENT_HEADERS,
                         gson.toJsonTree(Map.of()),
                         STATUS_CODE,
-                        gson.toJsonTree(Map.of()))))));
+                        status)))));
     }
 
-    private Mono<FunctionOutput> makeExceptionResponseFunctionOutput(Throwable ex) {
-        if (ex instanceof FeignException feignException) {
-            JsonElement je = this.processFeignException(feignException);
-            if (je != null) {
-                return Mono.just(new FunctionOutput(List.of(
-                        EventResult.of(
-                                Event.ERROR,
-                                Map.of(
-                                        EVENT_DATA,
-                                        je,
-                                        EVENT_HEADERS,
-                                        gson.toJsonTree(Map.of()),
-                                        STATUS_CODE,
-                                        gson.toJsonTree(Map.of()))),
-                        EventResult.outputOf(Map.of(
-                                EVENT_DATA,
-                                gson.toJsonTree(Map.of()),
-                                EVENT_HEADERS,
-                                gson.toJsonTree(Map.of()),
-                                STATUS_CODE,
-                                gson.toJsonTree(Map.of()))))));
-            }
-        }
+    static int exceptionStatus(Throwable ex) {
+        // FeignException.status() is -1 when there was no response at all.
+        if (ex instanceof FeignException fe && fe.status() >= 100) return fe.status();
+        return NO_RESPONSE_STATUS;
+    }
+
+    /** Package-private for the unit test. */
+    Mono<FunctionOutput> makeExceptionResponseFunctionOutput(Throwable ex) {
+        JsonElement status = new JsonPrimitive(exceptionStatus(ex));
+        JsonElement data = null;
+
+        if (ex instanceof FeignException feignException) data = this.processFeignException(feignException);
+
+        if (data == null) data = gson.toJsonTree(ex.getMessage());
 
         return Mono.just(new FunctionOutput(List.of(
                 EventResult.of(
                         Event.ERROR,
                         Map.of(
                                 EVENT_DATA,
-                                gson.toJsonTree(ex.getMessage()),
+                                data,
                                 EVENT_HEADERS,
                                 gson.toJsonTree(Map.of()),
                                 STATUS_CODE,
-                                gson.toJsonTree(Map.of()))),
+                                status)),
                 EventResult.outputOf(Map.of(
                         EVENT_DATA,
                         gson.toJsonTree(Map.of()),
                         EVENT_HEADERS,
                         gson.toJsonTree(Map.of()),
                         STATUS_CODE,
-                        gson.toJsonTree(Map.of()))))));
+                        status)))));
     }
 
     private JsonElement processFeignException(FeignException fe) {
