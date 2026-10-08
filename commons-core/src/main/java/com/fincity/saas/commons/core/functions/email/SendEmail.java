@@ -14,11 +14,13 @@ import com.fincity.saas.commons.core.service.connection.email.EmailService;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -67,6 +69,28 @@ public class SendEmail extends AbstractReactiveFunction {
                 .setEvents(Map.of(event.getName(), event));
     }
 
+    /**
+     * The addresses passed to the step, blanks dropped.
+     *
+     * {@code address} is variadic with a default of {@code ""}, so a step that sets no
+     * address (the template's toExpression supplies them) arrives here as {@code [""]}.
+     * Passed on as is, that blank was merged with the toExpression addresses and handed
+     * to the mail server as a recipient, and with no toExpression it slipped past the
+     * "No Send Addresses Found." guard as a non-empty list.
+     *
+     * Package-private for the unit test.
+     */
+    static List<String> givenAddresses(JsonElement address) {
+        if (address == null || !address.isJsonArray()) return List.of();
+
+        return JsonUtil.toList(address.getAsJsonArray()).stream()
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .map(String::trim)
+                .filter(a -> !a.isEmpty())
+                .toList();
+    }
+
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
         String appCode = context.getArguments().get(APP_CODE).getAsString();
@@ -74,11 +98,7 @@ public class SendEmail extends AbstractReactiveFunction {
         String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
         String templateName = context.getArguments().get(TEMPLATE_NAME).getAsString();
 
-        List<String> addressesList = JsonUtil.toList(
-                        context.getArguments().get(ADDRESS).getAsJsonArray())
-                .stream()
-                .map(Object::toString)
-                .toList();
+        List<String> addressesList = givenAddresses(context.getArguments().get(ADDRESS));
 
         Map<String, Object> templateData =
                 JsonUtil.toMap(context.getArguments().get(TEMPLATE_DATA).getAsJsonObject());

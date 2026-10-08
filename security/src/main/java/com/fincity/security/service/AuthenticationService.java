@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,9 @@ import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
 import com.fincity.security.util.UserAgentInfo;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -164,10 +168,14 @@ public class AuthenticationService implements IAuthenticationService {
 
             bearerToken = bearerToken.trim();
 
-            if (bearerToken.startsWith("Bearer ")) {
-                bearerToken = bearerToken.substring(7);
-            } else if (bearerToken.startsWith("Basic ")) {
-                bearerToken = bearerToken.substring(6);
+            // Case-insensitive, like ServerHttpRequestUtil.extractBasicNBearerToken, which is
+            // what authenticates the request. A "bearer x" header authenticated fine but was
+            // revoked as the literal "bearer x", matched no row, and still answered 200.
+            String lower = bearerToken.toLowerCase();
+            if (lower.startsWith("bearer ")) {
+                bearerToken = bearerToken.substring(7).trim();
+            } else if (lower.startsWith("basic ")) {
+                bearerToken = bearerToken.substring(6).trim();
             }
         }
 
@@ -187,9 +195,14 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setValue(toPartToken(finToken)))
                         .filter(e -> e.getToken().equals(finToken))
                         .map(TokenObject::getId)
-                        .collectList()
-                        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
-                        .flatMap(tokenService::delete)
+                        // EVERY row holding this token, not the first. Two mints for the same
+                        // user, app and host in the same second used to produce byte-identical
+                        // JWTs (a one-time-token fork made right after login did), each with its
+                        // own row; deleting only the first left the twin row authenticating the
+                        // "revoked" token. New tokens carry a random jti so they no longer
+                        // collide, but rows minted before that still can.
+                        .concatMap(tokenService::delete)
+                        .reduce(Integer::sum)
                         .defaultIfEmpty(1));
     }
 
@@ -1213,8 +1226,68 @@ public class AuthenticationService implements IAuthenticationService {
                 .replace("{token}", token);
     }
 
+    /**
+     * Mint a one-time token from the caller's session: the PUBLIC endpoint.
+     *
+     * <b>It never upgrades a session.</b> A one-time token redeemed with rememberMe becomes a
+     * remember-me (one year) session, so honouring a caller-supplied {@code rememberMe} let any
+     * 30-minute token be swapped for a one-year one. Here {@code rememberMe} is honoured only
+     * when the minting token is itself a remember-me token, which carries the session forward
+     * without extending it. Anything else gets an ordinary session. Trusted service-to-service
+     * callers that need a long-lived fork use {@link #makeOneTimeTokenInternal}.
+     */
     public Mono<Map<String, String>> makeOneTimeToken(MakeOneTimeTimeTokenRequest request,
             ServerHttpRequest httpRequest) {
+        return this.makeOneTimeToken(request, httpRequest, false);
+    }
+
+    /**
+     * The same, for {@code /api/security/internal/makeOneTimeToken}: honours {@code rememberMe}
+     * as asked. Internal paths are permitAll inside the cluster and denied at the edge (nginx
+     * {@code location ~/internal { deny all; }}), so only our own services reach it; it still
+     * needs the user's own token, since the one-time token is minted for that user.
+     */
+    @PreAuthorize("isAuthenticated()")
+    public Mono<Map<String, String>> makeOneTimeTokenInternal(MakeOneTimeTimeTokenRequest request,
+            ServerHttpRequest httpRequest) {
+        return this.makeOneTimeToken(request, httpRequest, true);
+    }
+
+    /**
+     * Whether this access token is a remember-me token: its whole lifetime (exp - iat, both in
+     * the signed JWT) is the remember-me expiry. One minute of slack because iat and exp are
+     * each rounded to the second. Anything unparseable (basic auth, a foreign token) is not.
+     *
+     * Package-private for the unit test.
+     */
+    boolean isRememberMeToken(String accessToken) {
+
+        if (StringUtil.safeIsBlank(accessToken) || this.rememberMeExpiryInMinutes == null
+                || this.rememberMeExpiryInMinutes <= 0)
+            return false;
+
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(Keys.hmacShaKeyFor(this.tokenKey.getBytes()))
+                    .build()
+                    .parseClaimsJws(accessToken)
+                    .getBody();
+
+            if (claims.getIssuedAt() == null || claims.getExpiration() == null)
+                return false;
+
+            long lifetimeSeconds = Duration
+                    .between(claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant())
+                    .getSeconds();
+
+            return lifetimeSeconds >= this.rememberMeExpiryInMinutes * 60L - 60L;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private Mono<Map<String, String>> makeOneTimeToken(MakeOneTimeTimeTokenRequest request,
+            ServerHttpRequest httpRequest, boolean allowRememberMe) {
 
         String authMode;
         if (StringUtil.safeIsBlank(request.getAuthMode())) {
@@ -1240,6 +1313,12 @@ public class AuthenticationService implements IAuthenticationService {
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> {
+                    // The internal path is permitAll, so an anonymous caller reaches here.
+                    if (!ca.isAuthenticated())
+                        return this.resourceService.<Boolean>throwMessage(
+                                msg -> new GenericException(HttpStatus.UNAUTHORIZED, msg),
+                                SecurityMessageResourceService.UNKNOWN_TOKEN);
+
                     String sourceAppCode = ca.getVerifiedAppCode();
 
                     // authzump is the platform's central SSO broker — mints to/from it
@@ -1275,7 +1354,8 @@ public class AuthenticationService implements IAuthenticationService {
                                     .setOs(ua.os())
                                     .setBrowser(ua.browser())
                                     .setUserId(ULong.valueOf(ca.getUser().getId()))
-                                    .setRememberMe(request.isRememberMe())
+                                    .setRememberMe(request.isRememberMe()
+                                            && (allowRememberMe || this.isRememberMeToken(ca.getAccessToken())))
                                     .setAuthMode(authMode)
                                     .setOriginAppCode(ca.getVerifiedAppCode())
                                     .setTargetAppCode(targetAppCode));
