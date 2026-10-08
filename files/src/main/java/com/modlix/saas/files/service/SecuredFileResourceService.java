@@ -121,7 +121,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         }
 
         String finalClientCode = clientCode;
-        index = resourcePath.indexOf('/', index + 1);
+        // resourcePath now starts with the '/' that followed the client code, so the first
+        // folder ends at the next '/' after position 0. Searching from (clientCode length + 1),
+        // as this used to, skipped that '/' whenever the client code was longer than the
+        // folder name, and the special folder was never recognised.
+        index = resourcePath.indexOf('/', 1);
         String firstFolderName = (index != -1) ? resourcePath.substring(resourcePath.startsWith("/") ? 1 : 0, index)
                 : null;
 
