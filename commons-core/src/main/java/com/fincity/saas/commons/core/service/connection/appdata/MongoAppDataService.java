@@ -1415,7 +1415,12 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         Object value = fc.getValue();
         boolean isObjectIdField = (fc.getField().equals("_id")
                 || (storage.getRelations() != null && storage.getRelations().containsKey(fc.getField())));
-        if (isObjectIdField && value != null) value = new ObjectId(value.toString());
+
+        // Not for IN. Its value is a LIST spelled as "id1,id2", and coercing the whole
+        // string gave new ObjectId("id1,id2") - an IllegalArgumentException, so a read
+        // filtering _id or a relation by a comma separated list came back a 500.
+        // multiFieldValue converts each item itself when convertId is true.
+        if (isObjectIdField && value != null && fc.getOperator() != IN) value = new ObjectId(value.toString());
 
         if (fc.getOperator() == IN) {
             if (value == null
@@ -1452,13 +1457,31 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         if (value == null) return Mono.empty();
 
         if (fc.getOperator() == BETWEEN) {
-            var first = fc.isNegate() ? Filters.lt(fc.getField(), value) : Filters.gte(fc.getField(), value);
-            var second = fc.isNegate()
-                    ? Filters.gt(fc.getField(), fc.getToValue())
-                    : Filters.lte(fc.getField(), fc.getToValue());
 
-            if (fc.isNegate()) return Mono.just(Filters.and(first, second));
-            else return Mono.just(Filters.or(first, second));
+            // Refused rather than read as an open range. lte(field, null) matches
+            // nothing in Mongo, so a missing toValue quietly turned BETWEEN into
+            // ">= value" and the caller got rows they never asked for. MySQL says
+            // "BETWEEN needs a toValue"; this says the same thing.
+            if (fc.getToValue() == null)
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                        "BETWEEN on '" + fc.getField() + "' without a toValue");
+
+            // Both ends, or neither. value is already an ObjectId on an id field and
+            // toValue was not, so a BETWEEN on _id compared an ObjectId with a String
+            // and matched nothing.
+            Object toValue = isObjectIdField
+                    ? new ObjectId(fc.getToValue().toString())
+                    : fc.getToValue();
+
+            var lower = fc.isNegate() ? Filters.lt(fc.getField(), value) : Filters.gte(fc.getField(), value);
+            var upper = fc.isNegate() ? Filters.gt(fc.getField(), toValue) : Filters.lte(fc.getField(), toValue);
+
+            // AND for the range, OR for its complement. These were the wrong way
+            // round, which made BETWEEN match EVERY row - x >= from or x <= to is
+            // true for all x when from <= to - and a negated BETWEEN match none.
+            return Mono.just(fc.isNegate() ? Filters.or(lower, upper) : Filters.and(lower, upper));
         }
 
         BiFunction<String, Object, Bson> function =
@@ -1481,7 +1504,14 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 return Mono.just(fc.isNegate() ? Filters.not(filter) : filter);
             }
             case STRING_LOOSE_EQUAL -> {
-                filter = Filters.regex(fc.getField(), value.toString(), "i");
+                // Quoted, because this operator means "contains this text" and the
+                // text comes from a search box. Unquoted, a phone number starting
+                // "+91" is a regex with a dangling quantifier: Mongo rejects it with
+                // error 51091 and the whole read 500s, taking the page's chain with
+                // it. It was a ReDoS surface too, since the pattern was the caller's.
+                // LIKE just below stays a raw regex on purpose - there the pattern IS
+                // the point.
+                filter = Filters.regex(fc.getField(), Pattern.quote(value.toString()), "i");
                 return Mono.just(fc.isNegate() ? Filters.not(filter) : filter);
             }
             default -> {
@@ -1509,14 +1539,35 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
             if (i != 0 && iValue.charAt(i - 1) == '\\') continue;
 
-            String str = iValue.substring(from, i).trim();
-            if (str.isEmpty()) continue;
-
-            obj.add(!convertId ? str : new ObjectId(str));
+            addItem(obj, iValue.substring(from, i), convertId);
             from = i + 1;
         }
 
+        // The text after the LAST comma, which the loop can never reach: it only adds
+        // on finding a separator. So "a,b,c" gave [a, b] and "a" - no comma at all -
+        // gave an empty list, which is an $in that matches nothing. A filter silently
+        // dropping its last value is worse than one that fails.
+        addItem(obj, iValue.substring(from), convertId);
+
         return obj;
+    }
+
+    /**
+     * One item of a comma separated list, trimmed, with an escaped comma unescaped.
+     *
+     * The loop already treats {@code \,} as part of the value rather than a
+     * separator, but the backslash was left in it, so the item never matched the
+     * stored text it was escaped to describe. Honouring half of an escape is worse
+     * than not having one.
+     */
+    private void addItem(List<Object> out, String raw, boolean convertId) {
+
+        String str = raw.trim();
+        if (str.isEmpty()) return;
+
+        str = str.replace("\\,", ",");
+
+        out.add(!convertId ? str : new ObjectId(str));
     }
 
     private Mono<MongoCollection<Document>> getCollection(String clientCode, Connection conn, Storage storage) {
