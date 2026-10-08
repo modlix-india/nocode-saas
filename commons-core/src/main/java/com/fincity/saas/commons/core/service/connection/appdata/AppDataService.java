@@ -218,7 +218,7 @@ public class AppDataService {
             List<String> eagerFields) {
         Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -352,7 +352,7 @@ public class AppDataService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        ca -> this.appCode(appCode, ca),
                         (ca, ac) -> this.clientCode(clientCode),
                         (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                         (ca, ac, cc, conn) -> getStorageWithKIRunValidation(storageName, ac, cc)
@@ -391,7 +391,7 @@ public class AppDataService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        ca -> this.appCode(appCode, ca),
                         (ca, ac) -> this.clientCode(clientCode),
                         (ca, ac, cc) -> this.builderOnly(ac),
                         (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
@@ -432,7 +432,7 @@ public class AppDataService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                        ca -> this.appCode(appCode, ca),
                         (ca, ac) -> this.clientCode(clientCode),
                         (ca, ac, cc) -> this.builderOnly(ac),
                         (ca, ac, cc, allowed) -> getStorageWithKIRunValidation(storageName, ac, cc)
@@ -565,7 +565,7 @@ public class AppDataService {
 
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -656,7 +656,7 @@ public class AppDataService {
 
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> this.securityService.hasWriteAccess(ac, ca.getClientCode())
                         .defaultIfEmpty(Boolean.FALSE)
@@ -709,7 +709,7 @@ public class AppDataService {
             List<String> eagerFields) {
         Mono<List<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1347,7 +1347,7 @@ public class AppDataService {
             List<String> eagerFields) {
         Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1402,7 +1402,7 @@ public class AppDataService {
 
         Mono<List<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1613,7 +1613,7 @@ public class AppDataService {
             String appCode, String clientCode, String storageName, String id, Boolean eager, List<String> eagerFields) {
         Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1643,7 +1643,7 @@ public class AppDataService {
                 storageName, query);
         Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1687,7 +1687,7 @@ public class AppDataService {
 
         Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1707,7 +1707,7 @@ public class AppDataService {
             String appCode, String clientCode, String storageName, String id, Boolean deleteVersion) {
         Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -1753,7 +1753,7 @@ public class AppDataService {
             Boolean deleteVersion) {
         Mono<Long> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2088,7 +2088,7 @@ public class AppDataService {
             ServerHttpResponse response) {
         Mono<Void> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2209,7 +2209,7 @@ public class AppDataService {
             String appCode, String clientCode, String storageName, DataFileType fileType, FilePart file) {
         Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2478,7 +2478,7 @@ public class AppDataService {
             String appCode, String clientCode, String storageName, String versionId) {
         Mono<Map<String, Object>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2503,7 +2503,7 @@ public class AppDataService {
             Boolean includeObject) {
         Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2525,7 +2525,7 @@ public class AppDataService {
     public Mono<Boolean> deleteStorage(String appCode, String clientCode, String storageName) {
         Mono<Boolean> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
+                ca -> this.appCode(appCode, ca),
                 (ca, ac) -> this.clientCode(clientCode),
                 (ca, ac, cc) -> connectionService.read("appData", ac, cc, ConnectionType.APP_DATA),
                 (ca, ac, cc, conn) -> Mono.just(
@@ -2636,6 +2636,33 @@ public class AppDataService {
     // sent, else take the url client code.
     // Else, if the client code is blank, use the logged-in user's client code.
     // Else, check client code is in the hierarchy or not and use it.
+    /**
+     * The app a storage operation belongs to.
+     *
+     * Explicit argument first; then the app that OWNS the running KIRun
+     * function; then the app the request came in for.
+     *
+     * The middle step is the one that was missing. A function shared across an
+     * app dependency runs inside the caller's request, so a storage step that
+     * did not name an appCode resolved against the CALLER. Where the two apps
+     * had no storage of the same name that surfaced as a 404; where they did,
+     * it silently read and wrote the caller's tenant database instead of the
+     * owner's. Measured both ways on 2026-10-08.
+     *
+     * Only appCode defaults this way. clientCode deliberately does not: the
+     * client is the tenant the request is FOR, and following the caller is
+     * exactly right for it.
+     */
+    private Mono<String> appCode(String appCode, ContextAuthentication ca) {
+
+        if (!StringUtil.safeIsBlank(appCode)) return Mono.just(appCode);
+
+        return Mono.deferContextual(cv -> Mono.just(
+                cv.hasKey(DefinitionFunction.OWNER_APP_CODE)
+                        ? cv.get(DefinitionFunction.OWNER_APP_CODE)
+                        : ca.getUrlAppCode()));
+    }
+
     private Mono<String> clientCode(String clientCode) {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
