@@ -102,6 +102,8 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String INVALID_AGGREGATION = "invalid_aggregation";
     public static final String INVALID_JOIN = "invalid_join";
 
+    public static final String FORBIDDEN_CLIENT_CODE = "forbidden_client_code";
+
     public static final String UNSUPPORTED_CONDITION = "unsupported_condition";
 
     public static final String UNSUPPORTED_ON_BACKEND = "unsupported_on_backend";
