@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Condition;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -46,7 +47,10 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
 
         if (email != null && !email.isEmpty()) phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS.EMAIL.eq(email));
 
-        if (!phoneEmailConditions.isEmpty())
+        // Without a phone or an email nothing identifies the owner, and leaving the filter off would
+        // hand back the client's newest owner, whose number the new ticket would then take.
+        if (phoneEmailConditions.isEmpty()) conditions.add(DSL.falseCondition());
+        else
             conditions.add(
                     phoneEmailConditions.size() > 1
                             ? phoneEmailConditions.get(0).or(phoneEmailConditions.get(1))
