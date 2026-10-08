@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.request.ticket;
 
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -43,8 +44,13 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private Identity campaignId;
     private Map<String, Object> metaData;
 
+    /**
+     * A phone number that does not parse arrives here as null, and a form left blank sends an email
+     * with an empty address, so both are checked for something usable.
+     */
     public boolean hasIdentifyInfo() {
-        return this.getPhoneNumber() != null || this.getEmail() != null;
+        return (this.getPhoneNumber() != null && !StringUtil.safeIsBlank(this.getPhoneNumber().getNumber()))
+                || (this.getEmail() != null && !StringUtil.safeIsBlank(this.getEmail().getAddress()));
     }
 
     public boolean hasSourceInfo() {
