@@ -185,8 +185,15 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 											gson.toJsonTree(s.getObject().getDefinition()),
 											FunctionDefinition.class);
 
-									return Mono.just((ReactiveFunction) new DefinitionFunction(fd,
-											s.getObject().getExecuteAuth()));
+									DefinitionFunction function = new DefinitionFunction(fd,
+											s.getObject().getExecuteAuth());
+
+									// The document's OWN appCode, which differs from the
+									// repository's whenever this resolved through an app
+									// dependency. That is the case the storage layer needs.
+									function.setOwnerAppCode(s.getObject().getAppCode());
+
+									return Mono.just((ReactiveFunction) function);
 								})
 								.contextWrite(Context.of(LogUtil.METHOD_NAME,
 										"AbstractFunctionService.getFunctionRepository"));

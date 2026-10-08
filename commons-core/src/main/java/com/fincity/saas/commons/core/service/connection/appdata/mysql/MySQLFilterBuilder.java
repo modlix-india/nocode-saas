@@ -9,6 +9,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.impl.DSL;
 
+import com.fincity.saas.commons.core.util.PorterStemmer;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -103,7 +104,7 @@ public final class MySQLFilterBuilder {
         StringBuilder expr = new StringBuilder("$");
         for (String seg : path.split("\\.")) {
             if (!PATH_SEGMENT.matcher(seg).matches())
-                throw new UnsupportedFilterException("'" + whole + "' is not a usable JSON path");
+                throw UnsupportedFilterException.malformed("'" + whole + "' is not a usable JSON path");
             expr.append('.').append(seg);
         }
 
@@ -133,7 +134,7 @@ public final class MySQLFilterBuilder {
 
     private static Condition filter(FilterCondition fc, MySQLFieldResolver resolver) {
 
-        if (fc.getOperator() == null) throw new UnsupportedFilterException("a filter condition has no operator");
+        if (fc.getOperator() == null) throw UnsupportedFilterException.malformed("a filter condition has no operator");
 
         switch (fc.getOperator()) {
             case TEXT_SEARCH:
@@ -147,7 +148,7 @@ public final class MySQLFilterBuilder {
         }
 
         if (fc.getField() == null || fc.getField().isBlank())
-            throw new UnsupportedFilterException("a filter condition has no field");
+            throw UnsupportedFilterException.malformed("a filter condition has no field");
 
         Field<Object> field = resolver.resolve(fc.getField());
         Condition c = positive(fc, field, resolver);
@@ -188,8 +189,37 @@ public final class MySQLFilterBuilder {
             bindings.add(resolver.qualified(column));
         }
 
-        sql.append(") AGAINST ({").append(i).append("} IN NATURAL LANGUAGE MODE)");
-        bindings.add(DSL.val(fc.getValue().toString()));
+        String raw = fc.getValue().toString();
+
+        if (!resolver.stemming()) {
+            sql.append(") AGAINST ({").append(i).append("} IN NATURAL LANGUAGE MODE)");
+            bindings.add(DSL.val(raw));
+            Condition plain = DSL.condition(sql.toString(), bindings.toArray());
+            return fc.isNegate() ? plain.not() : plain;
+        }
+
+        // Stemmed, which means BOOLEAN MODE, because the truncation operator is
+        // the only thing that widens a stem back over the forms actually stored.
+        // InnoDB does not stem, so "guides" finds nothing without this; Mongo's
+        // $text has stemmed all along, and the two backends disagreed.
+        List<String> prefixes = PorterStemmer.searchPrefixes(raw);
+
+        // Every term was punctuation, a stopword, or shorter than
+        // innodb_ft_min_token_size. An empty AGAINST is a syntax error, and the
+        // honest answer is the one MySQL already gives for "the": no rows.
+        if (prefixes.isEmpty()) return fc.isNegate() ? DSL.trueCondition() : DSL.falseCondition();
+
+        StringBuilder against = new StringBuilder();
+        for (String prefix : prefixes) {
+            if (against.length() > 0) against.append(' ');
+            // Bare, NOT "+prefix*". A leading + would make every term REQUIRED,
+            // silently turning multi word search into AND - where both natural
+            // language mode and Mongo's $text match on any term.
+            against.append(prefix).append('*');
+        }
+
+        sql.append(") AGAINST ({").append(i).append("} IN BOOLEAN MODE)");
+        bindings.add(DSL.val(against.toString()));
 
         Condition condition = DSL.condition(sql.toString(), bindings.toArray());
         return fc.isNegate() ? condition.not() : condition;
@@ -252,7 +282,7 @@ public final class MySQLFilterBuilder {
                 : fc.getValue() == null ? List.of() : List.of(fc.getValue());
 
         if (values.isEmpty())
-            throw new UnsupportedFilterException("MATCH_ALL needs either multiValue or a value");
+            throw UnsupportedFilterException.malformed("MATCH_ALL needs either multiValue or a value");
 
         StringBuilder json = new StringBuilder("[");
         for (int i = 0; i < values.size(); i++) {
@@ -276,20 +306,20 @@ public final class MySQLFilterBuilder {
     private static Field<Object> arrayField(String name, MySQLFieldResolver resolver) {
 
         if (name == null || name.isBlank())
-            throw new UnsupportedFilterException("a filter condition has no field");
+            throw UnsupportedFilterException.malformed("a filter condition has no field");
 
         int dot = name.indexOf('.');
         if (dot <= 0 || dot == name.length() - 1) return resolver.resolve(name);
 
         String head = name.substring(0, dot);
         if (!resolver.isJsonColumn(head))
-            throw new UnsupportedFilterException(
+            throw UnsupportedFilterException.malformed(
                     "'" + name + "' is not an array on this storage, so it cannot be matched inside");
 
         StringBuilder expr = new StringBuilder("$");
         for (String seg : name.substring(dot + 1).split("\\.")) {
             if (!PATH_SEGMENT.matcher(seg).matches())
-                throw new UnsupportedFilterException("'" + name + "' is not a usable JSON path");
+                throw UnsupportedFilterException.malformed("'" + name + "' is not a usable JSON path");
             expr.append('.').append(seg);
         }
 
@@ -342,7 +372,7 @@ public final class MySQLFilterBuilder {
      */
     private static String jsonLiteral(Object value) {
 
-        if (value == null) throw new UnsupportedFilterException("a match value cannot be null");
+        if (value == null) throw UnsupportedFilterException.malformed("a match value cannot be null");
 
         if (value instanceof Number || value instanceof Boolean) return value.toString();
 
@@ -375,8 +405,8 @@ public final class MySQLFilterBuilder {
             case IN:
                 return field.in(multiValue(fc));
             case BETWEEN:
-                require(fc.getValue(), "BETWEEN needs a value");
-                require(fc.getToValue(), "BETWEEN needs a toValue");
+                require(fc.getValue(), "BETWEEN on '" + fc.getField() + "' without a value");
+                require(fc.getToValue(), "BETWEEN on '" + fc.getField() + "' without a toValue");
                 return field.between(fc.getValue()).and(fc.getToValue());
             case LIKE:
                 require(fc.getValue(), "LIKE needs a value");
@@ -412,7 +442,8 @@ public final class MySQLFilterBuilder {
         if (fc.getMultiValue() != null && !fc.getMultiValue().isEmpty()) return fc.getMultiValue();
 
         if (fc.getValue() == null)
-            throw new UnsupportedFilterException("IN needs either multiValue or a comma separated value");
+            throw UnsupportedFilterException.malformed(
+                    "IN on '" + fc.getField() + "' needs either multiValue or a comma separated value");
 
         List<String> parts = new ArrayList<>();
         for (String p : fc.getValue().toString().split(",")) {
@@ -420,12 +451,13 @@ public final class MySQLFilterBuilder {
             if (!t.isEmpty()) parts.add(t);
         }
 
-        if (parts.isEmpty()) throw new UnsupportedFilterException("IN was given an empty list");
+        if (parts.isEmpty())
+            throw UnsupportedFilterException.malformed("IN on '" + fc.getField() + "' was given an empty list");
 
         return parts;
     }
 
     private static void require(Object value, String message) {
-        if (value == null) throw new UnsupportedFilterException(message);
+        if (value == null) throw UnsupportedFilterException.malformed(message);
     }
 }

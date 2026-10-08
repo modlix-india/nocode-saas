@@ -198,6 +198,30 @@ class MongoFilterConditionIntegrationTest extends AbstractIntegrationTest {
             assertEquals(List.of("alpha", "bravo"), names(in(" alpha , ,bravo ")));
         }
 
+        /**
+         * Refused, not answered. $in: [] matches no rows, which hides a caller's
+         * mistake; NEGATED it becomes $nin: [], which matches EVERY row, so a
+         * malformed filter silently returned the whole table. MySQL already refused
+         * this, and a filter that quietly stops filtering is the one failure this
+         * backend must not have.
+         */
+        @Test
+        @Timeout(300)
+        @DisplayName("a value that comes to nothing is refused, not read as 'no rows'")
+        void emptyListRefused() {
+            assertThrows(Exception.class, () -> names(in(" , , ")));
+            assertThrows(Exception.class, () -> names(in("")));
+        }
+
+        @Test
+        @Timeout(300)
+        @DisplayName("and refused when negated too, rather than matching everything")
+        void emptyListNegatedRefused() {
+            FilterCondition c = in(" , , ");
+            c.setNegate(true);
+            assertThrows(Exception.class, () -> names(c));
+        }
+
         @Test
         @Timeout(300)
         @DisplayName("an explicit multiValue is unaffected")
