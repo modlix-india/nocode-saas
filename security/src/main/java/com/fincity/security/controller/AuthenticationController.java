@@ -151,6 +151,17 @@ public class AuthenticationController {
         return this.service.makeOneTimeToken(request, httpRequest).map(ResponseEntity::ok);
     }
 
+    /**
+     * Service-to-service only: the one place a remember-me (long-lived) one-time token can be
+     * minted on request. Under {@code internal/}, so permitAll inside the cluster and denied at
+     * nginx; it still needs the user's own token as the Authorization header.
+     */
+    @PostMapping(value = "internal/makeOneTimeToken")
+    public Mono<ResponseEntity<Map<String, String>>> makeOneTimeTokenInternal(
+            @RequestBody MakeOneTimeTimeTokenRequest request, ServerHttpRequest httpRequest) {
+        return this.service.makeOneTimeTokenInternal(request, httpRequest).map(ResponseEntity::ok);
+    }
+
     @GetMapping(value = "/authenticateWithOneTimeToken/{pathToken}")
     public Mono<ResponseEntity<ContextAuthentication>> authenticateWithOneTimeToken(
             @PathVariable(required = false) String pathToken, @RequestParam(required = false) String token,

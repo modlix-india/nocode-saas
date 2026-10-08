@@ -121,7 +121,7 @@ class OneTimeTokenServiceTest {
 
 			OneTimeToken found = TestDataFactory.createOneTimeToken(TOKEN_ID, USER_ID, tokenValue);
 
-			when(dao.readOneTimeTokenAndDeleteBy(tokenValue)).thenReturn(Mono.just(found));
+			when(dao.readOneTimeTokenAndDeleteBy(tokenValue, 5)).thenReturn(Mono.just(found));
 
 			StepVerifier.create(service.getOneTimeToken(tokenValue))
 					.assertNext(result -> {
@@ -130,19 +130,19 @@ class OneTimeTokenServiceTest {
 					})
 					.verifyComplete();
 
-			verify(dao).readOneTimeTokenAndDeleteBy(tokenValue);
+			verify(dao).readOneTimeTokenAndDeleteBy(tokenValue, 5);
 		}
 
 		@Test
 		void getOneTimeToken_NotFound_ReturnsEmpty() {
 			String tokenValue = "nonexistenttoken12345678901234";
 
-			when(dao.readOneTimeTokenAndDeleteBy(tokenValue)).thenReturn(Mono.empty());
+			when(dao.readOneTimeTokenAndDeleteBy(tokenValue, 5)).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.getOneTimeToken(tokenValue))
 					.verifyComplete();
 
-			verify(dao).readOneTimeTokenAndDeleteBy(tokenValue);
+			verify(dao).readOneTimeTokenAndDeleteBy(tokenValue, 5);
 		}
 	}
 }

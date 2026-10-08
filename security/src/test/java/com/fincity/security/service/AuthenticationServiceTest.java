@@ -2332,9 +2332,10 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
-		@DisplayName("makeOneTimeToken with rememberMe passes flag to OneTimeToken")
+		@DisplayName("makeOneTimeToken with rememberMe passes the flag on when the minting token is itself remember-me")
 		void makeOneTimeToken_RememberMe_PassesFlag() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setAccessToken(jwt(1440));
 			setupSecurityContext(ca);
 
 			var tokenRequest = new MakeOneTimeTimeTokenRequest();
@@ -2356,6 +2357,161 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.makeOneTimeToken(tokenRequest, request))
 					.assertNext(result -> assertEquals("rememberToken", result.get("token")))
 					.verifyComplete();
+		}
+	}
+
+	/** A real token signed with the service's key, {@code minutes} long. */
+	private String jwt(int minutes) {
+		return com.fincity.saas.commons.security.jwt.JWTUtil.generateToken(
+				com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters.builder()
+						.userId(BigInteger.ONE)
+						.secretKey("testSecretKeyForJWTTokenGenerationThatIsLongEnoughForHS256Algorithm1234567890")
+						.expiryInMin(minutes)
+						.host("test.local")
+						.port("443")
+						.loggedInClientId(BigInteger.ONE)
+						.loggedInClientCode("SYSTEM")
+						.appCode(APP_CODE)
+						.build())
+				.getT1();
+	}
+
+	// ===== One-time token: no upgrade to a one-year session =====
+
+	@Nested
+	@DisplayName("makeOneTimeToken - rememberMe cannot upgrade a session")
+	class OneTimeTokenRememberMeTests {
+
+		private Boolean mintedRememberMe(ContextAuthentication ca, boolean internal) {
+			setupSecurityContext(ca);
+
+			var tokenRequest = new MakeOneTimeTimeTokenRequest();
+			tokenRequest.setRememberMe(true);
+
+			OneTimeToken ott = new OneTimeToken();
+			ott.setToken("ott");
+			ArgumentCaptor<OneTimeToken> captor = ArgumentCaptor.forClass(OneTimeToken.class);
+			when(oneTimeTokenService.create(captor.capture())).thenReturn(Mono.just(ott));
+
+			var mono = internal ? service.makeOneTimeTokenInternal(tokenRequest, mockRequest())
+					: service.makeOneTimeToken(tokenRequest, mockRequest());
+			StepVerifier.create(mono).expectNextCount(1).verifyComplete();
+
+			return captor.getValue().getRememberMe();
+		}
+
+		@Test
+		@DisplayName("a 30-minute token asking for rememberMe gets an ordinary one-time token")
+		void shortTokenCannotMintRememberMe() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setAccessToken(jwt(30));
+
+			assertFalse(mintedRememberMe(ca, false));
+		}
+
+		@Test
+		@DisplayName("a session without a JWT (basic auth, none) never mints rememberMe")
+		void noJwtCannotMintRememberMe() {
+			assertFalse(mintedRememberMe(TestDataFactory.createSystemAuth(), false));
+		}
+
+		@Test
+		@DisplayName("a remember-me token keeps rememberMe on its fork")
+		void rememberMeTokenKeepsIt() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setAccessToken(jwt(1440));
+
+			assertTrue(mintedRememberMe(ca, false));
+		}
+
+		@Test
+		@DisplayName("the internal endpoint honours rememberMe for any authenticated caller")
+		void internalHonoursRememberMe() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setAccessToken(jwt(30));
+
+			assertTrue(mintedRememberMe(ca, true));
+		}
+
+		@Test
+		@DisplayName("the internal endpoint refuses an anonymous caller")
+		void internalRefusesAnonymous() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setAuthenticated(false);
+			setupSecurityContext(ca);
+
+			var tokenRequest = new MakeOneTimeTimeTokenRequest();
+			tokenRequest.setRememberMe(true);
+
+			ServerHttpRequest request = mock(ServerHttpRequest.class);
+			lenient().when(request.getHeaders()).thenReturn(new HttpHeaders());
+			lenient().when(request.getCookies()).thenReturn(new LinkedMultiValueMap<>());
+
+			StepVerifier.create(service.makeOneTimeTokenInternal(tokenRequest, request))
+					.expectErrorMatches(e -> e instanceof GenericException g
+							&& g.getStatusCode() == HttpStatus.UNAUTHORIZED)
+					.verify();
+
+			verify(oneTimeTokenService, never()).create(any());
+		}
+
+		@Test
+		@DisplayName("isRememberMeToken: by lifetime, not by what is left")
+		void isRememberMeTokenByLifetime() {
+			assertTrue(service.isRememberMeToken(jwt(1440)));
+			assertFalse(service.isRememberMeToken(jwt(30)));
+			assertFalse(service.isRememberMeToken(jwt(1430)));
+			assertFalse(service.isRememberMeToken("not.a.jwt"));
+			assertFalse(service.isRememberMeToken(null));
+		}
+	}
+
+	// ===== revoke: a token value held by more than one row =====
+
+	@Nested
+	@DisplayName("revoke - every row holding the token")
+	class RevokeAllRowsTests {
+
+		@Test
+		@DisplayName("two rows with the same token (a fork minted in the login's second) are both deleted")
+		void revokeDeletesEveryRowWithTheToken() {
+			String token = "identical.jwt.minted.twice.in.one.second.so.two.rows.hold.this.same.string";
+			ServerHttpRequest request = mockRequest("Bearer " + token, null, null);
+
+			TokenObject login = TestDataFactory.createTokenObject(
+					ULong.valueOf(489196), USER_ID, token, LocalDateTime.now().plusMinutes(30));
+			TokenObject fork = TestDataFactory.createTokenObject(
+					ULong.valueOf(489197), USER_ID, token, LocalDateTime.now().plusMinutes(30));
+
+			when(tokenService.readAllFilter(any())).thenReturn(reactor.core.publisher.Flux.just(login, fork));
+			when(tokenService.delete(any(ULong.class))).thenReturn(Mono.just(1));
+
+			StepVerifier.create(service.revoke(false, request))
+					.assertNext(result -> assertEquals(2, result))
+					.verifyComplete();
+
+			verify(tokenService).delete(ULong.valueOf(489196));
+			verify(tokenService).delete(ULong.valueOf(489197));
+		}
+
+		@Test
+		@DisplayName("a lower-case bearer prefix revokes the token it authenticated with")
+		void lowerCaseBearerPrefix() {
+			String token = "a.jwt.sent.with.a.lower.case.bearer.prefix.long.enough.for.a.part.token";
+			ServerHttpRequest request = mockRequest("bearer " + token, null, null);
+
+			TokenObject stored = TestDataFactory.createTokenObject(
+					ULong.valueOf(300), USER_ID, token, LocalDateTime.now().plusMinutes(30));
+
+			when(tokenService.readAllFilter(any())).thenReturn(reactor.core.publisher.Flux.just(stored));
+			when(tokenService.delete(any(ULong.class))).thenReturn(Mono.just(1));
+
+			StepVerifier.create(service.revoke(false, request))
+					.assertNext(result -> assertEquals(1, result))
+					.verifyComplete();
+
+			verify(cacheService).evict(anyString(), eq(token));
+			verify(tokenService).delete(ULong.valueOf(300));
 		}
 	}
 

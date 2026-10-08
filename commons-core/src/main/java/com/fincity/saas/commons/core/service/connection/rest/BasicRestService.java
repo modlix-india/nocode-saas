@@ -295,7 +295,19 @@ public class BasicRestService extends AbstractRestService {
         return uriBuilder;
     }
 
-    private Mono<RestResponse> handleResponse(ClientResponse clientResponse, Duration timeout, boolean fileDownload) {
+    /**
+     * Turn the remote response into a {@link RestResponse}.
+     *
+     * <b>Every branch ends in {@code defaultIfEmpty(restResponse)}.</b> A response with
+     * no body (a 204, or a 200/201/202 that simply sends nothing) makes
+     * {@code bodyToMono} complete EMPTY, and an empty result used to fall through to
+     * {@code RestService.doCall}'s fallback, which reported a successful call as
+     * status 500 "Connection Not found". The default keeps the remote's real status
+     * and headers with {@code data} left null.
+     *
+     * Package-private for the unit test.
+     */
+    Mono<RestResponse> handleResponse(ClientResponse clientResponse, Duration timeout, boolean fileDownload) {
         HttpHeaders headers = clientResponse.headers().asHttpHeaders();
         MediaType contentType = headers.getContentType();
 
@@ -307,6 +319,7 @@ public class BasicRestService extends AbstractRestService {
             return clientResponse
                     .bodyToMono(String.class)
                     .map(restResponse::setData)
+                    .defaultIfEmpty(restResponse)
                     .timeout(timeout)
                     .onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
 
@@ -314,6 +327,7 @@ public class BasicRestService extends AbstractRestService {
             return clientResponse
                     .bodyToMono(String.class)
                     .map(jsonData -> restResponse.setData(processJsonResponse(jsonData)))
+                    .defaultIfEmpty(restResponse)
                     .timeout(timeout)
                     .onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
         } else if (fileDownload
@@ -322,6 +336,7 @@ public class BasicRestService extends AbstractRestService {
             return clientResponse
                     .bodyToMono(byte[].class)
                     .map(binaryData -> processBinaryResponse(binaryData, restResponse))
+                    .defaultIfEmpty(restResponse)
                     .timeout(timeout)
                     .onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
         }
@@ -329,12 +344,15 @@ public class BasicRestService extends AbstractRestService {
         return clientResponse
                 .bodyToMono(String.class)
                 .map(restResponse::setData)
+                .defaultIfEmpty(restResponse)
                 .timeout(timeout)
                 .onErrorResume(throwable -> Mono.just(createErrorResponse(throwable)));
     }
 
     private Object processJsonResponse(String jsonData) {
         JsonElement jsonElement = gson.fromJson(jsonData, JsonElement.class);
+        // A whitespace-only body parses to null rather than failing.
+        if (jsonElement == null || jsonElement.isJsonNull()) return null;
         if (jsonElement.isJsonPrimitive()) {
             JsonPrimitive prim = jsonElement.getAsJsonPrimitive();
             if (prim.isNumber()) return prim.getAsNumber();

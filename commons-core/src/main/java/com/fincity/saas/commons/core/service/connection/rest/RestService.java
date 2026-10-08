@@ -56,8 +56,18 @@ public class RestService {
                                 connection != null
                                         ? connection.getConnectionSubType()
                                         : ConnectionSubType.REST_API_BASIC)),
-                        (codeTuple, connection, service) -> service.call(connection, request, fileDownload))
+                        // A call that DID reach a connection must never fall through to the
+                        // "Connection Not found" fallback below: that fallback is for the
+                        // connection lookup coming back empty. BasicRestService already maps a
+                        // bodiless response to its real status; this only catches a subtype
+                        // that still completes empty, and says so instead of blaming the lookup.
+                        (codeTuple, connection, service) -> service.call(connection, request, fileDownload)
+                                .switchIfEmpty(Mono.defer(() -> Mono.just(new RestResponse()
+                                        .setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                                        .setData("No response from connection " + connectionName)))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RestService.doCall"))
+                // Reached only when the connection lookup is empty: no such connection,
+                // wrong type, not visible to this client, or onlyThruKIRun outside KIRun.
                 .switchIfEmpty(Mono.defer(() -> Mono.just(new RestResponse()
                         .setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value())
                         .setData("Connection Not found"))));
