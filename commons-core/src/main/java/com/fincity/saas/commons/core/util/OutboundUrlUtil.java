@@ -52,8 +52,27 @@ public final class OutboundUrlUtil {
     private OutboundUrlUtil() {
     }
 
-    /** The two schemes a connection may ever name. Everything else is refused. */
+    /** The two schemes a connection may ever name for a FETCH. Everything else is refused. */
     private static final Set<String> ALLOWED_SCHEMES = Set.of("http", "https");
+
+    /**
+     * Schemes that name a DATABASE rather than something the platform fetches.
+     *
+     * An APP_DATA connection points at a server the backend opens a driver
+     * against; it is never handed to the HTTP client, so "only http and https"
+     * is the wrong sentence to say about it. Refusing it outright meant a Mongo
+     * app-data connection could not be created AT ALL - not even to a public
+     * managed cluster - which is why every Mongo app runs on the platform's own
+     * client. MySQL was never refused, but only by accident: {@code
+     * r2dbc:mysql://host} does not match {@code scheme://}, so it was never
+     * scheme-checked, and never host-checked either.
+     *
+     * These are allowed past the SCHEME gate and then held to exactly the same
+     * HOST rules as everything else: loopback, link-local, the RFC 1918 ranges
+     * and {@code .oraclevcn.com} stay refused. The point is to stop saying no to
+     * a legitimate database, not to open a hole.
+     */
+    private static final Set<String> DATABASE_SCHEMES = Set.of("mongodb", "mongodb+srv");
 
     /**
      * Host names that are never a legitimate outbound target. The metadata
@@ -186,6 +205,14 @@ public final class OutboundUrlUtil {
         }
 
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+
+        // A database address is checked for WHERE it points, not for whether the
+        // HTTP client could call it.
+        if (DATABASE_SCHEMES.contains(scheme)) {
+            checkDatabaseAuthority(key, url);
+            return;
+        }
+
         if (!ALLOWED_SCHEMES.contains(scheme))
             throw refuse(key, url, "only http and https addresses can be called"
                     + (scheme.isEmpty() ? "" : ", not '" + scheme + "'"));
@@ -272,6 +299,63 @@ public final class OutboundUrlUtil {
             host = host.substring(0, host.length() - 1);
 
         return host;
+    }
+
+    /**
+     * Every host in a database URL, against the same rules as any other address.
+     *
+     * Parsed by hand rather than with {@link URI} because a Mongo connection
+     * string may name a whole replica set -
+     * {@code mongodb://user:pw@a:27017,b:27017/db} - and an authority holding a
+     * comma is not a host the URI parser will read. Letting that fall through as
+     * "no readable host name" would refuse the one shape a real cluster uses.
+     *
+     * Each member is checked, not just the first: a set whose second node is on
+     * 10.0.0.5 is as much a private address as one whose first node is.
+     */
+    private static void checkDatabaseAuthority(String key, String url) {
+
+        String rest = url.trim();
+        rest = rest.substring(rest.indexOf("://") + 3);
+
+        int end = rest.length();
+        for (char stop : new char[] {'/', '?', '#'}) {
+            int at = rest.indexOf(stop);
+            if (at >= 0 && at < end) end = at;
+        }
+
+        String authority = rest.substring(0, end);
+
+        // Credentials are not an address. The LAST '@' wins, because a password
+        // may legitimately contain one.
+        int at = authority.lastIndexOf('@');
+        if (at >= 0) authority = authority.substring(at + 1);
+
+        if (authority.isBlank())
+            throw refuse(key, url, "the address has no readable host name");
+
+        for (String member : authority.split(",")) {
+
+            String host = member.trim();
+            if (host.isEmpty())
+                throw refuse(key, url, "the address has no readable host name");
+
+            // Strip the port, leaving an IPv6 literal's own brackets alone.
+            if (host.startsWith("[")) {
+                int close = host.indexOf(']');
+                if (close < 0)
+                    throw refuse(key, url, "the address has no readable host name");
+                host = host.substring(0, close + 1);
+            } else {
+                int colon = host.indexOf(':');
+                if (colon >= 0) host = host.substring(0, colon);
+            }
+
+            if (host.isBlank())
+                throw refuse(key, url, "the address has no readable host name");
+
+            checkHost(key, url, host);
+        }
     }
 
     private static void checkHost(String key, String original, String rawHost) {
