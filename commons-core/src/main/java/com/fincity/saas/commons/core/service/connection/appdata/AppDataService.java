@@ -2648,10 +2648,33 @@ public class AppDataService {
                     if (blank)
                         return Mono.just(ca.getClientCode());
 
-                    return this.securityService.doesClientManageClientCode(clientCode, ca.getClientCode())
-                            .flatMap(e -> e ? Mono.just(true)
-                                    : this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode))
-                            .flatMap(e -> e ? Mono.just(clientCode) : Mono.empty());
+                    // defaultIfEmpty on BOTH legs. doesClientManageClientCode answers
+                    // EMPTY, not false, for a client that does not exist, so without
+                    // these the whole chain completed empty and the refusal below was
+                    // never reached - which is how an unknown clientCode stayed a 500.
+                    return this.securityService
+                            .doesClientManageClientCode(clientCode, ca.getClientCode())
+                            .defaultIfEmpty(Boolean.FALSE)
+                            .flatMap(e -> Boolean.TRUE.equals(e)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : this.securityService
+                                            .doesClientManageClientCode(ca.getClientCode(), clientCode)
+                                            .defaultIfEmpty(Boolean.FALSE))
+                            .defaultIfEmpty(Boolean.FALSE)
+                            // Refused, not dropped. Returning empty left the caller's
+                            // clientCode NULL, and the data read builds its chain with
+                            // flatMapMonoWithNull, which passes a null straight on to
+                            // Mono.just - so an unknown or unmanaged clientCode header
+                            // came back as a 500 NullPointerException rather than a
+                            // refusal. The endpoints built with flatMapMono answered
+                            // 200 with an empty body for the very same header, which
+                            // is the other half of the same mistake.
+                            .flatMap(e -> Boolean.TRUE.equals(e)
+                                    ? Mono.just(clientCode)
+                                    : this.msgService.<String>throwMessage(
+                                            msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                            CoreMessageResourceService.FORBIDDEN_CLIENT_CODE,
+                                            clientCode));
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.clientCode"));
     }
 }
