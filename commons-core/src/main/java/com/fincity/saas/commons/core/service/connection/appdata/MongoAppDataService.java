@@ -1426,9 +1426,23 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             if (value == null
                     && (fc.getMultiValue() == null || fc.getMultiValue().isEmpty())) return Mono.empty();
 
+            List<?> items = this.multiFieldValue(isObjectIdField, fc.getValue(), fc.getMultiValue());
+
+            // Something WAS supplied and it came to nothing - "a,,b" with no usable
+            // parts, or an empty string. Refused, as MySQL refuses it, because the
+            // alternative is worse than an error: $in: [] matches no rows, and
+            // NEGATED it becomes $nin: [], which matches EVERY row. A filter the
+            // caller got wrong then silently returns the whole table, which is the
+            // exact failure UnsupportedFilterException exists to prevent on the
+            // other backend.
+            if (items.isEmpty())
+                return this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                        "IN on '" + fc.getField() + "' was given an empty list");
+
             BiFunction<String, Iterable<?>, Bson> function = fc.isNegate() ? Filters::nin : Filters::in;
-            return Mono.just(function.apply(
-                    fc.getField(), this.multiFieldValue(isObjectIdField, fc.getValue(), fc.getMultiValue())));
+            return Mono.just(function.apply(fc.getField(), items));
         }
 
         if (fc.getOperator() == FilterConditionOperator.MATCH) {

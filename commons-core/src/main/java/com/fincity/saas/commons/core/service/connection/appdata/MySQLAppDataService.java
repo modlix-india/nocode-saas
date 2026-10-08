@@ -127,6 +127,18 @@ public class MySQLAppDataService implements IAppDataService {
      *
      * An idle app should cost nothing, and a busy one grows to maxSize on demand.
      */
+    /**
+     * Whether TEXT_SEARCH stems the query before searching.
+     *
+     * On, because InnoDB does not stem and Mongo does, so the same search over
+     * the same rows answered differently depending on the backend. Off restores
+     * the literal NATURAL LANGUAGE MODE search: stemming widens a term into a
+     * prefix, and a prefix over-matches - "plan" also finds "planet" - so there
+     * has to be a way to turn it off without a rebuild.
+     */
+    @org.springframework.beans.factory.annotation.Value("${core.appdata.mysql.textSearch.stemming:true}")
+    private boolean textSearchStemming;
+
     @org.springframework.beans.factory.annotation.Value("${core.appdata.mysql.pool.initialSize:0}")
     private int poolInitialSize;
 
@@ -1623,12 +1635,14 @@ public class MySQLAppDataService implements IAppDataService {
                 attached.subQueries());
     }
 
-    private static MySQLFieldResolver resolver(
+    private MySQLFieldResolver resolver(
             Schema schema, Map<String, StorageColumnDefinition> defs, Attached attached) {
         return resolver(schema, defs, attached, Set.of());
     }
 
-    private static MySQLFieldResolver resolver(
+    // Not static any more: the resolver now carries the stemming switch, which is
+    // configuration and therefore instance state.
+    private MySQLFieldResolver resolver(
             Schema schema, Map<String, StorageColumnDefinition> defs, Attached attached, Set<String> textColumns) {
 
         MySQLFieldResolver resolver = attached.isEmpty()
@@ -1639,7 +1653,7 @@ public class MySQLAppDataService implements IAppDataService {
                         byAlias(attached.joins()),
                         MySQLSubQueryPlanner.byAlias(attached.subQueries()));
 
-        return resolver.withTextColumns(textColumns);
+        return resolver.withTextColumns(textColumns).withStemming(this.textSearchStemming);
     }
 
     /** The fields the storage declared text-indexed, filtered to columns that exist. */
@@ -1917,6 +1931,16 @@ public class MySQLAppDataService implements IAppDataService {
         try {
             return MySQLFilterBuilder.build(query.getCondition(), resolver);
         } catch (UnsupportedFilterException e) {
+            // A malformed condition is the CALLER's mistake and gets a 400, the same
+            // code and the same sentence the Mongo backend gives for it. Only a real
+            // gap in this backend is a 501, which is a statement about the backend
+            // rather than about the request.
+            if (e.isMalformed())
+                throw this.msgService.nonReactiveMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                        e.getDetail());
+
             throw this.msgService.nonReactiveMessage(
                     msg -> new GenericException(HttpStatus.NOT_IMPLEMENTED, msg),
                     CoreMessageResourceService.UNSUPPORTED_ON_BACKEND,
@@ -2674,6 +2698,13 @@ public class MySQLAppDataService implements IAppDataService {
     }
 
     private <T> Mono<T> unsupportedFilter(UnsupportedFilterException e) {
+
+        if (e.isMalformed())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    CoreMessageResourceService.UNSUPPORTED_CONDITION,
+                    e.getDetail());
+
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.NOT_IMPLEMENTED, msg),
                 CoreMessageResourceService.UNSUPPORTED_ON_BACKEND,

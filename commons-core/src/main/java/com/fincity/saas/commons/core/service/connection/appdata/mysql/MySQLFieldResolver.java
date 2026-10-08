@@ -32,6 +32,7 @@ public final class MySQLFieldResolver {
     private final Map<String, JoinedTable> joins;
     private final Map<String, SubQueryTable> subQueries;
     private Set<String> textColumns = Set.of();
+    private boolean stemming = true;
 
     private MySQLFieldResolver(
             String parentAlias,
@@ -75,6 +76,20 @@ public final class MySQLFieldResolver {
 
     public Set<String> textColumns() {
         return this.textColumns;
+    }
+
+    /**
+     * Whether TEXT_SEARCH stems the query. Carried here for the same reason
+     * textColumns is: the filter builder is static and has no Spring context,
+     * and the resolver is the one object every call already threads through.
+     */
+    public MySQLFieldResolver withStemming(boolean stemming) {
+        this.stemming = stemming;
+        return this;
+    }
+
+    public boolean stemming() {
+        return this.stemming;
     }
 
     /** Whether this name is a JSON column on the parent, which an array always is. */

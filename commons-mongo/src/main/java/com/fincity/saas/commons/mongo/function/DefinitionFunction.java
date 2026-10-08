@@ -32,9 +32,24 @@ public class DefinitionFunction extends AbstractReactiveFunction implements IDef
 
     public static final String CONTEXT_KEY = "KIRun Runtime";
 
+    /**
+     * The app a running function BELONGS to, which is not always the app the
+     * request is for.
+     *
+     * A function shared across an app dependency runs in the caller's request,
+     * so a storage step inside it used to resolve against the CALLER's app -
+     * reading and writing the wrong tenant database, silently, whenever both
+     * apps happened to own a storage of the same name. Publishing the owner
+     * here lets the storage layer default to it instead.
+     */
+    public static final String OWNER_APP_CODE = "KIRun Owner AppCode";
+
     private final FunctionDefinition definition;
     private final String executionAuthorization;
     private ExecutionLog executionLog;
+
+    /** Set by the function service, which knows the document it loaded this from. */
+    private String ownerAppCode;
 
     @Override
     public FunctionSignature getSignature() {
@@ -55,7 +70,11 @@ public class DefinitionFunction extends AbstractReactiveFunction implements IDef
 
             ReactiveKIRuntime runtime = new ReactiveKIRuntime(definition, isDebug);
 
-            return runtime.execute(context).contextWrite(Context.of(CONTEXT_KEY, "true")).map(e -> {
+            Context runContext = ownerAppCode == null || ownerAppCode.isBlank()
+                    ? Context.of(CONTEXT_KEY, "true")
+                    : Context.of(CONTEXT_KEY, "true", OWNER_APP_CODE, ownerAppCode);
+
+            return runtime.execute(context).contextWrite(runContext).map(e -> {
 
                 this.executionLog = runtime.getExecutionLog();
 
