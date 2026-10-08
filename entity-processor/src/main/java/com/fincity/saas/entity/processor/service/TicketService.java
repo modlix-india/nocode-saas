@@ -87,6 +87,7 @@ import reactor.core.publisher.Flux;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Service
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO>
@@ -641,9 +642,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> Mono.zip(
-                                this.productService.readByIdentity(access, ticketRequest.getProductId()),
-                                this.getDnc(access, ticketRequest)),
+                        access -> {
+                            if (!ticketRequest.hasIdentifyInfo())
+                                return this.msgService.<Tuple2<Product, Boolean>>throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
+                                        this.getEntityPrefix(access.getAppCode()));
+                            return Mono.zip(
+                                    this.productService.readByIdentity(access, ticketRequest.getProductId()),
+                                    this.getDnc(access, ticketRequest));
+                        },
                         (access, productIdentity) -> {
                             if (!productIdentity.getT1().isActive())
                                 return this.msgService.<Ticket>throwMessage(
