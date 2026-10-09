@@ -3753,4 +3753,50 @@ class UserServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	@Nested
+	class GetMembersTests {
+
+		@Test
+		void getMembers_UsesCallersOwnClientAndDefaultPage() {
+			var ca = TestDataFactory.createBusinessAuth(USER_ID, BUS_CLIENT_ID, CLIENT_CODE, List.of());
+			setupSecurityContext(ca);
+
+			var member = new com.fincity.security.model.UserMember().setId(OTHER_USER_ID).setName("Ana B");
+			when(dao.getMembers(BUS_CLIENT_ID, CLIENT_CODE, false, null, 0, 200)).thenReturn(Flux.just(member));
+
+			StepVerifier.create(service.getMembers(null, false, 0, 0))
+					.assertNext(list -> {
+						assertEquals(1, list.size());
+						assertEquals(OTHER_USER_ID, list.getFirst().getId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void getMembers_ClampsSizeAndPassesFilters() {
+			var ca = TestDataFactory.createBusinessAuth(USER_ID, BUS_CLIENT_ID, CLIENT_CODE, List.of());
+			setupSecurityContext(ca);
+
+			when(dao.getMembers(BUS_CLIENT_ID, CLIENT_CODE, true, "an", 1000, 500)).thenReturn(Flux.empty());
+
+			StepVerifier.create(service.getMembers("an", true, 2, 5000))
+					.assertNext(list -> assertTrue(list.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		void getMembers_Anonymous_IsForbiddenAndReadsNothing() {
+			var ca = TestDataFactory.createContextAuthentication(ULong.valueOf(0), BUS_CLIENT_ID, CLIENT_CODE, "BUS",
+					false, List.of());
+			setupSecurityContext(ca);
+
+			StepVerifier.create(service.getMembers(null, false, 0, 200))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(dao, never()).getMembers(any(), any(), anyBoolean(), any(), anyInt(), anyInt());
+		}
+	}
 }
