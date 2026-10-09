@@ -303,6 +303,11 @@ public class UserController
         return this.requestService.createRequest(request).map(ResponseEntity::ok);
     }
 
+    @GetMapping("/request")
+    public Mono<ResponseEntity<Boolean>> hasPendingRequest(@RequestParam String appCode) {
+        return this.requestService.hasPendingRequest(appCode).map(ResponseEntity::ok);
+    }
+
     @PostMapping("/acceptRequest")
     public Mono<ResponseEntity<Boolean>> acceptRequest(
             @RequestBody UserAppAccessRequest userRequest, ServerHttpRequest request, ServerHttpResponse response) {
