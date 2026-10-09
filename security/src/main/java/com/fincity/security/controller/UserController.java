@@ -42,6 +42,7 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.UserAppAccessRequest;
+import com.fincity.security.model.UserMember;
 import com.fincity.security.model.UserRegistrationRequest;
 import com.fincity.security.model.RecordAudienceRequest;
 import com.fincity.security.service.RecordAudienceService;
@@ -255,6 +256,19 @@ public class UserController
         return this.service
                 .checkUserExistsAcrossApps(username, email, phoneNumber)
                 .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Names of the people in the caller's own company, for any signed in member. No emails or
+     * phone numbers. See {@link UserService#getMembers}.
+     */
+    @GetMapping("/members")
+    public Mono<ResponseEntity<List<UserMember>>> getMembers(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "" + UserService.MEMBERS_DEFAULT_SIZE) int size) {
+        return this.service.getMembers(q, includeInactive, page, size).map(ResponseEntity::ok);
     }
 
     @GetMapping("/sub-org")

@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -69,6 +70,7 @@ import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.model.UserMember;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -883,6 +885,74 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .select(SECURITY_USER.ID, SECURITY_USER.REPORTING_TO, SECURITY_USER.STATUS_CODE)
                 .from(SECURITY_USER)
                 .where(SECURITY_USER.CLIENT_ID.eq(clientId)));
+    }
+
+    /**
+     * The people of one client, as slim rows for a member list.
+     *
+     * <p>Selects only the columns {@link UserMember} carries, so email, phone and password columns
+     * never leave the database for this read. {@code clientId} is the only client matched: no
+     * hierarchy join, so users of managed sub clients are not included.
+     *
+     * <p>{@code includeInactive} widens ACTIVE to every status except DELETED. {@code search}, when
+     * set, is a case-insensitive contains on first name, last name and user name.
+     */
+    public Flux<UserMember> getMembers(ULong clientId, String clientCode, boolean includeInactive, String search,
+            int offset, int limit) {
+
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+        conditions.add(includeInactive
+                ? SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED)
+                : SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE));
+
+        if (!StringUtil.safeIsBlank(search)) {
+            String s = search.trim();
+            // User name is searched only where it is also shown (see toMember). Searching an
+            // email-shaped user name would let a caller probe for emails one substring at a time.
+            conditions.add(DSL.or(
+                    SECURITY_USER.FIRST_NAME.containsIgnoreCase(s),
+                    SECURITY_USER.LAST_NAME.containsIgnoreCase(s),
+                    DSL.and(
+                            SECURITY_USER.USER_NAME.containsIgnoreCase(s),
+                            SECURITY_USER.USER_NAME.ne(User.PLACEHOLDER),
+                            SECURITY_USER.USER_NAME.notContains("@"))));
+        }
+
+        return Flux.from(this.dslContext
+                .select(SECURITY_USER.ID, SECURITY_USER.FIRST_NAME, SECURITY_USER.LAST_NAME,
+                        SECURITY_USER.USER_NAME, SECURITY_USER.STATUS_CODE)
+                .from(SECURITY_USER)
+                .where(DSL.and(conditions))
+                .orderBy(SECURITY_USER.FIRST_NAME.asc(), SECURITY_USER.LAST_NAME.asc(), SECURITY_USER.ID.asc())
+                .limit(limit)
+                .offset(offset))
+                .map(r -> toMember(r.value1(), r.value2(), r.value3(), r.value4(), r.value5(), clientCode));
+    }
+
+    private static UserMember toMember(ULong id, String firstName, String lastName, String userName,
+            SecurityUserStatusCode statusCode, String clientCode) {
+
+        String first = StringUtil.safeIsBlank(firstName) ? null : firstName.trim();
+        String last = StringUtil.safeIsBlank(lastName) ? null : lastName.trim();
+
+        // USER_NAME defaults to "NONE", and many users sign in with an email as their user name.
+        // Either way it is not something to show, and an email here would undo the point of this read.
+        String uname = (StringUtil.safeIsBlank(userName) || User.PLACEHOLDER.equals(userName.trim())
+                || userName.contains("@")) ? null : userName.trim();
+
+        String name = Stream.of(first, last).filter(Objects::nonNull).collect(Collectors.joining(" "));
+        if (name.isEmpty())
+            name = uname != null ? uname : ("User " + id);
+
+        return new UserMember()
+                .setId(id)
+                .setFirstName(first)
+                .setLastName(last)
+                .setUserName(uname)
+                .setName(name)
+                .setStatusCode(statusCode)
+                .setClientCode(clientCode);
     }
 
     /**

@@ -78,6 +78,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.UserMember;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -837,6 +838,34 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<Page<User>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
         return super.readPageFilter(pageable, condition);
+    }
+
+    public static final int MEMBERS_DEFAULT_SIZE = 200;
+    private static final int MEMBERS_MAX_SIZE = 500;
+
+    /**
+     * The members of the signed in user's own company, for pickers and "who did what" lines.
+     *
+     * <p>Any signed in user may call this; no User_READ. What keeps that safe is the shape of the
+     * answer, not the caller: only the caller's OWN client (never the URL client, never managed sub
+     * clients) and only {@link UserMember} fields, so no email or phone. Managing people stays behind
+     * User_READ on {@link #readPageFilter}.
+     */
+    @PreAuthorize("isAuthenticated()")
+    public Mono<List<UserMember>> getMembers(String search, boolean includeInactive, int page, int size) {
+
+        int pageSize = size <= 0 ? MEMBERS_DEFAULT_SIZE : Math.min(size, MEMBERS_MAX_SIZE);
+        int offset = Math.max(page, 0) * pageSize;
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> ca.isAuthenticated()
+                        ? Mono.just(ULongUtil.valueOf(ca.getUser().getClientId()))
+                        : this.forbiddenError(SecurityMessageResourceService.LOGIN_REQUIRED),
+                (ca, ownClientId) -> this.dao
+                        .getMembers(ownClientId, ca.getClientCode(), includeInactive, search, offset, pageSize)
+                        .collectList())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getMembers"));
     }
 
     @Override
