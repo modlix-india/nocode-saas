@@ -43,6 +43,16 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
         return Boolean.TRUE;
     }
 
+    // A blank name used to fall through to the code (a random 22 character key) as the stage's name.
+    public boolean hasNoName() {
+        return this.getName() == null || this.getName().isBlank();
+    }
+
+    public boolean hasChildWithoutName() {
+        return super.getChildren() != null
+                && super.getChildren().values().stream().anyMatch(child -> child == null || child.hasNoName());
+    }
+
     @Override
     public boolean areChildrenValid() {
 

@@ -1551,7 +1551,7 @@ public class MySQLAppDataService implements IAppDataService {
                     try {
                         where = sq.getCondition() == null
                                 ? null
-                                : MySQLFilterBuilder.build(sq.getCondition(), MySQLFieldResolver.of(childJson));
+                                : MySQLFilterBuilder.buildForRead(sq.getCondition(), MySQLFieldResolver.of(childJson));
                         // Over the measure aliases, which belong to no table.
                         having = sq.getHaving() == null
                                 ? null
@@ -1929,7 +1929,7 @@ public class MySQLAppDataService implements IAppDataService {
      */
     private org.jooq.Condition condition(Query query, MySQLFieldResolver resolver) {
         try {
-            return MySQLFilterBuilder.build(query.getCondition(), resolver);
+            return MySQLFilterBuilder.buildForRead(query.getCondition(), resolver);
         } catch (UnsupportedFilterException e) {
             // A malformed condition is the CALLER's mistake and gets a 400, the same
             // code and the same sentence the Mongo backend gives for it. Only a real
@@ -2086,7 +2086,7 @@ public class MySQLAppDataService implements IAppDataService {
         org.jooq.Condition where;
         org.jooq.Condition having;
         try {
-            where = MySQLFilterBuilder.build(query.getCondition(), resolver);
+            where = MySQLFilterBuilder.buildForRead(query.getCondition(), resolver);
             // Over aliases, not columns: after grouping the only names that exist are
             // the ones this query invented, and they belong to no table.
             having = query.getHaving() == null ? null : MySQLFilterBuilder.build(query.getHaving(), Set.of());
@@ -2535,7 +2535,7 @@ public class MySQLAppDataService implements IAppDataService {
 
                             try {
                                 if (query.getCondition() != null)
-                                    where = where.and(MySQLFilterBuilder.build(query.getCondition(), Set.of()));
+                                    where = where.and(MySQLFilterBuilder.buildForRead(query.getCondition(), Set.of()));
                             } catch (UnsupportedFilterException e) {
                                 return this.<Page<Map<String, Object>>>unsupportedFilter(e);
                             }

@@ -41,6 +41,11 @@ import reactor.util.context.Context;
 @Service
 public class WhatsappSendOptionsService implements IProcessorAccessService {
 
+    /** The message service reads the owner of a new session from this body field. */
+    static final String OWNER_SERVICE = "ownerService";
+
+    static final String ENTITY_PROCESSOR = "entity-processor";
+
     /** The session's own identifier in the listing, which products point at. */
     private static final String KEY_SESSION_CODE = "code";
 
@@ -190,10 +195,16 @@ public class WhatsappSendOptionsService implements IProcessorAccessService {
      */
     @PreAuthorize("hasAuthority('Authorities.ROLE_Owner')")
     public Mono<Map<String, Object>> createSession(Map<String, Object> request) {
+        // A number linked through here is this service's: its inbound messages must come back to
+        // the entity-processor handlers. Named explicitly because the message service's default
+        // owner for a session that names none is core (any app can own a number), not us.
+        Map<String, Object> body = new LinkedHashMap<>(request == null ? Map.of() : request);
+        body.put(OWNER_SERVICE, ENTITY_PROCESSOR);
+
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> this.feignMessageService.createWhatsappSession(
-                                access.getAppCode(), access.getClientCode(), request))
+                                access.getAppCode(), access.getClientCode(), body))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappSendOptionsService.createSession"));
     }
 
