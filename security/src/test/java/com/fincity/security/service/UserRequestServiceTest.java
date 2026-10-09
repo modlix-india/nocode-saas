@@ -89,6 +89,49 @@ class UserRequestServiceTest extends AbstractServiceUnitTest {
 	}
 
 	// =========================================================================
+	// hasPendingRequest()
+	// =========================================================================
+
+	@Nested
+	@DisplayName("hasPendingRequest()")
+	class HasPendingRequestTests {
+
+		private App app() {
+			App app = new App();
+			app.setId(APP_ID);
+			app.setAppCode("testApp");
+			return app;
+		}
+
+		@Test
+		void pendingRequest_ReturnsTrue() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(appService.getAppByCode("testApp")).thenReturn(Mono.just(app()));
+			when(dao.checkPendingRequestExists(any(), eq(APP_ID))).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.hasPendingRequest("testApp")).expectNext(true).verifyComplete();
+		}
+
+		@Test
+		void noRequest_ReturnsFalse() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(appService.getAppByCode("testApp")).thenReturn(Mono.just(app()));
+			when(dao.checkPendingRequestExists(any(), eq(APP_ID))).thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.hasPendingRequest("testApp")).expectNext(false).verifyComplete();
+		}
+
+		@Test
+		void unknownApp_ReturnsFalse() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(appService.getAppByCode("noSuchApp")).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.hasPendingRequest("noSuchApp")).expectNext(false).verifyComplete();
+			verify(dao, never()).checkPendingRequestExists(any(), any());
+		}
+	}
+
+	// =========================================================================
 	// createRequest()
 	// =========================================================================
 
