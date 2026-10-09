@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -26,6 +28,8 @@ import reactor.core.scheduler.Schedulers;
 
 @Service
 public class CacheService extends RedisPubSubAdapter<String, String> {
+
+	private static final Logger logger = LoggerFactory.getLogger(CacheService.class);
 
 	@Autowired
 	private CacheManager cacheManager;
@@ -165,10 +169,28 @@ public class CacheService extends RedisPubSubAdapter<String, String> {
 					// repopulate L1 so the read working set accumulates locally instead of every
 					// read re-hitting Redis. Safe now that L1 is weight-bounded; before the cap
 					// this would have worsened the unbounded growth.
+					// A cache is an optimisation, so a cache that is unwell must look like a MISS,
+					// never like a failure. This path had neither a timeout nor an error handler --
+					// unlike evict() and clear() below, which both have one -- so a Redis command
+					// that did not come back parked the caller on a Lettuce future until its 60s
+					// default expired. nginx returns 504 at exactly 60s, so in production this
+					// surfaced as user-visible gateway timeouts on every endpoint of one instance,
+					// with the Redis server healthy and nothing logged anywhere.
+					//
+					// onErrorResume is what lets the client reject commands while disconnected: a
+					// rejection now means "go and ask the source", which is correct and cheap. The
+					// cost of being wrong here is one extra read of the underlying data; the cost
+					// of the old behaviour was a minute of the user's time.
 					return value.switchIfEmpty(
 							Mono.defer(() -> Mono.fromCompletionStage(redisAsyncCommand.hget(cacheName, key))
 									.map(CacheObject.class::cast)
-									.doOnNext(co -> this.cacheManager.getCache(cacheName).put(key, co))));
+									.doOnNext(co -> this.cacheManager.getCache(cacheName).put(key, co))
+									.onErrorResume(t -> {
+										logger.warn(
+												"Redis read failed for {}:{}, serving as a cache miss - {}",
+												cacheName, key, t.toString());
+										return Mono.empty();
+									})));
 				})
 				.flatMap(e -> Mono.justOrEmpty((T) e.getObject()));
 	}
