@@ -67,7 +67,16 @@ public class CampaignTrendResponse implements Serializable {
         /** Platform self-reported web leads (from Meta/Google ad metrics). */
         private long platformWl;
 
-        /** Funnel stage cells containing lead count and per-stage CPL. */
+        /** Total acquired CRM tickets in this period bucket (L-LEADS in UI). */
+        private long totalLeads;
+
+        /** Cost per total CRM lead: spend ÷ totalLeads. */
+        private BigDecimal cpl;
+
+        /**
+         * Funnel stage cells containing lead count, per-stage CPL, and stage
+         * percentage.
+         */
         private Map<String, StageCell> stageCells = new HashMap<>();
 
         public CampaignTrendRow addMetric(CampaignMetric metric) {
@@ -95,26 +104,40 @@ public class CampaignTrendResponse implements Serializable {
         }
 
         public CampaignTrendRow applyRatios(BigDecimal grandTotalSpend) {
-            if (grandTotalSpend != null && grandTotalSpend.signum() > 0 && this.spend != null && this.spend.signum() > 0) {
+            boolean hasSpend = this.spend != null && this.spend.signum() > 0;
+
+            if (grandTotalSpend != null && grandTotalSpend.signum() > 0 && hasSpend) {
                 this.share = this.spend.multiply(HUNDRED).divide(grandTotalSpend, SCALE, RoundingMode.HALF_UP);
             } else {
                 this.share = BigDecimal.ZERO;
             }
 
             if (this.impressions > 0) {
-                if (this.clicks > 0) {
-                    this.ctr = BigDecimal.valueOf(this.clicks)
-                            .multiply(HUNDRED)
-                            .divide(BigDecimal.valueOf(this.impressions), SCALE, RoundingMode.HALF_UP);
-                } else {
-                    this.ctr = BigDecimal.ZERO;
-                }
+                this.ctr = this.clicks > 0
+                        ? BigDecimal.valueOf(this.clicks).multiply(HUNDRED).divide(BigDecimal.valueOf(this.impressions),
+                                SCALE, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
             }
 
-            if (this.spend != null && this.spend.signum() > 0 && this.stageCells != null && !this.stageCells.isEmpty()) {
+            boolean hasTotalLeads = this.totalLeads > 0;
+            BigDecimal totalLeadsBd = hasTotalLeads ? BigDecimal.valueOf(this.totalLeads) : null;
+
+            if (hasTotalLeads && hasSpend) {
+                this.cpl = this.spend.divide(totalLeadsBd, SCALE, RoundingMode.HALF_UP);
+            }
+
+            if (this.stageCells != null && !this.stageCells.isEmpty()) {
                 for (StageCell cell : this.stageCells.values()) {
-                    if (cell.getCount() > 0) {
-                        cell.setCpl(this.spend.divide(BigDecimal.valueOf(cell.getCount()), SCALE, RoundingMode.HALF_UP));
+                    long count = cell.getCount();
+                    if (count > 0) {
+                        if (hasSpend) {
+                            cell.setCpl(this.spend.divide(BigDecimal.valueOf(count), SCALE, RoundingMode.HALF_UP));
+                        }
+                        if (hasTotalLeads) {
+                            cell.setPercentage(BigDecimal.valueOf(count)
+                                    .multiply(HUNDRED)
+                                    .divide(totalLeadsBd, SCALE, RoundingMode.HALF_UP));
+                        }
                     }
                 }
             }
@@ -127,7 +150,8 @@ public class CampaignTrendResponse implements Serializable {
                     || (this.impressions > 0)
                     || (this.clicks > 0)
                     || (this.platformFl > 0)
-                    || (this.platformWl > 0)) {
+                    || (this.platformWl > 0)
+                    || (this.totalLeads > 0)) {
                 return true;
             }
 
