@@ -74,6 +74,24 @@ public class UserRequestService
         this.appService = appService;
     }
 
+    /**
+     * Whether the signed in user already has a request waiting for this app. The request page
+     * asks on load, so someone who asked from one section is not offered the button again in
+     * another, or after a reload, only to be told the request already exists.
+     */
+    @PreAuthorize("hasAuthority('Authorities.Logged_IN')")
+    public Mono<Boolean> hasPendingRequest(String appCode) {
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.appService.getAppByCode(appCode),
+
+                (ca, app) -> this.dao.checkPendingRequestExists(ULong.valueOf(ca.getUser().getId()), app.getId()))
+                .defaultIfEmpty(false)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserRequestService.hasPendingRequest"));
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Logged_IN')")
     public Mono<UserRequest> createRequest(UserAppAccessRequest request) {
 
