@@ -51,6 +51,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.TimeoutOptions;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.ClientOptions;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.RedisCodec;
@@ -143,12 +146,62 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
         return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
     }
 
+    /**
+     * Ceiling on a single Redis command. Lettuce's default is SIXTY SECONDS, which is also what
+     * nginx waits before returning 504 — so an unanswered cache read and a user-visible gateway
+     * timeout arrive together, and the cache looks innocent.
+     */
+    @Value("${redis.commandTimeoutSeconds:5}")
+    private long redisCommandTimeoutSeconds;
+
+    /**
+     * The Redis client, bounded and set to fail rather than queue.
+     *
+     * <h2>Why this is not {@code RedisClient.create(url)} any more</h2>
+     *
+     * <p>A bare client takes two Lettuce defaults that are wrong for a read path on the request
+     * thread of every endpoint:
+     *
+     * <ol>
+     *   <li><b>A 60 second command timeout.</b> Every cached read goes through
+     *       {@code CacheService}, which wraps Lettuce futures in {@code Mono.fromCompletionStage}.
+     *       A command that does not come back parks the request for a minute holding no thread, no
+     *       connection and no pool slot — invisible to every pool, GC, CPU and thread-dump check.
+     *   <li><b>{@code DisconnectedBehavior.DEFAULT}, which QUEUES commands while the connection is
+     *       down</b> and replays them on reconnect. A managed Redis that drops an idle TLS
+     *       connection therefore does not produce an error; it produces a growing queue of commands
+     *       that all complete, or time out, much later.
+     * </ol>
+     *
+     * <p>Together those turn a transient connection problem into minutes of hung requests on
+     * whichever instance owns the bad connection, while the Redis SERVER looks perfectly healthy —
+     * which is exactly how this presented in production on 2026-10-05 and again on 2026-10-09:
+     * one instance, every endpoint, exactly 60.000s, 0% CPU, no pool pressure, nothing logged.
+     *
+     * <p>{@code REJECT_COMMANDS} is only safe because {@code CacheService} now treats a cache
+     * failure as a MISS and falls through to the source. Rejecting without that would convert a
+     * reconnect into request failures.
+     */
     @Bean
     public RedisClient redisClient() {
         if (redisURL == null || redisURL.isBlank())
             return null;
 
-        return RedisClient.create(redisURL);
+        Duration commandTimeout = Duration.ofSeconds(this.redisCommandTimeoutSeconds);
+
+        RedisURI uri = RedisURI.create(redisURL);
+        uri.setTimeout(commandTimeout);
+
+        RedisClient client = RedisClient.create(uri);
+        client.setOptions(ClientOptions.builder()
+                .autoReconnect(true)
+                // Fail now rather than queue for a reconnect that may not come soon.
+                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
+                // Applies the timeout to commands rather than only to connection setup.
+                .timeoutOptions(TimeoutOptions.enabled(commandTimeout))
+                .build());
+
+        return client;
     }
 
     @Bean
