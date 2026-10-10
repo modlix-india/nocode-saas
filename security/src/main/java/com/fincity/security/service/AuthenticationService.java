@@ -77,6 +77,9 @@ import reactor.util.function.Tuple3;
 @Service
 public class AuthenticationService implements IAuthenticationService {
 
+    private static final java.util.regex.Pattern BASIC_USER_ID = java.util.regex.Pattern.compile("^[0-9]{1,19}$");
+
+
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
 
     private static final String SSO_TARGET_APP = "SSO target app";
@@ -945,9 +948,20 @@ public class AuthenticationService implements IAuthenticationService {
                     ? AuthenticationIdentifierType.EMAIL_ID
                     : AuthenticationIdentifierType.USER_NAME;
 
+            // "<userId>:<password>" names exactly one account. An email can belong to users in several
+            // clients, and Basic has no other way to pick one: such a sign in found nobody and the request
+            // went on anonymous. All digits is read as a user id first, then as a user name.
+            final ULong basicUserId = BASIC_USER_ID.matcher(username).matches() ? ULong.valueOf(username) : null;
+
             return FlatMapUtil.flatMapMono(
-                    () -> this.userService.findNonDeletedUserNClient(
-                            username, null, clientCode, reqAppCode, identifier),
+                    () -> (basicUserId == null
+                            ? this.userService.findNonDeletedUserNClient(
+                                    username, null, clientCode, reqAppCode, identifier)
+                            : this.userService
+                                    .findNonDeletedUserNClient(
+                                            null, basicUserId, clientCode, reqAppCode, identifier)
+                                    .switchIfEmpty(Mono.defer(() -> this.userService.findNonDeletedUserNClient(
+                                            username, null, clientCode, reqAppCode, identifier)))),
                     tup -> this.userService
                             .checkUserAndClient(tup, clientCode)
                             .flatMap(BooleanUtil::safeValueOfWithEmpty),

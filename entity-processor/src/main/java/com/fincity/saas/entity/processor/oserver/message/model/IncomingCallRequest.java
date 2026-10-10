@@ -16,4 +16,7 @@ public class IncomingCallRequest extends BaseMessageRequest implements Serializa
     private static final long serialVersionUID = 914541620041638673L;
 
     private Map<String, String> providerIncomingRequest;
+
+    /** Who answers the applet, and so owns the call's status events when its account names no owner. */
+    private String ownerService;
 }

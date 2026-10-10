@@ -124,17 +124,53 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         });
     }
 
+    /**
+     * Keys whose values are credentials. Matched case-insensitively at any depth of the details, so a
+     * secret inside {@code defaultHeaders} or an OAuth block is covered too.
+     */
+    static final java.util.Set<String> SECRET_KEYS = java.util.Set.of(
+            "password", "clientsecret", "client_secret", "secret", "apikey", "api_key", "accesstoken",
+            "access_token", "refreshtoken", "refresh_token", "privatekey", "private_key", "authtoken",
+            "authorization", "x-api-key");
+
+    private static final String CONNECTION_UPDATE = "Authorities.Connection_UPDATE";
+
     @Override
     public Mono<Connection> read(String id) {
         return super.read(id)
                 .flatMap(e -> FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> {
-                    if (ca.getClientCode().equals(e.getClientCode()))
+                    if (!ca.getClientCode().equals(e.getClientCode())) {
+                        Connection cc = new Connection(e);
+                        cc.setConnectionDetails(null);
+                        return Mono.just(cc);
+                    }
+
+                    // Reading a connection is not changing it. Someone who may only read it sees where it
+                    // points and how, never the password or token it signs in with: a stored credential is
+                    // returned only to whoever may also replace it.
+                    if (SecurityContextUtil.hasAuthority(CONNECTION_UPDATE, ca.getAuthorities()))
                         return Mono.just(e);
 
                     Connection cc = new Connection(e);
-                    cc.setConnectionDetails(null);
+                    cc.setConnectionDetails(withoutSecrets(e.getConnectionDetails()));
                     return Mono.just(cc);
                 }));
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.Map<String, Object> withoutSecrets(java.util.Map<String, Object> details) {
+        if (details == null)
+            return null;
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        for (var entry : details.entrySet()) {
+            if (entry.getKey() != null && SECRET_KEYS.contains(entry.getKey().toLowerCase()))
+                continue;
+            Object v = entry.getValue();
+            if (v instanceof java.util.Map<?, ?> m)
+                v = withoutSecrets((java.util.Map<String, Object>) m);
+            out.put(entry.getKey(), v);
+        }
+        return out;
     }
 
     @Override

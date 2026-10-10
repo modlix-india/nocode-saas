@@ -57,6 +57,8 @@ public class TicketCallService implements IRepositoryProvider {
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
+    private static final String OWNER_SERVICE = "entity-processor";
+
     private static final String DEFAULT_CALL_SOURCE = "Social Media";
     private static final String DEFAULT_CALL_SUB_SOURCE = "Website Phone";
 
@@ -157,6 +159,9 @@ public class TicketCallService implements IRepositoryProvider {
                             return messageService.connectCall(
                                     appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
                                             .setProviderIncomingRequest(providerIncomingRequest)
+                                            // We answered the applet, so the call's status events
+                                            // are ours unless the call account names another owner.
+                                            .setOwnerService(OWNER_SERVICE)
                                             .setConnectionName(productComm.getConnectionName())
                                             .setUserId(ticket.getAssignedUserId()));
                         },
