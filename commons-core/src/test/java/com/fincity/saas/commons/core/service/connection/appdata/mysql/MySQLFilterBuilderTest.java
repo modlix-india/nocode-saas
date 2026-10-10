@@ -447,4 +447,102 @@ class MySQLFilterBuilderTest {
             assertFalse(sql.contains("guid*"), sql);
         }
     }
+
+    /**
+     * A read drops a condition given no value, as the Mongo backend does, so an
+     * optional filter ("any status while none is picked") reads the same on both.
+     * A delete keeps refusing it: there the dropped clause would remove rows nobody named.
+     */
+    @Nested
+    @DisplayName("a read skips a condition with no value, as Mongo does")
+    class ReadSkipsEmpty {
+
+        private String read(AbstractCondition c) {
+            return DSL.using(SQLDialect.MYSQL)
+                    .renderInlined(MySQLFilterBuilder.buildForRead(c, java.util.Set.of()))
+                    .replaceAll("\\s+", " ");
+        }
+
+        private ComplexCondition and(AbstractCondition... cs) {
+            return new ComplexCondition().setOperator(ComplexConditionOperator.AND).setConditions(List.of(cs));
+        }
+
+        @Test
+        @DisplayName("an unset comparison drops out of its group")
+        void droppedFromGroup() {
+            assertEquals("`a` = 1", read(and(fc("a", FilterConditionOperator.EQUALS, 1),
+                    fc("b", FilterConditionOperator.EQUALS, null))));
+        }
+
+        @Test
+        @DisplayName("every comparison, IN, MATCH and MATCH_ALL with nothing to compare drop out")
+        void everyValueOperator() {
+            for (FilterConditionOperator op : List.of(FilterConditionOperator.EQUALS,
+                    FilterConditionOperator.GREATER_THAN, FilterConditionOperator.GREATER_THAN_EQUAL,
+                    FilterConditionOperator.LESS_THAN, FilterConditionOperator.LESS_THAN_EQUAL,
+                    FilterConditionOperator.LIKE, FilterConditionOperator.STRING_LOOSE_EQUAL,
+                    FilterConditionOperator.BETWEEN, FilterConditionOperator.IN, FilterConditionOperator.MATCH,
+                    FilterConditionOperator.MATCH_ALL, FilterConditionOperator.TEXT_SEARCH))
+                assertEquals("true", read(fc("a", op, null)), op + " with no value should drop out");
+        }
+
+        @Test
+        @DisplayName("a negated condition with no value drops out too, rather than becoming NOT nothing")
+        void negatedDropsOut() {
+            FilterCondition c = fc("b", FilterConditionOperator.EQUALS, null);
+            c.setNegate(true);
+            assertEquals("`a` = 1", read(and(fc("a", FilterConditionOperator.EQUALS, 1), c)));
+        }
+
+        @Test
+        @DisplayName("a negated group keeps De Morgan over the children that remain")
+        void negatedGroup() {
+            ComplexCondition g = and(fc("a", FilterConditionOperator.EQUALS, 1), fc("b", FilterConditionOperator.EQUALS, null));
+            g.setNegate(true);
+            assertEquals("not (`a` = 1)", read(g));
+        }
+
+        @Test
+        @DisplayName("a group left with nothing matches everything, which is what no filter means")
+        void emptiedGroup() {
+            assertEquals("true", read(and(fc("a", FilterConditionOperator.EQUALS, null),
+                    fc("b", FilterConditionOperator.IN, null))));
+        }
+
+        @Test
+        @DisplayName("IS_NULL, IS_TRUE and IS_FALSE take no value and still apply")
+        void valuelessOperatorsStay() {
+            assertEquals("`a` is null", read(fc("a", FilterConditionOperator.IS_NULL, null)));
+            assertTrue(read(fc("a", FilterConditionOperator.IS_TRUE, null)).contains("`a`"));
+        }
+
+        @Test
+        @DisplayName("IN with a multiValue and no value still applies")
+        void inWithMultiValue() {
+            FilterCondition c = fc("s", FilterConditionOperator.IN, null);
+            c.setMultiValue(List.of("A"));
+            assertEquals("`s` in ('A')", read(c));
+        }
+
+        @Test
+        @DisplayName("a value supplied but empty is still the caller's mistake")
+        void suppliedButEmptyStillRefused() {
+            assertThrows(UnsupportedFilterException.class, () -> read(fc("s", FilterConditionOperator.IN, " , ")));
+            assertThrows(UnsupportedFilterException.class, () -> read(fc("n", FilterConditionOperator.BETWEEN, 1)));
+            assertThrows(UnsupportedFilterException.class, () -> read(fc(null, FilterConditionOperator.EQUALS, 1)));
+        }
+
+        @Test
+        @DisplayName("an empty string is a value, not an unset filter")
+        void emptyStringApplies() {
+            assertEquals("`a` = ''", read(fc("a", FilterConditionOperator.EQUALS, "")));
+        }
+
+        @Test
+        @DisplayName("build (used by deletes) still refuses a comparison with no value")
+        void deleteStillRefuses() {
+            assertThrows(UnsupportedFilterException.class, () -> sql(and(fc("a", FilterConditionOperator.EQUALS, 1),
+                    fc("b", FilterConditionOperator.EQUALS, null))));
+        }
+    }
 }

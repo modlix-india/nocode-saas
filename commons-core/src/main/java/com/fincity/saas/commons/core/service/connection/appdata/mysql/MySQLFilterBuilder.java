@@ -23,6 +23,8 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
  * this mirrors {@code MongoAppDataService.filterConditionFilter} operator for operator,
  * including how negation is applied. Where an operator cannot be expressed yet it
  * throws rather than dropping the clause, because a dropped clause means "every row".
+ * The one clause it does drop is one given no value at all, and only for a read
+ * ({@link #buildForRead}), because Mongo drops that one too.
  *
  * Pure: JOOQ renders SQL without a connection, so every operator and every negation can
  * be asserted as text in a unit test.
@@ -61,14 +63,59 @@ public final class MySQLFilterBuilder {
      *                 JSON column, or a column on a joined table
      */
     public static Condition build(AbstractCondition condition, MySQLFieldResolver resolver) {
+        return build(condition, resolver, false);
+    }
+
+    /**
+     * For a READ: a condition given no value drops out, as it does on Mongo.
+     *
+     * {@code MongoAppDataService.filterConditionFilter} answers an empty Mono for a
+     * comparison whose value is null (and for IN, MATCH and MATCH_ALL with nothing to
+     * compare), and the group simply goes on without it. Pages and KIRun functions lean
+     * on that: an optional filter is written as {@code status = {{Page.status}}} and
+     * means "any status" while nothing is picked. Here the same filter was refused with
+     * a 400, so every such read had to be rewritten before an app could move to MySQL.
+     *
+     * Reads only. A delete keeps {@link #build(AbstractCondition, MySQLFieldResolver)},
+     * which refuses: a dropped clause there deletes rows nobody named.
+     */
+    public static Condition buildForRead(AbstractCondition condition, MySQLFieldResolver resolver) {
+        return build(condition, resolver, true);
+    }
+
+    public static Condition buildForRead(AbstractCondition condition, Set<String> jsonColumns) {
+        return build(condition, MySQLFieldResolver.of(jsonColumns), true);
+    }
+
+    private static Condition build(AbstractCondition condition, MySQLFieldResolver resolver, boolean skipEmpty) {
 
         if (condition == null) return DSL.noCondition();
 
-        if (condition instanceof ComplexCondition cc) return complex(cc, resolver);
-        if (condition instanceof FilterCondition fc) return filter(fc, resolver);
+        if (condition instanceof ComplexCondition cc) return complex(cc, resolver, skipEmpty);
+        if (condition instanceof FilterCondition fc)
+            return skipEmpty && isEmpty(fc) ? DSL.noCondition() : filter(fc, resolver);
 
         throw new UnsupportedFilterException(
                 condition.getClass().getSimpleName() + " is not a condition this backend supports");
+    }
+
+    /**
+     * Exactly the conditions Mongo drops: no value to compare with. IS_NULL, IS_TRUE
+     * and IS_FALSE never take one. A value that IS supplied but comes to nothing (an
+     * IN of " , ", a BETWEEN without its toValue) is still the caller's mistake and is
+     * still refused, on both backends.
+     */
+    static boolean isEmpty(FilterCondition fc) {
+
+        if (fc.getOperator() == null) return false;
+
+        boolean noMulti = fc.getMultiValue() == null || fc.getMultiValue().isEmpty();
+
+        return switch (fc.getOperator()) {
+            case IS_NULL, IS_TRUE, IS_FALSE -> false;
+            case IN, MATCH_ALL -> fc.getValue() == null && noMulti;
+            default -> fc.getValue() == null;
+        };
     }
 
     /**
@@ -116,15 +163,18 @@ public final class MySQLFilterBuilder {
      * De Morgan, matching the Mongo backend exactly: a negated group negates each child
      * AND flips the operator, rather than wrapping the whole group in a NOT.
      */
-    private static Condition complex(ComplexCondition cc, MySQLFieldResolver resolver) {
+    private static Condition complex(ComplexCondition cc, MySQLFieldResolver resolver, boolean skipEmpty) {
 
         if (cc.getConditions() == null || cc.getConditions().isEmpty()) return DSL.noCondition();
 
         List<Condition> parts = new ArrayList<>();
         for (AbstractCondition c : cc.getConditions()) {
-            Condition built = build(c, resolver);
+            if (skipEmpty && c instanceof FilterCondition fc && isEmpty(fc)) continue;
+            Condition built = build(c, resolver, skipEmpty);
             parts.add(cc.isNegate() ? DSL.not(built) : built);
         }
+
+        if (parts.isEmpty()) return DSL.noCondition();
 
         boolean and = cc.getOperator() == ComplexConditionOperator.AND;
         if (cc.isNegate()) and = !and;

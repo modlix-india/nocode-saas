@@ -226,6 +226,20 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     "Stage Type information invalid or missing.");
 
+        if (stageRequest.hasNoName())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "a name",
+                    "the stage");
+
+        if (stageRequest.hasChildWithoutName())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.MISSING_PARAMETERS,
+                    "a name",
+                    "every status");
+
         if (!stageRequest.areChildrenValid())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
