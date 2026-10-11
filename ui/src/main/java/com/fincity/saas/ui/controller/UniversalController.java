@@ -137,8 +137,7 @@ public class UniversalController {
 
                 ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
-                (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc, forwardedHost, forwardedPort)
-                        .map(ResponseEntity::ok))
+                (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc, forwardedHost, forwardedPort))
                 .switchIfEmpty(pageMono);
     }
 
@@ -161,8 +160,7 @@ public class UniversalController {
 
                 ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
-                (ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc, forwardedHost, forwardedPort)
-                        .map(ResponseEntity::ok))
+                (ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc, forwardedHost, forwardedPort))
                 .switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
     }
 

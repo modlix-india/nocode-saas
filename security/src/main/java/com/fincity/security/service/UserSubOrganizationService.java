@@ -178,7 +178,8 @@ public class UserSubOrganizationService
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
-            if (user.getReportingTo() != null && user.getReportingTo().equals(managerId))
+            // A null managerId clears the manager; clearing one that is not set is a no-op too.
+            if (Objects.equals(user.getReportingTo(), managerId))
                 return Mono.just(user);
             return this.updateManager(user, managerId);
         })
@@ -202,9 +203,11 @@ public class UserSubOrganizationService
                                         SecurityMessageResourceService.USER_REPORTING_ERROR)
                                 : Mono.just(uUser)),
                 (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
+                    // Read before setReportingTo mutates it: the old manager's cached team
+                    // has to be evicted too, and reading it afterwards gave the new one twice.
+                    ULong oldManagerId = validUser.getReportingTo();
                     return super.update(validUser.setReportingTo(managerId))
-                            .flatMap(updated -> this.evictHierarchyCaches(updated, validUser.getReportingTo(),
-                                    managerId));
+                            .flatMap(updated -> this.evictHierarchyCaches(updated, oldManagerId, managerId));
                 },
                 (ca, uUser, sysOrManaged, validUser, updated) -> this.evictTokens(updated.getId())
                         .<User>map(evicted -> updated))

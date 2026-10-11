@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.EventDefinition;
 import com.fincity.saas.commons.core.repository.EventDefinitionRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -25,6 +26,20 @@ public class EventDefinitionService extends AbstractOverridableDataService<Event
         super(EventDefinition.class);
     }
 
+    /**
+     * The definition as {@code clientCode} sees it: its own override merged over
+     * every ancestor's along its inheritance chain, live surface only.
+     *
+     * For callers with no request to take a client from, the event scheduler
+     * above all. It goes through the same per-client cache every other read
+     * uses, and saves already evict that cache on every instance.
+     */
+    public Mono<EventDefinition> readEffective(String name, String appCode, String clientCode) {
+        return this.readInternal(name, appCode, clientCode, clientCode, false)
+                .map(ObjectWithUniqueID::getObject)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventDefinitionService.readEffective"));
+    }
+
     @Override
     protected Mono<EventDefinition> updatableEntity(EventDefinition entity) {
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
@@ -34,6 +49,7 @@ public class EventDefinitionService extends AbstractOverridableDataService<Event
                                 AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
                     existing.setSchema(entity.getSchema());
+                    existing.setSchedule(entity.getSchedule());
 
                     existing.setVersion(existing.getVersion() + 1);
 

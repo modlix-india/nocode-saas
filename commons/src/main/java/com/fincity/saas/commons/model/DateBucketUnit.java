@@ -12,6 +12,11 @@ public enum DateBucketUnit {
     QUARTER("quarter"),
     MONTH("month"),
     WEEK("week"),
+    /**
+     * A week starting on Monday (ISO 8601). WEEK starts on Sunday, as $dateTrunc's
+     * default does; reports that count Monday-to-Sunday weeks need this one.
+     */
+    ISO_WEEK("week"),
     DAY("day"),
     HOUR("hour");
 

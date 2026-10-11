@@ -2,6 +2,7 @@ package com.fincity.saas.message.controller;
 
 import com.fincity.saas.message.model.event.MessageServerEvent;
 import com.fincity.saas.message.service.call.event.CallEventService;
+import com.fincity.saas.message.service.event.WhatsappEventService;
 import java.math.BigInteger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,10 +23,26 @@ import reactor.core.publisher.Flux;
 public class ServerSentEventController {
 
     private final CallEventService eventService;
+    private final WhatsappEventService whatsappEventService;
 
     @Autowired
-    public ServerSentEventController(CallEventService eventService) {
+    public ServerSentEventController(CallEventService eventService, WhatsappEventService whatsappEventService) {
         this.eventService = eventService;
+        this.whatsappEventService = whatsappEventService;
+    }
+
+    /**
+     * "A conversation changed" for the tenant's WhatsApp numbers that core owns.
+     *
+     * <p>Per tenant, not per user, and checked: see {@link WhatsappEventService#getConversationStream}.
+     * Each event carries identifiers only, and the page re-reads the thread through its own server
+     * function.
+     */
+    @GetMapping(value = "/whatsapp/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<MessageServerEvent> getWhatsappEventStream(
+            @RequestParam("appCode") String appCode, @RequestParam("clientCode") String clientCode) {
+
+        return this.whatsappEventService.getConversationStream(appCode, clientCode);
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

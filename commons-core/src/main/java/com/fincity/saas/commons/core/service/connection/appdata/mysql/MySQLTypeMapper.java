@@ -282,6 +282,46 @@ public final class MySQLTypeMapper {
         return out;
     }
 
+    /**
+     * The columns whose field the schema declares a BOOLEAN, stored as an integer.
+     *
+     * MySQL has no boolean type: BOOLEAN is TINYINT(1), and the driver hands back 0
+     * or 1. The API contract is the schema's, so a field declared BOOLEAN must come
+     * back as true or false, exactly as it does from Mongo; left alone, a function
+     * comparing {@code active = true} matched nothing and a read-modify-write failed
+     * validation on a value the caller never touched.
+     *
+     * Decided by the SCHEMA type, not by the column type alone, so an INTEGER field
+     * someone stored as TINYINT(1) through a column definition stays a number. The
+     * column type is checked too, so a BOOLEAN field an author chose to store as text
+     * is left as whatever that text is.
+     */
+    public static Set<String> booleanColumns(
+            Schema storageSchema, Map<String, StorageColumnDefinition> definitions) {
+
+        Set<String> out = new java.util.LinkedHashSet<>();
+        if (storageSchema == null || storageSchema.getProperties() == null) return out;
+
+        for (MySQLColumn c : columns(storageSchema, definitions))
+            if (isBooleanField(storageSchema.getProperties().get(c.name())) && isIntegral(c.type()))
+                out.add(c.name());
+        return out;
+    }
+
+    /** BOOLEAN, alone or with NULL, and nothing else. */
+    public static boolean isBooleanField(Schema fieldSchema) {
+        Set<SchemaType> real = new java.util.LinkedHashSet<>(allowedTypes(fieldSchema));
+        real.remove(SchemaType.NULL);
+        return real.size() == 1 && real.contains(SchemaType.BOOLEAN);
+    }
+
+    static boolean isIntegral(String columnType) {
+        if (columnType == null) return false;
+        String t = columnType.toUpperCase();
+        return t.startsWith("TINYINT") || t.startsWith("SMALLINT") || t.startsWith("MEDIUMINT")
+                || t.startsWith("INT") || t.startsWith("BIGINT") || t.startsWith("BIT") || t.startsWith("BOOL");
+    }
+
     public static boolean isDecimal(String columnType) {
         return columnType != null && columnType.toUpperCase().startsWith("DECIMAL");
     }

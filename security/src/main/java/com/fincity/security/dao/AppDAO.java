@@ -43,6 +43,7 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
@@ -721,6 +722,40 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .flatMap(list -> recordsCount
                         .map(count -> PageableExecutionUtils.getPage(list, pageable, () -> count)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getAppClients"));
+    }
+
+    /**
+     * Every client that can write to the app: its owner plus each SECURITY_APP_ACCESS
+     * row with EDIT_ACCESS = 1, as client codes.
+     *
+     * The same union {@link #getAppClients} lists with onlyWriteAccess, without the
+     * paging or the caller's hierarchy, because the caller is core's event scheduler
+     * fanning a per-client schedule out and it has no user. Deleted and inactive
+     * clients are left out: a schedule has nothing to do for a client that cannot
+     * sign in, and locally a few hundred of leadzump's access rows point at them.
+     */
+    public Mono<List<String>> getWriteAccessClientCodes(String appCode) {
+
+        Select<Record1<ULong>> viaAccess = this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID)
+                .from(SECURITY_APP_ACCESS)
+                .join(SECURITY_APP).on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID))
+                .where(DSL.and(SECURITY_APP.APP_CODE.eq(appCode),
+                        SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))));
+
+        Select<Record1<ULong>> viaOwner = this.dslContext.select(SECURITY_APP.CLIENT_ID)
+                .from(SECURITY_APP)
+                .where(SECURITY_APP.APP_CODE.eq(appCode));
+
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+                        .from(SECURITY_CLIENT)
+                        .where(DSL.and(SECURITY_CLIENT.ID.in(viaAccess.union(viaOwner)),
+                                SECURITY_CLIENT.STATUS_CODE.isNull()
+                                        .or(SECURITY_CLIENT.STATUS_CODE.notIn(SecurityClientStatusCode.DELETED,
+                                                SecurityClientStatusCode.INACTIVE))))
+                        .orderBy(SECURITY_CLIENT.CODE))
+                .map(Record1::value1)
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.getWriteAccessClientCodes"));
     }
 
     public Mono<Boolean> noOneHasWriteAccessExcept(String appCode, String clientCode) {

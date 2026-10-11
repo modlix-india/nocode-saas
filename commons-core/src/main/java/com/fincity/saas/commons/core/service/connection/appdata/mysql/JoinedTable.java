@@ -42,10 +42,25 @@ public record JoinedTable(
         java.util.Map<String, String> columnTypes,
         Set<String> jsonColumns,
         Set<String> dateColumns,
-        java.util.Map<String, String> fieldNames) {
+        java.util.Map<String, String> fieldNames,
+        Set<String> booleanColumns) {
 
     public JoinedTable {
         fieldNames = fieldNames == null ? java.util.Map.of() : fieldNames;
+        booleanColumns = booleanColumns == null ? Set.of() : booleanColumns;
+    }
+
+    public JoinedTable(
+            String alias,
+            Table<?> table,
+            String parentField,
+            String targetField,
+            JoinType type,
+            java.util.Map<String, String> columnTypes,
+            Set<String> jsonColumns,
+            Set<String> dateColumns,
+            java.util.Map<String, String> fieldNames) {
+        this(alias, table, parentField, targetField, type, columnTypes, jsonColumns, dateColumns, fieldNames, null);
     }
 
     public JoinedTable(
@@ -57,7 +72,7 @@ public record JoinedTable(
             java.util.Map<String, String> columnTypes,
             Set<String> jsonColumns,
             Set<String> dateColumns) {
-        this(alias, table, parentField, targetField, type, columnTypes, jsonColumns, dateColumns, null);
+        this(alias, table, parentField, targetField, type, columnTypes, jsonColumns, dateColumns, null, null);
     }
 
     public Set<String> columns() {

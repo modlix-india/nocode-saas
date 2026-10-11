@@ -238,6 +238,46 @@ class AppDAOIntegrationTest extends AbstractIntegrationTest {
 	}
 
 	@Nested
+	@DisplayName("getWriteAccessClientCodes()")
+	class GetWriteAccessClientCodesTests {
+
+		@Test
+		@DisplayName("owner plus EDIT_ACCESS clients, without read-only, deleted or inactive ones")
+		void ownerAndWritersOnly() {
+
+			String appCode = "testsched" + System.currentTimeMillis();
+
+			StepVerifier.create(
+					insertTestApp(SYSTEM_CLIENT_ID, appCode, "Scheduler Fan-out App")
+							.flatMap(appId -> insertTestClient("SCHWR", "Sched Writer", "BUS")
+									.flatMap(w -> insertAppAccess(appId, w, true))
+									.then(insertTestClient("SCHRD", "Sched Reader", "BUS"))
+									.flatMap(r -> insertAppAccess(appId, r, false))
+									.then(insertTestClient("SCHDL", "Sched Deleted", "BUS"))
+									.flatMap(d -> insertAppAccess(appId, d, true)
+											.then(databaseClient.sql(
+													"UPDATE security_client SET STATUS_CODE = 'DELETED' WHERE ID = :id")
+													.bind("id", d.longValue()).then()))
+									.then(insertTestClient("SCHIN", "Sched Inactive", "BUS"))
+									.flatMap(i -> insertAppAccess(appId, i, true)
+											.then(databaseClient.sql(
+													"UPDATE security_client SET STATUS_CODE = 'INACTIVE' WHERE ID = :id")
+													.bind("id", i.longValue()).then())))
+							.then(appDAO.getWriteAccessClientCodes(appCode)))
+					.assertNext(codes -> assertEquals(List.of("SCHWR", "SYSTEM"), codes))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("unknown app gives an empty list")
+		void unknownApp() {
+			StepVerifier.create(appDAO.getWriteAccessClientCodes("NONEXISTENT_APP_CODE"))
+					.assertNext(codes -> assertTrue(codes.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	@Nested
 	@DisplayName("removeClientAccess()")
 	class RemoveClientAccessTests {
 

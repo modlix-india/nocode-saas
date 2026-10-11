@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.service.connection.appdata.mysql;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -187,8 +188,19 @@ public final class MySQLAggregateBuilder {
             // COUNT(col) skips nulls, which is the SQL contract and the one the Mongo
             // backend goes out of its way to reproduce.
             case COUNT -> DSL.count(f);
-            case SUM -> DSL.sum(f.cast(Double.class));
-            case AVG -> DSL.avg(f.cast(Double.class));
+            // Distinct non-null values: a row reaching the same group twice (a deal with two
+            // activities in one stage) counts once.
+            case COUNT_DISTINCT -> DSL.countDistinct(f);
+            // No CAST. jOOQ renders a cast to Double for MySQL as CAST(x AS DECIMAL),
+            // which MySQL reads as DECIMAL(10,0): every value was rounded to a whole
+            // number before it was added and anything past ten digits was clamped.
+            // MySQL already picks the right type on its own: SUM of a DECIMAL column
+            // is an exact DECIMAL with the column's scale, of a DOUBLE a DOUBLE, of an
+            // integer a whole DECIMAL, and of text (a JSON path, which is unquoted to
+            // text) a DOUBLE. coerce only tells jOOQ the Java type; it renders nothing.
+            // SUM and AVG of a non-numeric column are refused before this is reached.
+            case SUM -> DSL.sum(f.coerce(BigDecimal.class));
+            case AVG -> DSL.avg(f.coerce(BigDecimal.class));
             case MIN -> DSL.min(f);
             case MAX -> DSL.max(f);
         };
@@ -248,6 +260,8 @@ public final class MySQLAggregateBuilder {
             // Two backends disagreeing about which day a week begins on would put the
             // same order in different buckets depending on where it is stored.
             case WEEK -> "DATE_SUB(DATE(" + d + "), INTERVAL DAYOFWEEK(" + d + ") - 1 DAY)";
+            // WEEKDAY is 0 for Monday: the ISO week, which $dateTrunc gives with startOfWeek monday.
+            case ISO_WEEK -> "DATE_SUB(DATE(" + d + "), INTERVAL WEEKDAY(" + d + ") DAY)";
             case DAY -> "DATE(" + d + ")";
             case HOUR -> "DATE_ADD(DATE(" + d + "), INTERVAL HOUR(" + d + ") HOUR)";
         };

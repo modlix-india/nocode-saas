@@ -41,10 +41,14 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
     private Map<String, Object> schema;
     private String uniqueName;
-    private Boolean isAudited = false;
-    private Boolean isVersioned = false;
-    private Boolean isAppLevel = false;
-    private Boolean onlyThruKIRun = false;
+    // Null, not false, when unset. A derived (client) storage stores only what differs from
+    // its base, and subApplyOverride fills in only the nulls: a false default made every fork
+    // read as not audited, not app level and not KIRun-only whatever its base said. Readers go
+    // through BooleanUtil.safeValueOf, so null still means false for a base storage.
+    private Boolean isAudited;
+    private Boolean isVersioned;
+    private Boolean isAppLevel;
+    private Boolean onlyThruKIRun;
     private String createAuth;
     private String readAuth;
     private String updateAuth;

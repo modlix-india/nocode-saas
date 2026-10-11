@@ -171,17 +171,65 @@ public final class MySQLValueCodec {
      */
     public Map<String, Object> decode(
             Map<String, Object> row, Set<String> jsonColumns, Set<String> dateColumns, Set<String> decimalColumns) {
+        return this.decode(row, jsonColumns, dateColumns, decimalColumns, Set.of());
+    }
+
+    /**
+     * The row as the caller expects it.
+     *
+     * {@code booleanColumns} are the fields the schema declares BOOLEAN. MySQL keeps
+     * them as TINYINT(1) and the driver hands back 0 or 1; the caller wrote true or
+     * false and the validator will only accept true or false back.
+     */
+    public Map<String, Object> decode(
+            Map<String, Object> row,
+            Set<String> jsonColumns,
+            Set<String> dateColumns,
+            Set<String> decimalColumns,
+            Set<String> booleanColumns) {
 
         if (row == null
                 || row.isEmpty()
-                || (jsonColumns.isEmpty() && dateColumns.isEmpty() && decimalColumns.isEmpty())) return row;
+                || (jsonColumns.isEmpty()
+                        && dateColumns.isEmpty()
+                        && decimalColumns.isEmpty()
+                        && booleanColumns.isEmpty())) return row;
 
         Map<String, Object> out = new LinkedHashMap<>(row);
         row.forEach((k, v) -> {
             if (jsonColumns.contains(k)) out.put(k, this.fromJson(v));
             else if (dateColumns.contains(k)) out.put(k, isoText(v));
             else if (decimalColumns.contains(k)) out.put(k, decimalText(v));
+            else if (booleanColumns.contains(k)) out.put(k, bool(v));
         });
+        return out;
+    }
+
+    /**
+     * true or false for whatever integer the driver used, and null kept as null.
+     *
+     * Only numbers are converted. A Boolean is already right, and anything else (a
+     * string from a column an author re-typed) is passed on rather than guessed at.
+     */
+    public static Object bool(Object value) {
+
+        if (value instanceof Boolean) return value;
+        if (value instanceof java.math.BigDecimal d) return d.signum() != 0;
+        if (value instanceof Number n) return n.longValue() != 0L;
+        if (value instanceof byte[] b && b.length == 1) return b[0] != 0;
+        return value;
+    }
+
+    /**
+     * The same for a row already keyed by FIELD, such as a version snapshot: only the
+     * named fields that are present are touched.
+     */
+    public static Map<String, Object> booleans(Map<String, Object> row, Set<String> booleanFields) {
+
+        if (row == null || booleanFields == null || booleanFields.isEmpty()) return row;
+
+        Map<String, Object> out = new LinkedHashMap<>(row);
+        for (String f : booleanFields) if (out.containsKey(f)) out.put(f, bool(out.get(f)));
         return out;
     }
 

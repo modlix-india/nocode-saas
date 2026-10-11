@@ -49,6 +49,12 @@ redis:
   cache:
     prefix: coretest
 
+# The event scheduler would tick against the shared test Mongo every 30s and
+# race the per-test collection drops. Its own tests drive passes by hand.
+core:
+  scheduler:
+    enabled: false
+
 logging:
   level:
     org.springframework.data.mongodb: WARN

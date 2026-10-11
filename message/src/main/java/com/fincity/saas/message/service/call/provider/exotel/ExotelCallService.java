@@ -49,15 +49,23 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     private EventDispatcher eventDispatcher;
 
     /**
-     * Who owns a call this service did not have an explicit owner for.
+     * The key in an Exotel connection's {@code connectionDetails} that names the service owning the
+     * calls on that account: {@code core} (the app's EventAction for {@code CALL_EVENT}) or {@code
+     * entity-processor}. The connection is the call account, held per app and client like a WhatsApp
+     * number row, so this is where a call's owner comes from first.
+     */
+    public static final String CONNECTION_OWNER_SERVICE = "ownerService";
+
+    /**
+     * Who gets the status of an OUTBOUND call that recorded no owner.
      *
-     * <p>Configured rather than derived because, unlike WhatsApp, Exotel numbers are held in the
-     * CRM's product configuration and this service has no table of them to read an owner from. One
-     * consumer exists, so a default is honest; the moment there are two, calls need their own number
-     * table and this should go.
+     * <p>Only for those: calls placed through the public {@code /make} on an account that names no
+     * owner, and rows from before owners were recorded. Every inbound call takes its owner from its
+     * account or the service that answered it ({@link #inboundOwner}), never from here, and one with
+     * neither is parked, not handed to this.
      */
     @Value("${message.call.default-owner-service:entity-processor}")
-    private String defaultCallOwnerService;
+    private String legacyOutboundOwnerService;
 
     @Autowired
     public void setEventDispatcher(EventDispatcher eventDispatcher) {
@@ -103,7 +111,12 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .setPrice(call.getPrice() == null ? null : call.getPrice().toString())
                 .setRecordingUrl(call.getRecordingUrl());
 
-        String owner = call.getOwnerService() == null ? this.defaultCallOwnerService : call.getOwnerService();
+        String owner = call.getOwnerService();
+
+        // An outbound call with no recorded owner keeps going where it always went. An inbound one
+        // is left ownerless on purpose: the dispatcher parks it, loudly, until an owner is set.
+        if (owner == null && ExotelDirection.getByName(call.getDirection()).isOutbound())
+            owner = this.legacyOutboundOwnerService;
 
         return this.eventDispatcher
                 .enqueueAndDispatch(
@@ -327,8 +340,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                                     }))
                                     .bodyToMono(ExotelCallResponse.class);
                         },
+                        // The account's owner, when it names one. makeCallInternal then stamps
+                        // the explicit owner of the service that placed the call over it.
                         (callBackUri, formData, webClient, response) -> this.createInternal(
-                                messageAccess, ExotelCall.ofOutbound(request).update(response)))
+                                messageAccess,
+                                ExotelCall.ofOutbound(request).update(response).setOwnerService(accountOwner(conn))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
@@ -372,12 +388,13 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         notExists -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
                         (notExists, connection) -> super.getUserIdAndPhone(request.getUserId()),
+                        // The owner is fixed here, at creation, so a later status callback never
+                        // has to guess: from the call account (the connection the call arrived on,
+                        // for this app and client), else the service answering the applet. With
+                        // neither it stays null and every status event of the call is parked.
                         (notExists, connection, user) -> Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
                                         connection.getConnectionDetails().getOrDefault("accountSid", ""))
-                                // The connect applet is always answered by the owning service, which
-                                // is what reached us here, so the owner is known at creation time
-                                // and a later status callback never has to guess.
-                                .setOwnerService(this.defaultCallOwnerService)),
+                                .setOwnerService(this.inboundOwner(access, connection, request, exotelRequest))),
                         (notExists, connection, user, exotelCall) -> {
                             Mono<ExotelCall> exotelCreated = this.createInternal(access, user.getId(), exotelCall);
 
@@ -398,6 +415,59 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                             .thenReturn(tuple.getT3()));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
+    }
+
+    /** The owner a call account's connection names, or null. */
+    static String accountOwner(Connection connection) {
+
+        if (connection == null || connection.getConnectionDetails() == null) return null;
+
+        Object owner = connection.getConnectionDetails().get(CONNECTION_OWNER_SERVICE);
+        return owner == null || owner.toString().isBlank() ? null : owner.toString().trim();
+    }
+
+    /**
+     * Who owns an inbound call: the call account first, as a WhatsApp number's row does, then the
+     * service that answered the applet. Null, logged as an error, when neither says: the call is
+     * still connected, but its status events park in the outbox until an owner is set.
+     */
+    String inboundOwner(
+            MessageAccess access, Connection connection, IncomingCallRequest request, ExotelConnectAppletRequest call) {
+
+        String account = accountOwner(connection);
+        String declared = request.getOwnerService() == null || request.getOwnerService().isBlank()
+                ? null
+                : request.getOwnerService().trim();
+
+        if (account != null) {
+            if (declared != null && !declared.equals(account))
+                logger.warn(
+                        "Inbound call {} for app {} client {} was answered by {} but its account {} names {} as"
+                                + " owner. Using the account's owner.",
+                        call.getCallSid(),
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        declared,
+                        connection.getName(),
+                        account);
+            return account;
+        }
+
+        if (declared != null) return declared;
+
+        logger.error(
+                "Inbound call {} to {} for app {} client {} on account {} has no owner: the connection names no"
+                        + " '{}' and the caller declared none. Its status events will be PARKED in the dispatch"
+                        + " outbox. Set connectionDetails.{} on that connection (core or entity-processor).",
+                call.getCallSid(),
+                call.getTo(),
+                access.getAppCode(),
+                access.getClientCode(),
+                connection == null ? null : connection.getName(),
+                CONNECTION_OWNER_SERVICE,
+                CONNECTION_OWNER_SERVICE);
+
+        return null;
     }
 
     private Mono<ExotelConnectAppletResponse> createResponse(String destination, Connection connection) {
