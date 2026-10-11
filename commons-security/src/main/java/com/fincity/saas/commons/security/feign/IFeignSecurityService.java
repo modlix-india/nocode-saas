@@ -77,6 +77,14 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/hasWriteAccess}")
     Mono<Boolean> hasWriteAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
+    /**
+     * The app's owner plus every client holding an EDIT_ACCESS row on it, as client
+     * codes, deleted and inactive clients left out. Core's event scheduler fans a
+     * per-client schedule out over this list.
+     */
+    @GetMapping("${security.feign.writeAccessClientCodes:/api/security/applications/internal/writeAccessClientCodes}")
+    Mono<List<String>> getWriteAccessClientCodes(@RequestParam String appCode);
+
     @GetMapping("${security.feign.validClientCode:/api/security/clients/internal/validateClientCode}")
     Mono<Boolean> validClientCode(@RequestParam String clientCode);
 

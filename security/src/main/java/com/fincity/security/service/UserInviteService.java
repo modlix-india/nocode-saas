@@ -518,16 +518,22 @@ public class UserInviteService
                 .flatMap(names -> {
                     String emailId = firstNonBlank(invite.getEmailId(),
                             existingUser == null ? null : existingUser.getEmailId());
-                    String firstName = firstNonBlank(invite.getFirstName(),
-                            existingUser == null ? null : existingUser.getFirstName(), emailId);
 
+                    // An existing account keeps its own name: the mail is addressed to that person,
+                    // and greeting them by whatever was typed into the invite read as if the
+                    // invite had renamed them.
                     Map<String, Object> data = new HashMap<>();
-                    data.put("firstName", firstName);
-                    data.put("lastName", firstNonBlank(invite.getLastName(),
-                            existingUser == null ? null : existingUser.getLastName()));
+                    if (existingUser == null) {
+                        data.put("firstName", firstNonBlank(invite.getFirstName(), emailId));
+                        data.put("lastName", firstNonBlank(invite.getLastName()));
+                        data.put("phoneNumber", firstNonBlank(invite.getPhoneNumber()));
+                    } else {
+                        data.put("firstName",
+                                firstNonBlank(existingUser.getFirstName(), invite.getFirstName(), emailId));
+                        data.put("lastName", firstNonBlank(existingUser.getLastName(), invite.getLastName()));
+                        data.put("phoneNumber", firstNonBlank(existingUser.getPhoneNumber(), invite.getPhoneNumber()));
+                    }
                     data.put("emailId", emailId);
-                    data.put("phoneNumber", firstNonBlank(invite.getPhoneNumber(),
-                            existingUser == null ? null : existingUser.getPhoneNumber()));
                     data.put("profileName", names.getT1());
                     data.put("inviteCode", firstNonBlank(invite.getInviteCode()));
                     data.put("urlPrefix", names.getT2());

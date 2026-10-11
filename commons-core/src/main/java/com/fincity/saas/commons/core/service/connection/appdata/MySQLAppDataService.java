@@ -780,6 +780,7 @@ public class MySQLAppDataService implements IAppDataService {
         String table = storage.getUniqueName();
 
         return MySQLTableInspector.tenantsWithTable(ctx, appCode, table)
+                .flatMap(all -> this.tenantsOwning(appCode, storage, table, all))
                 .flatMap(tenants -> tenants.isEmpty()
                         ? Mono.just(FanOutReport.empty())
                         : this.desiredByTenant(appCode, storage, tenants)
@@ -791,6 +792,40 @@ public class MySQLAppDataService implements IAppDataService {
                                         .then(this.syncForeignKeysAcross(conn, appCode, storage, tenants))
                                         .thenReturn(report)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.reconcile"));
+    }
+
+    /**
+     * The tenants among these whose own definition of the storage IS this table.
+     *
+     * A client that forked the storage has its own document with its own uniqueName,
+     * so its rows live in a different table of the same database. The base table
+     * that may still stand there (built before the fork, or by a write that ran
+     * before it) is nobody's: altering it to the fork's resolved columns, as the
+     * fan-out did, gave an orphan the client's fields and told nobody.
+     *
+     * A tenant whose definition does not resolve is KEPT, so desiredByTenant still
+     * reports it as unresolved rather than this quietly dropping it.
+     */
+    Mono<List<String>> tenantsOwning(String appCode, Storage storage, String table, List<String> tenants) {
+
+        return Flux.fromIterable(tenants)
+                .concatMap(db -> this.storageService
+                        .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
+                        .map(ts -> {
+                            boolean own = StringUtil.safeIsBlank(ts.getUniqueName())
+                                    || table.equals(ts.getUniqueName());
+                            if (!own)
+                                logger.info(
+                                        "Skipping {}.{}: that tenant's {} is the table {}",
+                                        db, table, storage.getName(), ts.getUniqueName());
+                            return own;
+                        })
+                        .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
+                        .onErrorResume(e -> Mono.just(Boolean.TRUE))
+                        .defaultIfEmpty(Boolean.TRUE)
+                        .filter(Boolean::booleanValue)
+                        .map(x -> db))
+                .collectList();
     }
 
     /**
@@ -861,11 +896,33 @@ public class MySQLAppDataService implements IAppDataService {
     private Mono<MySQLDrift.Report> driftFor(Connection conn, String appCode, Storage storage, String db) {
 
         DSLContext ctx = this.context(conn);
-        String table = storage.getUniqueName();
 
         return this.storageService
                 .readForTenant(storage.getName(), appCode, clientCodeOf(db, appCode))
-                .flatMap(tenantStorage -> FlatMapUtil.flatMapMono(
+                // The TENANT's table, not the caller's. A client that forked the
+                // storage keeps its rows under its own uniqueName, so asking about the
+                // caller's table there reported a missing table (and offered to create
+                // a stray one) for every other tenant, and reported the fork's
+                // orphaned base table as drifted for the base.
+                .flatMap(tenantStorage -> this.driftForTable(
+                        ctx, conn, db, tenantStorage,
+                        StringUtil.safeIsBlank(tenantStorage.getUniqueName())
+                                ? storage.getUniqueName()
+                                : tenantStorage.getUniqueName()))
+                // Each surface resolves its own definition, exactly as the column
+                // plan does, or the draft table is reported against the published
+                // shape and looks drifted when it is not.
+                .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
+                .onErrorResume(e -> {
+                    logger.error("Could not read drift for {} on {}", storage.getName(), db, e);
+                    return Mono.empty();
+                });
+    }
+
+    private Mono<MySQLDrift.Report> driftForTable(
+            DSLContext ctx, Connection conn, String db, Storage tenantStorage, String table) {
+
+        return FlatMapUtil.flatMapMono(
                         () -> this.physicalSchema(tenantStorage),
                         schema -> MySQLTableInspector.tableExists(ctx, db, table),
                         (schema, exists) -> Boolean.TRUE.equals(exists)
@@ -884,15 +941,7 @@ public class MySQLAppDataService implements IAppDataService {
                                                 indexes,
                                                 keys)))
                                 : Mono.just(MySQLDrift.of(
-                                        db, table, false, List.of(), List.of(), List.of(), List.of()))))
-                // Each surface resolves its own definition, exactly as the column
-                // plan does, or the draft table is reported against the published
-                // shape and looks drifted when it is not.
-                .contextWrite(Context.of(LogUtil.DRAFT_KEY, isDraft(db)))
-                .onErrorResume(e -> {
-                    logger.error("Could not read drift for {} on {}", storage.getName(), db, e);
-                    return Mono.empty();
-                });
+                                        db, table, false, List.of(), List.of(), List.of(), List.of())));
     }
 
     /**
@@ -1163,17 +1212,50 @@ public class MySQLAppDataService implements IAppDataService {
     private Mono<Map<String, Object>> readRow(
             Connection conn, String db, Storage storage, Schema schema, String id) {
 
-        Map<String, StorageColumnDefinition> defs = defs(storage);
-        Set<String> json = MySQLTypeMapper.jsonColumns(schema, defs);
-        Set<String> dates = MySQLTypeMapper.dateStringColumns(schema, defs);
-        Set<String> decimals = MySQLTypeMapper.decimalColumns(schema, defs);
+        Decoding decoding = Decoding.of(schema, defs(storage));
 
         return Mono.from(this.context(conn)
                         .select()
                         .from(this.table(db, storage))
                         .where(idField().eq(id)))
-                .map(r -> MySQLColumnNames.toFields(
-                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
+                .map(r -> decoding.row(this.codec, new LinkedHashMap<>(r.intoMap()), schema));
+    }
+
+    /**
+     * How one storage's columns turn back into what the caller wrote: JSON parsed,
+     * dates as ISO text, decimals as text, booleans as true / false.
+     *
+     * One place, so every path that hands rows back (a read, a page, the row a write
+     * returns, a version snapshot) decodes the same columns the same way. Booleans
+     * were missing from all of them, and a path that decodes three of the four is
+     * how that happened.
+     */
+    record Decoding(Set<String> json, Set<String> dates, Set<String> decimals, Set<String> booleans) {
+
+        static Decoding of(Schema schema, Map<String, StorageColumnDefinition> defs) {
+            return new Decoding(
+                    MySQLTypeMapper.jsonColumns(schema, defs),
+                    MySQLTypeMapper.dateStringColumns(schema, defs),
+                    MySQLTypeMapper.decimalColumns(schema, defs),
+                    MySQLTypeMapper.booleanColumns(schema, defs));
+        }
+
+        Map<String, Object> columns(MySQLValueCodec codec, Map<String, Object> raw) {
+            return codec.decode(raw, this.json, this.dates, this.decimals, this.booleans);
+        }
+
+        /** Decoded, and keyed by field. */
+        Map<String, Object> row(MySQLValueCodec codec, Map<String, Object> raw, Schema physical) {
+            return MySQLColumnNames.toFields(this.columns(codec, raw), physical);
+        }
+
+        /** The boolean columns by FIELD name, for maps already keyed that way (snapshots). */
+        Set<String> booleanFields(Schema physical) {
+            Map<String, String> names = MySQLColumnNames.fieldNames(physical);
+            Set<String> out = new java.util.LinkedHashSet<>();
+            this.booleans.forEach(c -> out.add(names.getOrDefault(c, c)));
+            return out;
+        }
     }
 
     @Override
@@ -1191,24 +1273,29 @@ public class MySQLAppDataService implements IAppDataService {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ensureTable(conn, clientCode, storage),
-                        db -> this.storageService.getSchema(storage),
-                        (db, schema) ->
+                        db -> this.physicalSchema(storage),
+                        // Before validation: the validator never sees a null (the row is
+                        // turned into JSON without them), so a null on a required field
+                        // would otherwise reach MySQL and come back as a 500.
+                        (db, resolved) -> this.refuseNullRequired(storage, resolved, dataObject.getData()),
+                        // What the row will BE, which is what gets validated, as Mongo
+                        // validates the merged document. A PUT is the row; a PATCH is the
+                        // stored row with the patch applied. Validating the bare patch
+                        // against the whole schema refused every PATCH that left out a
+                        // required field ("name is mandatory", as a 500).
+                        (db, resolved, nullsOk) -> BooleanUtil.safeValueOf(override)
+                                ? Mono.just(dataObject.getData())
+                                : this.readRow(conn, db, storage, resolved, id)
+                                        .switchIfEmpty(Mono.defer(() -> this.objectNotFound(storage, id)))
+                                        .map(existing -> merged(existing, dataObject.getData())),
+                        (db, resolved, nullsOk, toValidate) -> this.storageService.getSchema(storage),
+                        (db, resolved, nullsOk, toValidate, schema) ->
                                 this.schemaService.getSchemaRepository(storage.getAppCode(), storage.getClientCode()),
-                        (db, schema, repo) ->
-                                this.writeValidator.validate(dataObject.getData(), storage, schema, repo),
-                        (db, schema, repo, validated) -> this.physicalSchema(storage),
-                        (db, schema, repo, validated, resolved) -> {
-                            Map<Field<?>, Object> values = new LinkedHashMap<>();
-                            this.codec
-                                    .encode(
-                                            MySQLColumnNames.toColumns(dataObject.getData()),
-                                            MySQLTypeMapper.jsonColumns(resolved, defs(storage)),
-                                            MySQLTypeMapper.dateStringColumns(resolved, defs(storage)),
-                                            MySQLTypeMapper.decimalColumns(resolved, defs(storage)))
-                                    .forEach((k, v) -> {
-                                        if (!MySQLTypeMapper.ID_COLUMN.equals(k))
-                                            values.put(DSL.field(DSL.name(k)), v);
-                                    });
+                        (db, resolved, nullsOk, toValidate, schema, repo) ->
+                                this.writeValidator.validate(toValidate, storage, schema, repo),
+                        (db, resolved, nullsOk, toValidate, schema, repo, validated) -> {
+                            Map<Field<?>, Object> values = updateValues(
+                                    this.codec, storage, resolved, dataObject.getData(), override);
 
                             if (values.isEmpty()) return this.readRow(conn, db, storage, resolved, id);
 
@@ -1216,6 +1303,7 @@ public class MySQLAppDataService implements IAppDataService {
                                             .update(this.table(db, storage))
                                             .set(values)
                                             .where(idField().eq(id)))
+                                    .onErrorResume(e -> this.refusedNull(e, storage, resolved))
                                     .then(this.readRow(conn, db, storage, resolved, id))
                                     // The row as it now stands, which is what Mongo
                                     // records too. A history of what things became
@@ -1227,6 +1315,124 @@ public class MySQLAppDataService implements IAppDataService {
                                             .thenReturn(saved));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.update"));
+    }
+
+    /**
+     * The SET clause of an update: every field the caller sent, a null as SQL NULL.
+     *
+     * {@code override} is PUT (and CoreServices.Storage.Update with isPartial false):
+     * the row is REPLACED, as the Mongo backend's replaceOne does, so every column the
+     * caller left out is cleared too. Without it (PATCH, isPartial true) the row is
+     * merged: only the fields sent change, and a field sent as null is cleared. Before
+     * this, both kept a column's old value whenever the caller asked for it to go.
+     */
+    static Map<Field<?>, Object> updateValues(
+            MySQLValueCodec codec, Storage storage, Schema resolved, Map<String, Object> data, Boolean override) {
+
+        Map<String, Object> row = MySQLColumnNames.toColumns(data);
+        if (row == null) row = new LinkedHashMap<>();
+
+        Map<String, StorageColumnDefinition> defs = defs(storage);
+        Map<Field<?>, Object> values = new LinkedHashMap<>();
+        Map<String, Object> encoded = codec.encode(
+                row,
+                MySQLTypeMapper.jsonColumns(resolved, defs),
+                MySQLTypeMapper.dateStringColumns(resolved, defs),
+                MySQLTypeMapper.decimalColumns(resolved, defs));
+        if (encoded != null)
+            encoded.forEach((k, v) -> {
+                if (!MySQLTypeMapper.ID_COLUMN.equals(k)) values.put(DSL.field(DSL.name(k)), v);
+            });
+
+        if (BooleanUtil.safeValueOf(override))
+            for (MySQLColumn c : MySQLTypeMapper.columns(resolved, defs))
+                if (!row.containsKey(c.name())) values.put(DSL.field(DSL.name(c.name())), null);
+
+        return values;
+    }
+
+    /**
+     * The stored row with a PATCH applied: a field sent replaces the stored one, a
+     * field sent as null is removed (cleared), everything else stays. The row's id is
+     * left out, as Mongo leaves it out of the document it validates.
+     */
+    static Map<String, Object> merged(Map<String, Object> existing, Map<String, Object> patch) {
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (existing != null)
+            existing.forEach((k, v) -> {
+                if (v != null) out.put(k, v);
+            });
+        if (patch != null)
+            patch.forEach((k, v) -> {
+                if (v == null) out.remove(k);
+                else out.put(k, v);
+            });
+        out.remove(MySQLTypeMapper.ID_COLUMN);
+        return out;
+    }
+
+    /** The fields the caller sent as null whose column is NOT NULL (the schema requires them). */
+    static List<String> nullsOnRequired(Schema resolved, Map<String, Object> data) {
+
+        if (data == null || data.isEmpty() || resolved == null) return List.of();
+
+        Set<String> required = new java.util.HashSet<>();
+        MySQLTypeMapper.columns(resolved).forEach(c -> {
+            if (!c.nullable()) required.add(c.name());
+        });
+
+        List<String> out = new java.util.ArrayList<>();
+        data.forEach((k, v) -> {
+            if (v == null && required.contains(MySQLColumnNames.column(k))) out.add(k);
+        });
+        return out;
+    }
+
+    private Mono<Boolean> refuseNullRequired(Storage storage, Schema resolved, Map<String, Object> data) {
+
+        List<String> fields = nullsOnRequired(resolved, data);
+        if (fields.isEmpty()) return Mono.just(Boolean.TRUE);
+
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                CoreMessageResourceService.FIELD_CANNOT_BE_NULL,
+                String.join(", ", fields),
+                storage.getName());
+    }
+
+    private static final java.util.regex.Pattern NULL_COLUMN =
+            java.util.regex.Pattern.compile("Column '([^']+)' cannot be null");
+
+    /**
+     * MySQL refusing a NULL is the caller's mistake, said with the field's name.
+     *
+     * The schema check above catches a null sent on a required field. This is for a
+     * table that is stricter than today's schema (a field no longer required whose
+     * column has not been relaxed yet) or a PUT that left a NOT NULL column out: a
+     * 400 naming the field rather than a 500 naming the table.
+     */
+    private <T> Mono<T> refusedNull(Throwable e, Storage storage, Schema resolved) {
+
+        String column = nullColumn(e);
+        if (column == null) return Mono.error(e);
+
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                CoreMessageResourceService.FIELD_CANNOT_BE_NULL,
+                MySQLColumnNames.fieldNames(resolved).getOrDefault(column, column),
+                storage.getName());
+    }
+
+    /** The column MySQL refused a NULL for, from anywhere in the cause chain, or null. */
+    static String nullColumn(Throwable e) {
+
+        java.util.Set<Throwable> seen = new java.util.HashSet<>();
+        for (Throwable t = e; t != null && seen.add(t); t = t.getCause()) {
+            java.util.regex.Matcher m = NULL_COLUMN.matcher(String.valueOf(t.getMessage()));
+            if (m.find()) return m.group(1);
+        }
+        return null;
     }
 
     @Override
@@ -1484,7 +1690,8 @@ public class MySQLAppDataService implements IAppDataService {
                         columnTypes(targetSchema, defs(target)),
                         MySQLTypeMapper.jsonColumns(targetSchema, defs(target)),
                         MySQLTypeMapper.dateStringColumns(targetSchema, defs(target)),
-                        MySQLColumnNames.fieldNames(targetSchema))));
+                        MySQLColumnNames.fieldNames(targetSchema),
+                        MySQLTypeMapper.booleanColumns(targetSchema, defs(target)))));
     }
 
     /**
@@ -1760,9 +1967,7 @@ public class MySQLAppDataService implements IAppDataService {
             Attached attached) {
 
         Map<String, StorageColumnDefinition> defs = defs(storage);
-        Set<String> json = MySQLTypeMapper.jsonColumns(schema, defs);
-        Set<String> dates = MySQLTypeMapper.dateStringColumns(schema, defs);
-        Set<String> decimals = MySQLTypeMapper.decimalColumns(schema, defs);
+        Decoding decoding = Decoding.of(schema, defs);
         MySQLFieldResolver resolver = resolver(schema, defs, attached, textColumns(storage, schema, defs));
 
         // A plain read generates exactly the SQL it always did. A query that asked
@@ -1782,8 +1987,7 @@ public class MySQLAppDataService implements IAppDataService {
             return Flux.from(order.isEmpty()
                             ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                             : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
-                    .map(r -> MySQLColumnNames.toFields(
-                        this.codec.decode(new LinkedHashMap<>(r.intoMap()), json, dates, decimals), schema));
+                    .map(r -> decoding.row(this.codec, new LinkedHashMap<>(r.intoMap()), schema));
         }
 
         List<Field<?>> selection =
@@ -1801,7 +2005,7 @@ public class MySQLAppDataService implements IAppDataService {
                         ? where.limit(page.getPageSize()).offset((int) page.getOffset())
                         : where.orderBy(order).limit(page.getPageSize()).offset((int) page.getOffset()))
                 .map(r -> MySQLColumnNames.toFields(
-                        this.decodeJoined(new LinkedHashMap<>(r.intoMap()), json, dates, decimals, attached), schema));
+                        this.decodeJoined(new LinkedHashMap<>(r.intoMap()), decoding, attached), schema));
     }
 
     /**
@@ -1811,14 +2015,9 @@ public class MySQLAppDataService implements IAppDataService {
      * may be JSON on one and a string on the other, and decoding both with the
      * parent's answer would corrupt whichever disagreed.
      */
-    private Map<String, Object> decodeJoined(
-            Map<String, Object> flat,
-            Set<String> json,
-            Set<String> dates,
-            Set<String> decimals,
-            Attached attached) {
+    private Map<String, Object> decodeJoined(Map<String, Object> flat, Decoding decoding, Attached attached) {
 
-        Map<String, Object> decoded = this.codec.decode(flat, json, dates, decimals);
+        Map<String, Object> decoded = decoding.columns(this.codec, flat);
 
         for (JoinedTable join : attached.joins()) {
             Set<String> joinJson = prefixed(join, join.jsonColumns());
@@ -1827,8 +2026,9 @@ public class MySQLAppDataService implements IAppDataService {
             // fourth set on JoinedTable: a DECIMAL column is exactly one whose type
             // says so, and the record already knows every column's type.
             Set<String> joinDecimals = prefixed(join, decimalsOf(join));
-            if (!joinJson.isEmpty() || !joinDates.isEmpty() || !joinDecimals.isEmpty())
-                decoded = this.codec.decode(decoded, joinJson, joinDates, joinDecimals);
+            Set<String> joinBooleans = prefixed(join, join.booleanColumns());
+            if (!joinJson.isEmpty() || !joinDates.isEmpty() || !joinDecimals.isEmpty() || !joinBooleans.isEmpty())
+                decoded = this.codec.decode(decoded, joinJson, joinDates, joinDecimals, joinBooleans);
         }
 
         // Subquery measures nest under their alias too, so a caller reads
@@ -1903,8 +2103,7 @@ public class MySQLAppDataService implements IAppDataService {
         List<OrderField<?>> out = new java.util.ArrayList<>();
         for (Sort.Order o : sort) {
             if (!addressable(o.getProperty(), known, json)) continue;
-            Field<Object> f = resolver.resolve(o.getProperty());
-            out.add(o.isAscending() ? f.asc() : f.desc());
+            addOrder(out, o, resolver.resolve(o.getProperty()));
         }
         return out;
     }
@@ -2031,10 +2230,28 @@ public class MySQLAppDataService implements IAppDataService {
             if (!addressable(o.getProperty(), known, json)) continue;
             // Through the resolver, because a dotted name is a JSON path and
             // DSL.name would render it as a qualified column instead.
-            Field<Object> f = resolver.resolve(o.getProperty());
-            out.add(o.isAscending() ? f.asc() : f.desc());
+            addOrder(out, o, resolver.resolve(o.getProperty()));
         }
         return out;
+    }
+
+    /**
+     * One sort key, with ids ordered the way they were issued.
+     *
+     * {@code _id} is CHAR(26): every id the platform mints is a 26 character ULID, so
+     * for native rows the length is constant and this adds nothing. Rows imported with
+     * their old numeric ids ("999", "1000") are shorter, and a plain string order puts
+     * "999" after "1000". Ordering by length first sorts those numerically and keeps
+     * every ULID (newer than any import) after them, which is what "sort by id" means
+     * to the caller.
+     */
+    static void addOrder(List<OrderField<?>> out, Sort.Order o, Field<Object> f) {
+        if (MySQLTypeMapper.ID_COLUMN.equals(o.getProperty())
+                || o.getProperty().endsWith("." + MySQLTypeMapper.ID_COLUMN)) {
+            Field<Integer> len = DSL.field("char_length({0})", Integer.class, f);
+            out.add(o.isAscending() ? len.asc() : len.desc());
+        }
+        out.add(o.isAscending() ? f.asc() : f.desc());
     }
 
     // ------------------------------------------------------------------ aggregate
@@ -2095,10 +2312,12 @@ public class MySQLAppDataService implements IAppDataService {
         }
 
         Set<String> jsonAliases = jsonAliases(query, json);
+        Set<String> booleanAliases = booleanAliases(query, MySQLTypeMapper.booleanColumns(schema, defs(storage)));
 
         Mono<List<Map<String, Object>>> rows = Flux.from(
                         MySQLAggregateBuilder.page(ctx, from, query, where, having, page, resolver))
-                .map(r -> this.codec.decode(new LinkedHashMap<>(r.intoMap()), jsonAliases))
+                .map(r -> this.codec.decode(
+                        new LinkedHashMap<>(r.intoMap()), jsonAliases, Set.of(), Set.of(), booleanAliases))
                 .collectList();
 
         return rows.flatMap(list -> BooleanUtil.safeValueOf(query.getCount())
@@ -2124,6 +2343,24 @@ public class MySQLAppDataService implements IAppDataService {
 
         for (var g : query.getGroupBy())
             if (jsonColumns.contains(g.getField())) out.add(g.resolvedAlias());
+
+        return out;
+    }
+
+    /**
+     * Group keys that are a whole BOOLEAN column, so a group comes back keyed true /
+     * false as the rows themselves read, not 0 / 1. A bucketed key is never one.
+     */
+    static Set<String> booleanAliases(AggregateQuery query, Set<String> booleanColumns) {
+
+        Set<String> out = new java.util.LinkedHashSet<>();
+        if (query.getGroupBy() == null || booleanColumns.isEmpty()) return out;
+
+        for (var g : query.getGroupBy())
+            if (g.getField() != null
+                    && g.getBucket() == null
+                    && booleanColumns.contains(MySQLColumnNames.column(g.getField())))
+                out.add(g.resolvedAlias());
 
         return out;
     }
@@ -2317,7 +2554,7 @@ public class MySQLAppDataService implements IAppDataService {
                                         .map(r -> r.value1().longValue())
                                         .defaultIfEmpty(0L);
 
-                            return this.recordBulkDelete(conn, db, storage, where, deleteVersion)
+                            return this.recordBulkDelete(conn, db, storage, schema, where, deleteVersion)
                                     .then(Mono.from(
                                             ctx.deleteFrom(this.table(db, storage)).where(where)))
                                     .map(Long::valueOf)
@@ -2465,7 +2702,12 @@ public class MySQLAppDataService implements IAppDataService {
      * out-of-memory risk on exactly the tenant where it matters most.
      */
     private Mono<Boolean> recordBulkDelete(
-            Connection conn, String db, Storage storage, org.jooq.Condition where, Boolean deleteVersion) {
+            Connection conn,
+            String db,
+            Storage storage,
+            Schema schema,
+            org.jooq.Condition where,
+            Boolean deleteVersion) {
 
         if (deleteVersion == null || !keepsHistory(storage)) return Mono.just(Boolean.TRUE);
 
@@ -2482,14 +2724,44 @@ public class MySQLAppDataService implements IAppDataService {
                                     .where(DSL.field(DSL.name(MySQLVersionTable.OBJECT_ID)).in(ids)))))
                     .then(Mono.just(Boolean.TRUE));
 
+        // Decoded exactly as a read decodes, so a DELETE snapshot has the same shape
+        // as the CREATE and UPDATE ones of the same row (field names, ISO dates,
+        // booleans as true / false) rather than whatever the driver handed back.
+        Decoding decoding = Decoding.of(schema, defs(storage));
+
         return Flux.from(ctx.select().from(this.table(db, storage)).where(where))
                 .concatMap(r -> {
-                    Map<String, Object> row = new LinkedHashMap<>(r.intoMap());
+                    Map<String, Object> row = decoding.row(this.codec, new LinkedHashMap<>(r.intoMap()), schema);
                     return this.addVersion(
                             conn, db, storage, String.valueOf(row.get(MySQLTypeMapper.ID_COLUMN)), "DELETE", row,
                             null);
                 })
                 .then(Mono.just(Boolean.TRUE));
+    }
+
+    /**
+     * The fields of this storage's snapshots that are BOOLEAN today.
+     *
+     * Snapshots written before booleans were decoded hold 0 / 1, and a history view
+     * should read the same as the row. A storage whose schema cannot be resolved any
+     * more still has a readable history, just without the conversion.
+     */
+    private Mono<Set<String>> snapshotBooleans(Storage storage) {
+        return this.physicalSchema(storage)
+                .map(schema -> Decoding.of(schema, defs(storage)).booleanFields(schema))
+                .onErrorResume(e -> Mono.just(Set.of()))
+                .defaultIfEmpty(Set.of());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> decodeVersion(Map<String, Object> raw, Set<String> booleanFields) {
+
+        Map<String, Object> row = this.codec.decode(raw, Set.of(MySQLVersionTable.OBJECT));
+        if (!booleanFields.isEmpty() && row.get(MySQLVersionTable.OBJECT) instanceof Map<?, ?> snapshot)
+            row.put(
+                    MySQLVersionTable.OBJECT,
+                    MySQLValueCodec.booleans((Map<String, Object>) snapshot, booleanFields));
+        return row;
     }
 
     @Override
@@ -2499,12 +2771,12 @@ public class MySQLAppDataService implements IAppDataService {
         return FlatMapUtil.flatMapMono(
                         () -> this.database(clientCode, storage),
                         db -> this.ensureVersionTable(conn, db, storage),
-                        (db, ensured) -> Mono.from(this.context(conn)
+                        (db, ensured) -> this.snapshotBooleans(storage),
+                        (db, ensured, booleans) -> Mono.from(this.context(conn)
                                         .select()
                                         .from(this.versionTable(db, storage))
                                         .where(idField().eq(versionId)))
-                                .map(r -> this.codec.decode(
-                                        new LinkedHashMap<>(r.intoMap()), Set.of(MySQLVersionTable.OBJECT))))
+                                .map(r -> this.decodeVersion(new LinkedHashMap<>(r.intoMap()), booleans)))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         AbstractMongoMessageResourceService.OBJECT_NOT_FOUND,
@@ -2528,7 +2800,8 @@ public class MySQLAppDataService implements IAppDataService {
         return FlatMapUtil.flatMapMono(
                         () -> this.database(clientCode, storage),
                         db -> this.ensureVersionTable(conn, db, storage),
-                        (db, ensured) -> {
+                        (db, ensured) -> this.snapshotBooleans(storage),
+                        (db, ensured, booleans) -> {
 
                             org.jooq.Condition where =
                                     DSL.field(DSL.name(MySQLVersionTable.OBJECT_ID)).eq(objectId);
@@ -2558,8 +2831,7 @@ public class MySQLAppDataService implements IAppDataService {
                                             .orderBy(DSL.field(DSL.name(MySQLVersionTable.CREATED_AT)).desc())
                                             .limit(page.getPageSize())
                                             .offset((int) page.getOffset()))
-                                    .map(r -> this.codec.decode(
-                                            new LinkedHashMap<>(r.intoMap()), Set.of(MySQLVersionTable.OBJECT)))
+                                    .map(r -> this.decodeVersion(new LinkedHashMap<>(r.intoMap()), booleans))
                                     .collectList()
                                     .flatMap(list -> BooleanUtil.safeValueOf(query.getCount())
                                             ? Mono.from(ctx.selectCount()

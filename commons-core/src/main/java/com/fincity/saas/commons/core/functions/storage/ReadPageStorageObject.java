@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.functions.storage;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -14,6 +15,8 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.StorageJoin;
+import com.fincity.saas.commons.model.StorageSubQuery;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -65,6 +68,14 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
     private static final String EAGER_FIELDS = "eagerFields";
 
     private static final String IGNORE_FIELDS = "ignoreFields";
+
+    private static final String JOINS = "joins";
+
+    private static final String SUB_QUERIES = "subQueries";
+
+    private static final TypeReference<List<StorageJoin>> JOIN_LIST = new TypeReference<>() {};
+
+    private static final TypeReference<List<StorageSubQuery>> SUB_QUERY_LIST = new TypeReference<>() {};
 
     private final AppDataService appDataService;
     private final ObjectMapper mapper;
@@ -134,7 +145,25 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
                                 EAGER,
                                 Parameter.of(EAGER, Schema.ofBoolean(EAGER).setDefaultValue(new JsonPrimitive(false)))),
                         Map.entry(EAGER_FIELDS, Parameter.of(EAGER_FIELDS, Schema.ofString(EAGER_FIELDS), true)),
-                        Map.entry(IGNORE_FIELDS, Parameter.of(IGNORE_FIELDS, Schema.ofString(IGNORE_FIELDS), true))))
+                        Map.entry(IGNORE_FIELDS, Parameter.of(IGNORE_FIELDS, Schema.ofString(IGNORE_FIELDS), true)),
+                        // Relations joined into the read, so the filter and the sort can use a
+                        // related row's fields as `alias.field` (Query.joins). Each item is
+                        // {relation, alias?, type?: LEFT | INNER}.
+                        Map.entry(
+                                JOINS,
+                                Parameter.of(
+                                        JOINS,
+                                        Schema.ofArray(JOINS, Schema.ofObject("join"))
+                                                .setDefaultValue(new JsonArray()))),
+                        // Grouped questions about child rows, answered per row as
+                        // `alias.measure` (Query.subQueries). Each item is {storage, relation,
+                        // alias?, condition?, aggregations?, having?, required?}.
+                        Map.entry(
+                                SUB_QUERIES,
+                                Parameter.of(
+                                        SUB_QUERIES,
+                                        Schema.ofArray(SUB_QUERIES, Schema.ofObject("subQuery"))
+                                                .setDefaultValue(new JsonArray())))))
                 .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
     }
 
@@ -180,7 +209,9 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
                 .setCount(true)
                 .setEager(eager)
                 .setSort(getSortObj(sort))
-                .setEagerFields(eagerFields);
+                .setEagerFields(eagerFields)
+                .setJoins(this.objectList(context, JOINS, JOIN_LIST))
+                .setSubQueries(this.objectList(context, SUB_QUERIES, SUB_QUERY_LIST));
 
         return this.appDataService
                 .readPage(
@@ -215,6 +246,19 @@ public class ReadPageStorageObject extends AbstractReactiveFunction {
 
                     return new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(pg)))));
                 });
+    }
+
+    /**
+     * A list argument of objects as the typed model, or null when absent or empty, so
+     * a read that asked for nothing extra builds exactly the Query it always did.
+     */
+    private <T> List<T> objectList(
+            ReactiveFunctionExecutionParameters context, String parameterName, TypeReference<List<T>> type) {
+        JsonElement arg = context.getArguments().get(parameterName);
+        if (arg == null || arg.isJsonNull() || !arg.isJsonArray() || arg.getAsJsonArray().isEmpty()) return null;
+
+        List<T> list = this.mapper.convertValue(StorageJson.toMapList(arg), type);
+        return list == null || list.isEmpty() ? null : list;
     }
 
     private List<String> stringList(ReactiveFunctionExecutionParameters context, String parameterName) {

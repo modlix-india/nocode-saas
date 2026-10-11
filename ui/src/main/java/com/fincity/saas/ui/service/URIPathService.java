@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
@@ -249,7 +250,7 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
         return Mono.just("Coming soon...").map(ObjectWithUniqueID::new);
     }
 
-    public Mono<String> getResponse(ServerHttpRequest request, JsonObject jsonObject,
+    public Mono<ResponseEntity<String>> getResponse(ServerHttpRequest request, JsonObject jsonObject,
             String appCode, String clientCode, String forwardedHost, String forwardedPort) {
 
         String uriPathString = request.getURI().getPath();
@@ -308,9 +309,9 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
                 appCode, "-", clientCode);
     }
 
-    private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
-            KIRunFxDefinition kiRunFxDef, String appCode, String clientCode, String forwardedHost,
-            String forwardedPort) {
+    private Mono<ResponseEntity<String>> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject,
+            String uriPathString, KIRunFxDefinition kiRunFxDef, String appCode, String clientCode,
+            String forwardedHost, String forwardedPort) {
 
         String authHeader = request.getHeaders().getFirst("Authorization");
 
@@ -324,23 +325,125 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
                     case "POST", "PUT", "PATCH", "DELETE" ->
                         iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode, clientCode,
                                 kiRunFxDef.getNamespace(),
-                                kiRunFxDef.getName(), jsonObject.toString());
+                                kiRunFxDef.getName(),
+                                withMappedParams(jsonObject, request, uriPathString, kiRunFxDef).toString());
 
                     default -> Mono.empty();
                 },
                 responseString -> {
 
                     if (StringUtil.safeIsBlank(responseString))
-                        return Mono.just("");
+                        return Mono.just(ResponseEntity.ok(""));
 
                     if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName()))
-                        return Mono.just(responseString);
+                        return Mono.just(ResponseEntity.ok(responseString));
 
                     JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
 
                     return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
-                            kiRunFxDef.getOutputEventParamName());
+                            kiRunFxDef.getOutputEventParamName())
+                            .map(ResponseEntity::ok)
+                            .switchIfEmpty(Mono.defer(() -> errorEventResponse(response, kiRunFxDef)));
                 });
+    }
+
+    /**
+     * The request body plus the path variables, query parameters and headers the
+     * route's KIRun definition explicitly maps. GET has always taken its arguments
+     * from those three; a body method used to drop them all, so a POST route could not
+     * carry, say, a product code in its path. Only DECLARED mappings are merged (a body
+     * method with no mapping sends the body exactly as before), and a mapped value
+     * replaces a body key of the same name.
+     */
+    static JsonObject withMappedParams(JsonObject body, ServerHttpRequest request, String uriPathString,
+            KIRunFxDefinition def) {
+
+        JsonObject args = body == null ? new JsonObject() : body.deepCopy();
+
+        if (def.getPathParamMapping() != null && !def.getPathParamMapping().isEmpty()
+                && !StringUtil.safeIsBlank(uriPathString)) {
+
+            PathPattern.PathMatchInfo matchInfo = PathPatternParser.defaultInstance.parse(uriPathString)
+                    .matchAndExtract(PathContainer.parsePath(request.getURI().getPath()));
+
+            if (matchInfo != null)
+                def.getPathParamMapping().forEach((key, value) -> {
+                    String v = matchInfo.getUriVariables().get(key);
+                    if (v != null)
+                        args.addProperty(value, v);
+                });
+        }
+
+        addMapped(args, def.getQueryParamMapping(), request.getQueryParams());
+        addMapped(args, def.getHeadersMapping(), request.getHeaders());
+
+        return args;
+    }
+
+    private static void addMapped(JsonObject args, Map<String, String> map, MultiValueMap<String, String> source) {
+
+        if (map == null || map.isEmpty() || source == null)
+            return;
+
+        map.forEach((key, value) -> {
+            String v = source.getFirst(key);
+            if (v != null)
+                args.addProperty(value, v);
+        });
+    }
+
+    /**
+     * The function answered no output event. Without {@code errorEventName} the route
+     * stays silent, as it always did. With it, the named event decides the HTTP status
+     * ({@code status}, default 400) and the body: {@code body} verbatim (a string as
+     * text, anything else as JSON), or the platform error JSON with {@code message}.
+     */
+    static Mono<ResponseEntity<String>> errorEventResponse(JsonArray response, KIRunFxDefinition def) {
+
+        if (StringUtil.safeIsBlank(def.getErrorEventName()))
+            return Mono.empty();
+
+        JsonObject event = null;
+        for (JsonElement e : response) {
+            if (e.isJsonObject() && e.getAsJsonObject().has(FO_NAME)
+                    && e.getAsJsonObject().get(FO_NAME).isJsonPrimitive()
+                    && def.getErrorEventName().equals(e.getAsJsonObject().get(FO_NAME).getAsString())) {
+                event = e.getAsJsonObject();
+                break;
+            }
+        }
+
+        if (event == null)
+            return Mono.empty();
+
+        JsonObject result = event.has(FO_RESULT) && event.get(FO_RESULT).isJsonObject()
+                ? event.getAsJsonObject(FO_RESULT)
+                : new JsonObject();
+
+        int status = 400;
+        try {
+            if (result.has("status") && result.get("status").isJsonPrimitive())
+                status = (int) result.get("status").getAsDouble();
+        } catch (NumberFormatException ex) {
+            status = 400;
+        }
+
+        HttpStatus httpStatus = HttpStatus.resolve(status);
+        if (httpStatus == null || status < 400)
+            httpStatus = HttpStatus.BAD_REQUEST;
+
+        if (result.has("body") && !result.get("body").isJsonNull()) {
+            JsonElement body = result.get("body");
+            String text = body.isJsonPrimitive() && body.getAsJsonPrimitive().isString() ? body.getAsString()
+                    : body.toString();
+            return Mono.just(ResponseEntity.status(httpStatus).body(text));
+        }
+
+        String message = result.has("message") && result.get("message").isJsonPrimitive()
+                ? result.get("message").getAsString()
+                : httpStatus.getReasonPhrase();
+
+        return Mono.error(new GenericException(httpStatus, message));
     }
 
     private Mono<String> extractOutputEvent(JsonArray response, String outputEventName,

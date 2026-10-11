@@ -109,4 +109,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String UNSUPPORTED_ON_BACKEND = "unsupported_on_backend";
 
     public static final String ROW_ID_REQUIRED = "row_id_required";
+
+    public static final String FIELD_CANNOT_BE_NULL = "field_cannot_be_null";
 }

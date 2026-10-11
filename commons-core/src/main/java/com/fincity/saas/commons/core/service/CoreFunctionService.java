@@ -33,10 +33,13 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.CoreFunction;
 import com.fincity.saas.commons.core.feign.IFeignFilesService;
+import com.fincity.saas.commons.core.feign.IFeignMessageService;
+import com.fincity.saas.commons.core.feign.IFeignSecurityAsCaller;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
+import com.fincity.saas.commons.core.scheduler.ScheduledEventService;
 import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.email.EmailService;
@@ -141,6 +144,17 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Autowired
     private RemoteRepositoryService remoteRepositoryService;
 
+    @Autowired
+    private ScheduledEventService scheduledEventService;
+
+    @Autowired
+    @Lazy
+    private IFeignMessageService messageService;
+
+    @Autowired
+    @Lazy
+    private IFeignSecurityAsCaller securityAsCaller;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -163,7 +177,10 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                         .setNotificationService(notificationService)
                         .setAiService(aiService)
                         .setEcService(ecService)
-                        .setEdService(edService)));
+                        .setEdService(edService)
+                        .setScheduledEventService(scheduledEventService)
+                        .setMessageService(messageService)
+                        .setSecurityAsCaller(securityAsCaller)));
     }
 
     @Override

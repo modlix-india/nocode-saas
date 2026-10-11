@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -39,7 +40,7 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 	private static final String NAME = "name";
 	private static final String REF = "ref";
 
-	private final Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new HashMap<>();
+	private final Map<String, ReactiveRepository<com.fincity.nocode.kirun.engine.json.schema.Schema>> schemas = new ConcurrentHashMap<>();
 
 	private final FeignAuthenticationService feignSecurityService;
 	protected final Gson gson;
@@ -83,18 +84,13 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
 								AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-					String name = StringUtil.safeValueOf(entity.getDefinition()
-							.get(NAME));
-					String namespace = StringUtil.safeValueOf(entity.getDefinition()
-							.get(NAMESPACE));
+					String schemaName = updatedSchemaName(entity, existing);
 
-					if (name == null || namespace == null) {
+					if (schemaName == null) {
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								AbstractMongoMessageResourceService.NAME_MISSING);
 					}
-
-					String schemaName = namespace + "." + name;
 
 					if (!schemaName.equals(existing.getName())) {
 
@@ -110,6 +106,41 @@ public abstract class AbstractSchemaService<D extends AbstractSchema<D>, R exten
 
 					return Mono.just(existing);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractSchemaService.updatableEntity"));
+	}
+
+	/**
+	 * The full name ({@code namespace.name}) an update would give the schema, or null when the
+	 * definition does not say.
+	 *
+	 * <p>A derived (client override) schema is stored, and reaches here, as its DIFFERENCE from the
+	 * base: {@code update} extracts the override before {@code updatableEntity} runs. Name and
+	 * namespace never differ from the base, so they are exactly what the difference leaves out, and
+	 * requiring them refused every PUT on a derived schema with "Namespace or name missing". For a
+	 * derived document a missing part is therefore the stored one; anything present must still match.
+	 * A base document must carry both, as before.
+	 */
+	String updatedSchemaName(D entity, D existing) {
+
+		Map<String, Object> definition = entity.getDefinition();
+
+		String name = definition == null ? null : StringUtil.safeValueOf(definition.get(NAME));
+		String namespace = definition == null ? null : StringUtil.safeValueOf(definition.get(NAMESPACE));
+
+		if (name != null && namespace != null)
+			return namespace + "." + name;
+
+		boolean derived = !StringUtil.safeIsBlank(existing.getBaseClientCode());
+		String stored = existing.getName();
+
+		if (!derived || stored == null)
+			return null;
+
+		int dot = stored.lastIndexOf('.');
+		if (dot <= 0 || dot == stored.length() - 1)
+			return null;
+
+		return (namespace == null ? stored.substring(0, dot) : namespace) + "."
+				+ (name == null ? stored.substring(dot + 1) : name);
 	}
 
 	public Mono<ReactiveRepository<Schema>> getSchemaRepository(String appCode, String clientCode) {

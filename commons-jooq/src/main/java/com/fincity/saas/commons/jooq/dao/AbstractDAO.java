@@ -306,6 +306,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                     case SUM -> DSL.sum(baseField);
                     case AVG -> DSL.avg(baseField);
                     case COUNT -> DSL.count(baseField);
+                    case COUNT_DISTINCT -> DSL.countDistinct(baseField);
                 };
 
         return this.buildConditionForField(

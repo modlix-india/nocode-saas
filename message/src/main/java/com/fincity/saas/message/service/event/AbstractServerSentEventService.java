@@ -16,6 +16,8 @@ public abstract class AbstractServerSentEventService {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractServerSentEventService.class);
 
+    private static final int MAX_EMIT_SPINS = 1000;
+
     protected final Map<String, Many<MessageServerEvent>> eventSinks = new ConcurrentHashMap<>();
 
     public Flux<MessageServerEvent> getEventStream(String appCode, String clientCode, BigInteger userId) {
@@ -47,15 +49,32 @@ public abstract class AbstractServerSentEventService {
 
         return Mono.fromRunnable(() -> {
             logger.debug("Sending event: {}", event);
+            // A sink takes one emitter at a time, and two webhooks for one tenant can land together.
+            // The loser used to be dropped with an error; a short spin lets it through instead.
             Sinks.EmitResult result = sink.tryEmitNext(event);
-            if (result.isFailure()) logger.error("Failed to emit event: {}", result);
+            for (int spins = 0; result == Sinks.EmitResult.FAIL_NON_SERIALIZED && spins < MAX_EMIT_SPINS; spins++) {
+                Thread.onSpinWait();
+                result = sink.tryEmitNext(event);
+            }
+            // Nobody watching is normal for a stream that drops rather than buffers.
+            if (result == Sinks.EmitResult.FAIL_ZERO_SUBSCRIBER) logger.debug("No listener for event: {}", event);
+            else if (result.isFailure()) logger.error("Failed to emit event: {}", result);
         });
     }
 
     private Many<MessageServerEvent> getSink(String appCode, String clientCode, BigInteger userId) {
-        return eventSinks.computeIfAbsent(
-                getEventSinkKey(appCode, clientCode, userId),
-                k -> Sinks.many().multicast().onBackpressureBuffer());
+        return eventSinks.computeIfAbsent(getEventSinkKey(appCode, clientCode, userId), k -> this.newSink());
+    }
+
+    /**
+     * The sink behind one stream key.
+     *
+     * <p>Overridable because a buffered multicast sink suits a stream with one listener and is wrong
+     * for a shared one: it buffers while nobody listens, and once its last subscriber cancels it
+     * terminates, so every later subscriber on that key gets nothing.
+     */
+    protected Many<MessageServerEvent> newSink() {
+        return Sinks.many().multicast().onBackpressureBuffer();
     }
 
     protected String getEventSinkKey(String appCode, String clientCode, BigInteger userId) {

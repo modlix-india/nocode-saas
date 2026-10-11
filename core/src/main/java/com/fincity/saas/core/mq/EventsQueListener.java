@@ -20,6 +20,7 @@ import com.fincity.saas.commons.core.enums.EventActionTaskType;
 import com.fincity.saas.commons.core.mq.services.EventCallFunctionService;
 import com.fincity.saas.commons.core.mq.services.EventEmailService;
 import com.fincity.saas.commons.core.mq.services.IEventActionService;
+import com.fincity.saas.commons.core.scheduler.EventScheduler;
 import com.fincity.saas.commons.core.service.EventActionService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.dto.Client;
@@ -39,21 +40,39 @@ public class EventsQueListener {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(EventsQueListener.class);
 
+    static final String ANONYMOUS_AUTHORITY = "Authorities._Anonymous";
+
+    /**
+     * Held only by the anonymous context built here, i.e. by an event that was raised without an
+     * authentication: a scheduler tick or one-off, or a message-service hand-off (WHATSAPP_INBOUND,
+     * CALL_EVENT). A browser's anonymous context (security's AuthenticationService) carries only
+     * {@link #ANONYMOUS_AUTHORITY}, and an event raised by CreateEvent runs as its raiser. So a server
+     * function meant to be run only by an event sets {@code executeAuth = "Authorities._Event_Runner"}:
+     * the event runs it, a direct POST /api/core/function/execute/... gets 403.
+     */
+    static final String EVENT_RUNNER_AUTHORITY = "Authorities._Event_Runner";
+
     private final EventActionService eventActionService;
     private final EventCallFunctionService functionService;
     private final EventEmailService emailService;
 
     private final IFeignSecurityService securityService;
 
+    private final EventScheduler eventScheduler;
+
+    private final UnhandledEventLog unhandledEventLog = new UnhandledEventLog();
+
     private final Map<EventActionTaskType, IEventActionService> actionServices = new EnumMap<>(
             EventActionTaskType.class);
 
     public EventsQueListener(EventActionService eventActionService, EventCallFunctionService functionService,
-                             EventEmailService emailService, IFeignSecurityService securityService) {
+                             EventEmailService emailService, IFeignSecurityService securityService,
+                             EventScheduler eventScheduler) {
         this.eventActionService = eventActionService;
         this.functionService = functionService;
         this.emailService = emailService;
         this.securityService = securityService;
+        this.eventScheduler = eventScheduler;
     }
 
     @PostConstruct
@@ -71,7 +90,14 @@ public class EventsQueListener {
                 () -> Mono.just(qob),
 
                 message -> eventActionService.read(message.getEventName(), message.getAppCode(),
-                        message.getClientCode()),
+                        message.getClientCode())
+                        // Still dropped, as before, but no longer silently: see UnhandledEventLog.
+                        .switchIfEmpty(Mono.defer(() -> {
+                            String warning = this.unhandledEventLog.warning(message, System.currentTimeMillis());
+                            if (warning != null)
+                                logger.warn(warning);
+                            return Mono.empty();
+                        })),
 
                 (message, eventActionObject) -> {
                     var eventAction = eventActionObject.getObject();
@@ -104,6 +130,11 @@ public class EventsQueListener {
 
         );
 
+        // A run the scheduler raised is closed with the outcome of these tasks:
+        // DONE or FAILED for a cron tick, DONE or retry-with-backoff for a one-off.
+        // Every other event passes through unchanged.
+        receivedMono = this.eventScheduler.trackCompletion(qob, receivedMono);
+
         if (qob.getXDebug() != null) {
             receivedMono = receivedMono.contextWrite(Context.of(LogUtil.DEBUG_KEY, qob.getXDebug()));
         }
@@ -123,7 +154,7 @@ public class EventsQueListener {
         } else {
             final Mono<Boolean> finalReceivedMono = receivedMono;
             return this.securityService.getClientByCode(qob.getClientCode())
-                    .map(client -> this.makeAnonymousContextAuth
+                    .map(client -> makeAnonymousContextAuth
                             (qob.getAppCode(), qob.getClientCode(), client))
                     .flatMap(ca -> finalReceivedMono.contextWrite(ReactiveSecurityContextHolder
                             .withSecurityContext(Mono.just(new SecurityContextImpl(ca)))))
@@ -131,7 +162,12 @@ public class EventsQueListener {
         }
     }
 
-    private ContextAuthentication makeAnonymousContextAuth(String appCode, String clientCode, Client client) {
+    // Package-private and static so a unit test can pin the constructor argument order.
+    // ContextAuthentication's all-args order is ..., accessTokenExpiryAt, urlClientCode,
+    // urlAppCode, verifiedAppCode. Passing appCode before clientCode (the old order) put the
+    // app code in urlClientCode, so a scheduled run's Storage call went to a client named
+    // after the app and ScheduleEvent / CancelScheduledEvent read the event under the wrong app.
+    static ContextAuthentication makeAnonymousContextAuth(String appCode, String clientCode, Client client) {
 
         return new ContextAuthentication(
                 new ContextUser()
@@ -153,7 +189,7 @@ public class EventsQueListener {
                         .setAccountNonLocked(true)
                         .setCredentialsNonExpired(true)
                         .setNoFailedAttempt((short) 0)
-                        .setStringAuthorities(List.of("Authorities._Anonymous")),
+                        .setStringAuthorities(List.of(ANONYMOUS_AUTHORITY, EVENT_RUNNER_AUTHORITY)),
                 false,
                 client.getId(),
                 client.getCode(),
@@ -162,8 +198,8 @@ public class EventsQueListener {
                 client.getCode(),
                 "",
                 LocalDateTime.MAX,
-                appCode,
                 clientCode,
+                appCode,
                 null);
     }
 

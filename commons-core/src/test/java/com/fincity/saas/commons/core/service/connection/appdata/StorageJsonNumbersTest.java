@@ -116,4 +116,18 @@ class StorageJsonNumbersTest {
     private static JsonObject obj(String json) {
         return JsonParser.parseString(json).getAsJsonObject();
     }
+
+    @Test
+    @DisplayName("a null in a KIRun Storage.Update row reaches the service as a null, not as a missing key")
+    void nullIsKept() {
+
+        JsonObject row = JsonParser.parseString("{\"description\": null, \"ownerId\": null, \"name\": \"x\"}")
+                .getAsJsonObject();
+        Map<String, Object> map = StorageJson.toMap(row);
+
+        org.junit.jupiter.api.Assertions.assertTrue(map.containsKey("description"));
+        org.junit.jupiter.api.Assertions.assertNull(map.get("description"));
+        org.junit.jupiter.api.Assertions.assertTrue(map.containsKey("ownerId"));
+        assertEquals("x", map.get("name"));
+    }
 }

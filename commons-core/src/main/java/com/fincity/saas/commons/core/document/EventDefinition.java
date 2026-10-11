@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.document;
 
+import com.fincity.saas.commons.core.model.EventSchedule;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
@@ -33,10 +34,19 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
     private Map<String, Object> schema;
     private Boolean includeContextAuthentication;
 
+    /**
+     * Raises this event on a cron. Null means the event is only ever raised by
+     * hand. Merged field by field down the override chain, so a client override
+     * that sets only {@code enabled: false} keeps the base's cron and stops just
+     * that client's runs.
+     */
+    private EventSchedule schedule;
+
     public EventDefinition(EventDefinition obj) {
         super(obj);
         this.schema = CloneUtil.cloneMapObject(obj.schema);
         this.includeContextAuthentication = obj.includeContextAuthentication;
+        this.schedule = obj.schedule == null ? null : new EventSchedule(obj.schedule);
     }
 
     @SuppressWarnings("unchecked")
@@ -50,6 +60,7 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
                     this.schema = (Map<String, Object>) a;
                     if (this.includeContextAuthentication == null)
                         this.includeContextAuthentication = base.includeContextAuthentication;
+                    this.schedule = EventSchedule.merge(this.schedule, base.schedule);
                     return this;
                 });
     }
@@ -64,6 +75,7 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
                     e.schema = (Map<String, Object>) k;
                     if (CommonsUtil.safeEquals(e.includeContextAuthentication, base.includeContextAuthentication))
                         e.includeContextAuthentication = null;
+                    e.schedule = EventSchedule.difference(e.schedule, base.schedule);
                     return e;
                 }));
     }
