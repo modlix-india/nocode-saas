@@ -69,10 +69,23 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
                         SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> getAccessToken(ca.getUrlAppCode(), ca.getClientCode(), connection),
+                        ca -> getAccessToken(tokenAppCode(connection, ca), ca.getClientCode(), connection),
 
                         (ca, token) -> makeRestCall(connection, request, token, fileDownload))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RestAuthService.call"));
+    }
+
+    /**
+     * The app whose OAuth2 tokens a call uses: the app that owns the connection. A KIRun step may name another
+     * app's connection ({@code CoreServices.REST.*(appCode = "marketingai", connectionName = "META_API")}); the
+     * consent flow stored that app's tokens under that app's code, so looking them up under the caller's URL app
+     * never finds them. The client stays the caller's own client, so a caller only ever uses its own client's
+     * tokens. Falls back to the URL app when the connection carries no app code.
+     */
+    static String tokenAppCode(Connection connection, ContextAuthentication ca) {
+        String connApp = connection == null ? null : connection.getAppCode();
+        if (!StringUtil.safeIsBlank(connApp)) return connApp;
+        return ca == null ? null : ca.getUrlAppCode();
     }
 
     @Override

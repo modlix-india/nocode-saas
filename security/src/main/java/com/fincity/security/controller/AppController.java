@@ -98,6 +98,13 @@ public class AppController
                 .map(ResponseEntity::ok);
     }
 
+    @GetMapping("/internal/writeAccessClientCodes")
+    public Mono<ResponseEntity<List<String>>> writeAccessClientCodes(@RequestParam String appCode) {
+
+        return this.service.getWriteAccessClientCodes(appCode)
+                .map(ResponseEntity::ok);
+    }
+
     @DeleteMapping("/everything/{id}")
     public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
                                                        @RequestParam(required = false) final Boolean forceDelete) {

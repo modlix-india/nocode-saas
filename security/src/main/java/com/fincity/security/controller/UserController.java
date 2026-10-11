@@ -307,6 +307,13 @@ public class UserController
         return this.userSubOrgService.updateManager(userId, managerId).map(ResponseEntity::ok);
     }
 
+    // "Reports to nobody". The PUT above needs a manager in its path, so a cleared
+    // "Reports to" field had nothing to send and the old manager stayed (QA-0301).
+    @DeleteMapping("/{userId}/reportingManager")
+    public Mono<ResponseEntity<User>> removeReportingManager(@PathVariable ULong userId) {
+        return this.userSubOrgService.updateManager(userId, null).map(ResponseEntity::ok);
+    }
+
     @PutMapping("/{userId}/designation/{designationId}")
     public Mono<ResponseEntity<User>> updateDesignation(@PathVariable ULong userId, @PathVariable ULong designationId) {
         return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);

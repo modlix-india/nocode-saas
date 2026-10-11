@@ -17,4 +17,10 @@ public class IncomingCallRequest extends BaseMessageRequest implements Serializa
     private static final long serialVersionUID = 4574664927812256563L;
 
     private Map<String, String> providerIncomingRequest;
+
+    /**
+     * The service answering the connect applet, which will own the call when the call account's
+     * connection names no owner of its own. entity-processor sends {@code entity-processor}.
+     */
+    private String ownerService;
 }

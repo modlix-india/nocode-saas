@@ -477,6 +477,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
         return this.dao.hasWriteAccess(appCode, clientCode);
     }
 
+    /**
+     * Internal only: the client codes core's event scheduler fans a per-client
+     * schedule out to. See {@link AppDAO#getWriteAccessClientCodes}.
+     */
+    public Mono<List<String>> getWriteAccessClientCodes(String appCode) {
+        return this.dao.getWriteAccessClientCodes(appCode);
+    }
+
     public Mono<Boolean> hasWriteAccess(ULong appId, ULong clientId) {
         return this.dao.hasWriteAccess(appId, clientId);
     }

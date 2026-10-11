@@ -31,6 +31,16 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 	private String outputEventName;
 	private String outputEventParamName;
 
+	/**
+	 * Optional. When set and the function answers this event instead of
+	 * {@link #outputEventName}, the route answers with the event's {@code status}
+	 * result as the HTTP status (default 400): with the event's {@code body} result
+	 * verbatim when it has one, otherwise the platform error JSON carrying the
+	 * event's {@code message}. Unset keeps the old behaviour (no output event, no
+	 * body).
+	 */
+	private String errorEventName;
+
 	public KIRunFxDefinition(KIRunFxDefinition kinRunFxDefinition) {
 		this.name = kinRunFxDefinition.name;
 		this.namespace = kinRunFxDefinition.namespace;
@@ -40,6 +50,7 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 		this.queryParamMapping = CloneUtil.cloneMapObject(kinRunFxDefinition.queryParamMapping);
 		this.outputEventName = kinRunFxDefinition.outputEventName;
 		this.outputEventParamName = kinRunFxDefinition.outputEventParamName;
+		this.errorEventName = kinRunFxDefinition.errorEventName;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -68,6 +79,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						diff.setOutputEventName(inc.outputEventName);
 					if (!CommonsUtil.safeEquals(this.outputEventParamName, inc.outputEventParamName))
 						diff.setOutputEventParamName(inc.outputEventParamName);
+					if (!CommonsUtil.safeEquals(this.errorEventName, inc.errorEventName))
+						diff.setErrorEventName(inc.errorEventName);
 
 					return Mono.just(diff);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.extractDifference"));
@@ -98,6 +111,8 @@ public class KIRunFxDefinition implements Serializable, IDifferentiable<KIRunFxD
 						this.setOutputEventName(override.getOutputEventName());
 					if (this.getOutputEventParamName() == null)
 						this.setOutputEventParamName(override.getOutputEventParamName());
+					if (this.getErrorEventName() == null)
+						this.setErrorEventName(override.getErrorEventName());
 
 					return Mono.just(this);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "KIRunFxDefinition.applyOverride"));

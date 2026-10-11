@@ -117,10 +117,14 @@ class AggregateQueryValidatorTest {
     }
 
     @Test
-    @DisplayName("SUM, AVG, MIN and MAX all need a field; COUNT does not")
+    @DisplayName("SUM, AVG, MIN, MAX and COUNT_DISTINCT all need a field; COUNT does not")
     void fieldRequired() {
         for (AggregateFunction f : List.of(
-                AggregateFunction.SUM, AggregateFunction.AVG, AggregateFunction.MIN, AggregateFunction.MAX))
+                AggregateFunction.SUM,
+                AggregateFunction.AVG,
+                AggregateFunction.MIN,
+                AggregateFunction.MAX,
+                AggregateFunction.COUNT_DISTINCT))
             assertNotNull(
                     AggregateQueryValidator.check(new AggregateQuery().setAggregations(List.of(agg(f, null, "a")))),
                     f + " should need a field");

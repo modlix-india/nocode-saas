@@ -39,13 +39,19 @@ public class BridgeSessionService {
     private final BridgeClient bridgeClient;
 
     /**
-     * Which service owns conversations on sessions created through this path.
+     * Which service owns conversations on a session linked without naming one.
      *
-     * <p>Configurable rather than hard-coded so a second consumer does not require a code change,
-     * but defaulted, because today there is exactly one and a null owner parks every inbound message
-     * instead of delivering it.
+     * <p>{@code core}: the number's inbound messages and statuses are raised as the core event {@code
+     * WHATSAPP_INBOUND} for the number's own app and client, so ANY app takes a number over with an
+     * EventAction and a server function, and no code here changes per app. See {@code
+     * message/docs/core-event-contract.md}.
+     *
+     * <p>entity-processor still owns the numbers it links: it names itself as the owner when it asks
+     * for a session, and every row it created before this default changed carries {@code
+     * entity-processor} in {@code OWNER_SERVICE} already, which this default never touches (it is read
+     * only when a row is created).
      */
-    @Value("${message.bridge.default-owner-service:entity-processor}")
+    @Value("${message.bridge.default-owner-service:core}")
     private String defaultOwnerService;
 
     public BridgeSessionService(

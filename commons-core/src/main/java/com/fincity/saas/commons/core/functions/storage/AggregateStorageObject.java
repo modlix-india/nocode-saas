@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.core.functions.storage;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -18,6 +19,8 @@ import com.fincity.saas.commons.model.Aggregation;
 import com.fincity.saas.commons.model.DateBucketUnit;
 import com.fincity.saas.commons.model.DateEncoding;
 import com.fincity.saas.commons.model.GroupByField;
+import com.fincity.saas.commons.model.StorageJoin;
+import com.fincity.saas.commons.model.StorageSubQuery;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.AggregateFunction;
 import com.google.gson.Gson;
@@ -83,6 +86,14 @@ public class AggregateStorageObject extends AbstractReactiveFunction {
     private static final String PROPERTY = "property";
 
     private static final String DIRECTION = "direction";
+
+    private static final String JOINS = "joins";
+
+    private static final String SUB_QUERIES = "subQueries";
+
+    private static final TypeReference<List<StorageJoin>> JOIN_LIST = new TypeReference<>() {};
+
+    private static final TypeReference<List<StorageSubQuery>> SUB_QUERY_LIST = new TypeReference<>() {};
 
     private final AppDataService appDataService;
     private final ObjectMapper mapper;
@@ -179,7 +190,25 @@ public class AggregateStorageObject extends AbstractReactiveFunction {
                                 CLIENT_CODE,
                                 Parameter.of(
                                         CLIENT_CODE,
-                                        Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))))))
+                                        Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive("")))),
+                        // Relations joined in, so the filter, a group key or a measure can use a
+                        // related row's field as `alias.field` (AggregateQuery.joins), exactly as
+                        // ReadPage takes them. Each item is {relation, alias?, type?: LEFT | INNER}.
+                        Map.entry(
+                                JOINS,
+                                Parameter.of(
+                                        JOINS,
+                                        Schema.ofArray(JOINS, Schema.ofObject("join"))
+                                                .setDefaultValue(new JsonArray()))),
+                        // Per-row questions about child rows, usable as `alias.measure`
+                        // (AggregateQuery.subQueries). Each item is {storage, relation, alias?,
+                        // condition?, aggregations?, having?, required?}.
+                        Map.entry(
+                                SUB_QUERIES,
+                                Parameter.of(
+                                        SUB_QUERIES,
+                                        Schema.ofArray(SUB_QUERIES, Schema.ofObject("subQuery"))
+                                                .setDefaultValue(new JsonArray())))))
                 .setEvents(Map.of(event.getName(), event, errorEvent.getName(), errorEvent));
     }
 
@@ -194,28 +223,13 @@ public class AggregateStorageObject extends AbstractReactiveFunction {
 
         String storageName = context.getArguments().get(STORAGE_NAME).getAsString();
 
-        JsonObject filter = context.getArguments().get(FILTER).getAsJsonObject();
-        JsonObject having = context.getArguments().get(HAVING).getAsJsonObject();
-
-        Integer page = context.getArguments().get(PAGE).getAsInt();
-        Integer size = context.getArguments().get(SIZE).getAsInt();
-        boolean count = context.getArguments().get(COUNT).getAsBoolean();
-
         JsonElement appCodeJSON = context.getArguments().get(APP_CODE);
         String appCode = appCodeJSON == null || appCodeJSON.isJsonNull() ? null : appCodeJSON.getAsString();
 
         JsonElement clientCodeJSON = context.getArguments().get(CLIENT_CODE);
         String clientCode = clientCodeJSON == null || clientCodeJSON.isJsonNull() ? null : clientCodeJSON.getAsString();
 
-        AggregateQuery query = new AggregateQuery()
-                .setCondition(this.condition(filter))
-                .setHaving(this.condition(having))
-                .setGroupBy(this.groupBy(context.getArguments().get(GROUP_BY)))
-                .setAggregations(this.aggregations(context.getArguments().get(AGGREGATIONS)))
-                .setSort(this.sort(context.getArguments().get(SORT)))
-                .setPage(page)
-                .setSize(size)
-                .setCount(count);
+        AggregateQuery query = this.toQuery(context.getArguments());
 
         return this.appDataService
                 .aggregate(
@@ -241,6 +255,38 @@ public class AggregateStorageObject extends AbstractReactiveFunction {
 
                     return new FunctionOutput(List.of(EventResult.outputOf(Map.of(EVENT_RESULT, gson.toJsonTree(pg)))));
                 });
+    }
+
+    /** The query the arguments describe; package-private so the mapping can be tested without a backend. */
+    AggregateQuery toQuery(Map<String, JsonElement> args) {
+
+        JsonObject filter = args.get(FILTER).getAsJsonObject();
+        JsonObject having = args.get(HAVING).getAsJsonObject();
+
+        return new AggregateQuery()
+                .setCondition(this.condition(filter))
+                .setHaving(this.condition(having))
+                .setGroupBy(this.groupBy(args.get(GROUP_BY)))
+                .setAggregations(this.aggregations(args.get(AGGREGATIONS)))
+                .setSort(this.sort(args.get(SORT)))
+                .setPage(args.get(PAGE).getAsInt())
+                .setSize(args.get(SIZE).getAsInt())
+                .setCount(args.get(COUNT).getAsBoolean())
+                .setJoins(this.objectList(args, JOINS, JOIN_LIST))
+                .setSubQueries(this.objectList(args, SUB_QUERIES, SUB_QUERY_LIST));
+    }
+
+    /**
+     * A list argument of objects as the typed model, or null when absent or empty, so an
+     * aggregate that asked for nothing extra builds exactly the query it always did.
+     */
+    private <T> List<T> objectList(
+            Map<String, JsonElement> args, String parameterName, TypeReference<List<T>> type) {
+        JsonElement arg = args.get(parameterName);
+        if (arg == null || arg.isJsonNull() || !arg.isJsonArray() || arg.getAsJsonArray().isEmpty()) return null;
+
+        List<T> list = this.mapper.convertValue(StorageJson.toMapList(arg), type);
+        return list == null || list.isEmpty() ? null : list;
     }
 
     private AbstractCondition condition(JsonObject obj) {
