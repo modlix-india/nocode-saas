@@ -611,7 +611,14 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
         return this.readInternal(name, appCode, clientCode)
                 .map(ObjectWithUniqueID::getObject)
                 .flatMap(storage -> this.evictSchemaCaches(storage.getUniqueName())
-                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, storage)))
+                        .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, storage))
+                        // A client fork resolves through this document, so a change
+                        // here changes its table too; nothing else would migrate it
+                        // until the fork itself was saved.
+                        .thenMany(this.forksWithOwnTable(appCode, Set.of(name), Set.of(storage.getUniqueName())))
+                        .concatMap(fork -> this.evictSchemaCaches(fork.getUniqueName())
+                                .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, fork)))
+                        .then(Mono.just(Boolean.TRUE)))
                 .thenReturn(Boolean.TRUE)
                 // A storage that no longer resolves has nothing to rebuild, and a save
                 // that worked must not be reported as failed because the rebuild after
@@ -677,6 +684,7 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
         return this.coreSchemaService
                 .referencingClosure(appCode, schemaName)
                 .flatMap(closure -> this.storagesUsing(appCode, closure))
+                .flatMap(using -> this.withForks(appCode, using))
                 .flatMapMany(Flux::fromIterable)
                 .concatMap(storage -> this.evictSchemaCaches(storage.getUniqueName())
                         .flatMap(x -> this.appDataService.reconcileStorageDdl(appCode, storage))
@@ -708,6 +716,56 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                         this.getCollectionName())
                 .filter(storage -> SchemaRefs.collect(storage.getSchema()).stream().anyMatch(schemaNames::contains))
                 .collectList();
+    }
+
+    /**
+     * These storages plus every client fork of them that has a table of its own.
+     *
+     * A fork stores only its difference from the base, usually no schema at all, so
+     * {@link #storagesUsing} cannot see that it stands on the changed schema. It
+     * still does, through its base, and its table (its own uniqueName in that
+     * client's database) needs the same migration.
+     */
+    private Mono<List<Storage>> withForks(String appCode, List<Storage> using) {
+
+        if (using.isEmpty()) return Mono.just(using);
+
+        Set<String> names = using.stream().map(Storage::getName).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> tables = using.stream()
+                .map(Storage::getUniqueName)
+                .filter(u -> !StringUtil.safeIsBlank(u))
+                .collect(Collectors.toSet());
+
+        return this.forksWithOwnTable(appCode, names, tables)
+                .collectList()
+                .map(forks -> {
+                    List<Storage> all = new ArrayList<>(using);
+                    all.addAll(forks);
+                    return all;
+                });
+    }
+
+    /**
+     * Derived documents of these storages whose uniqueName is their own, i.e. a
+     * client fork with its own table. An ordinary override stores no uniqueName
+     * (it equals the base's) and shares the base's table, so it is not one.
+     */
+    private Flux<Storage> forksWithOwnTable(String appCode, Set<String> names, Set<String> exceptTables) {
+
+        if (names.isEmpty()) return Flux.empty();
+
+        return this.mongoTemplate
+                .find(
+                        new org.springframework.data.mongodb.core.query.Query(
+                                org.springframework.data.mongodb.core.query.Criteria.where("appCode")
+                                        .is(appCode)
+                                        .and("name")
+                                        .in(names)),
+                        Storage.class,
+                        this.getCollectionName())
+                .filter(s -> !StringUtil.safeIsBlank(s.getBaseClientCode())
+                        && !StringUtil.safeIsBlank(s.getUniqueName())
+                        && !exceptTables.contains(s.getUniqueName()));
     }
 
     /**

@@ -70,10 +70,14 @@ class MySQLAggregateBuilderTest {
         }
 
         @Test
-        @DisplayName("SUM and AVG cast, because the column may be wider than the measure")
-        void sumCasts() {
-            String s = sql(query(null, List.of(agg(AggregateFunction.SUM, "amount", "total"))));
-            assertTrue(s.toLowerCase().contains("sum("), s);
+        @DisplayName("SUM and AVG do not cast: jOOQ's Double cast is DECIMAL(10,0) on MySQL and drops fractions")
+        void sumDoesNotCast() {
+            String s = sql(query(
+                    null,
+                    List.of(agg(AggregateFunction.SUM, "amount", "total"), agg(AggregateFunction.AVG, "amount", "mean"))));
+            assertTrue(s.contains("sum(`amount`)"), s);
+            assertTrue(s.contains("avg(`amount`)"), s);
+            assertTrue(!s.toLowerCase().contains("cast("), s);
             assertTrue(s.contains("total"), s);
         }
 
@@ -82,6 +86,14 @@ class MySQLAggregateBuilderTest {
         void minMax() {
             String s = sql(query(null, List.of(agg(AggregateFunction.MIN, "code", "lowest"))));
             assertTrue(s.contains("min(`code`)"), s);
+        }
+
+        @Test
+        @DisplayName("COUNT_DISTINCT counts different non-null values")
+        void countDistinct() {
+            String s = sql(query(null, List.of(agg(AggregateFunction.COUNT_DISTINCT, "ticketId", "deals"))));
+            assertTrue(s.contains("count(distinct `ticketId`)"), s);
+            assertTrue(s.contains("`deals`"), s);
         }
 
         @Test
@@ -214,6 +226,27 @@ class MySQLAggregateBuilderTest {
             // Two backends disagreeing about which day a week begins on puts the same
             // order in different buckets depending on where it happens to be stored.
             assertTrue(MySQLAggregateBuilder.truncate(DateBucketUnit.WEEK, "d").contains("DAYOFWEEK"));
+        }
+
+        @Test
+        @DisplayName("an ISO week starts on Monday")
+        void isoWeekStart() {
+            String t = MySQLAggregateBuilder.truncate(DateBucketUnit.ISO_WEEK, "d");
+            assertEquals("DATE_SUB(DATE(d), INTERVAL WEEKDAY(d) DAY)", t);
+        }
+
+        @Test
+        @DisplayName("an ISO week bucket in a named zone truncates in that zone")
+        void isoWeekInZone() {
+            String s = sql(query(
+                    List.of(new GroupByField()
+                            .setField("createdAt")
+                            .setAlias("wk")
+                            .setBucket(DateBucketUnit.ISO_WEEK)
+                            .setTimezone("Asia/Kolkata")),
+                    List.of(agg(AggregateFunction.COUNT, null, "n"))));
+            assertTrue(s.contains("WEEKDAY(CONVERT_TZ("), s);
+            assertTrue(s.contains("'Asia/Kolkata', '+00:00'"), s);
         }
 
         @Test

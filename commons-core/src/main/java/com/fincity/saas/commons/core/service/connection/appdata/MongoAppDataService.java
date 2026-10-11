@@ -22,6 +22,7 @@ import com.fincity.saas.commons.core.service.StorageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Aggregation;
+import com.fincity.saas.commons.model.DateBucketUnit;
 import com.fincity.saas.commons.model.DateEncoding;
 import com.fincity.saas.commons.model.GroupByField;
 import com.fincity.saas.commons.model.Query;
@@ -233,7 +234,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         ca -> this.getCollection(
                                 conn,
                                 storage.getAppCode(),
-                                storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
+                                BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
                                 storage.getUniqueName(),
                                 storage.getIndexes(),
                                 storage.getTextIndexFields()),
@@ -344,7 +345,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                         ca -> this.getCollection(
                                 conn,
                                 storage.getAppCode(),
-                                storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
+                                BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
                                 storage.getUniqueName(),
                                 storage.getIndexes(),
                                 storage.getTextIndexFields()),
@@ -432,7 +433,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
         return this.getVersionCollection(
                         conn,
                         storage.getAppCode(),
-                        storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
+                        BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
                         storage.getUniqueName())
                 // Keep the InsertOneResult the caller expects: the trim runs after the
                 // insert but must not change what this method returns.
@@ -716,11 +717,13 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 ? path
                 : new Document("$multiply", List.of(path, g.getEncoding().getToMillis()));
 
-        return new Document(
-                "$dateTrunc",
-                new Document("date", new Document("$toDate", millis))
-                        .append("unit", g.getBucket().getMongoUnit())
-                        .append("timezone", g.resolvedTimezone()));
+        Document trunc = new Document("date", new Document("$toDate", millis))
+                .append("unit", g.getBucket().getMongoUnit())
+                .append("timezone", g.resolvedTimezone());
+
+        if (g.getBucket() == DateBucketUnit.ISO_WEEK) trunc.append("startOfWeek", "monday");
+
+        return new Document("$dateTrunc", trunc);
     }
 
     private Object accumulator(Aggregation a) {
@@ -744,6 +747,8 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
 
         String path = "$" + a.getField();
         return switch (a.getFunction()) {
+            // The set of values; projectStage turns it into its size, nulls left out as SQL does.
+            case COUNT_DISTINCT -> new Document("$addToSet", path);
             case SUM -> new Document("$sum", path);
             case AVG -> new Document("$avg", path);
             case MIN -> new Document("$min", path);
@@ -768,7 +773,17 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
             }
         }
 
-        for (Aggregation a : query.getAggregations()) project.append(a.resolvedAlias(), 1);
+        for (Aggregation a : query.getAggregations())
+            project.append(
+                    a.resolvedAlias(),
+                    a.getFunction() == AggregateFunction.COUNT_DISTINCT
+                            ? new Document(
+                                    "$size",
+                                    new Document(
+                                            "$filter",
+                                            new Document("input", "$" + a.resolvedAlias())
+                                                    .append("cond", new Document("$ne", List.of("$$this", null)))))
+                            : 1);
 
         return new Document("$project", project);
     }
@@ -1589,7 +1604,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .flatMap(ca -> this.getCollection(
                         conn,
                         storage.getAppCode(),
-                        storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
+                        BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
                         storage.getUniqueName(),
                         storage.getIndexes(),
                         storage.getTextIndexFields()));
@@ -1600,7 +1615,7 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                 .flatMap(ca -> this.getVersionCollection(
                         conn,
                         storage.getAppCode(),
-                        storage.getIsAppLevel() ? ca.getUrlClientCode() : clientCode,
+                        BooleanUtil.safeValueOf(storage.getIsAppLevel()) ? ca.getUrlClientCode() : clientCode,
                         storage.getUniqueName()));
     }
 

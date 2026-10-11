@@ -427,6 +427,48 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		@DisplayName("an existing user is greeted by their own name, not the one typed into the invite")
+		void createInvite_ExistingUser_KeepsTheirOwnName() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			ca.setUrlAppCode("leadzump");
+			setupSecurityContext(ca);
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId("existing@example.com");
+			invite.setUserName("existinguser");
+			invite.setFirstName("Profile");
+			invite.setLastName("Test");
+			invite.setProfileId(PROFILE_ID);
+
+			User existingUser = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			existingUser.setEmailId("existing@example.com");
+			existingUser.setUserName("existinguser");
+			existingUser.setFirstName("Ravi");
+			existingUser.setLastName("Kumar");
+
+			when(profileService.hasAccessToProfiles(eq(SYSTEM_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq("existinguser"),
+					eq("existing@example.com"), isNull(), isNull()))
+					.thenReturn(Flux.just(existingUser));
+			when(userDao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(1));
+			when(profileService.readInternal(PROFILE_ID)).thenReturn(Mono.empty());
+			when(appService.getAppByCode("leadzump")).thenReturn(Mono.empty());
+			when(clientUrlService.getAppUrl("leadzump", null)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.TRUE, result.get("existingUser")))
+					.verifyComplete();
+
+			ArgumentCaptor<EventQueObject> event = ArgumentCaptor.forClass(EventQueObject.class);
+			verify(ecService).createEvent(event.capture());
+			var data = event.getValue().getData();
+			assertEquals("true", data.get("userExisted"));
+			assertEquals("Ravi", data.get("firstName"));
+			assertEquals("Kumar", data.get("lastName"));
+		}
+
+		@Test
 		@DisplayName("the invite stands when the event cannot be queued")
 		void createInvite_EventFails_InviteStillCreated() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();

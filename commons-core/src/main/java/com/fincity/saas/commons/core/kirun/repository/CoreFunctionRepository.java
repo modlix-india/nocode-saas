@@ -10,20 +10,35 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.core.feign.IFeignFilesService;
+import com.fincity.saas.commons.core.feign.IFeignMessageService;
+import com.fincity.saas.commons.core.feign.IFeignSecurityAsCaller;
 import com.fincity.saas.commons.core.functions.ai.Chat;
 import com.fincity.saas.commons.core.functions.crypto.SignatureValidator;
 import com.fincity.saas.commons.core.functions.crypto.Signer;
 import com.fincity.saas.commons.core.functions.email.SendEmail;
+import com.fincity.saas.commons.core.functions.events.CancelScheduledEventFunction;
 import com.fincity.saas.commons.core.functions.events.CreateEventFunction;
+import com.fincity.saas.commons.core.functions.events.ScheduleEventFunction;
 import com.fincity.saas.commons.core.functions.file.FileToBase64;
 import com.fincity.saas.commons.core.functions.file.TemplateToPdf;
 import com.fincity.saas.commons.core.functions.hash.HashData;
+import com.fincity.saas.commons.core.functions.message.MakeCall;
+import com.fincity.saas.commons.core.functions.message.SendWhatsapp;
+import com.fincity.saas.commons.core.functions.message.WhatsappNumberFunctions;
 import com.fincity.saas.commons.core.functions.notification.SendNotification;
 import com.fincity.saas.commons.core.functions.rest.CallRequest;
+import com.fincity.saas.commons.core.functions.security.CallerSecurityFunctions;
 import com.fincity.saas.commons.core.functions.security.GetAppUrl;
 import com.fincity.saas.commons.core.functions.security.GetClient;
+import com.fincity.saas.commons.core.functions.security.GetManagedClientIds;
 import com.fincity.saas.commons.core.functions.security.GetOwnersEmails;
 import com.fincity.saas.commons.core.functions.security.GetUserAdminEmails;
+import com.fincity.saas.commons.core.functions.security.GetUserSubOrg;
+import com.fincity.saas.commons.core.functions.security.GetClientUsersPage;
+import com.fincity.saas.commons.core.functions.security.GetClientsByIds;
+import com.fincity.saas.commons.core.functions.security.GetClientsDenorm;
+import com.fincity.saas.commons.core.functions.security.GetUsersByIds;
+import com.fincity.saas.commons.core.functions.security.GetUsersForDistribution;
 import com.fincity.saas.commons.core.functions.security.IsBeingManagedByCode;
 import com.fincity.saas.commons.core.functions.security.IsBeingManagedById;
 import com.fincity.saas.commons.core.functions.securitycontext.GetAuthentication;
@@ -39,6 +54,7 @@ import com.fincity.saas.commons.core.functions.storage.ReadPageStorageObject;
 import com.fincity.saas.commons.core.functions.storage.ReadStorageObject;
 import com.fincity.saas.commons.core.functions.storage.UpdateManyStorageObject;
 import com.fincity.saas.commons.core.functions.storage.UpdateStorageObject;
+import com.fincity.saas.commons.core.scheduler.ScheduledEventService;
 import com.fincity.saas.commons.core.service.EventDefinitionService;
 import com.fincity.saas.commons.core.service.NotificationService;
 import com.fincity.saas.commons.core.service.connection.ai.AIService;
@@ -67,15 +83,19 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         this.makeStorageFunctions(builder.appDataService, builder.objectMapper, builder.gson);
         this.makeRESTFunctions(builder.restService, builder.filesService, builder.securityService, builder.gson);
         this.makeSecurityContextFunctions(builder.userContextService, builder.clientUrlService, builder.gson);
-        this.makeSecurityFunctions(builder.securityService, builder.gson);
+        this.makeSecurityFunctions(builder.securityService, builder.objectMapper, builder.gson);
+        this.makeCallerSecurityFunctions(builder.securityAsCaller, builder.securityService, builder.objectMapper,
+                builder.gson);
         this.makeEmailFunctions(builder.emailService);
         this.makeCreateEventFunction(builder.ecService, builder.edService);
+        this.makeScheduledEventFunctions(builder.scheduledEventService, builder.edService, builder.securityService);
         this.makeFileFunctions(
                 builder.filesService, builder.templateConversionService, builder.filesService, builder.gson);
         this.makeCryptoFunctions();
         this.makeHashingFunctions();
         this.makeNotificationFunctions(builder.notificationService);
         this.makeAIFunctions(builder.aiService);
+        this.makeMessageFunctions(builder.messageService, builder.securityService, builder.gson);
 
         this.filterableNames = repoMap.values().stream()
                 .map(ReactiveFunction::getSignature)
@@ -83,14 +103,32 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
                 .toList();
     }
 
-    private void makeSecurityFunctions(IFeignSecurityService securityService, Gson gson) {
+    private void makeSecurityFunctions(IFeignSecurityService securityService, ObjectMapper objectMapper, Gson gson) {
         ReactiveFunction isBeingManagedByCode = new IsBeingManagedByCode(securityService);
         ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
         ReactiveFunction getClient = new GetClient(securityService, gson);
         ReactiveFunction getUserAdminEmails = new GetUserAdminEmails(securityService, gson);
         ReactiveFunction getOwnersEmails = new GetOwnersEmails(securityService, gson);
+        ReactiveFunction getUserSubOrg = new GetUserSubOrg(securityService);
+        ReactiveFunction getManagedClientIds = new GetManagedClientIds(securityService);
+        ReactiveFunction getUsersForDistribution = new GetUsersForDistribution(securityService);
+        ReactiveFunction getUsersByIds = new GetUsersByIds(securityService);
+        ReactiveFunction getClientsByIds = new GetClientsByIds(securityService);
+        ReactiveFunction getClientUsersPage = new GetClientUsersPage(securityService, objectMapper);
+        ReactiveFunction getClientsDenorm = new GetClientsDenorm(securityService);
 
-        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, getClient, getUserAdminEmails, getOwnersEmails);
+        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, getClient, getUserAdminEmails, getOwnersEmails,
+                getUserSubOrg, getManagedClientIds, getUsersForDistribution, getUsersByIds, getClientsByIds,
+                getClientUsersPage, getClientsDenorm);
+    }
+
+    private void makeCallerSecurityFunctions(IFeignSecurityAsCaller securityAsCaller,
+            IFeignSecurityService securityService, ObjectMapper objectMapper, Gson gson) {
+        // Absent in builders that do not wire the as-caller client; those simply do not offer these.
+        if (securityAsCaller == null) return;
+
+        CallerSecurityFunctions.all(securityAsCaller, securityService, objectMapper, gson)
+                .forEach(this::addToRepoMap);
     }
 
     private void makeSecurityContextFunctions(
@@ -160,6 +198,18 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         this.addToRepoMap(createEvent);
     }
 
+    private void makeScheduledEventFunctions(
+            ScheduledEventService scheduledEventService, EventDefinitionService edService,
+            IFeignSecurityService securityService) {
+        // Absent in builders that predate the scheduler; those simply do not offer it.
+        if (scheduledEventService == null) return;
+
+        ReactiveFunction scheduleEvent = new ScheduleEventFunction(scheduledEventService, edService, securityService);
+        ReactiveFunction cancelScheduledEvent = new CancelScheduledEventFunction(scheduledEventService,
+                securityService);
+        this.addToRepoMap(scheduleEvent, cancelScheduledEvent);
+    }
+
     private void makeNotificationFunctions(NotificationService notificationService) {
         ReactiveFunction sendNotification = new SendNotification(notificationService);
         this.addToRepoMap(sendNotification);
@@ -191,6 +241,14 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
     private void makeAIFunctions(AIService aiService) {
         ReactiveFunction chatFunction = new Chat(aiService);
         this.addToRepoMap(chatFunction);
+    }
+
+    private void makeMessageFunctions(
+            IFeignMessageService messageService, IFeignSecurityService securityService, Gson gson) {
+        ReactiveFunction sendWhatsapp = new SendWhatsapp(messageService, securityService, gson);
+        ReactiveFunction makeCall = new MakeCall(messageService, securityService, gson);
+        this.addToRepoMap(sendWhatsapp, makeCall);
+        WhatsappNumberFunctions.all(messageService, securityService, gson).forEach(this::addToRepoMap);
     }
 
     private void addToRepoMap(ReactiveFunction... functions) {
@@ -228,5 +286,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         private AIService aiService;
         private EventCreationService ecService;
         private EventDefinitionService edService;
+        private ScheduledEventService scheduledEventService;
+        private IFeignMessageService messageService;
+        private IFeignSecurityAsCaller securityAsCaller;
     }
 }

@@ -38,6 +38,13 @@ spring:
           uri: lb://message
           predicates:
             - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/*/api/message/**,
+  # For raising core events (WHATSAPP_INBOUND, CALL_EVENT) for numbers and calls owned by core.
+  # The same broker and the same "events" exchange core and security already use.
+  rabbitmq:
+    host: ${mq.host}
+    port: ${mq.port}
+    username: ${mq.username}
+    password: ${mq.password}
 management:
   endpoint:
     flyway:

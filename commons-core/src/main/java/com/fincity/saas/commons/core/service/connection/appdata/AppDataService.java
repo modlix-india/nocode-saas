@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1361,10 +1362,13 @@ public class AppDataService {
                                         ac, cc, dataService, conn, storage, dataObject, override),
                                 updatedDataObject -> this.updateWithTriggers(
                                         ac, cc, dataService, conn, storage, updatedDataObject, override),
+                                // ac/cc, not the raw parameters: a blank appCode or clientCode
+                                // looked the EventDefinition up under no app or client and raised
+                                // the event for nobody (see delete below).
                                 (updatedDataObject, e) -> this.generateEvent(
                                         ca,
-                                        appCode,
-                                        clientCode,
+                                        ac,
+                                        cc,
                                         storage,
                                         "Update",
                                         e.getT1(),
@@ -1452,7 +1456,12 @@ public class AppDataService {
         if (storage.getRelations() == null || storage.getRelations().isEmpty())
             return Mono.just(dataObject);
 
-        final Map<String, Object> dob = CloneUtil.cloneMapObject(dataObject.getData());
+        // NOT CloneUtil.cloneMapObject: it drops null values, and this map replaces the
+        // caller's data below. A field sent as null ("clear it") was silently removed
+        // here for every storage with a relation, so PUT and PATCH both kept the old
+        // value, relation or plain field alike. Only top-level keys are written here,
+        // so a shallow copy that keeps nulls is all that is needed.
+        final Map<String, Object> dob = copyKeepingNulls(dataObject.getData());
 
         List<Mono<RelationDataObject>> relationList = getRelationDataObjectList(appCode, clientCode, storage,
                 dataService, conn, dob);
@@ -1538,6 +1547,11 @@ public class AppDataService {
                             .collectList()
                             .map(e -> dataObject);
                 });
+    }
+
+    /** A copy of a row that keeps its null values (they mean "clear this field"). */
+    static Map<String, Object> copyKeepingNulls(Map<String, Object> data) {
+        return data == null ? new LinkedHashMap<>() : new LinkedHashMap<>(data);
     }
 
     private Mono<Tuple2<Map<String, Object>, Optional<Map<String, Object>>>> updateWithTriggers(
@@ -1728,10 +1742,15 @@ public class AppDataService {
                                     if (e.getT2().isEmpty())
                                         return Mono.just(e.getT1());
 
+                                    // The resolved ac/cc again. With the raw parameters a KIRun
+                                    // Storage.Delete with a blank appCode or clientCode raised its
+                                    // event with no app or client: the EventDefinition lookup and
+                                    // the event's tenant were both wrong, and on a generateEvents
+                                    // storage the call answered 500 after the row was gone.
                                     return this.generateEvent(
                                             ca,
-                                            appCode,
-                                            clientCode,
+                                            ac,
+                                            cc,
                                             storage,
                                             "Delete",
                                             e.getT2().orElse(null),

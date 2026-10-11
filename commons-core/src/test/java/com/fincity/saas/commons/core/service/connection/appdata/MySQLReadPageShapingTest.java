@@ -185,8 +185,17 @@ class MySQLReadPageShapingTest {
         @DisplayName("the id is always sortable even though it is not in the schema")
         void idIsSortable() {
             assertEquals(
-                    List.of("`_id` asc"),
+                    List.of("char_length(`_id`) asc", "`_id` asc"),
                     renderedOrder(MySQLAppDataService.order(storage(), Sort.by(Sort.Order.asc("_id")))));
+        }
+
+        @Test
+        @DisplayName("ids sort by length first, so imported numeric ids order numerically and before ULIDs")
+        void idSortsByLengthFirst() {
+            assertEquals(
+                    List.of("char_length(`_id`) desc", "`_id` desc", "`region` asc"),
+                    renderedOrder(MySQLAppDataService.order(
+                            storage(), Sort.by(Sort.Order.desc("_id"), Sort.Order.asc("region")))));
         }
 
         @Test

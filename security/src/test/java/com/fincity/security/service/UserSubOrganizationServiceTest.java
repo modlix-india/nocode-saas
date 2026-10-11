@@ -254,6 +254,42 @@ class UserSubOrganizationServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		void updateManager_ClearWhenNoneSet_ReturnsUserUnchanged() {
+			User user = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			StepVerifier.create(service.updateManager(USER_ID, null))
+					.assertNext(result -> assertNull(result.getReportingTo()))
+					.verifyComplete();
+
+			verify(dao, never()).update(any(User.class));
+		}
+
+		// QA-0301: a cleared "Reports to" must clear the manager, and the old manager's
+		// cached team must be evicted, not the new (absent) one twice.
+		@Test
+		void updateManager_Clear_WritesNullAndEvictsOldManager() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			User stored = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+			stored.setReportingTo(MANAGER_ID);
+			User cleared = TestDataFactory.createActiveUser(USER_ID, SYSTEM_CLIENT_ID);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(stored));
+			doReturn(Mono.just(User.class)).when(dao).getPojoClass();
+			when(dao.update(any(User.class))).thenReturn(Mono.just(cleared));
+			when(tokenService.evictTokensOfUser(USER_ID)).thenReturn(Mono.just(1));
+
+			StepVerifier.create(service.updateManager(USER_ID, null))
+					.assertNext(result -> assertNull(result.getReportingTo()))
+					.verifyComplete();
+
+			verify(dao, never()).canReportTo(any(), any(), any());
+			verify(cacheService).evict(any(), eq(SYSTEM_CLIENT_ID + ":" + MANAGER_ID));
+		}
+
+		@Test
 		void updateManager_UserNotFound_CompletesEmpty() {
 			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
 
