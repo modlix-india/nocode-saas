@@ -3,9 +3,9 @@ package com.fincity.saas.commons.mongo.service;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -36,7 +36,9 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 	private static final String NAMESPACE = "namespace";
 	private static final String NAME = "name";
 
-	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new HashMap<>();
+	// Concurrent: the first page load of a new app/client fires several repositoryFind calls at once, and a
+	// plain HashMap's computeIfAbsent then throws ConcurrentModificationException (a 500, blank page).
+	private Map<String, ReactiveRepository<ReactiveFunction>> functions = new ConcurrentHashMap<>();
 
 	private final FeignAuthenticationService feignSecurityService;
 	protected final Gson gson;
