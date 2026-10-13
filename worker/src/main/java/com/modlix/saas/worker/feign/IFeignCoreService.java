@@ -4,7 +4,10 @@ import java.util.Map;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import com.modlix.saas.worker.dto.CoreEventRaiseRequest;
 
 @FeignClient(name = "core", contextId = "workerCoreService")
 public interface IFeignCoreService {
@@ -29,4 +32,12 @@ public interface IFeignCoreService {
     Map<String, Integer> cleanupEventRuns(@RequestParam("retentionDays") int retentionDays,
             @RequestParam("successRetentionDays") int successRetentionDays,
             @RequestParam("staleAfterHours") int staleAfterHours, @RequestParam("limit") int limit);
+
+    /**
+     * Raises a core event for an app and client, run by its EventAction under the client's
+     * anonymous event-runner context. Core accepts only the event names it lists for this path
+     * (FILES_EXPIRED).
+     */
+    @PostMapping("/api/core/events/internal/raise")
+    Boolean raiseEvent(@RequestBody CoreEventRaiseRequest request);
 }
