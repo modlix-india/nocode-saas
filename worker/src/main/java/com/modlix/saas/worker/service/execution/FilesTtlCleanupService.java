@@ -1,8 +1,14 @@
 package com.modlix.saas.worker.service.execution;
 
+import com.modlix.saas.worker.dto.CoreEventRaiseRequest;
+import com.modlix.saas.worker.dto.FilesRetentionResult;
 import com.modlix.saas.worker.dto.Task;
+import com.modlix.saas.worker.feign.IFeignCoreService;
 import com.modlix.saas.worker.feign.IFeignEntityProcessorService;
 import com.modlix.saas.worker.feign.IFeignFilesService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,6 +30,15 @@ import org.springframework.stereotype.Service;
  * The first version of this feature very nearly deleted a product's shared brochures because they
  * had been sent to a lead a month earlier. Expressed as a per-file lifetime, a file with none can
  * never be removed by this job no matter how old it is.
+ *
+ * <h2>Retention policies, and telling the app</h2>
+ *
+ * <p>After the lifetimes it asks the files service to apply retention policies: an app registers a
+ * prefix under its own folder ({@code <appCode>/whatsapp/incoming}) with a number of days, and a
+ * client may override it. Again the files service decides what goes. What comes back is grouped by
+ * client and app, and for each group this job raises the core event {@code FILES_EXPIRED} with the
+ * removed paths, so the app's EventAction can mark exactly the records that pointed at them. A
+ * failure to raise is logged and never stops deletion or the other groups.
  */
 @Service
 public class FilesTtlCleanupService extends AbstractExecutionService {
@@ -34,13 +49,22 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
     /** Matches the lifetime the WhatsApp uploads stamp on their files. */
     private static final int WHATSAPP_RETENTION_DAYS = 30;
 
+    static final String FILES_EXPIRED_EVENT = "FILES_EXPIRED";
+
+    /** At most this many paths in one FILES_EXPIRED event; a larger group is raised in chunks. */
+    static final int MAX_PATHS_PER_EVENT = 500;
+
     private final IFeignFilesService feignFilesService;
     private final IFeignEntityProcessorService feignEntityProcessorService;
+    private final IFeignCoreService feignCoreService;
 
     public FilesTtlCleanupService(
-            IFeignFilesService feignFilesService, IFeignEntityProcessorService feignEntityProcessorService) {
+            IFeignFilesService feignFilesService,
+            IFeignEntityProcessorService feignEntityProcessorService,
+            IFeignCoreService feignCoreService) {
         this.feignFilesService = feignFilesService;
         this.feignEntityProcessorService = feignEntityProcessorService;
+        this.feignCoreService = feignCoreService;
     }
 
     @Override
@@ -56,13 +80,18 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
         int secured = cleanup("secured", limit, result);
         int statics = cleanup("static", limit, result);
 
+        // Then the retention policies, each bucket on its own, and each app told what it lost.
+        int retainedSecured = applyRetention("secured", limit, result);
+        int retainedStatic = applyRetention("static", limit, result);
+
         // After the deletes, so a message is never marked expired before its file has actually
         // gone. The stamp uses a cutoff a day wider still, so the ordering here is belt and braces
         // rather than the thing that makes it correct.
         int stamped = stampWhatsappMedia(result);
 
-        logger.info("Expired-file cleanup complete — secured: {}, static: {}, messages marked: {}",
-                secured, statics, stamped);
+        logger.info(
+                "Expired-file cleanup complete — secured: {}, static: {}, retention secured: {}, retention static: {}, messages marked: {}",
+                secured, statics, retainedSecured, retainedStatic, stamped);
 
         return truncateResult(result.toString());
     }
@@ -77,6 +106,76 @@ public class FilesTtlCleanupService extends AbstractExecutionService {
             logger.error("Expired-file cleanup failed for {}: {}", resourceType, e.getMessage());
             result.append(resourceType).append(" error: ").append(e.getMessage()).append("; ");
             return 0;
+        }
+    }
+
+    /**
+     * Applies retention for one bucket and raises FILES_EXPIRED for every client and app group in
+     * what was removed. Answers the number of files removed. Raising is best effort: each event
+     * on its own, a failure logged and counted, never thrown.
+     */
+    private int applyRetention(String resourceType, int limit, StringBuilder result) {
+
+        List<FilesRetentionResult> groups;
+        try {
+            groups = runWithTimeout(() -> feignFilesService.applyRetention(resourceType, limit));
+        } catch (Exception e) {
+            logger.error("Retention failed for {}: {}", resourceType, e.getMessage());
+            result.append(resourceType).append(" retention error: ").append(e.getMessage()).append("; ");
+            return 0;
+        }
+
+        int removed = 0;
+        int raised = 0;
+        int failed = 0;
+
+        if (groups != null) {
+            for (FilesRetentionResult group : groups) {
+                if (group == null || group.getPaths() == null || group.getPaths().isEmpty()) continue;
+
+                List<String> paths = group.getPaths();
+                removed += paths.size();
+
+                for (int from = 0; from < paths.size(); from += MAX_PATHS_PER_EVENT) {
+                    List<String> chunk =
+                            new ArrayList<>(paths.subList(from, Math.min(paths.size(), from + MAX_PATHS_PER_EVENT)));
+                    if (raiseFilesExpired(group, resourceType, chunk)) raised++;
+                    else failed++;
+                }
+            }
+        }
+
+        result.append(resourceType)
+                .append(" retention removed: ")
+                .append(removed)
+                .append(", events raised: ")
+                .append(raised);
+        if (failed > 0) result.append(", events failed: ").append(failed);
+        result.append("; ");
+
+        return removed;
+    }
+
+    private boolean raiseFilesExpired(FilesRetentionResult group, String resourceType, List<String> paths) {
+
+        String type = group.getResourceType() == null ? resourceType.toUpperCase() : group.getResourceType();
+
+        CoreEventRaiseRequest request = new CoreEventRaiseRequest()
+                .setEventName(FILES_EXPIRED_EVENT)
+                .setAppCode(group.getAppCode())
+                .setClientCode(group.getClientCode())
+                .setData(Map.of("resourceType", type, "paths", paths));
+
+        try {
+            Boolean ok = runWithTimeout(() -> feignCoreService.raiseEvent(request));
+            if (Boolean.TRUE.equals(ok)) return true;
+            logger.error("Raising {} for app {} client {} was refused ({} paths)", FILES_EXPIRED_EVENT,
+                    group.getAppCode(), group.getClientCode(), paths.size());
+            return false;
+        } catch (Exception e) {
+            logger.error("Raising {} for app {} client {} failed ({} paths): {}", FILES_EXPIRED_EVENT,
+                    group.getAppCode(), group.getClientCode(), paths.size(), e.getMessage());
+            return false;
         }
     }
 

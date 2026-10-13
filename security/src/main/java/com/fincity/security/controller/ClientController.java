@@ -115,6 +115,12 @@ public class ClientController
         return this.service.getClientHierarchy(clientId).map(ResponseEntity::ok);
     }
 
+    /** [clientCode, nearest managing client code, next, ...]; empty for an unknown code. See ClientService.getClientHierarchyCodes. */
+    @GetMapping("/internal/clientHierarchyCodes")
+    public Mono<ResponseEntity<List<String>>> getClientHierarchyCodes(@RequestParam String clientCode) {
+        return this.service.getClientHierarchyCodes(clientCode).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/managingClientIds")
     public Mono<ResponseEntity<List<ULong>>> getManagingClientIds(@RequestParam ULong clientId) {
         return this.service.getManagingClientIds(clientId).map(ResponseEntity::ok);

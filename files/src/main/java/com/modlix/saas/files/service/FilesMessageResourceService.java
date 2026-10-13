@@ -44,6 +44,8 @@ public class FilesMessageResourceService extends AbstractMessageService {
     public static final String INVALID_KEY = "invalid_key";
     public static final String UNABLE_TO_UPLOAD_ZIP_FILE = "unable_to_upload_zip_file";
     public static final String FILE_CANNOT_BE_CONVERTED = "file_cannot_be_converted";
+    public static final String RETENTION_PREFIX_NOT_REGISTERED = "retention_prefix_not_registered";
+    public static final String INVALID_FIELD = "invalid_field";
 
     public FilesMessageResourceService() {
 

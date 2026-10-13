@@ -82,7 +82,10 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 // The event run log's retention sweep, driven by the worker's
                 // EVENT_RUN_CLEANUP task the same way. Bounded in EventRunService: it
                 // only deletes run-log rows, never younger than 30 days, capped per call.
-                "/api/core/eventRuns/internal/**");
+                "/api/core/eventRuns/internal/**",
+                // The worker raises platform events (FILES_EXPIRED) for an app the same way.
+                // Bounded in CoreInternalEventController: only the event names it lists.
+                "/api/core/events/internal/**");
     }
 
     @Bean
