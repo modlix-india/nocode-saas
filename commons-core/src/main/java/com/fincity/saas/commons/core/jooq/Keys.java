@@ -4,8 +4,10 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreEventRuns;
 import com.fincity.saas.commons.core.jooq.tables.CoreRemoteRepositories;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
+import com.fincity.saas.commons.core.jooq.tables.records.CoreEventRunsRecord;
 import com.fincity.saas.commons.core.jooq.tables.records.CoreRemoteRepositoriesRecord;
 import com.fincity.saas.commons.core.jooq.tables.records.CoreTokensRecord;
 
@@ -26,6 +28,7 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<CoreEventRunsRecord> KEY_CORE_EVENT_RUNS_PRIMARY = Internal.createUniqueKey(CoreEventRuns.CORE_EVENT_RUNS, DSL.name("KEY_core_event_runs_PRIMARY"), new TableField[] { CoreEventRuns.CORE_EVENT_RUNS.ID }, true);
     public static final UniqueKey<CoreRemoteRepositoriesRecord> KEY_CORE_REMOTE_REPOSITORIES_K1_APP_UNIQUE = Internal.createUniqueKey(CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES, DSL.name("KEY_core_remote_repositories_K1_APP_UNIQUE"), new TableField[] { CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.APP_CODE, CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.REPO_NAME }, true);
     public static final UniqueKey<CoreRemoteRepositoriesRecord> KEY_CORE_REMOTE_REPOSITORIES_PRIMARY = Internal.createUniqueKey(CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES, DSL.name("KEY_core_remote_repositories_PRIMARY"), new TableField[] { CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES.ID }, true);
     public static final UniqueKey<CoreTokensRecord> KEY_CORE_TOKENS_PRIMARY = Internal.createUniqueKey(CoreTokens.CORE_TOKENS, DSL.name("KEY_core_tokens_PRIMARY"), new TableField[] { CoreTokens.CORE_TOKENS.ID }, true);

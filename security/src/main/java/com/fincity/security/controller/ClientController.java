@@ -79,6 +79,13 @@ public class ClientController
                 .map(ResponseEntity::ok);
     }
 
+    /** The codes in the body that {@code managingClientCode} manages. See ClientService.filterManagedClientCodes. */
+    @PostMapping("/internal/filterManagedClientCodes")
+    public Mono<ResponseEntity<List<String>>> filterManagedClientCodes(@RequestParam String managingClientCode,
+            @RequestBody List<String> clientCodes) {
+        return this.service.filterManagedClientCodes(managingClientCode, clientCodes).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/getClientById")
     public Mono<ResponseEntity<Client>> getClientById(@RequestParam ULong clientId) {
 

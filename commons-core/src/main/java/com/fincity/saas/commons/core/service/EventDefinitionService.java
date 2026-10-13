@@ -10,6 +10,7 @@ import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.util.LogUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -38,6 +39,14 @@ public class EventDefinitionService extends AbstractOverridableDataService<Event
         return this.readInternal(name, appCode, clientCode, clientCode, false)
                 .map(ObjectWithUniqueID::getObject)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventDefinitionService.readEffective"));
+    }
+
+    /**
+     * Every client's stored copy of this event in this app, unmerged: each override
+     * holds only what it changes. No access check; callers decide who sees what.
+     */
+    public Flux<EventDefinition> readAllCopies(String name, String appCode) {
+        return this.repo.findByNameAndAppCode(name, appCode);
     }
 
     @Override

@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -214,6 +215,28 @@ public class ClientService
 
     public Mono<Boolean> doesClientManageClient(ULong managingClientId, ULong clientId) {
         return this.clientHierarchyService.isClientBeingManagedBy(managingClientId, clientId);
+    }
+
+    /**
+     * The codes in {@code clientCodes} that {@code managingClientCode} manages, itself included
+     * when listed. The batch form of doesClientManageClient, for a caller that holds a list of
+     * candidates (core's event run log reading "all clients") and would otherwise make one call
+     * per client. Each check goes through the same cached hierarchy. An unknown code is left out.
+     */
+    public Mono<List<String>> filterManagedClientCodes(String managingClientCode, List<String> clientCodes) {
+
+        if (clientCodes == null || clientCodes.isEmpty())
+            return Mono.just(List.of());
+
+        return this.getClientBy(managingClientCode)
+                .flatMap(managing -> Flux.fromIterable(new LinkedHashSet<>(clientCodes))
+                        .flatMap(code -> this.getClientBy(code)
+                                .filterWhen(client -> this.clientHierarchyService
+                                        .isClientBeingManagedBy(managing.getId(), client.getId()))
+                                .map(Client::getCode), 16)
+                        .collectList())
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.filterManagedClientCodes"));
     }
 
     public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
