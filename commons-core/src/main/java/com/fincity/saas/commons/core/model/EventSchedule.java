@@ -49,16 +49,36 @@ public class EventSchedule implements Serializable {
     /** Absent means enabled. An override with false stops that client's runs. */
     private Boolean enabled;
 
+    /**
+     * true: each client's ticks are shifted by a fixed offset inside the period
+     * (derived from app, client and event), so a perClient schedule's runs spread
+     * across the interval instead of all starting on the same second. Every
+     * instance derives the same offset, so the claim still dedupes. Absent or
+     * false: exactly on the cron grid.
+     */
+    private Boolean spread;
+
     public EventSchedule(EventSchedule other) {
         this.cron = other.cron;
         this.timezone = other.timezone;
         this.perClient = other.perClient;
         this.enabled = other.enabled;
+        this.spread = other.spread;
     }
 
     @JsonIgnore
     public boolean isActive() {
         return !Boolean.FALSE.equals(this.enabled) && this.cron != null && !this.cron.isBlank();
+    }
+
+    /**
+     * Not named isSpread: Jackson would read that as an accessor of the
+     * {@code spread} property and the @JsonIgnore would drop the field itself
+     * from every API read and write.
+     */
+    @JsonIgnore
+    public boolean isSpreadAcrossPeriod() {
+        return Boolean.TRUE.equals(this.spread);
     }
 
     @JsonIgnore
@@ -82,7 +102,8 @@ public class EventSchedule implements Serializable {
                 .setCron(override.cron != null ? override.cron : base.cron)
                 .setTimezone(override.timezone != null ? override.timezone : base.timezone)
                 .setPerClient(override.perClient != null ? override.perClient : base.perClient)
-                .setEnabled(override.enabled != null ? override.enabled : base.enabled);
+                .setEnabled(override.enabled != null ? override.enabled : base.enabled)
+                .setSpread(override.spread != null ? override.spread : base.spread);
     }
 
     /**
@@ -100,9 +121,11 @@ public class EventSchedule implements Serializable {
                 .setCron(CommonsUtil.safeEquals(derived.cron, base.cron) ? null : derived.cron)
                 .setTimezone(CommonsUtil.safeEquals(derived.timezone, base.timezone) ? null : derived.timezone)
                 .setPerClient(CommonsUtil.safeEquals(derived.perClient, base.perClient) ? null : derived.perClient)
-                .setEnabled(CommonsUtil.safeEquals(derived.enabled, base.enabled) ? null : derived.enabled);
+                .setEnabled(CommonsUtil.safeEquals(derived.enabled, base.enabled) ? null : derived.enabled)
+                .setSpread(CommonsUtil.safeEquals(derived.spread, base.spread) ? null : derived.spread);
 
-        if (diff.cron == null && diff.timezone == null && diff.perClient == null && diff.enabled == null)
+        if (diff.cron == null && diff.timezone == null && diff.perClient == null && diff.enabled == null
+                && diff.spread == null)
             return null;
 
         return diff;

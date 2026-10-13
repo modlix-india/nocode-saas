@@ -4,6 +4,7 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreEventRuns;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
 
 import org.jooq.Index;
@@ -22,6 +23,11 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
+    public static final Index CORE_EVENT_RUNS_K1_CLIENT_APP_EVENT_STARTED = Internal.createIndex(DSL.name("K1_CLIENT_APP_EVENT_STARTED"), CoreEventRuns.CORE_EVENT_RUNS, new OrderField[] { CoreEventRuns.CORE_EVENT_RUNS.CLIENT_CODE, CoreEventRuns.CORE_EVENT_RUNS.APP_CODE, CoreEventRuns.CORE_EVENT_RUNS.EVENT_NAME, CoreEventRuns.CORE_EVENT_RUNS.STARTED_AT }, false);
     public static final Index CORE_TOKENS_K1_USER_CLIENT_APP_CODE_CONNECTION = Internal.createIndex(DSL.name("K1_USER_CLIENT_APP_CODE_CONNECTION"), CoreTokens.CORE_TOKENS, new OrderField[] { CoreTokens.CORE_TOKENS.USER_ID, CoreTokens.CORE_TOKENS.CLIENT_CODE, CoreTokens.CORE_TOKENS.APP_CODE, CoreTokens.CORE_TOKENS.CONNECTION_NAME }, false);
     public static final Index CORE_TOKENS_K2_CLIENT_APP_CONNECTION = Internal.createIndex(DSL.name("K2_CLIENT_APP_CONNECTION"), CoreTokens.CORE_TOKENS, new OrderField[] { CoreTokens.CORE_TOKENS.CLIENT_CODE, CoreTokens.CORE_TOKENS.APP_CODE, CoreTokens.CORE_TOKENS.CONNECTION_NAME }, false);
+    public static final Index CORE_EVENT_RUNS_K2_CLIENT_APP_STARTED = Internal.createIndex(DSL.name("K2_CLIENT_APP_STARTED"), CoreEventRuns.CORE_EVENT_RUNS, new OrderField[] { CoreEventRuns.CORE_EVENT_RUNS.CLIENT_CODE, CoreEventRuns.CORE_EVENT_RUNS.APP_CODE, CoreEventRuns.CORE_EVENT_RUNS.STARTED_AT }, false);
+    public static final Index CORE_EVENT_RUNS_K3_STATUS_STARTED = Internal.createIndex(DSL.name("K3_STATUS_STARTED"), CoreEventRuns.CORE_EVENT_RUNS, new OrderField[] { CoreEventRuns.CORE_EVENT_RUNS.STATUS, CoreEventRuns.CORE_EVENT_RUNS.STARTED_AT }, false);
+    public static final Index CORE_EVENT_RUNS_K4_STARTED = Internal.createIndex(DSL.name("K4_STARTED"), CoreEventRuns.CORE_EVENT_RUNS, new OrderField[] { CoreEventRuns.CORE_EVENT_RUNS.STARTED_AT }, false);
+    public static final Index CORE_EVENT_RUNS_K5_APP_EVENT_STARTED_CLIENT = Internal.createIndex(DSL.name("K5_APP_EVENT_STARTED_CLIENT"), CoreEventRuns.CORE_EVENT_RUNS, new OrderField[] { CoreEventRuns.CORE_EVENT_RUNS.APP_CODE, CoreEventRuns.CORE_EVENT_RUNS.EVENT_NAME, CoreEventRuns.CORE_EVENT_RUNS.STARTED_AT, CoreEventRuns.CORE_EVENT_RUNS.CLIENT_CODE }, false);
 }

@@ -325,6 +325,10 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
     Mono<Boolean> doesClientManageClient(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
 
+    @PostMapping("${security.feign.filterManagedClientCodes:/api/security/clients/internal/filterManagedClientCodes}")
+    Mono<List<String>> filterManagedClientCodes(@RequestParam String managingClientCode,
+            @RequestBody List<String> clientCodes);
+
     @GetMapping("${security.feign.doesClientManageClientCode:/api/security/clients/internal/doesClientManageClientCode}")
     Mono<Boolean> doesClientManageClientCode(@RequestParam String managingClientCode,
             @RequestParam String clientCode);

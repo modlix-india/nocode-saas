@@ -273,7 +273,33 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         this.getObjectName()));
     }
 
+    /**
+     * Whether {@code ca} may {@code method} an object of {@code clientCode} in {@code appCode}.
+     *
+     * <p>
+     * <b>A READ may fall back to the write check.</b> A read is checked against the app's
+     * inheritance chain as seen from the request's client, and writes against "manages that
+     * client and has write access to the app", so a managing client could create, update and
+     * draft a managed client's override and then not read it: every read by id answered 404,
+     * and so did create and update, which end by reading the saved document back. The write
+     * saved and the caller was told it was not found. Now a READ that the chain refuses is
+     * re-checked exactly as a write would be, still under the {@code _READ} authority, so a
+     * caller can read whatever it can write and nothing more. EXPLICIT apps keep their rule,
+     * because the write check applies it too.
+     */
     protected Mono<Boolean> accessCheck(ContextAuthentication ca, String method, String appCode, String clientCode, // NOSONAR
+            boolean checkAppWriteAccess) {
+
+        Mono<Boolean> checked = this.checkAccess(ca, method, appCode, clientCode, checkAppWriteAccess);
+
+        if (checkAppWriteAccess || !READ.equals(method))
+            return checked;
+
+        return checked.flatMap(allowed -> BooleanUtil.safeValueOf(allowed) ? Mono.just(Boolean.TRUE)
+                : this.checkAccess(ca, method, appCode, clientCode, true));
+    }
+
+    private Mono<Boolean> checkAccess(ContextAuthentication ca, String method, String appCode, String clientCode, // NOSONAR
             boolean checkAppWriteAccess) {
 
         // Just two complexity points is not a reason to break this function

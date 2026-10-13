@@ -4,6 +4,7 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreEventRuns;
 import com.fincity.saas.commons.core.jooq.tables.CoreRemoteRepositories;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
 
@@ -13,6 +14,11 @@ import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * The table <code>core.core_event_runs</code>.
+     */
+    public static final CoreEventRuns CORE_EVENT_RUNS = CoreEventRuns.CORE_EVENT_RUNS;
 
     /**
      * The table <code>core.core_remote_repositories</code>.

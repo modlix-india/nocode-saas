@@ -91,13 +91,6 @@ if "%1"=="jooq" (
         exit /b 1
     )
 
-    echo Building entity-collector...
-    cd ..\entity-collector
-    call mvn clean install -Pjooq
-    if errorlevel 1 (
-        echo Error: Maven build failed for entity-collector
-        exit /b 1
-    )
 
     echo Building entity-processor...
     cd ..\entity-processor
@@ -115,13 +108,6 @@ if "%1"=="jooq" (
         exit /b 1
     )
 
-    echo Building adzump...
-    cd ..\adzump
-    call mvn clean install -Pjooq
-    if errorlevel 1 (
-        echo Error: Maven build failed for adzump
-        exit /b 1
-    )
 
     echo Building message...
     cd ..\message
@@ -280,13 +266,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Building adzump...
-cd ..\adzump
-call mvn %*
-if errorlevel 1 (
-    echo Error: Maven build failed for adzump
-    exit /b 1
-)
 
 echo Building entity-processor...
 cd ..\entity-processor
@@ -296,13 +275,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Building entity-collector...
-cd ..\entity-collector
-call mvn %*
-if errorlevel 1 (
-    echo Error: Maven build failed for entity-collector
-    exit /b 1
-)
 
 echo Building notification...
 cd ..\notification

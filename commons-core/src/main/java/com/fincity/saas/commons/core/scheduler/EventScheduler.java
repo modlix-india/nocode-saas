@@ -3,6 +3,8 @@ package com.fincity.saas.commons.core.scheduler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -11,12 +13,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,7 +29,9 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.core.model.EventSchedule;
+import com.fincity.saas.commons.core.jooq.enums.CoreEventRunsStatus;
 import com.fincity.saas.commons.core.service.EventDefinitionService;
+import com.fincity.saas.commons.core.service.EventRunService;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
@@ -56,11 +63,21 @@ import reactor.util.context.Context;
  * window is the current one. An older one is a missed tick, and is caught up
  * only when a run was recorded before it, which caps an outage at one catch-up
  * run and keeps a brand-new schedule from firing for a tick it never had.</li>
- * <li>Claims the tick by unique insert. If the previous tick is still RUNNING
- * inside its lease, the row goes in as SKIPPED instead, so a slow sweep never
- * runs twice at once. Only the instance whose insert landed raises the event.</li>
- * <li>Claims and raises due one-offs from scheduled_event.</li>
+ * <li>Claims the tick by unique insert, one (client, tick) at a time and only
+ * while this instance has a free run slot ({@code core.scheduler.runConcurrency}).
+ * If the previous tick is still RUNNING inside its lease, the row goes in as
+ * SKIPPED instead, so a slow sweep never runs twice at once. Only the instance
+ * whose insert landed runs the tick. Candidates are taken in a shuffled order so
+ * two instances rarely reach for the same client at once.</li>
+ * <li>Claims due one-offs from scheduled_event the same way, one per free slot.</li>
  * </ol>
+ *
+ * <p>
+ * The claiming instance runs the work itself, through {@link ScheduledEventRunner}
+ * (core's EventsQueListener), in the background: a pass only claims and starts,
+ * and a slot frees when its run finishes. So with several core instances each
+ * takes as much as it has room for and no instance is pinned to any client. A
+ * service without a runner publishes the event to the queue instead.
  *
  * <p>
  * How a run finishes: the raised event carries {@code _schedule} in its data,
@@ -92,10 +109,26 @@ public class EventScheduler {
     private final ScheduledEventService oneOffs;
     private final EventSchedulerSettings settings;
 
+    /**
+     * The event run log, for the outcomes that never reach an EventAction: a tick
+     * skipped because the previous one was still going, a raise that failed, a
+     * one-off given up on. Runs that do reach one are logged by the runner. Null in
+     * tests that do not care.
+     */
+    private final EventRunService eventRuns;
+
     @Getter
     private final String instanceId;
 
     private final AtomicBoolean passRunning = new AtomicBoolean(false);
+
+    /** Resolved lazily: the runner (EventsQueListener) itself depends on this scheduler. */
+    private final ObjectProvider<ScheduledEventRunner> runnerProvider;
+
+    private ScheduledEventRunner runnerOverride;
+
+    /** Runs started by this instance and not finished yet; capped at runConcurrency. */
+    private final AtomicInteger inFlight = new AtomicInteger();
 
     /**
      * The last tick this instance has dealt with, per schedule and client. Only
@@ -117,6 +150,22 @@ public class EventScheduler {
     public EventScheduler(EventDefinitionService edService, IFeignSecurityService securityService,
             EventCreationService ecService, ScheduleStore store, ScheduledEventService oneOffs,
             EventSchedulerSettings settings) {
+        this(edService, securityService, ecService, store, oneOffs, settings, null, null);
+    }
+
+    public EventScheduler(EventDefinitionService edService, IFeignSecurityService securityService,
+            EventCreationService ecService, ScheduleStore store, ScheduledEventService oneOffs,
+            EventSchedulerSettings settings, ObjectProvider<ScheduledEventRunner> runnerProvider) {
+        this(edService, securityService, ecService, store, oneOffs, settings, runnerProvider, null);
+    }
+
+    @Autowired
+    public EventScheduler(EventDefinitionService edService, IFeignSecurityService securityService,
+            EventCreationService ecService, ScheduleStore store, ScheduledEventService oneOffs,
+            EventSchedulerSettings settings, ObjectProvider<ScheduledEventRunner> runnerProvider,
+            EventRunService eventRuns) {
+        this.runnerProvider = runnerProvider;
+        this.eventRuns = eventRuns;
         this.edService = edService;
         this.securityService = securityService;
         this.ecService = ecService;
@@ -132,6 +181,37 @@ public class EventScheduler {
     /** Tests only. */
     void setClock(Clock clock) {
         this.clock = clock;
+    }
+
+    /** Tests only: run claimed work through this runner. */
+    void setRunner(ScheduledEventRunner runner) {
+        this.runnerOverride = runner;
+    }
+
+    /** Runs this instance has started and not finished. */
+    public int inFlight() {
+        return this.inFlight.get();
+    }
+
+    private ScheduledEventRunner runner() {
+        if (this.runnerOverride != null)
+            return this.runnerOverride;
+        return this.runnerProvider == null ? null : this.runnerProvider.getIfAvailable();
+    }
+
+    private boolean tryTakeSlot() {
+        int max = Math.max(1, this.settings.getRunConcurrency());
+        while (true) {
+            int now = this.inFlight.get();
+            if (now >= max)
+                return false;
+            if (this.inFlight.compareAndSet(now, now + 1))
+                return true;
+        }
+    }
+
+    private void releaseSlot() {
+        this.inFlight.decrementAndGet();
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -159,8 +239,13 @@ public class EventScheduler {
     }
 
     /** What one pass did on this instance. */
+    /**
+     * raised: ticks this instance claimed and started (or published). busy: due
+     * ticks left for another instance or the next pass because every run slot
+     * here was taken.
+     */
     public record PassReport(int raised, int skipped, int lost, int failed, int oneOffsRaised,
-            int oneOffsFailed) {
+            int oneOffsFailed, int busy) {
     }
 
     private static final class Counts {
@@ -170,10 +255,11 @@ public class EventScheduler {
         final AtomicInteger failed = new AtomicInteger();
         final AtomicInteger oneOffsRaised = new AtomicInteger();
         final AtomicInteger oneOffsFailed = new AtomicInteger();
+        final AtomicInteger busy = new AtomicInteger();
 
         PassReport report() {
             return new PassReport(raised.get(), skipped.get(), lost.get(), failed.get(), oneOffsRaised.get(),
-                    oneOffsFailed.get());
+                    oneOffsFailed.get(), busy.get());
         }
     }
 
@@ -192,6 +278,11 @@ public class EventScheduler {
 
     // ---------------------------------------------------------------- recurring
 
+    /** One (app, event, client) a pass looks at. */
+    private record Candidate(String appCode, String eventName, String clientCode, boolean holder,
+            boolean hasWriteAccess) {
+    }
+
     private Mono<Void> recurring(Instant now, Counts counts) {
 
         return this.store.findScheduledDefinitions()
@@ -200,16 +291,26 @@ public class EventScheduler {
                         .collect(Collectors.groupingBy(d -> d.appCode() + "\u0000" + d.name(), LinkedHashMap::new,
                                 Collectors.toList()))
                         .values()))
-                .concatMap(group -> this.runGroup(group, now, counts)
+                .concatMap(group -> this.candidates(group, now)
                         .onErrorResume(e -> {
                             logger.warn("Scheduler skipped {}.{}: {}", group.getFirst().appCode(),
                                     group.getFirst().name(), e.getMessage());
-                            return Mono.empty();
+                            return Flux.empty();
                         }))
+                .collectList()
+                // Every instance walks the same candidates; a shuffled order keeps two of
+                // them from reaching for the same client at the same moment.
+                .flatMapMany(list -> {
+                    List<Candidate> shuffled = new ArrayList<>(list);
+                    Collections.shuffle(shuffled, ThreadLocalRandom.current());
+                    return Flux.fromIterable(shuffled);
+                })
+                .flatMap(c -> this.runClient(c.appCode(), c.eventName(), c.clientCode(), c.holder(),
+                        c.hasWriteAccess(), now, counts), Math.max(1, this.settings.getConcurrency()))
                 .then();
     }
 
-    private Mono<Void> runGroup(List<ScheduleStore.ScheduledDefinition> group, Instant now, Counts counts) {
+    private Flux<Candidate> candidates(List<ScheduleStore.ScheduledDefinition> group, Instant now) {
 
         String appCode = group.getFirst().appCode();
         String eventName = group.getFirst().name();
@@ -227,13 +328,12 @@ public class EventScheduler {
         Mono<Set<String>> writers = anyPerClient ? this.writeAccessClients(appCode, now) : Mono.just(Set.of());
 
         return writers.flatMapMany(w -> {
-                    Set<String> candidates = new HashSet<>(holders);
-                    candidates.addAll(w);
-                    return Flux.fromIterable(candidates)
-                            .flatMap(client -> this.runClient(appCode, eventName, client, holders.contains(client),
-                                    w.contains(client), now, counts), Math.max(1, this.settings.getConcurrency()));
-                })
-                .then();
+            Set<String> clients = new HashSet<>(holders);
+            clients.addAll(w);
+            return Flux.fromIterable(clients)
+                    .map(client -> new Candidate(appCode, eventName, client, holders.contains(client),
+                            w.contains(client)));
+        });
     }
 
     private Mono<Void> runClient(String appCode, String eventName, String clientCode, boolean holder,
@@ -260,7 +360,10 @@ public class EventScheduler {
                         return Mono.empty();
                     }
 
-                    Instant tick = CronGrid.latestTick(cron, zone, now, this.settings.catchUpWindow());
+                    Instant tick = schedule.isSpreadAcrossPeriod()
+                            ? CronGrid.latestSpreadTick(cron, zone, now, this.settings.catchUpWindow(),
+                                    appCode + "\u0000" + clientCode + "\u0000" + eventName)
+                            : CronGrid.latestTick(cron, zone, now, this.settings.catchUpWindow());
                     if (tick == null)
                         return Mono.empty();
 
@@ -285,6 +388,7 @@ public class EventScheduler {
                                 .doOnSuccess(v -> this.handled.put(memoKey, tick));
                     });
                 })
+                .onErrorResume(SlotsFull.class, e -> Mono.empty())
                 .onErrorResume(e -> {
                     logger.warn("Scheduler skipped {}.{} for {}: {}", appCode, eventName, clientCode,
                             e.getMessage());
@@ -295,6 +399,21 @@ public class EventScheduler {
 
     private Mono<Void> claimAndRaise(String appCode, String clientCode, String eventName, Instant tick,
             Instant now, Counts counts) {
+
+        ScheduledEventRunner runner = this.runner();
+
+        // In-process: claim only with a free slot. Without one the tick is left for
+        // another instance (or this one's next pass), and is not marked handled.
+        if (runner != null && !this.tryTakeSlot()) {
+            counts.busy.incrementAndGet();
+            return Mono.error(new SlotsFull());
+        }
+
+        AtomicBoolean slotHeld = new AtomicBoolean(runner != null);
+        Runnable release = () -> {
+            if (slotHeld.compareAndSet(true, false))
+                this.releaseSlot();
+        };
 
         return this.store.isRunning(appCode, clientCode, eventName, now)
                 .flatMap(busy -> {
@@ -315,11 +434,7 @@ public class EventScheduler {
                     return this.store.claim(run).flatMap(won -> {
                         if (!Boolean.TRUE.equals(won)) {
                             counts.lost.incrementAndGet();
-                            return Mono.empty();
-                        }
-
-                        if (run.getStatus() == ScheduleRun.Status.SKIPPED) {
-                            counts.skipped.incrementAndGet();
+                            release.run();
                             return Mono.empty();
                         }
 
@@ -331,6 +446,21 @@ public class EventScheduler {
                         Map<String, Object> data = new HashMap<>();
                         data.put(SCHEDULE_DATA_KEY, marker);
 
+                        if (run.getStatus() == ScheduleRun.Status.SKIPPED) {
+                            counts.skipped.incrementAndGet();
+                            release.run();
+                            return this.logRun(this.queObject(appCode, clientCode, eventName, data, false),
+                                    CoreEventRunsStatus.SKIPPED,
+                                    "Skipped: the run for the previous tick was still going.");
+                        }
+
+                        if (runner != null) {
+                            counts.raised.incrementAndGet();
+                            this.runDetached(runner, this.queObject(appCode, clientCode, eventName, data, false),
+                                    release);
+                            return Mono.empty();
+                        }
+
                         return this.raise(appCode, clientCode, eventName, data, false)
                                 .doOnSuccess(v -> counts.raised.incrementAndGet())
                                 .then()
@@ -339,11 +469,50 @@ public class EventScheduler {
                                     logger.warn("Scheduler could not raise {}.{} for {}: {}", appCode, eventName,
                                             clientCode, e.getMessage());
                                     return this.store.finishRun(run.getId(), ScheduleRun.Status.FAILED,
-                                            "Raise failed: " + e.getMessage(), now).then();
+                                            "Raise failed: " + e.getMessage(), now)
+                                            .then(this.logRun(
+                                                    this.queObject(appCode, clientCode, eventName, data, false),
+                                                    CoreEventRunsStatus.FAILED,
+                                                    "The scheduler could not raise the event: "
+                                                            + EventRunService.errorOf(e)));
                                 });
                     });
                 })
+                .doOnError(e -> release.run())
+                .doOnCancel(release)
                 .then();
+    }
+
+    /** Signals that every run slot here is taken; runClient turns it into "not handled yet". */
+    private static final class SlotsFull extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        SlotsFull() {
+            super("All run slots on this instance are taken", null, false, false);
+        }
+    }
+
+    private EventQueObject queObject(String appCode, String clientCode, String eventName, Map<String, Object> data,
+            boolean draft) {
+        return new EventQueObject()
+                .setAppCode(appCode)
+                .setClientCode(clientCode)
+                .setEventName(eventName)
+                .setDraft(draft)
+                .setData(data);
+    }
+
+    /**
+     * Runs claimed work in the background and frees its slot when it ends. The
+     * runner closes the schedule_run / scheduled_event itself (trackCompletion),
+     * the same as when the event comes off the queue.
+     */
+    private void runDetached(ScheduledEventRunner runner, EventQueObject qob, Runnable release) {
+        Mono.defer(() -> runner.run(qob))
+                .doFinally(s -> release.run())
+                .subscribe(ok -> {
+                }, e -> logger.warn("Scheduled run of {}.{} for {} failed: {}", qob.getAppCode(), qob.getEventName(),
+                        qob.getClientCode(), e.getMessage()));
     }
 
     /**
@@ -371,21 +540,61 @@ public class EventScheduler {
 
     private Mono<Void> dueOneOffs(Instant now, Counts counts) {
 
+        ScheduledEventRunner runner = this.runner();
+        if (runner != null)
+            return this.claimOneOffs(runner, now, counts, Math.max(0, this.settings.getOneOffBatchSize()));
+
         return this.store.claimDueEvents(now, this.instanceId, this.settings.lease(),
                         this.settings.getOneOffBatchSize())
                 .flatMap(e -> this.raiseOneOff(e, now, counts), Math.max(1, this.settings.getConcurrency()))
                 .then();
     }
 
-    private Mono<Void> raiseOneOff(ScheduledEvent event, Instant now, Counts counts) {
+    /**
+     * In-process: claim one due one-off per free slot and start it, until the
+     * slots or the due ones run out. Whatever is left stays PENDING for another
+     * instance or the next pass.
+     */
+    private Mono<Void> claimOneOffs(ScheduledEventRunner runner, Instant now, Counts counts, int budget) {
 
-        // A claim past the last attempt is one whose lease ran out on that last
-        // attempt. It is not raised again.
+        return Mono.defer(() -> {
+            if (budget <= 0 || !this.tryTakeSlot())
+                return Mono.<Void>empty();
+
+            return this.store.claimDueEvent(now, this.instanceId, this.settings.lease())
+                    .doOnError(e -> this.releaseSlot())
+                    .switchIfEmpty(Mono.<ScheduledEvent>fromRunnable(this::releaseSlot))
+                    .flatMap(e -> {
+                        AtomicBoolean held = new AtomicBoolean(true);
+                        Runnable release = () -> {
+                            if (held.compareAndSet(true, false))
+                                this.releaseSlot();
+                        };
+                        return this.startOneOff(runner, e, now, counts, release)
+                                .then(this.claimOneOffs(runner, now, counts, budget - 1));
+                    });
+        });
+    }
+
+    private Mono<Void> startOneOff(ScheduledEventRunner runner, ScheduledEvent event, Instant now, Counts counts,
+            Runnable release) {
+
         if (event.getAttempts() > event.getMaxAttempts()) {
             counts.oneOffsFailed.incrementAndGet();
             return this.store.failScheduledEvent(event.getId(), event.getClaimToken(), null,
-                    "Lease ran out on the last attempt", now).then();
+                    "Lease ran out on the last attempt", now)
+                    .then(this.logGaveUp(event))
+                    .doFinally(s -> release.run())
+                    .then();
         }
+
+        counts.oneOffsRaised.incrementAndGet();
+        this.runDetached(runner, this.queObject(event.getAppCode(), event.getClientCode(), event.getEventName(),
+                this.oneOffData(event), event.isDraft()), release);
+        return Mono.empty();
+    }
+
+    private Map<String, Object> oneOffData(ScheduledEvent event) {
 
         Map<String, Object> marker = new HashMap<>();
         marker.put("kind", KIND_ONCE);
@@ -397,6 +606,20 @@ public class EventScheduler {
 
         Map<String, Object> data = event.getData() == null ? new HashMap<>() : new HashMap<>(event.getData());
         data.put(SCHEDULE_DATA_KEY, marker);
+        return data;
+    }
+
+    private Mono<Void> raiseOneOff(ScheduledEvent event, Instant now, Counts counts) {
+
+        // A claim past the last attempt is one whose lease ran out on that last
+        // attempt. It is not raised again.
+        if (event.getAttempts() > event.getMaxAttempts()) {
+            counts.oneOffsFailed.incrementAndGet();
+            return this.store.failScheduledEvent(event.getId(), event.getClaimToken(), null,
+                    "Lease ran out on the last attempt", now).then(this.logGaveUp(event));
+        }
+
+        Map<String, Object> data = this.oneOffData(event);
 
         return this.raise(event.getAppCode(), event.getClientCode(), event.getEventName(), data, event.isDraft())
                 .doOnSuccess(v -> counts.oneOffsRaised.incrementAndGet())
@@ -404,8 +627,23 @@ public class EventScheduler {
                 .onErrorResume(e -> {
                     counts.oneOffsFailed.incrementAndGet();
                     return this.oneOffs.finish(event.getId(), event.getClaimToken(), false,
-                            "Raise failed: " + e.getMessage()).then();
+                            "Raise failed: " + e.getMessage())
+                            .then(this.logRun(this.queObject(event.getAppCode(), event.getClientCode(),
+                                    event.getEventName(), data, event.isDraft()), CoreEventRunsStatus.FAILED,
+                                    "The scheduler could not raise the event: " + EventRunService.errorOf(e)));
                 });
+    }
+
+    /** A one-off whose last attempt never reported back: it is not tried again, and the log says so. */
+    private Mono<Void> logGaveUp(ScheduledEvent event) {
+        return this.logRun(this.queObject(event.getAppCode(), event.getClientCode(), event.getEventName(),
+                        this.oneOffData(event), event.isDraft()), CoreEventRunsStatus.FAILED,
+                "Gave up after " + event.getMaxAttempts() + " attempts: the last attempt did not report back "
+                        + "before its lease ran out, so it is not tried again.");
+    }
+
+    private Mono<Void> logRun(EventQueObject qob, CoreEventRunsStatus status, String error) {
+        return this.eventRuns == null ? Mono.empty() : this.eventRuns.record(qob, status, error);
     }
 
     private Mono<Boolean> raise(String appCode, String clientCode, String eventName, Map<String, Object> data,

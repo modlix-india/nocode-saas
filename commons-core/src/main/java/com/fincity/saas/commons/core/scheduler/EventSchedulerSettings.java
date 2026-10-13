@@ -44,9 +44,18 @@ public class EventSchedulerSettings {
     @Value("${core.scheduler.runRetentionDays:3}")
     private long runRetentionDays = 3;
 
-    /** Clients worked on at once within one pass. */
+    /** Clients worked on at once within one pass (reading definitions, claiming). */
     @Value("${core.scheduler.concurrency:16}")
     private int concurrency = 16;
+
+    /**
+     * Scheduled runs (ticks and one-offs) this instance executes at once. An
+     * instance claims a run only while it has a free slot, so with several
+     * instances the work spreads by what each can take: a busy or slow instance
+     * claims less and the others pick up the rest.
+     */
+    @Value("${core.scheduler.runConcurrency:4}")
+    private int runConcurrency = 4;
 
     @Value("${core.scheduler.oneoff.batchSize:200}")
     private int oneOffBatchSize = 200;
