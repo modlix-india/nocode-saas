@@ -1187,6 +1187,117 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 	}
 
 	// =========================================================================
+	// getClientHierarchyCodes(String)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getClientHierarchyCodes")
+	class GetClientHierarchyCodesTests {
+
+		private static final ULong CHILD_ID = ULong.valueOf(30);
+		private static final ULong PARENT_ID = ULong.valueOf(28);
+		private static final ULong GRAND_ID = ULong.valueOf(20);
+
+		@Test
+		void ownCodeFirst_ThenManagersNearestFirst() {
+
+			Client child = TestDataFactory.createBusinessClient(CHILD_ID, "CHILD");
+			when(dao.getClientBy("CHILD")).thenReturn(Mono.just(child));
+			when(clientHierarchyService.getClientHierarchyIdInOrder(CHILD_ID))
+					.thenReturn(Mono.just(List.of(CHILD_ID, PARENT_ID, GRAND_ID, SYSTEM_CLIENT_ID)));
+			when(dao.readInternal(PARENT_ID))
+					.thenReturn(Mono.just(TestDataFactory.createBusinessClient(PARENT_ID, "PARENT")));
+			when(dao.readInternal(GRAND_ID))
+					.thenReturn(Mono.just(TestDataFactory.createBusinessClient(GRAND_ID, "GRAND")));
+			when(dao.readInternal(SYSTEM_CLIENT_ID)).thenReturn(Mono.just(TestDataFactory.createSystemClient()));
+
+			StepVerifier.create(service.getClientHierarchyCodes("CHILD"))
+					.assertNext(codes -> assertEquals(List.of("CHILD", "PARENT", "GRAND", "SYSTEM"), codes))
+					.verifyComplete();
+
+			// The client itself is not read a second time by id.
+			verify(dao, never()).readInternal(CHILD_ID);
+		}
+
+		@Test
+		void topLevelClient_ReturnsOnlyItself() {
+
+			Client system = TestDataFactory.createSystemClient();
+			when(dao.getClientBy("SYSTEM")).thenReturn(Mono.just(system));
+			when(clientHierarchyService.getClientHierarchyIdInOrder(system.getId()))
+					.thenReturn(Mono.just(List.of(system.getId())));
+
+			StepVerifier.create(service.getClientHierarchyCodes("SYSTEM"))
+					.assertNext(codes -> assertEquals(List.of("SYSTEM"), codes))
+					.verifyComplete();
+		}
+
+		@Test
+		void unknownCode_ReturnsEmptyList() {
+
+			when(dao.getClientBy("NOPE")).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getClientHierarchyCodes("NOPE"))
+					.assertNext(codes -> assertTrue(codes.isEmpty()))
+					.verifyComplete();
+
+			verifyNoInteractions(clientHierarchyService);
+		}
+
+		@Test
+		void blankCode_ReturnsEmptyList() {
+
+			StepVerifier.create(service.getClientHierarchyCodes(" "))
+					.assertNext(codes -> assertTrue(codes.isEmpty()))
+					.verifyComplete();
+
+			verifyNoInteractions(clientHierarchyService);
+		}
+
+		@Test
+		void missingHierarchyRow_ReturnsOwnCode() {
+
+			Client child = TestDataFactory.createBusinessClient(CHILD_ID, "ORPHAN");
+			when(dao.getClientBy("ORPHAN")).thenReturn(Mono.just(child));
+			when(clientHierarchyService.getClientHierarchyIdInOrder(CHILD_ID))
+					.thenReturn(Mono.error(new GenericException(HttpStatus.INTERNAL_SERVER_ERROR,
+							"No client hierarchy found for client id: " + CHILD_ID)));
+
+			StepVerifier.create(service.getClientHierarchyCodes("ORPHAN"))
+					.assertNext(codes -> assertEquals(List.of("ORPHAN"), codes))
+					.verifyComplete();
+		}
+
+		@Test
+		void otherHierarchyError_Propagates() {
+
+			Client child = TestDataFactory.createBusinessClient(CHILD_ID, "CHILD");
+			when(dao.getClientBy("CHILD")).thenReturn(Mono.just(child));
+			when(clientHierarchyService.getClientHierarchyIdInOrder(CHILD_ID))
+					.thenReturn(Mono.error(new RuntimeException("connection refused")));
+
+			StepVerifier.create(service.getClientHierarchyCodes("CHILD"))
+					.expectErrorMessage("connection refused")
+					.verify();
+		}
+
+		@Test
+		void managerThatNoLongerExists_IsSkipped() {
+
+			Client child = TestDataFactory.createBusinessClient(CHILD_ID, "CHILD");
+			when(dao.getClientBy("CHILD")).thenReturn(Mono.just(child));
+			when(clientHierarchyService.getClientHierarchyIdInOrder(CHILD_ID))
+					.thenReturn(Mono.just(List.of(CHILD_ID, PARENT_ID, SYSTEM_CLIENT_ID)));
+			when(dao.readInternal(PARENT_ID)).thenReturn(Mono.empty());
+			when(dao.readInternal(SYSTEM_CLIENT_ID)).thenReturn(Mono.just(TestDataFactory.createSystemClient()));
+
+			StepVerifier.create(service.getClientHierarchyCodes("CHILD"))
+					.assertNext(codes -> assertEquals(List.of("CHILD", "SYSTEM"), codes))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
 	// getClientId(String)
 	// =========================================================================
 

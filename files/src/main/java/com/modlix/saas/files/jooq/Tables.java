@@ -6,6 +6,7 @@ package com.modlix.saas.files.jooq;
 
 import com.modlix.saas.files.jooq.tables.FilesAccessPath;
 import com.modlix.saas.files.jooq.tables.FilesFileSystem;
+import com.modlix.saas.files.jooq.tables.FilesRetentionPolicy;
 import com.modlix.saas.files.jooq.tables.FilesSecuredAccessKeys;
 import com.modlix.saas.files.jooq.tables.FilesUploadDownload;
 
@@ -25,6 +26,11 @@ public class Tables {
      * The table <code>files.files_file_system</code>.
      */
     public static final FilesFileSystem FILES_FILE_SYSTEM = FilesFileSystem.FILES_FILE_SYSTEM;
+
+    /**
+     * The table <code>files.files_retention_policy</code>.
+     */
+    public static final FilesRetentionPolicy FILES_RETENTION_POLICY = FilesRetentionPolicy.FILES_RETENTION_POLICY;
 
     /**
      * The table <code>files.files_secured_access_keys</code>.

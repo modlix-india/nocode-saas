@@ -321,6 +321,53 @@ class ClientControllerTest {
         }
     }
 
+    // ==================== GET /api/security/clients/internal/clientHierarchyCodes ====================
+
+    @Nested
+    @DisplayName("GET /internal/clientHierarchyCodes")
+    class GetClientHierarchyCodesTests {
+
+        @Test
+        @DisplayName("Should return 200 with the client's code first, then its managers nearest first")
+        void getClientHierarchyCodes_Returns200WithOrderedCodes() {
+
+            when(clientService.getClientHierarchyCodes("CHILD"))
+                    .thenReturn(Mono.just(List.of("CHILD", "PARENT", "SYSTEM")));
+
+            webTestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(BASE_PATH + "/internal/clientHierarchyCodes")
+                            .queryParam("clientCode", "CHILD")
+                            .build())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(3)
+                    .jsonPath("$[0]").isEqualTo("CHILD")
+                    .jsonPath("$[1]").isEqualTo("PARENT")
+                    .jsonPath("$[2]").isEqualTo("SYSTEM");
+
+            verify(clientService).getClientHierarchyCodes("CHILD");
+        }
+
+        @Test
+        @DisplayName("Should return 200 with an empty list for an unknown client code")
+        void getClientHierarchyCodes_UnknownCode_ReturnsEmptyList() {
+
+            when(clientService.getClientHierarchyCodes("NOPE")).thenReturn(Mono.just(List.of()));
+
+            webTestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(BASE_PATH + "/internal/clientHierarchyCodes")
+                            .queryParam("clientCode", "NOPE")
+                            .build())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(0);
+        }
+    }
+
     // ==================== GET /api/security/clients/internal/managingClientIds ====================
 
     @Nested

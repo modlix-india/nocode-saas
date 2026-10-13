@@ -755,10 +755,39 @@ public class FileSystemService {
      */
     public int deleteExpired(int limit) {
 
-        List<FileSystemDao.ExpiredFile> expired = this.fileSystemDao.readExpired(limit);
-        int removed = 0;
+        List<FileSystemDao.ExpiredFile> removed = this.deleteFiles(
+                this.fileSystemDao.readExpired(this.fileSystemType, limit));
 
-        for (FileSystemDao.ExpiredFile file : expired) {
+        if (!removed.isEmpty())
+            logger.info("Removed {} expired file(s) from {}", removed.size(), this.fileSystemType);
+
+        return removed.size();
+    }
+
+    /**
+     * Deletes the given files of this file system, object first and row second (see
+     * {@link #deleteExpired}), evicting the client's caches after each. A failure is logged and the
+     * pass continues with the next file.
+     *
+     * <p>Used by both the lifetime cleanup and the retention policy sweep. Files of another file
+     * system type are skipped, never deleted from this bucket.
+     *
+     * @return the files that were actually removed
+     */
+    public List<FileSystemDao.ExpiredFile> deleteFiles(List<FileSystemDao.ExpiredFile> files) {
+
+        List<FileSystemDao.ExpiredFile> removed = new ArrayList<>();
+
+        if (files == null)
+            return removed;
+
+        for (FileSystemDao.ExpiredFile file : files) {
+
+            if (file.type() != null && file.type() != this.fileSystemType) {
+                logger.error("Refusing to remove {} file {} from the {} bucket", file.type(), file.path(),
+                        this.fileSystemType);
+                continue;
+            }
 
             String key = (file.clientCode() + file.path()).replace("//", "/");
 
@@ -766,14 +795,11 @@ public class FileSystemService {
                 s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
                 this.fileSystemDao.deleteById(file.id());
                 this.evictCache(file.clientCode());
-                removed++;
+                removed.add(file);
             } catch (Exception e) {
                 logger.error("Could not remove the expired file {}", key, e);
             }
         }
-
-        if (removed > 0)
-            logger.info("Removed {} expired file(s) from {}", removed, this.fileSystemType);
 
         return removed;
     }
