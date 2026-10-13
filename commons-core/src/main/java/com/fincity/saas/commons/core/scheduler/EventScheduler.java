@@ -360,7 +360,7 @@ public class EventScheduler {
                         return Mono.empty();
                     }
 
-                    Instant tick = schedule.isSpread()
+                    Instant tick = schedule.isSpreadAcrossPeriod()
                             ? CronGrid.latestSpreadTick(cron, zone, now, this.settings.catchUpWindow(),
                                     appCode + "\u0000" + clientCode + "\u0000" + eventName)
                             : CronGrid.latestTick(cron, zone, now, this.settings.catchUpWindow());

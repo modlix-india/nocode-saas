@@ -71,8 +71,13 @@ public class EventSchedule implements Serializable {
         return !Boolean.FALSE.equals(this.enabled) && this.cron != null && !this.cron.isBlank();
     }
 
+    /**
+     * Not named isSpread: Jackson would read that as an accessor of the
+     * {@code spread} property and the @JsonIgnore would drop the field itself
+     * from every API read and write.
+     */
     @JsonIgnore
-    public boolean isSpread() {
+    public boolean isSpreadAcrossPeriod() {
         return Boolean.TRUE.equals(this.spread);
     }
 
