@@ -56,6 +56,7 @@ import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecuritySslCertificate;
 import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
+import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
 
@@ -243,6 +244,23 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .set(SECURITY_APP_ACCESS.EDIT_ACCESS, UByte.valueOf(writeAccess ? 1 : 0))
                 .where(SECURITY_APP_ACCESS.ID.eq(accessId)))
                 .map(e -> e == 1);
+    }
+
+    /** A client's access row on an app, or empty when it has none. */
+    public Mono<SecurityAppAccessRecord> readClientAccess(ULong appId, ULong clientId) {
+
+        return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
+                .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
+                        .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(clientId)))
+                .limit(1));
+    }
+
+    /** An access row by its own id, or empty when there is none. */
+    public Mono<SecurityAppAccessRecord> readAccessById(ULong accessId) {
+
+        return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
+                .where(SECURITY_APP_ACCESS.ID.eq(accessId))
+                .limit(1));
     }
 
     public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
