@@ -127,6 +127,31 @@ class EventsQueListenerRunLogTest {
     }
 
     @Test
+    void aFailedTaskKeepsItsStackTraceAndTheFunctionItCalled() {
+
+        this.action(Map.of("one", new EventActionTask().setKey("one").setOrder(1)
+                .setType(EventActionTaskType.CALL_CORE_FUNCTION)
+                .setParameters(Map.of("namespace", "Leads", "name", "syncAll"))));
+        // No message, like the ConcurrentModificationException a schedule run showed with nothing else.
+        when(this.functions.execute(any(), any(), any()))
+                .thenReturn(Mono.error(new java.util.ConcurrentModificationException()));
+
+        StepVerifier.create(this.listener.run(this.message)).expectNext(false).verifyComplete();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<EventRunTask>> outcomes = ArgumentCaptor.forClass(List.class);
+        verify(this.runs).finish(any(), anyLong(), eq(false), outcomes.capture(), any());
+
+        EventRunTask one = outcomes.getValue().get(0);
+        assertEquals("Leads.syncAll", one.getTarget());
+        assertTrue(one.getError().startsWith("ConcurrentModificationException in EventsQueListenerRunLogTest."),
+                one.getError());
+        assertTrue(one.getDetail().startsWith("java.util.ConcurrentModificationException\n"), one.getDetail());
+        assertTrue(one.getDetail().contains("at com.fincity.saas.core.mq.EventsQueListenerRunLogTest."),
+                one.getDetail());
+    }
+
+    @Test
     void aTaskReportingFalseIsAFailureWithAReason() {
 
         this.action(Map.of("only", fn("only", 1)));

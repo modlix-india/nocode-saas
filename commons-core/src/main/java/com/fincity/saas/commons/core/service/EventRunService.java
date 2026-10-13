@@ -6,7 +6,9 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -306,18 +308,168 @@ public class EventRunService {
         if (t == null)
             return null;
 
-        String msg = t.getMessage();
-        if (StringUtil.safeIsBlank(msg))
-            msg = t.getClass().getSimpleName();
+        String msg = describe(t);
 
         Throwable root = t;
         while (root.getCause() != null && root.getCause() != root)
             root = root.getCause();
 
-        if (root != t && !StringUtil.safeIsBlank(root.getMessage()) && !msg.contains(root.getMessage()))
-            msg = msg + " (cause: " + root.getMessage() + ")";
+        if (root != t) {
+            String rootText = describe(root);
+            if (!msg.contains(rootText))
+                msg = msg + " (cause: " + rootText + ")";
+        }
+
+        List<String> steps = kirunSteps(t);
+        if (!steps.isEmpty())
+            msg = msg + ", " + steps.getFirst().lines().findFirst().orElse("");
 
         return truncate(msg);
+    }
+
+    /**
+     * kirun-java (4.9.2 on) adds a KIRuntimeStepTrace to a step's error as a suppressed
+     * exception: the step, the function it is in, and the step's arguments. Its message is the
+     * location on the first line and the arguments on the second. Matched by class name so this
+     * builds against kirun versions without the class.
+     */
+    static final String KIRUN_STEP_TRACE = "KIRuntimeStepTrace";
+
+    /** Shown in full in a detail; the steps further out, the callers, show only where they are. */
+    static final int MAX_DETAIL_STEPS_WITH_ARGUMENTS = 3;
+
+    /** The KIRun step traces on an exception and its causes, innermost step first. */
+    static List<String> kirunSteps(Throwable t) {
+
+        List<String> steps = new ArrayList<>();
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        for (Throwable cur = t; cur != null && seen.add(cur); cur = cur.getCause())
+            for (Throwable s : cur.getSuppressed())
+                if (KIRUN_STEP_TRACE.equals(s.getClass().getSimpleName()) &&!StringUtil.safeIsBlank(s.getMessage()))
+                    steps.add(s.getMessage());
+
+        return steps;
+    }
+
+    /**
+     * An exception's message, or for one without a message (a ConcurrentModificationException,
+     * a NullPointerException) its class and the first frame outside the JDK and Reactor, which
+     * is the code that broke.
+     */
+    private static String describe(Throwable t) {
+
+        if (!StringUtil.safeIsBlank(t.getMessage()))
+            return t.getMessage();
+
+        String text = t.getClass().getSimpleName();
+        for (StackTraceElement f : t.getStackTrace()) {
+            if (isLibraryFrame(f))
+                continue;
+            String cls = f.getClassName();
+            return text + " in " + cls.substring(cls.lastIndexOf('.') + 1) + "." + f.getMethodName()
+                    + (f.getLineNumber() > 0 ? ":" + f.getLineNumber() : "");
+        }
+        return text;
+    }
+
+    /** Room for three steps' arguments (kirun bounds each at 2000) and the stack. */
+    static final int MAX_DETAIL_LENGTH = 12000;
+    static final int MAX_DETAIL_FRAMES = 25;
+    static final int MAX_DETAIL_CAUSES = 5;
+
+    /**
+     * What whoever fixes it needs: the KIRun steps the error came out of with the arguments they
+     * got, when it came from a KIRun function, then the exception and each cause, with its class,
+     * message and frames. Runs of Reactor, Netty and reflection frames, most of a reactive trace,
+     * fold into a count. Null for no exception.
+     */
+    public static String detailOf(Throwable t) {
+
+        if (t == null)
+            return null;
+
+        StringBuilder sb = new StringBuilder();
+        appendSteps(sb, kirunSteps(t));
+
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        Throwable cur = t;
+        for (int depth = 0; cur != null && depth < MAX_DETAIL_CAUSES && seen.add(cur); depth++) {
+
+            if (depth > 0)
+                sb.append("Caused by: ");
+            sb.append(cur.getClass().getName());
+            if (!StringUtil.safeIsBlank(cur.getMessage()))
+                sb.append(": ").append(cur.getMessage());
+            sb.append('\n');
+
+            appendFrames(sb, cur.getStackTrace());
+            cur = cur.getCause();
+        }
+
+        if (sb.length() <= MAX_DETAIL_LENGTH)
+            return sb.toString();
+        return sb.substring(0, MAX_DETAIL_LENGTH - 1) + "…";
+    }
+
+    private static void appendSteps(StringBuilder sb, List<String> steps) {
+
+        if (steps.isEmpty())
+            return;
+
+        sb.append("KIRun steps, innermost first:\n");
+        for (int i = 0; i < steps.size(); i++) {
+            List<String> lines = steps.get(i).lines().toList();
+            sb.append("    ").append(lines.getFirst()).append('\n');
+            if (i < MAX_DETAIL_STEPS_WITH_ARGUMENTS)
+                for (String line : lines.subList(1, lines.size()))
+                    sb.append("        ").append(line).append('\n');
+        }
+        sb.append('\n');
+    }
+
+    private static void appendFrames(StringBuilder sb, StackTraceElement[] frames) {
+
+        int shown = 0;
+        int folded = 0;
+        int i = 0;
+        for (; i < frames.length && shown < MAX_DETAIL_FRAMES; i++) {
+            if (isPlumbingFrame(frames[i])) {
+                folded++;
+            } else {
+                if (folded > 0)
+                    sb.append("    ... ").append(folded).append(" framework frames\n");
+                folded = 0;
+                sb.append("    at ").append(frameText(frames[i])).append('\n');
+                shown++;
+            }
+        }
+
+        int rest = folded + frames.length - i;
+        if (rest > 0)
+            sb.append("    ... ").append(rest).append(" more\n");
+    }
+
+    private static String frameText(StackTraceElement f) {
+        String where = f.getFileName() == null ? "Unknown Source" : f.getFileName();
+        if (f.getFileName() != null && f.getLineNumber() > 0)
+            where += ":" + f.getLineNumber();
+        return f.getClassName() + "." + f.getMethodName() + "(" + where + ")";
+    }
+
+    /** Frames that only carry the call along: Reactor's operators, Netty, reflection. */
+    private static boolean isPlumbingFrame(StackTraceElement f) {
+        String c = f.getClassName();
+        return c.startsWith("reactor.") || c.startsWith("io.netty.") || c.startsWith("java.lang.reflect.")
+                || c.startsWith("jdk.internal.") || c.startsWith("sun.reflect.");
+    }
+
+    /** Frames of code that is not ours: the JDK and the plumbing. */
+    private static boolean isLibraryFrame(StackTraceElement f) {
+        String c = f.getClassName();
+        return isPlumbingFrame(f) || c.startsWith("java.") || c.startsWith("javax.") || c.startsWith("sun.")
+                || c.startsWith("com.google.gson.");
     }
 
     // ---------------------------------------------------------------- reading
