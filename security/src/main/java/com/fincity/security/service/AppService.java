@@ -38,10 +38,12 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
+import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.jooq.tables.records.SecurityAppRecord;
 import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.model.TransportPOJO.AppTransportProperty;
+import com.fincity.security.service.AppAccessEventService.Level;
 import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 
 import reactor.core.publisher.Flux;
@@ -83,6 +85,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
      */
     private final ClientUrlService clientUrlService;
 
+    /** Tells the app's EventActions about every change to a client's access, see {@link #addClientAccess}. */
+    private final AppAccessEventService accessEvents;
+
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
     private static final String CACHE_NAME_APP_INHERITANCE = "appInheritance";
@@ -115,7 +120,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
     public AppService(ClientService clientService, SecurityMessageResourceService messageResourceService,
             CacheService cacheService, AppRegistrationV2DAO appRegistrationDao, ClientUrlDAO clientUrlDao,
-            @Lazy ClientUrlService clientUrlService) {
+            @Lazy ClientUrlService clientUrlService, AppAccessEventService accessEvents) {
 
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
@@ -123,6 +128,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
         this.appRegistrationDao = appRegistrationDao;
         this.clientUrlDao = clientUrlDao;
         this.clientUrlService = clientUrlService;
+        this.accessEvents = accessEvents;
     }
 
     /**
@@ -213,9 +219,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 (ca, managedClientId, appCodeAddedApp, hostFree) -> super
                         .create(appCodeAddedApp.setClientId(managedClientId)),
 
-                (ca, mci, ac, hostFree, created) -> this.dao.addClientAccess(created.getId(),
-                        ULongUtil.valueOf(ca.getUser()
-                                .getClientId()), true),
+                (ca, mci, ac, hostFree, created) -> this.grantCreatorEditAccess(created,
+                        ULongUtil.valueOf(ca.getUser().getClientId())),
 
                 // After the access grant, not before: minting re-checks write access
                 // to the app, and for an EXPLICIT app that grant is what provides it.
@@ -265,6 +270,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     private Mono<App> createDefaultDraftUrl(App app) {
 
         return this.clientUrlService.mintDraftUrl(app.getAppCode()).thenReturn(app);
+    }
+
+    /** An EXPLICIT app is brand new here, so its creator's client goes from no access to edit. */
+    private Mono<Boolean> grantCreatorEditAccess(App created, ULong creatorClientId) {
+
+        return this.dao.addClientAccess(created.getId(), creatorClientId, true)
+                .flatMap(added -> this.accessEvents.raise(created.getAppCode(), created.getId(), creatorClientId,
+                        Level.NONE, Level.EDIT).thenReturn(added));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
@@ -501,7 +514,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 ca -> this.read(appId),
 
-                (ca, app) -> {
+                (ca, app) -> this.accessLevel(appId, clientId),
+
+                (ca, app, previous) -> {
 
                     ULong usersClientId = ULongUtil.valueOf(ca.getUser()
                             .getClientId());
@@ -527,7 +542,12 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 },
 
-                (ca, cliAccess, changed) -> this.evict(appId, clientId))
+                // An add of a client that already has access updates the row, so
+                // previous can be READ or EDIT as well as NONE.
+                (ca, app, previous, changed) -> this.accessEvents.raise(app.getAppCode(), appId, clientId,
+                        previous, Level.of(writeAccess)),
+
+                (ca, app, previous, changed, raised) -> this.evict(appId, clientId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccess"))
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -552,27 +572,39 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.evict"));
     }
 
+    /** A client's current access to an app, NONE when it has no row. */
+    private Mono<Level> accessLevel(ULong appId, ULong clientId) {
+
+        return this.dao.readClientAccess(appId, clientId)
+                .map(Level::of)
+                .defaultIfEmpty(Level.NONE);
+    }
+
+    /** SYSTEM may change anyone's access; anyone else only on an app their own client owns. */
+    private static boolean mayChangeAccess(ContextAuthentication ca, App app) {
+
+        return ca.isSystemClient() || app.getClientId()
+                .toBigInteger()
+                .equals(ca.getUser()
+                        .getClientId());
+    }
+
     public Mono<Boolean> removeClient(ULong appId, ULong accessId) {
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
+        return FlatMapUtil.flatMapMono(
 
-                    if (ca.isSystemClient()) {
-                        return this.dao.removeClientAccess(appId, accessId);
-                    }
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                    return this.dao.readById(appId)
-                            .flatMap(e -> {
+                ca -> this.dao.readById(appId),
 
-                                if (!e.getClientId()
-                                        .toBigInteger()
-                                        .equals(ca.getUser()
-                                                .getClientId()))
-                                    return Mono.empty();
+                (ca, app) -> mayChangeAccess(ca, app) ? Mono.just(app) : Mono.<App>empty(),
 
-                                return this.dao.removeClientAccess(appId, accessId);
-                            });
-                })
+                // An access id that is not on this app removes nothing, as before.
+                (ca, app, allowed) -> this.dao.readAccessById(accessId)
+                        .filter(row -> appId.equals(row.getAppId()))
+                        .flatMap(row -> this.removeAccessRow(app, row))
+                        .defaultIfEmpty(Boolean.FALSE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.removeClient"))
                 .switchIfEmpty(messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), APPLICATION_ACCESS,
                         accessId))
@@ -580,27 +612,43 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE));
     }
 
+    private Mono<Boolean> removeAccessRow(App app, SecurityAppAccessRecord row) {
+
+        return this.dao.removeClientAccess(app.getId(), row.getId())
+                .flatMap(removed -> {
+
+                    if (!BooleanUtil.safeValueOf(removed))
+                        return Mono.just(Boolean.FALSE);
+
+                    return this.accessEvents.raise(app.getAppCode(), app.getId(), row.getClientId(),
+                            Level.of(row), Level.NONE)
+                            .then(this.evict(app.getId(), row.getClientId()))
+                            .thenReturn(Boolean.TRUE);
+                });
+    }
+
     public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
+        return FlatMapUtil.flatMapMono(
 
-                    if (ca.isSystemClient()) {
-                        return this.dao.updateClientAccess(accessId, writeAccess);
-                    }
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                    return this.dao.readById(accessId)
-                            .flatMap(e -> {
+                ca -> this.dao.readAccessById(accessId),
 
-                                if (!e.getClientId()
-                                        .toBigInteger()
-                                        .equals(ca.getUser()
-                                                .getClientId()))
-                                    return Mono.empty();
+                // The app the access row is on. This used to read the APP whose id
+                // equals the access id, so the ownership check compared the wrong row.
+                (ca, row) -> this.dao.readById(row.getAppId()),
 
-                                return this.dao.updateClientAccess(accessId, writeAccess);
-                            });
-                })
+                (ca, row, app) -> mayChangeAccess(ca, app)
+                        ? this.dao.updateClientAccess(accessId, writeAccess)
+                        : Mono.<Boolean>empty(),
+
+                (ca, row, app, updated) -> this.accessEvents.raise(app.getAppCode(), app.getId(),
+                        row.getClientId(), Level.of(row), Level.of(writeAccess)),
+
+                (ca, row, app, updated, raised) -> this.evict(app.getId(), row.getClientId())
+                        .thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.updateClientAccess"))
                 .switchIfEmpty(
                         messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 SecurityMessageResourceService.OBJECT_NOT_FOUND_TO_UPDATE, APPLICATION_ACCESS,
@@ -720,16 +768,26 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 (app, levelType, appAccessTuples) -> {
 
+                    // Each granted app is evicted and announced on its own: the list
+                    // can hold apps other than the one being registered on.
                     Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
-                            .flatMap(tup -> this.dao
-                                    .addClientAccess(tup.getT1(), client.getId(), tup.getT2())
-                                    .flatMap(result -> this.evict(app.getId(), client.getId())
-                                            .map(evictResult -> result)))
+                            .flatMap(tup -> this.grantRegistrationAccess(tup.getT1(), client.getId(), tup.getT2()))
                             .collectList();
 
                     return mons.map(e -> true);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
+    }
+
+    private Mono<Boolean> grantRegistrationAccess(ULong appId, ULong clientId, boolean writeAccess) {
+
+        return this.accessLevel(appId, clientId)
+                .flatMap(previous -> this.dao.addClientAccess(appId, clientId, writeAccess)
+                        .flatMap(result -> this.getAppByIdInternal(appId)
+                                .flatMap(granted -> this.accessEvents.raise(granted.getAppCode(), appId, clientId,
+                                        previous, Level.of(writeAccess)))
+                                .then(this.evict(appId, clientId))
+                                .thenReturn(result)));
     }
 
     public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,

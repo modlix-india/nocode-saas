@@ -19,6 +19,7 @@ import com.fincity.saas.commons.core.functions.email.SendEmail;
 import com.fincity.saas.commons.core.functions.events.CancelScheduledEventFunction;
 import com.fincity.saas.commons.core.functions.events.CreateEventFunction;
 import com.fincity.saas.commons.core.functions.events.ScheduleEventFunction;
+import com.fincity.saas.commons.core.functions.events.SetScheduleEnabledFunction;
 import com.fincity.saas.commons.core.functions.file.FileToBase64;
 import com.fincity.saas.commons.core.functions.file.TemplateToPdf;
 import com.fincity.saas.commons.core.functions.hash.HashData;
@@ -207,7 +208,8 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction scheduleEvent = new ScheduleEventFunction(scheduledEventService, edService, securityService);
         ReactiveFunction cancelScheduledEvent = new CancelScheduledEventFunction(scheduledEventService,
                 securityService);
-        this.addToRepoMap(scheduleEvent, cancelScheduledEvent);
+        ReactiveFunction setScheduleEnabled = new SetScheduleEnabledFunction(edService);
+        this.addToRepoMap(scheduleEvent, cancelScheduledEvent, setScheduleEnabled);
     }
 
     private void makeNotificationFunctions(NotificationService notificationService) {
