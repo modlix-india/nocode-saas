@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fincity.saas.commons.core.service.EventRunService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 
 /**
@@ -24,7 +25,7 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 final class UnhandledEventLog {
 
     /** Events raised so an app can own a channel: losing one loses a customer's message or call. */
-    static final Set<String> HANDOFF_EVENTS = Set.of("WHATSAPP_INBOUND", "CALL_EVENT");
+    static final Set<String> HANDOFF_EVENTS = EventRunService.HANDOFF_EVENTS;
 
     static final long REPEAT_AFTER_MILLIS = 60L * 60L * 1000L;
 

@@ -79,4 +79,44 @@ public final class CronGrid {
 
         return latest.toInstant();
     }
+
+    /** A fixed instant the period of a cron is measured from, so every instance measures the same. */
+    private static final Instant PERIOD_ANCHOR = Instant.parse("2026-01-05T00:00:00Z");
+
+    /**
+     * The latest tick of {@code key}'s shifted grid: every tick of the cron moved
+     * later by a fixed offset in [0, period), where the period is the shortest
+     * gap between consecutive ticks. The offset comes from the key alone, so two
+     * instances agree on it and on the tick, and shifted ticks keep their order.
+     */
+    public static Instant latestSpreadTick(CronExpression cron, ZoneId zone, Instant now, Duration window,
+            String key) {
+
+        long offset = spreadOffsetSeconds(cron, zone, key);
+        Instant tick = latestTick(cron, zone, now.minusSeconds(offset), window);
+        return tick == null ? null : tick.plusSeconds(offset);
+    }
+
+    static long spreadOffsetSeconds(CronExpression cron, ZoneId zone, String key) {
+
+        long period = shortestGapSeconds(cron, zone);
+        if (period <= 1)
+            return 0;
+        // String.hashCode is specified by the JLS, so it is the same on every JVM.
+        return Math.floorMod((long) key.hashCode(), period);
+    }
+
+    private static long shortestGapSeconds(CronExpression cron, ZoneId zone) {
+
+        ZonedDateTime t = cron.next(PERIOD_ANCHOR.atZone(zone));
+        long shortest = Long.MAX_VALUE;
+        for (int i = 0; i < 16 && t != null; i++) {
+            ZonedDateTime next = cron.next(t);
+            if (next == null)
+                break;
+            shortest = Math.min(shortest, Duration.between(t, next).getSeconds());
+            t = next;
+        }
+        return shortest == Long.MAX_VALUE ? 0 : shortest;
+    }
 }

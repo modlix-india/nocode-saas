@@ -8,6 +8,7 @@ import com.modlix.saas.worker.service.execution.MeteringExecutionService;
 import com.modlix.saas.worker.service.execution.PartnerDenormExecutionService;
 import com.modlix.saas.worker.service.execution.SSLCertificateRenewalService;
 import com.modlix.saas.worker.service.execution.TokenCleanupService;
+import com.modlix.saas.worker.service.execution.EventRunCleanupService;
 import com.modlix.saas.worker.service.execution.TransportCleanupService;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class TaskExecutionService {
     private final MeteringExecutionService meteringExecutionService;
     private final FilesTtlCleanupService filesTtlCleanupService;
     private final TransportCleanupService transportCleanupService;
+    private final EventRunCleanupService eventRunCleanupService;
 
     private TaskExecutionService(
             TaskService taskService,
@@ -39,9 +41,11 @@ public class TaskExecutionService {
             ConversionsDispatchExecutionService conversionsDispatchExecutionService,
             MeteringExecutionService meteringExecutionService,
             FilesTtlCleanupService filesTtlCleanupService,
-            TransportCleanupService transportCleanupService) {
+            TransportCleanupService transportCleanupService,
+            EventRunCleanupService eventRunCleanupService) {
         this.filesTtlCleanupService = filesTtlCleanupService;
         this.transportCleanupService = transportCleanupService;
+        this.eventRunCleanupService = eventRunCleanupService;
         this.taskService = taskService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.tokenCleanupService = tokenCleanupService;
@@ -96,6 +100,7 @@ public class TaskExecutionService {
                 meteringExecutionService.execute(task);
             case FILES_TTL_CLEANUP -> filesTtlCleanupService.execute(task);
             case TRANSPORT_CLEANUP -> transportCleanupService.execute(task);
+            case EVENT_RUN_CLEANUP -> eventRunCleanupService.execute(task);
         };
         logger.info("Task completed: {} [type={}] — {}", task.getName(), task.getTaskJobType(), result);
         task.setLastFireResult(result);
