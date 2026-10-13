@@ -32,7 +32,7 @@ CLIENT_DIR="${CLIENT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)/nocode-ui/ui-app/client}
 # orphan sweep in stop_client key off it.
 CLIENT_PORT="${CLIENT_PORT:-1234}"
 
-ALL_SERVICES="config eureka core files entity-processor message security multi ui gateway worker adzump bridge ui-client"
+ALL_SERVICES="config eureka core files entity-processor message security multi ui gateway worker bridge ui-client"
 
 start_service() {
   local name="$1"
@@ -308,7 +308,6 @@ port_for() {
     eureka) echo 9999 ;;
     gateway) echo 8080 ;;
     ui) echo 8002 ;;
-    adzump) echo 8012 ;;
     bridge) echo 9481 ;;
     "$CLIENT_NAME") echo "$CLIENT_PORT" ;;
     *) echo "" ;;
@@ -377,7 +376,7 @@ start_service eureka
 wait_for_port eureka 9999 120
 
 # 3. Everything else — parallel
-for svc in core files entity-processor message security multi ui gateway worker adzump; do
+for svc in core files entity-processor message security multi ui gateway worker; do
   start_service "$svc"
 done
 
