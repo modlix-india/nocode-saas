@@ -4,6 +4,7 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreEventRuns;
 import com.fincity.saas.commons.core.jooq.tables.CoreRemoteRepositories;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
 
@@ -27,6 +28,11 @@ public class Core extends SchemaImpl {
      * The reference instance of <code>core</code>
      */
     public static final Core CORE = new Core();
+
+    /**
+     * The table <code>core.core_event_runs</code>.
+     */
+    public final CoreEventRuns CORE_EVENT_RUNS = CoreEventRuns.CORE_EVENT_RUNS;
 
     /**
      * The table <code>core.core_remote_repositories</code>.
@@ -54,6 +60,7 @@ public class Core extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            CoreEventRuns.CORE_EVENT_RUNS,
             CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES,
             CoreTokens.CORE_TOKENS
         );

@@ -78,7 +78,11 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 // is defensible on this path: the blast radius is bounded by construction, not
                 // by the caller - it can only ever delete Transport documents, and the
                 // retention floor and per-run cap live in the service.
-                "/api/core/transports/internal/**");
+                "/api/core/transports/internal/**",
+                // The event run log's retention sweep, driven by the worker's
+                // EVENT_RUN_CLEANUP task the same way. Bounded in EventRunService: it
+                // only deletes run-log rows, never younger than 30 days, capped per call.
+                "/api/core/eventRuns/internal/**");
     }
 
     @Bean

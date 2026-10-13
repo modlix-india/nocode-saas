@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import com.fincity.saas.commons.core.document.EventDefinition;
 import com.fincity.saas.commons.core.functions.events.ScheduleEventFunction;
 import com.fincity.saas.commons.core.model.EventSchedule;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
 
@@ -97,5 +98,24 @@ class EventScheduleOverrideTest {
                 ScheduleEventFunction.parseRunAt(new JsonPrimitive(1_791_000_000_000L)));
         assertTrue(ScheduleEventFunction.parseRunAt(JsonNull.INSTANCE)
                 .isAfter(Instant.now().minusSeconds(5)));
+    }
+
+    @Test
+    void spreadSurvivesTheApiAndInheritsLikeTheOtherFields() throws Exception {
+
+        // The API reads and writes definitions with Jackson; a helper named isSpread()
+        // once made Jackson drop the field on every save.
+        ObjectMapper mapper = new ObjectMapper();
+        EventSchedule base = new EventSchedule().setCron("*/5 * * * *").setPerClient(true).setSpread(true);
+        EventSchedule back = mapper.readValue(mapper.writeValueAsString(base), EventSchedule.class);
+        assertEquals(Boolean.TRUE, back.getSpread());
+        assertTrue(back.isSpreadAcrossPeriod());
+        assertTrue(mapper.writeValueAsString(base).contains("\"spread\":true"));
+
+        // An override without spread inherits it; one that turns it off wins.
+        assertTrue(EventSchedule.merge(new EventSchedule().setEnabled(true), base).isSpreadAcrossPeriod());
+        assertFalse(EventSchedule.merge(new EventSchedule().setSpread(false), base).isSpreadAcrossPeriod());
+        assertEquals(Boolean.FALSE,
+                EventSchedule.difference(new EventSchedule(base).setSpread(false), base).getSpread());
     }
 }
