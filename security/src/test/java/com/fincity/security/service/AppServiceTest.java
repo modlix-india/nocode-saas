@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.util.List;
 import java.util.Map;
 
+import org.jooq.types.UByte;
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +36,9 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppStatus;
+import com.fincity.security.jooq.tables.records.SecurityAppAccessRecord;
 import com.fincity.security.model.AppDependency;
+import com.fincity.security.service.AppAccessEventService.Level;
 import com.fincity.security.testutil.TestDataFactory;
 
 import reactor.core.publisher.Mono;
@@ -84,6 +87,14 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ObjectMapper objectMapper;
 
+	/**
+	 * Every access change raises APP_ACCESS_CHANGED through this. What the event
+	 * carries is {@code AppAccessEventServiceTest}'s business; here it is only
+	 * checked that each path reports the right before and after.
+	 */
+	@Mock
+	private AppAccessEventService accessEvents;
+
 	private AppService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -97,7 +108,7 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	@BeforeEach
 	void setUp() {
 		service = new AppService(clientService, messageResourceService, cacheService, appRegistrationDao,
-				clientUrlDao, clientUrlService);
+				clientUrlDao, clientUrlService, accessEvents);
 
 		// Inject the mocked DAO using reflection
 		// AppService -> AbstractJOOQUpdatableDataService -> AbstractJOOQDataService (has dao)
@@ -132,6 +143,20 @@ class AppServiceTest extends AbstractServiceUnitTest {
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
 		setupEvictionMocks();
+
+		// A client with no access row unless a test says otherwise, and events
+		// that always publish.
+		lenient().when(dao.readClientAccess(any(), any())).thenReturn(Mono.empty());
+		lenient().when(accessEvents.raise(any(), any(), any(), any(), any())).thenReturn(Mono.just(true));
+	}
+
+	private static SecurityAppAccessRecord accessRow(ULong appId, ULong clientId, boolean edit) {
+		SecurityAppAccessRecord row = new SecurityAppAccessRecord();
+		row.setId(ACCESS_ID);
+		row.setAppId(appId);
+		row.setClientId(clientId);
+		row.setEditAccess(UByte.valueOf(edit ? 1 : 0));
+		return row;
 	}
 
 	private void setupEvictionMocks() {
@@ -372,6 +397,9 @@ class AppServiceTest extends AbstractServiceUnitTest {
 						assertEquals(SecurityAppAppAccessType.EXPLICIT, app.getAppAccessType());
 					})
 					.verifyComplete();
+
+			// The creator's client had no access to an app that did not exist.
+			verify(accessEvents).raise("explicitapp", APP_ID, BUS_CLIENT_ID, Level.NONE, Level.EDIT);
 		}
 
 		@Test
@@ -932,6 +960,47 @@ class AppServiceTest extends AbstractServiceUnitTest {
 		}
 
 		@Test
+		void addClientAccess_NewClient_RaisesEditAdded() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, "testapp");
+
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
+			when(dao.addClientAccess(APP_ID, MANAGED_CLIENT_ID, true)).thenReturn(Mono.just(true));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
+
+			StepVerifier.create(service.addClientAccess(APP_ID, MANAGED_CLIENT_ID, true))
+					.expectNext(true)
+					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.NONE, Level.EDIT);
+		}
+
+		/** An add for a client that already has read access updates the row, so it reports READ to EDIT. */
+		@Test
+		void addClientAccess_ClientWithReadAccess_ReportsPreviousRead() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, "testapp");
+
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
+			when(dao.readClientAccess(APP_ID, MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(accessRow(APP_ID, MANAGED_CLIENT_ID, false)));
+			when(dao.addClientAccess(APP_ID, MANAGED_CLIENT_ID, true)).thenReturn(Mono.just(false));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
+
+			StepVerifier.create(service.addClientAccess(APP_ID, MANAGED_CLIENT_ID, true))
+					.expectNext(true)
+					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.READ, Level.EDIT);
+		}
+
+		@Test
 		void addClientAccess_NonSystemClient_NotManaged_ThrowsForbidden() {
 			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
 					List.of("Authorities.Application_CREATE", "Authorities.Logged_IN"));
@@ -947,6 +1016,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
 					.verify();
+
+			verify(accessEvents, never()).raise(any(), any(), any(), any(), any());
 		}
 
 		@Test
@@ -967,6 +1038,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
 					.verify();
+
+			verify(accessEvents, never()).raise(any(), any(), any(), any(), any());
 		}
 	}
 
@@ -979,15 +1052,23 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	class RemoveClientTests {
 
 		@Test
-		void removeClient_SystemClient_RemovesAccess() {
+		void removeClient_SystemClient_RemovesAccessAndRaisesRemoved() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
+			App app = TestDataFactory.createOwnApp(APP_ID, BUS_CLIENT_ID, "testapp");
+
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID, MANAGED_CLIENT_ID, true)));
 			when(dao.removeClientAccess(APP_ID, ACCESS_ID)).thenReturn(Mono.just(true));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
 
 			StepVerifier.create(service.removeClient(APP_ID, ACCESS_ID))
 					.expectNext(true)
 					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.EDIT, Level.NONE);
 		}
 
 		@Test
@@ -999,11 +1080,34 @@ class AppServiceTest extends AbstractServiceUnitTest {
 			App app = TestDataFactory.createOwnApp(APP_ID, BUS_CLIENT_ID, "testapp");
 
 			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID, MANAGED_CLIENT_ID, false)));
 			when(dao.removeClientAccess(APP_ID, ACCESS_ID)).thenReturn(Mono.just(true));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
 
 			StepVerifier.create(service.removeClient(APP_ID, ACCESS_ID))
 					.expectNext(true)
 					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.READ, Level.NONE);
+		}
+
+		@Test
+		void removeClient_AccessRowOnAnotherApp_RemovesNothingAndRaisesNothing() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			App app = TestDataFactory.createOwnApp(APP_ID, BUS_CLIENT_ID, "testapp");
+
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID_2, MANAGED_CLIENT_ID, true)));
+
+			StepVerifier.create(service.removeClient(APP_ID, ACCESS_ID))
+					.expectNext(false)
+					.verifyComplete();
+
+			verify(dao, never()).removeClientAccess(any(), any());
+			verify(accessEvents, never()).raise(any(), any(), any(), any(), any());
 		}
 
 		@Test
@@ -1020,6 +1124,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
 					.verify();
+
+			verify(accessEvents, never()).raise(any(), any(), any(), any(), any());
 		}
 	}
 
@@ -1032,15 +1138,23 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	class UpdateClientAccessTests {
 
 		@Test
-		void updateClientAccess_SystemClient_UpdatesAccess() {
+		void updateClientAccess_SystemClient_ReadToEdit_RaisesUpgrade() {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
+			App app = TestDataFactory.createOwnApp(APP_ID, BUS_CLIENT_ID, "testapp");
+
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID, MANAGED_CLIENT_ID, false)));
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
 			when(dao.updateClientAccess(ACCESS_ID, true)).thenReturn(Mono.just(true));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
 
 			StepVerifier.create(service.updateClientAccess(ACCESS_ID, true))
 					.expectNext(true)
 					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.READ, Level.EDIT);
 		}
 
 		@Test
@@ -1049,25 +1163,53 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					List.of("Authorities.Application_UPDATE", "Authorities.Logged_IN"));
 			setupSecurityContext(ca);
 
-			App app = TestDataFactory.createOwnApp(ACCESS_ID, BUS_CLIENT_ID, "testapp");
+			App app = TestDataFactory.createOwnApp(APP_ID, BUS_CLIENT_ID, "testapp");
 
-			when(dao.readById(ACCESS_ID)).thenReturn(Mono.just(app));
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID, MANAGED_CLIENT_ID, true)));
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(app));
 			when(dao.updateClientAccess(ACCESS_ID, false)).thenReturn(Mono.just(true));
+			when(clientService.getClientTypeNCodeNClientLevel(MANAGED_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", "MANAGED", "CUSTOMER")));
 
 			StepVerifier.create(service.updateClientAccess(ACCESS_ID, false))
 					.expectNext(true)
 					.verifyComplete();
+
+			verify(accessEvents).raise("testapp", APP_ID, MANAGED_CLIENT_ID, Level.EDIT, Level.READ);
 		}
 
+		/**
+		 * The ownership check reads the app the access row is ON. It used to read
+		 * the app whose id equals the access id, so an owner could be refused, or a
+		 * non-owner let through, depending on which unrelated app had that id.
+		 */
 		@Test
-		void updateClientAccess_NonSystemClient_NotOwner_ThrowsForbidden() {
+		void updateClientAccess_ChecksOwnershipOfTheRowsApp_NotAnAppWithTheAccessId() {
 			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
 					List.of("Authorities.Application_UPDATE", "Authorities.Logged_IN"));
 			setupSecurityContext(ca);
 
-			App app = TestDataFactory.createOwnApp(ACCESS_ID, MANAGED_CLIENT_ID, "testapp");
+			App rowsApp = TestDataFactory.createOwnApp(APP_ID, MANAGED_CLIENT_ID, "testapp");
 
-			when(dao.readById(ACCESS_ID)).thenReturn(Mono.just(app));
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.just(accessRow(APP_ID, BUS_CLIENT_ID, false)));
+			when(dao.readById(APP_ID)).thenReturn(Mono.just(rowsApp));
+
+			StepVerifier.create(service.updateClientAccess(ACCESS_ID, true))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+
+			verify(dao, never()).readById(ACCESS_ID);
+			verify(dao, never()).updateClientAccess(any(), anyBoolean());
+			verify(accessEvents, never()).raise(any(), any(), any(), any(), any());
+		}
+
+		@Test
+		void updateClientAccess_UnknownAccessId_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readAccessById(ACCESS_ID)).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.updateClientAccess(ACCESS_ID, true))
 					.expectErrorMatches(e -> e instanceof GenericException
