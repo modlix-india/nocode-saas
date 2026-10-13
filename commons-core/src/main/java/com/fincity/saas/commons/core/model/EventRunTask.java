@@ -32,11 +32,18 @@ public class EventRunTask implements Serializable {
     /** The task's key in the action's task map. */
     private String key;
     private String type;
+    /** What the task ran, namespace.name of the function for a CALL_CORE_FUNCTION task. */
+    private String target;
     private Integer order;
     private Status status;
     private Long startedAt;
     private Long durationMs;
     private String error;
+    /**
+     * The failure's stack trace for whoever fixes it, trimmed; see
+     * EventRunService.detailOf. The error alone is often just a class name.
+     */
+    private String detail;
     /** Display text, filled with the run's; see EventRun. */
     private String durationText;
 }

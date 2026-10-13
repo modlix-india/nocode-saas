@@ -255,6 +255,7 @@ public class EventsQueListener implements ScheduledEventRunner {
         EventRunTask outcome = new EventRunTask()
                 .setKey(taskKey)
                 .setType(task == null || task.getType() == null ? null : task.getType().name())
+                .setTarget(targetOf(task))
                 .setOrder(task == null ? null : task.getOrder())
                 .setStartedAt(started);
 
@@ -276,7 +277,8 @@ public class EventsQueListener implements ScheduledEventRunner {
                 .onErrorResume(t -> {
                     logger.error("Error while executing task {} of event {} for app {} and client {} : {} ", taskKey,
                             message.getEventName(), message.getAppCode(), message.getClientCode(), message, t);
-                    outcome.setError(EventRunService.errorOf(t));
+                    outcome.setError(EventRunService.errorOf(t))
+                            .setDetail(EventRunService.detailOf(t));
                     return Mono.just(Boolean.FALSE);
                 });
 
@@ -290,6 +292,20 @@ public class EventsQueListener implements ScheduledEventRunner {
                 outcome.setError("The task reported that it did not succeed.");
             outcomes.add(outcome);
         });
+    }
+
+    /** The function a task calls, namespace.name, when its parameters name one. */
+    static String targetOf(EventActionTask task) {
+
+        if (task == null || task.getParameters() == null)
+            return null;
+
+        Object namespace = task.getParameters().get("namespace");
+        Object name = task.getParameters().get("name");
+        if (name == null || name.toString().isBlank())
+            return null;
+
+        return namespace == null || namespace.toString().isBlank() ? name.toString() : namespace + "." + name;
     }
 
     // Package-private and static so a unit test can pin the constructor argument order.
