@@ -104,7 +104,12 @@ class EventRunServiceTest {
         String msg = EventRunService.errorOf(new IllegalStateException("Task failed",
                 new IllegalArgumentException("Template welcome not found")));
         assertEquals("Task failed (cause: Template welcome not found)", msg);
-        assertEquals("NullPointerException", EventRunService.errorOf(new NullPointerException()));
+        // No message: the class, and where in our code it was thrown.
+        assertTrue(EventRunService.errorOf(new NullPointerException())
+                .startsWith("NullPointerException in EventRunServiceTest.errorsNameTheRootCause:"));
+        NullPointerException noFrames = new NullPointerException();
+        noFrames.setStackTrace(new StackTraceElement[0]);
+        assertEquals("NullPointerException", EventRunService.errorOf(noFrames));
     }
 
     // ---------------------------------------------------------------- writing
@@ -430,6 +435,77 @@ class EventRunServiceTest {
             StepVerifier.create(this.service.recordNoAction(inbound, i)).verifyComplete();
 
         verify(this.dao, times(5)).insert(any());
+    }
+
+    @Test
+    void detailKeepsEachCauseAndFoldsReactorFrames() {
+
+        IllegalStateException outer = new IllegalStateException("Function failed",
+                new java.util.ConcurrentModificationException());
+        outer.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("com.fincity.Outer", "run", "Outer.java", 10),
+                new StackTraceElement("reactor.core.publisher.MonoFlatMap", "onNext", "MonoFlatMap.java", 1),
+                new StackTraceElement("reactor.core.publisher.FluxMap", "onNext", "FluxMap.java", 2),
+                new StackTraceElement("com.fincity.Caller", "call", "Caller.java", 20) });
+        outer.getCause().setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("java.util.HashMap$HashIterator", "nextNode", "HashMap.java", 1605),
+                new StackTraceElement("com.fincity.Sorter", "sort", "Sorter.java", 42) });
+
+        String detail = EventRunService.detailOf(outer);
+
+        assertEquals("""
+                java.lang.IllegalStateException: Function failed
+                    at com.fincity.Outer.run(Outer.java:10)
+                    ... 2 framework frames
+                    at com.fincity.Caller.call(Caller.java:20)
+                Caused by: java.util.ConcurrentModificationException
+                    at java.util.HashMap$HashIterator.nextNode(HashMap.java:1605)
+                    at com.fincity.Sorter.sort(Sorter.java:42)
+                """, detail);
+
+        // The cause has no message, so the summary names its class and where our code broke.
+        assertEquals("Function failed (cause: ConcurrentModificationException in Sorter.sort:42)",
+                EventRunService.errorOf(outer));
+        assertNull(EventRunService.detailOf(null));
+    }
+
+    /** Stands in for kirun's KIRuntimeStepTrace, which is matched by name: same name, same message shape. */
+    @SuppressWarnings("serial")
+    private static final class KIRuntimeStepTrace extends RuntimeException {
+        KIRuntimeStepTrace(String message) {
+            super(message, null, false, false);
+        }
+    }
+
+    @Test
+    void kirunStepsLeadTheDetailAndNameTheStepInTheError() {
+
+        java.util.ConcurrentModificationException e = new java.util.ConcurrentModificationException();
+        e.setStackTrace(new StackTraceElement[] { new StackTraceElement("com.fincity.Sorter", "sort", "Sorter.java", 42) });
+        // Innermost first, as kirun adds them while the error passes out of nested functions.
+        e.addSuppressed(new KIRuntimeStepTrace(
+                "at step sortLeads (System.Array.Sort) of Leads.sortAll\narguments {\"source\": [3, 1, 2]}"));
+        e.addSuppressed(new KIRuntimeStepTrace(
+                "at step sort (Leads.sortAll) of Leads.syncAll\narguments {\"leads\": [3, 1, 2]}"));
+        e.addSuppressed(new IllegalStateException("not a step"));
+        // Wrapped on the way out, as callers often do: the steps are on the cause.
+        RuntimeException wrapped = new RuntimeException("Function failed", e);
+        wrapped.setStackTrace(new StackTraceElement[0]);
+
+        assertEquals("Function failed (cause: ConcurrentModificationException in Sorter.sort:42), "
+                + "at step sortLeads (System.Array.Sort) of Leads.sortAll", EventRunService.errorOf(wrapped));
+
+        assertEquals("""
+                KIRun steps, innermost first:
+                    at step sortLeads (System.Array.Sort) of Leads.sortAll
+                        arguments {"source": [3, 1, 2]}
+                    at step sort (Leads.sortAll) of Leads.syncAll
+                        arguments {"leads": [3, 1, 2]}
+
+                java.lang.RuntimeException: Function failed
+                Caused by: java.util.ConcurrentModificationException
+                    at com.fincity.Sorter.sort(Sorter.java:42)
+                """, EventRunService.detailOf(wrapped));
     }
 
     private static void assertAbout(LocalDateTime actual, LocalDateTime expected) {
