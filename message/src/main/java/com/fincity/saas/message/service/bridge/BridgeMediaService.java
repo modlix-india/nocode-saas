@@ -4,8 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
+import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.feign.IFeignFileService;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
+import com.fincity.saas.message.service.dispatch.handler.CoreEventHandler;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +34,20 @@ public class BridgeMediaService {
     private static final Logger logger = LoggerFactory.getLogger(BridgeMediaService.class);
 
     /**
-     * How long a conversation attachment is kept: thirty days, in minutes.
+     * How long a conversation attachment is kept on a number entity-processor owns: thirty days, in
+     * minutes.
      *
      * <p>Carried on the file itself rather than enforced by a sweep that works out which files are
      * old enough. That distinction is what keeps this safe. An age-based sweep over the media rows
      * would have deleted product brochures shared across many messages, because a lead was sent one
      * a month ago; a file that was never given a lifetime cannot be removed at all.
      *
-     * <p>A constant for now. The per-client override goes where this is read, not where it is
-     * stored, so raising it later does not touch anything already written.
+     * <p>Only for entity-processor numbers, and only until leadzump retires. A number core owns
+     * stores under {@code /<appCode>/whatsapp/...} with no lifetime: its app registers a retention
+     * policy for that prefix in the files service ({@code <appCode>/whatsapp/incoming} and {@code
+     * outgoing}), a client may override the days, and the worker raises {@code FILES_EXPIRED} to the
+     * app with the exact paths that went. The policy lives with the files, keyed on a prefix the app
+     * declared, so it still cannot reach anything outside the app's own folder.
      */
     private static final int RETENTION_MINUTES = 30 * 24 * 60;
 
@@ -87,9 +94,10 @@ public class BridgeMediaService {
                                 RESOURCE_TYPE,
                                 session.getClientCode(),
                                 Boolean.FALSE,
-                                directoryFor(session.getAppCode(), customerWaId, outbound),
+                                directoryFor(session, customerWaId, outbound),
                                 storedNameFor(messageId, mimeType, fileName),
-                                RETENTION_MINUTES,
+                                // Core-owned: none, the app's retention policy decides.
+                                isCoreOwned(session) ? null : RETENTION_MINUTES,
                                 body))
                 .switchIfEmpty(Mono.defer(() -> {
                     // Same reasoning as the event path: retrying will not conjure the session row,
@@ -104,9 +112,10 @@ public class BridgeMediaService {
     /**
      * Stores a customer's profile picture.
      *
-     * <p>Kept out of the conversation's media tree on purpose, under {@code /whatsapp/{app}/avatars}
-     * rather than under {@code incoming}. Attachment retention sweeps that tree, and an avatar must
-     * not be swept: a photo expiring out of a thread is honest history, whereas a deal quietly
+     * <p>Kept out of the conversation's media tree on purpose, under {@code avatars} (in {@code
+     * /whatsapp/{app}/} or, for a core-owned number, {@code /{app}/whatsapp/}) rather than under
+     * {@code incoming}. Retention applies to the incoming and outgoing prefixes only, and an avatar
+     * must not be swept: a photo expiring out of a thread is honest history, whereas a deal quietly
      * losing its face after thirty days is a bug that would look like a rendering fault.
      *
      * <p>Named after the customer's number rather than the event, and overwritten in place, so one
@@ -127,7 +136,7 @@ public class BridgeMediaService {
                                 // to delete the old ones, for no benefit: nobody wants a customer's
                                 // previous profile pictures.
                                 Boolean.TRUE,
-                                "/whatsapp/" + sanitise(session.getAppCode()) + "/avatars",
+                                mediaRoot(session) + "/avatars",
                                 sanitise(customerWaId) + ".jpg",
                                 // No lifetime. An avatar is not conversation history and must not
                                 // vanish on the media schedule: an expired photo in a thread reads
@@ -188,7 +197,7 @@ public class BridgeMediaService {
         return FlatMapUtil.flatMapMono(
                         () -> this.sessionDao.getBySessionIdInternal(sessionId),
                         session -> {
-                            if (!readable(type, filePath, session.getAppCode())) {
+                            if (!readable(type, filePath, session)) {
                                 logger.error(
                                         "Bridge asked for {} ({}) on session {}, which is outside client {}'s"
                                                 + " readable files. Refusing.",
@@ -209,12 +218,12 @@ public class BridgeMediaService {
     }
 
     /** Whether this tree lets the bridge read this path at all. */
-    private static boolean readable(String resourceType, String filePath, String appCode) {
+    private static boolean readable(String resourceType, String filePath, WhatsappPhoneNumber session) {
         // Traversal is refused in both trees, for the reason given on ownedBy.
         if (filePath.contains("..")) return false;
         // The public tree needs no sub-path rule; the client qualification is the whole check.
         if (STATIC_RESOURCE_TYPE.equals(resourceType)) return true;
-        return ownedBy(filePath, appCode);
+        return ownedBy(filePath, session);
     }
 
     /**
@@ -224,13 +233,17 @@ public class BridgeMediaService {
      * over encodings, and nothing legitimate produces a ".." here: every path this service hands out
      * was built by storedNameFor from a sanitised message id.
      */
-    private static boolean ownedBy(String filePath, String appCode) {
+    private static boolean ownedBy(String filePath, WhatsappPhoneNumber session) {
         if (filePath.contains("..")) return false;
         // Compared against the unqualified form, because that is the shape create() hands back and
         // therefore the shape the caller has. The client is enforced separately, by qualifying with
         // the session's own client rather than trusting one in the path.
         String normalised = filePath.startsWith("/") ? filePath.substring(1) : filePath;
-        return normalised.startsWith("whatsapp/" + sanitise(appCode) + "/");
+        String appCode = sanitise(session.getAppCode());
+        // The old layout stays readable for a core-owned number too: media stored before the move
+        // was left where it was.
+        if (normalised.startsWith("whatsapp/" + appCode + "/")) return true;
+        return isCoreOwned(session) && normalised.startsWith(appCode + "/whatsapp/");
     }
 
     /** Prefixes the client root the download resolves against. */
@@ -243,14 +256,32 @@ public class BridgeMediaService {
      * The folder an attachment lives in.
      *
      * <p>App code is in the path even though the files service scopes by client alone. Without it
-     * two apps under one client share a whatsapp/ tree, and a per-app retention sweep or an audit
+     * two apps under one client share a whatsapp/ tree, and a per-app retention policy or an audit
      * has no way to tell them apart afterwards.
      */
-    private static String directoryFor(String appCode, String customerWaId, boolean outbound) {
+    static String directoryFor(WhatsappPhoneNumber session, String customerWaId, boolean outbound) {
         // Unknown rather than the message id when the bridge could not resolve the customer. Filing
         // it under its own id would scatter one conversation across a folder per message.
         String who = StringUtil.safeIsBlank(customerWaId) ? "unknown" : sanitise(customerWaId);
-        return "/whatsapp/" + sanitise(appCode) + "/" + (outbound ? "outgoing" : "incoming") + "/" + who;
+        return mediaRoot(session) + "/" + (outbound ? "outgoing" : "incoming") + "/" + who;
+    }
+
+    /**
+     * The root of a number's WhatsApp tree, relative to its client.
+     *
+     * <p>{@code /<appCode>/whatsapp} for a number core owns: everything an app stores sits under its
+     * own folder, which is the prefix its retention policies are registered against. {@code
+     * /whatsapp/<appCode>} for a number entity-processor owns, unchanged until leadzump retires, so
+     * nothing it already stored or reads moves.
+     */
+    static String mediaRoot(WhatsappPhoneNumber session) {
+        String app = sanitise(session.getAppCode());
+        return isCoreOwned(session) ? "/" + app + "/whatsapp" : "/whatsapp/" + app;
+    }
+
+    /** Whether core owns conversations on this number, i.e. an app's own KIRun handles them. */
+    static boolean isCoreOwned(WhatsappPhoneNumber session) {
+        return CoreEventHandler.SERVICE_NAME.equals(session.getOwnerService());
     }
 
     /**

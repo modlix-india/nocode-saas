@@ -1,5 +1,9 @@
 package com.modlix.saas.worker.feign;
 
+import java.util.List;
+
+import com.modlix.saas.worker.dto.FilesRetentionResult;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,4 +27,14 @@ public interface IFeignFilesService {
      */
     @PostMapping("/api/files/internal/{resourceType}/cleanupExpired")
     Integer cleanupExpired(@PathVariable("resourceType") String resourceType, @RequestParam("limit") int limit);
+
+    /**
+     * Asks the files service to remove what has outlived the retention policy of the app (or the
+     * client's override) whose prefix it sits under. As with {@link #cleanupExpired}, the files
+     * service decides; the worker only learns what went, grouped by client and app, so it can tell
+     * each app.
+     */
+    @PostMapping("/api/files/internal/{resourceType}/applyRetention")
+    List<FilesRetentionResult> applyRetention(
+            @PathVariable("resourceType") String resourceType, @RequestParam("limit") int limit);
 }

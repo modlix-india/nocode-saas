@@ -58,6 +58,10 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
     Mono<List<BigInteger>> getClientHierarchy(@RequestParam BigInteger clientId);
 
+    /** [clientCode, nearest managing client code, next, ...]; empty for an unknown code. */
+    @GetMapping("${security.feign.getClientHierarchyCodes:/api/security/clients/internal/clientHierarchyCodes}")
+    Mono<List<String>> getClientHierarchyCodes(@RequestParam String clientCode);
+
     @GetMapping("${security.feign.getManagingClientIds:/api/security/clients/internal/managingClientIds}")
     Mono<List<BigInteger>> getManagingClientIds(@RequestParam BigInteger clientId);
 

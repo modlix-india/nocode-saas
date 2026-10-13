@@ -1,5 +1,7 @@
 package com.modlix.saas.files.controller;
 
+import java.util.List;
+
 import org.jooq.types.UInteger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,8 +13,12 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
 import com.modlix.saas.files.model.DownloadOptions;
 import com.modlix.saas.files.model.FileDetail;
+import com.modlix.saas.files.model.retention.RetentionGroup;
+import com.modlix.saas.files.service.AbstractFilesResourceService;
+import com.modlix.saas.files.service.FilesRetentionService;
 import com.modlix.saas.files.service.SecuredFileResourceService;
 import com.modlix.saas.files.service.StaticFileResourceService;
 
@@ -25,12 +31,14 @@ public class FilesInternalController {
 
     private final StaticFileResourceService staticService;
     private final SecuredFileResourceService securedService;
+    private final FilesRetentionService retentionService;
 
     public FilesInternalController(StaticFileResourceService staticService,
-            SecuredFileResourceService securedService) {
+            SecuredFileResourceService securedService, FilesRetentionService retentionService) {
 
         this.staticService = staticService;
         this.securedService = securedService;
+        this.retentionService = retentionService;
     }
 
     @GetMapping(value = "/secured/createKey")
@@ -73,6 +81,27 @@ public class FilesInternalController {
 
         return ResponseEntity.ok(("secured".equals(resourceType) ? this.securedService : this.staticService)
                 .deleteExpired(limit));
+    }
+
+    /**
+     * Removes files that a path retention policy says are old enough: only under prefixes an app
+     * registered, only files without their own lifetime, at most {@code limit} per call.
+     *
+     * <p>Driven by the worker after {@code cleanupExpired}, for the same reasons. Returns what was
+     * removed, grouped by client and app, so the worker can tell each app which files went:
+     * {@code [{"clientCode","appCode","resourceType","paths":["/<appCode>/..."]}]}.
+     */
+    @PostMapping(value = "/{resourceType}/applyRetention")
+    public ResponseEntity<List<RetentionGroup>> applyRetention(
+            @PathVariable String resourceType,
+            @RequestParam(required = false, defaultValue = "500") int limit) {
+
+        boolean secured = "secured".equals(resourceType);
+        AbstractFilesResourceService service = secured ? this.securedService : this.staticService;
+
+        return ResponseEntity.ok(this.retentionService.applyRetention(
+                secured ? FilesFileSystemType.SECURED : FilesFileSystemType.STATIC, limit,
+                service.getFSService()::deleteFiles));
     }
 
     @GetMapping(value = "/{resourceType}/file")

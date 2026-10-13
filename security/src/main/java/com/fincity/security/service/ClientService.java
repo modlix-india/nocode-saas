@@ -263,6 +263,36 @@ public class ClientService
         return this.clientHierarchyService.getManagingClientIds(clientId);
     }
 
+    private static final String NO_CLIENT_HIERARCHY_MESSAGE = "No client hierarchy found";
+
+    /**
+     * The client's own code followed by the codes of the clients that manage it, nearest first:
+     * [clientCode, MANAGE_CLIENT_LEVEL_0, LEVEL_1, LEVEL_2, LEVEL_3], empty levels skipped. For a
+     * caller that resolves settings up the hierarchy by code (files retention: own row, then the
+     * nearest manager's). An unknown code gives an empty list. A client with no hierarchy row
+     * gives just its own code, since it has no managers on record. Any other failure propagates,
+     * so a caller never mistakes a lookup error for "no managers".
+     */
+    public Mono<List<String>> getClientHierarchyCodes(String clientCode) {
+
+        if (StringUtil.safeIsBlank(clientCode))
+            return Mono.just(List.of());
+
+        return this.getClientBy(clientCode)
+                .flatMap(client -> this.clientHierarchyService.getClientHierarchyIdInOrder(client.getId())
+                        .onErrorResume(e -> e instanceof GenericException ge
+                                && ge.getMessage() != null
+                                && ge.getMessage().startsWith(NO_CLIENT_HIERARCHY_MESSAGE),
+                                e -> Mono.just(List.of(client.getId())))
+                        .defaultIfEmpty(List.of(client.getId()))
+                        .flatMapMany(Flux::fromIterable)
+                        .concatMap(id -> id.equals(client.getId()) ? Mono.just(client.getCode())
+                                : this.getClientInfoById(id).map(Client::getCode))
+                        .collectList())
+                .defaultIfEmpty(List.of())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientHierarchyCodes"));
+    }
+
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()

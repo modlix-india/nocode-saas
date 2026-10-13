@@ -597,14 +597,19 @@ public class FileSystemDao {
      *
      * <p>Bounded by {@code limit}. A cleanup that tries to remove everything in one pass is one bad
      * day away from holding a transaction open across a hundred thousand S3 deletes.
+     *
+     * <p>Scoped to one file system {@code type}. The caller deletes the object from that type's
+     * bucket, so a row of the other type read here would have its row removed while its object was
+     * left orphaned in the other bucket.
      */
-    public List<ExpiredFile> readExpired(int limit) {
+    public List<ExpiredFile> readExpired(FilesFileSystemType type, int limit) {
 
         return this.context
                 .select(FILES_FILE_SYSTEM.ID, FILES_FILE_SYSTEM.CODE, FILES_FILE_SYSTEM.TYPE, FILES_FILE_SYSTEM.NAME,
                         FILES_FILE_SYSTEM.PARENT_ID)
                 .from(FILES_FILE_SYSTEM)
-                .where(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES.isNotNull())
+                .where(FILES_FILE_SYSTEM.TYPE.eq(type))
+                .and(FILES_FILE_SYSTEM.EXPIRES_AFTER_MINUTES.isNotNull())
                 .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.FILE))
                 // The expiry is relative, so it is computed here rather than stored. Comparing in
                 // SQL keeps it one indexed pass instead of reading every file with a lifetime.
@@ -653,4 +658,180 @@ public class FileSystemDao {
 
     /** One file the cleanup may remove: where it is, and who it belongs to. */
     public record ExpiredFile(ULong id, String clientCode, FilesFileSystemType type, String path) {}
+
+    // ---------------------------------------------------------------------------------------------
+    // Retention policy sweep
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Clients that have an {@code <appCode>} folder at their root in this file system, with that
+     * folder's id. These are the only clients a policy registered for the app can ever touch.
+     */
+    public Map<String, ULong> readAppRootFolders(FilesFileSystemType type, String appCode) {
+
+        Map<String, ULong> map = new java.util.LinkedHashMap<>();
+
+        this.context.select(FILES_FILE_SYSTEM.CODE, FILES_FILE_SYSTEM.ID)
+                .from(FILES_FILE_SYSTEM)
+                .where(FILES_FILE_SYSTEM.TYPE.eq(type))
+                .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY))
+                .and(FILES_FILE_SYSTEM.PARENT_ID.isNull())
+                .and(FILES_FILE_SYSTEM.NAME.eq(appCode))
+                .orderBy(FILES_FILE_SYSTEM.CODE.asc())
+                .fetch()
+                .forEach(r -> map.putIfAbsent(r.get(FILES_FILE_SYSTEM.CODE), r.get(FILES_FILE_SYSTEM.ID)));
+
+        return map;
+    }
+
+    /** The {@code <name>} folder at the root of a client's tree, or null. */
+    public ULong readRootFolderId(FilesFileSystemType type, String clientCode, String name) {
+
+        return this.context.select(FILES_FILE_SYSTEM.ID)
+                .from(FILES_FILE_SYSTEM)
+                .where(FILES_FILE_SYSTEM.TYPE.eq(type))
+                .and(FILES_FILE_SYSTEM.CODE.eq(clientCode))
+                .and(FILES_FILE_SYSTEM.PARENT_ID.isNull())
+                .and(FILES_FILE_SYSTEM.NAME.eq(name))
+                .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY))
+                .limit(1)
+                .fetchOneInto(ULong.class);
+    }
+
+    /**
+     * The folder at {@code segments} below {@code folderId}, or null when any segment is missing or
+     * is a file rather than a folder. Read only: unlike {@link #getFolderId} this never creates.
+     */
+    public ULong readSubFolderId(FilesFileSystemType type, String clientCode, ULong folderId, List<String> segments) {
+
+        ULong current = folderId;
+
+        for (String segment : segments) {
+            if (current == null)
+                return null;
+
+            current = this.context.select(FILES_FILE_SYSTEM.ID)
+                    .from(FILES_FILE_SYSTEM)
+                    .where(FILES_FILE_SYSTEM.TYPE.eq(type))
+                    .and(FILES_FILE_SYSTEM.CODE.eq(clientCode))
+                    .and(FILES_FILE_SYSTEM.PARENT_ID.eq(current))
+                    .and(FILES_FILE_SYSTEM.NAME.eq(segment))
+                    .and(FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY))
+                    .limit(1)
+                    .fetchOneInto(ULong.class);
+        }
+
+        return current;
+    }
+
+    /**
+     * The common table expression behind the retention reads: every row below {@code folderId}, with
+     * its path relative to that folder ("/a/b.png"), not descending into {@code excludedFolderIds}.
+     *
+     * <p>The exclusions are the folders of longer registered prefixes inside this one. Those files
+     * belong to their own prefix (the longest prefix wins), so they must not be swept by this one.
+     *
+     * <p>Every step is held to the same client and type as the root, so a damaged PARENT_ID can never
+     * lead the walk into another client's tree.
+     */
+    private String retentionTreeSql(int excludedCount) {
+
+        // Rendered by jOOQ so any schema mapping configured for this context applies here too.
+        String table = this.context.render(FILES_FILE_SYSTEM);
+
+        StringBuilder sb = new StringBuilder()
+                .append("WITH RECURSIVE retention_tree (ID, FILE_TYPE, REL_PATH, SIZE, UPDATED_AT, EXPIRES_AFTER_MINUTES) AS (")
+                .append(" SELECT f.ID, f.FILE_TYPE, CAST('' AS CHAR(4096) CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,")
+                .append(" f.SIZE, f.UPDATED_AT, f.EXPIRES_AFTER_MINUTES")
+                .append(" FROM ").append(table).append(" f WHERE f.ID = ? AND f.CODE = ? AND f.TYPE = ?")
+                .append(" UNION ALL")
+                .append(" SELECT c.ID, c.FILE_TYPE, CONCAT(t.REL_PATH, '/', c.NAME), c.SIZE, c.UPDATED_AT, c.EXPIRES_AFTER_MINUTES")
+                .append(" FROM ").append(table).append(" c JOIN retention_tree t ON c.PARENT_ID = t.ID")
+                .append(" WHERE t.FILE_TYPE = 'DIRECTORY' AND c.CODE = ? AND c.TYPE = ?");
+
+        if (excludedCount > 0) {
+            sb.append(" AND c.ID NOT IN (");
+            for (int i = 0; i < excludedCount; i++)
+                sb.append(i == 0 ? "?" : ", ?");
+            sb.append(")");
+        }
+
+        return sb.append(")").toString();
+    }
+
+    /**
+     * The condition a file must meet to be removed by a policy of {@code days}: a file, without its
+     * own lifetime (an explicit per-file lifetime always wins over a folder policy), last written
+     * more than {@code days} ago by the database's clock, the same clock the lifetime cleanup uses.
+     */
+    private static final String RETENTION_ELIGIBLE = " FROM retention_tree WHERE FILE_TYPE = 'FILE'"
+            + " AND EXPIRES_AFTER_MINUTES IS NULL"
+            + " AND UPDATED_AT < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ? DAY)";
+
+    private static List<Object> retentionBinds(FilesFileSystemType type, String clientCode, ULong folderId,
+                                               Collection<ULong> excludedFolderIds, int days) {
+
+        List<Object> binds = new ArrayList<>();
+        binds.add(folderId);
+        binds.add(clientCode);
+        binds.add(type.getLiteral());
+        binds.add(clientCode);
+        binds.add(type.getLiteral());
+        if (excludedFolderIds != null)
+            binds.addAll(excludedFolderIds);
+        binds.add(days);
+        return binds;
+    }
+
+    /**
+     * Files a retention policy of {@code days} would remove under {@code folderId}, oldest first,
+     * at most {@code limit}. {@code folderPath} is the folder's own path within the client
+     * ("/appCode/whatsapp/incoming") and is prefixed to every returned path.
+     */
+    public List<ExpiredFile> readRetentionExpired(FilesFileSystemType type, String clientCode, ULong folderId,
+                                                  String folderPath, Collection<ULong> excludedFolderIds, int days,
+                                                  int limit) {
+
+        if (limit <= 0)
+            return List.of();
+
+        int excluded = excludedFolderIds == null ? 0 : excludedFolderIds.size();
+        List<Object> binds = retentionBinds(type, clientCode, folderId, excludedFolderIds, days);
+        binds.add(limit);
+
+        String sql = retentionTreeSql(excluded) + " SELECT ID, REL_PATH" + RETENTION_ELIGIBLE
+                + " ORDER BY UPDATED_AT ASC, ID ASC LIMIT ?";
+
+        return this.context.fetch(sql, binds.toArray())
+                .map(r -> new ExpiredFile(
+                        r.get(0, ULong.class),
+                        clientCode,
+                        type,
+                        folderPath + r.get(1, String.class)));
+    }
+
+    /**
+     * Count and total size of what {@link #readRetentionExpired} would remove without a limit, for
+     * the dry run shown before a policy is saved.
+     */
+    public RetentionPreviewCount countRetentionExpired(FilesFileSystemType type, String clientCode, ULong folderId,
+                                                       Collection<ULong> excludedFolderIds, int days) {
+
+        int excluded = excludedFolderIds == null ? 0 : excludedFolderIds.size();
+        List<Object> binds = retentionBinds(type, clientCode, folderId, excludedFolderIds, days);
+
+        String sql = retentionTreeSql(excluded) + " SELECT COUNT(*), COALESCE(SUM(SIZE), 0)" + RETENTION_ELIGIBLE;
+
+        var rec = this.context.fetchOne(sql, binds.toArray());
+
+        if (rec == null)
+            return new RetentionPreviewCount(0L, 0L);
+
+        Long count = rec.get(0, Long.class);
+        Long bytes = rec.get(1, Long.class);
+        return new RetentionPreviewCount(count == null ? 0L : count, bytes == null ? 0L : bytes);
+    }
+
+    /** What a retention dry run found: how many files and how many bytes. */
+    public record RetentionPreviewCount(long count, long totalBytes) {}
 }

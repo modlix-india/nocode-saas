@@ -6,10 +6,12 @@ package com.modlix.saas.files.jooq;
 
 import com.modlix.saas.files.jooq.tables.FilesAccessPath;
 import com.modlix.saas.files.jooq.tables.FilesFileSystem;
+import com.modlix.saas.files.jooq.tables.FilesRetentionPolicy;
 import com.modlix.saas.files.jooq.tables.FilesSecuredAccessKeys;
 import com.modlix.saas.files.jooq.tables.FilesUploadDownload;
 import com.modlix.saas.files.jooq.tables.records.FilesAccessPathRecord;
 import com.modlix.saas.files.jooq.tables.records.FilesFileSystemRecord;
+import com.modlix.saas.files.jooq.tables.records.FilesRetentionPolicyRecord;
 import com.modlix.saas.files.jooq.tables.records.FilesSecuredAccessKeysRecord;
 import com.modlix.saas.files.jooq.tables.records.FilesUploadDownloadRecord;
 
@@ -34,6 +36,8 @@ public class Keys {
 
     public static final UniqueKey<FilesAccessPathRecord> KEY_FILES_ACCESS_PATH_PRIMARY = Internal.createUniqueKey(FilesAccessPath.FILES_ACCESS_PATH, DSL.name("KEY_files_access_path_PRIMARY"), new TableField[] { FilesAccessPath.FILES_ACCESS_PATH.ID }, true);
     public static final UniqueKey<FilesFileSystemRecord> KEY_FILES_FILE_SYSTEM_PRIMARY = Internal.createUniqueKey(FilesFileSystem.FILES_FILE_SYSTEM, DSL.name("KEY_files_file_system_PRIMARY"), new TableField[] { FilesFileSystem.FILES_FILE_SYSTEM.ID }, true);
+    public static final UniqueKey<FilesRetentionPolicyRecord> KEY_FILES_RETENTION_POLICY_PRIMARY = Internal.createUniqueKey(FilesRetentionPolicy.FILES_RETENTION_POLICY, DSL.name("KEY_files_retention_policy_PRIMARY"), new TableField[] { FilesRetentionPolicy.FILES_RETENTION_POLICY.ID }, true);
+    public static final UniqueKey<FilesRetentionPolicyRecord> KEY_FILES_RETENTION_POLICY_UK_FILES_RETENTION_POLICY = Internal.createUniqueKey(FilesRetentionPolicy.FILES_RETENTION_POLICY, DSL.name("KEY_files_retention_policy_UK_FILES_RETENTION_POLICY"), new TableField[] { FilesRetentionPolicy.FILES_RETENTION_POLICY.APP_CODE, FilesRetentionPolicy.FILES_RETENTION_POLICY.CLIENT_CODE, FilesRetentionPolicy.FILES_RETENTION_POLICY.RESOURCE_TYPE, FilesRetentionPolicy.FILES_RETENTION_POLICY.PATH, FilesRetentionPolicy.FILES_RETENTION_POLICY.APPLIES_TO, FilesRetentionPolicy.FILES_RETENTION_POLICY.LEVEL }, true);
     public static final UniqueKey<FilesSecuredAccessKeysRecord> KEY_FILES_SECURED_ACCESS_KEYS_PRIMARY = Internal.createUniqueKey(FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS, DSL.name("KEY_files_secured_access_keys_PRIMARY"), new TableField[] { FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS.ID }, true);
     public static final UniqueKey<FilesSecuredAccessKeysRecord> KEY_FILES_SECURED_ACCESS_KEYS_UK1_ACCESS_KEY = Internal.createUniqueKey(FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS, DSL.name("KEY_files_secured_access_keys_UK1_ACCESS_KEY"), new TableField[] { FilesSecuredAccessKeys.FILES_SECURED_ACCESS_KEYS.ACCESS_KEY }, true);
     public static final UniqueKey<FilesUploadDownloadRecord> KEY_FILES_UPLOAD_DOWNLOAD_PRIMARY = Internal.createUniqueKey(FilesUploadDownload.FILES_UPLOAD_DOWNLOAD, DSL.name("KEY_files_upload_download_PRIMARY"), new TableField[] { FilesUploadDownload.FILES_UPLOAD_DOWNLOAD.ID }, true);
