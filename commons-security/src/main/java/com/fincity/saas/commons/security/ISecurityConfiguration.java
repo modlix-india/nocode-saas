@@ -1,9 +1,11 @@
 package com.fincity.saas.commons.security;
 
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint;
 import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
@@ -54,7 +56,17 @@ public interface ISecurityConfiguration {
 				})
 				.addFilterAt(new JWTTokenFilter(authService, om), SecurityWebFiltersOrder.HTTP_BASIC)
 				.formLogin(ServerHttpSecurity.FormLoginSpec::disable)
-				.logout(ServerHttpSecurity.LogoutSpec::disable);
+				.logout(ServerHttpSecurity.LogoutSpec::disable)
+				// Basic credentials ("Authorization: Basic ...", header or cookie) are checked by
+				// JWTTokenFilter above, not by Spring's httpBasic, so it stays off.
+				.httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+				// A plain 401 with no challenge. Left unset, ExceptionTranslationWebFilter falls
+				// back to HttpBasicServerAuthenticationEntryPoint, which adds
+				// `WWW-Authenticate: Basic realm="Realm"` to every 401, and a browser answers that
+				// on a credentialed request (EventSource withCredentials, fetch with cookies,
+				// document loads) with its native "Sign in" dialog over the app.
+				.exceptionHandling(exceptions -> exceptions
+						.authenticationEntryPoint(new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)));
 
 		return http.build();
 	}

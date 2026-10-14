@@ -58,6 +58,7 @@ import com.fincity.saas.commons.core.enums.StorageRelationType;
 import com.fincity.saas.commons.core.enums.StorageTriggerType;
 import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.model.DraftCopyFilter;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.connection.appdata.mysql.FanOutReport;
@@ -693,6 +694,163 @@ public class AppDataService {
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         CoreMessageResourceService.STORAGE_NOT_FOUND)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.copyLiveDataToDraft"));
+    }
+
+    /**
+     * Empty every storage's draft rows for one app and tenant: "start the draft over".
+     *
+     * Same bar as {@link #copyLiveDataToDraft}, write access to the app. Live rows are
+     * never touched; both namespaces are named explicitly, not taken from the ambient
+     * flag.
+     *
+     * @return rows deleted, by storage name, for the storages that had any
+     */
+    public Mono<Map<String, Long>> clearDraftData(String appCode, String clientCode) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.appCode(appCode, ca),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.canWriteApp(ca, ac),
+                        (ca, ac, cc, canWrite) -> this.appDataBackend(ac, cc),
+                        (ca, ac, cc, canWrite, backend) -> this.appStorages(ac, cc),
+                        (ca, ac, cc, canWrite, backend, storages) -> Flux.fromIterable(storages.values())
+                                .concatMap(s -> backend.getT1()
+                                        .clearDraftRows(cc, backend.getT2().orElse(null), s)
+                                        .map(n -> Tuples.of(s.getName(), n)))
+                                .filter(t -> t.getT2() > 0)
+                                .collectMap(Tuple2::getT1, Tuple2::getT2, LinkedHashMap::new))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.clearDraftData"));
+    }
+
+    /**
+     * Replace an app's draft rows with its live rows, every storage of it, for one tenant.
+     *
+     * A storage with no entry in {@code filters} is copied whole. One with an entry
+     * gets only the rows its {@link DraftCopyFilter} selects, which is how a draft is
+     * seeded with a recent slice of a big app instead of all of it. Storages that others
+     * follow are copied before them; a follow that loops back on itself is refused.
+     *
+     * Each storage's draft rows are replaced, so storages left out of the copy keep
+     * whatever draft rows they had. A caller that wants nothing but this copy clears first.
+     *
+     * @return rows copied, by storage name, in the order they were copied
+     */
+    public Mono<Map<String, Long>> copyAppToDraft(String appCode, String clientCode,
+            Map<String, DraftCopyFilter> filters) {
+
+        Map<String, DraftCopyFilter> byName = filters == null ? Map.of() : filters;
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.appCode(appCode, ca),
+                        (ca, ac) -> this.clientCode(clientCode),
+                        (ca, ac, cc) -> this.canWriteApp(ca, ac),
+                        (ca, ac, cc, canWrite) -> this.appDataBackend(ac, cc),
+                        (ca, ac, cc, canWrite, backend) -> this.appStorages(ac, cc),
+                        (ca, ac, cc, canWrite, backend, storages) -> this.draftCopyOrder(storages, byName),
+                        (ca, ac, cc, canWrite, backend, storages, order) -> Flux.fromIterable(order)
+                                .concatMap(s -> backend.getT1()
+                                        .copyLiveToDraft(cc, backend.getT2().orElse(null), s,
+                                                byName.get(s.getName()), storages)
+                                        .map(n -> Tuples.of(s.getName(), n)))
+                                .collectMap(Tuple2::getT1, Tuple2::getT2, LinkedHashMap::new))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.copyAppToDraft"));
+    }
+
+    private Mono<Boolean> canWriteApp(ContextAuthentication ca, String appCode) {
+        return this.securityService.hasWriteAccess(appCode, ca.getClientCode())
+                .defaultIfEmpty(Boolean.FALSE)
+                .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess)
+                        ? Mono.just(Boolean.TRUE)
+                        : this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                CoreMessageResourceService.FORBIDDEN_EXPLICIT_DRAFT_SURFACE, appCode));
+    }
+
+    /** The backend holding this app's data, with its connection when it has one. */
+    private Mono<Tuple2<IAppDataService, Optional<Connection>>> appDataBackend(String appCode, String clientCode) {
+        return this.connectionService.read("appData", appCode, clientCode, ConnectionType.APP_DATA)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .map(conn -> Tuples.of(
+                        this.services.get(conn.isEmpty() ? DEFAULT_APP_DATA_SERVICE : conn.get().getConnectionSubType()),
+                        conn));
+    }
+
+    /**
+     * The app's storages as this tenant sees them, keyed by name.
+     *
+     * Names come from every client's documents, so a storage another client added is
+     * in the list and does not resolve here: that is the expected case and it is
+     * dropped. Anything else that goes wrong resolving a storage is an error, not a
+     * storage quietly left out of the copy.
+     */
+    private Mono<Map<String, Storage>> appStorages(String appCode, String clientCode) {
+        return this.storageService.storageNames(appCode)
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(name -> this.getStorageWithKIRunValidation(name, appCode, clientCode)
+                        .map(ObjectWithUniqueID::getObject)
+                        .onErrorResume(
+                                e -> e instanceof GenericException ge
+                                        && (ge.getStatusCode() == HttpStatus.NOT_FOUND
+                                                || ge.getStatusCode() == HttpStatus.FORBIDDEN),
+                                e -> Mono.empty()))
+                .collectMap(Storage::getName, s -> s, LinkedHashMap::new);
+    }
+
+    /**
+     * Unfiltered and condition-only storages first, then every follower after the
+     * storages it follows.
+     */
+    private Mono<List<Storage>> draftCopyOrder(Map<String, Storage> storages, Map<String, DraftCopyFilter> filters) {
+
+        for (Entry<String, DraftCopyFilter> e : filters.entrySet()) {
+            if (!storages.containsKey(e.getKey()))
+                return this.unsupportedDraftCopy("no storage named " + e.getKey() + " in this app");
+            if (e.getValue() == null || !e.getValue().hasFollow()) continue;
+            for (DraftCopyFilter.Follow f : e.getValue().getFollow()) {
+                if (StringUtil.safeIsBlank(f.getField()) || !storages.containsKey(f.getStorage()))
+                    return this.unsupportedDraftCopy(
+                            e.getKey() + " follows " + f.getStorage() + "." + f.getField() + ", which is not there");
+            }
+        }
+
+        List<Storage> order = new ArrayList<>();
+        Set<String> placed = new HashSet<>();
+
+        for (Storage s : storages.values()) {
+            DraftCopyFilter f = filters.get(s.getName());
+            if (f == null || !f.hasFollow()) {
+                order.add(s);
+                placed.add(s.getName());
+            }
+        }
+
+        List<String> waiting = storages.keySet().stream().filter(n -> !placed.contains(n)).collect(Collectors.toCollection(ArrayList::new));
+
+        while (!waiting.isEmpty()) {
+            List<String> ready = waiting.stream()
+                    .filter(n -> filters.get(n).getFollow().stream()
+                            .allMatch(f -> placed.contains(f.getStorage()) && !f.getStorage().equals(n)))
+                    .toList();
+
+            if (ready.isEmpty()) return this.unsupportedDraftCopy("these storages follow each other: " + waiting);
+
+            for (String n : ready) {
+                order.add(storages.get(n));
+                placed.add(n);
+            }
+            waiting.removeAll(ready);
+        }
+
+        return Mono.just(order);
+    }
+
+    private <T> Mono<T> unsupportedDraftCopy(String reason) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                CoreMessageResourceService.UNSUPPORTED_CONDITION, reason);
     }
 
     public Mono<Long> estimatedRowCount(String appCode, String clientCode) {

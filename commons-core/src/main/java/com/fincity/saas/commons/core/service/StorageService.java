@@ -582,6 +582,29 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                 .map(index -> index.getOrDefault(storageName, List.of()));
     }
 
+    /**
+     * Every storage name an app has, across all clients' documents.
+     *
+     * A superset for any one client, like {@link #storagesReferencing}: a storage one
+     * client added to the app is listed for all of them, so a caller resolves each name
+     * as its own client and drops the ones that do not resolve.
+     */
+    public Mono<List<String>> storageNames(String appCode) {
+
+        if (StringUtil.safeIsBlank(appCode)) return Mono.just(List.of());
+
+        return this.mongoTemplate
+                .findDistinct(
+                        new org.springframework.data.mongodb.core.query.Query(
+                                org.springframework.data.mongodb.core.query.Criteria.where("appCode")
+                                        .is(appCode)),
+                        "name",
+                        this.getCollectionName(),
+                        String.class)
+                .sort()
+                .collectList();
+    }
+
     private Mono<Map<String, List<String>>> referenceIndex(String appCode) {
 
         return this.mongoTemplate
