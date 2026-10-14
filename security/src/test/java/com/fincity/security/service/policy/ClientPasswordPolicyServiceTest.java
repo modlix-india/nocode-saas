@@ -120,56 +120,70 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 
-		@Test
-		void missingUppercase_WhenAllCharsAreUppercase_ThrowsBadRequest() {
-			// The checkDoesntExistsInBetween method returns true when ALL characters are
-			// within [A,Z], which triggers CAPITAL_LETTERS_MISSING
-			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
-			policy.setAtleastOneUppercase(true);
-			String allUppercase = "ABCDEFGHIJKLM";
+		// QA-0345 / QA-0352: checkDoesntExistsInBetween used to return false at the first character
+		// OUTSIDE the range, so a rule only fired when EVERY character was in that range. These pin the
+		// real rules: each fires when the class is missing from a mixed password, and only then.
 
+		private ClientPasswordPolicy onlyRules(boolean upper, boolean lower, boolean digit, boolean special) {
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			policy.setAtleastOneUppercase(upper);
+			policy.setAtleastOneLowercase(lower);
+			policy.setAtleastOneDigit(digit);
+			policy.setAtleastOneSpecialChar(special);
+			policy.setSpacesAllowed(true);
+			policy.setRegex(null);
+			policy.setPassMinLength((short) 4);
+			policy.setPassMaxLength((short) 30);
+			return policy;
+		}
+
+		private void expectBadRequest(ClientPasswordPolicy policy, String password) {
 			when(dao.getPastPasswordsBasedOnPolicy(any(ClientPasswordPolicy.class), eq(USER_ID)))
 					.thenReturn(Flux.empty());
-
-			StepVerifier.create(service.checkAllConditions(policy, USER_ID, allUppercase))
+			StepVerifier.create(service.checkAllConditions(policy, USER_ID, password))
 					.expectErrorMatches(e -> e instanceof GenericException
 							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
 					.verify();
 		}
 
-		@Test
-		void missingLowercase_WhenAllCharsAreLowercase_ThrowsBadRequest() {
-			// When all characters are in [a,z], the second check in checkAlphanumericExists triggers
-			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
-			policy.setAtleastOneUppercase(true);
-			policy.setAtleastOneLowercase(true);
-			String allLowercase = "abcdefghijklm";
-
+		private void expectValid(ClientPasswordPolicy policy, String password) {
 			when(dao.getPastPasswordsBasedOnPolicy(any(ClientPasswordPolicy.class), eq(USER_ID)))
 					.thenReturn(Flux.empty());
-
-			StepVerifier.create(service.checkAllConditions(policy, USER_ID, allLowercase))
-					.expectErrorMatches(e -> e instanceof GenericException
-							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
-					.verify();
+			StepVerifier.create(service.checkAllConditions(policy, USER_ID, password))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
 		}
 
 		@Test
-		void missingDigit_WhenAllCharsAreDigits_ThrowsBadRequest() {
-			// When all characters are digits [0,9], the digit check triggers
-			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
-			policy.setAtleastOneUppercase(false);
-			policy.setAtleastOneLowercase(false);
-			policy.setAtleastOneDigit(true);
-			String allDigits = "1234567890123";
+		void missingUppercase_InMixedPassword_ThrowsBadRequest() {
+			expectBadRequest(onlyRules(true, false, false, false), "kjhjhj@hhg1");
+		}
 
-			when(dao.getPastPasswordsBasedOnPolicy(any(ClientPasswordPolicy.class), eq(USER_ID)))
-					.thenReturn(Flux.empty());
+		@Test
+		void hasUppercase_InMixedPassword_ReturnsTrue() {
+			expectValid(onlyRules(true, false, false, false), "kjhJhj@hhg1");
+		}
 
-			StepVerifier.create(service.checkAllConditions(policy, USER_ID, allDigits))
-					.expectErrorMatches(e -> e instanceof GenericException
-							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
-					.verify();
+		@Test
+		void missingLowercase_InMixedPassword_ThrowsBadRequest() {
+			expectBadRequest(onlyRules(false, true, false, false), "ABC@1234");
+		}
+
+		@Test
+		void lowercaseRule_FollowsItsOwnFlag_NotTheUppercaseOne() {
+			// the lowercase check used to read isAtleastOneUppercase()
+			expectValid(onlyRules(true, false, false, false), "ABC@1234");
+		}
+
+		@Test
+		void missingDigit_InMixedPassword_ThrowsBadRequest() {
+			expectBadRequest(onlyRules(false, false, true, false), "Naga@nag");
+		}
+
+		@Test
+		void specialChar_NotRequired_ReturnsTrue() {
+			// checkInSpecialCharacters used to run for every policy
+			expectValid(onlyRules(true, true, true, false), "Test12345");
 		}
 
 		@Test
