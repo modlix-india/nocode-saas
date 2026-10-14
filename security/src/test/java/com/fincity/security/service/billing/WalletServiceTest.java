@@ -37,6 +37,7 @@ import com.fincity.security.dto.billing.AppBillingConfig;
 import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Wallet;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
+import com.fincity.security.jooq.enums.SecurityAppBillingConfigStatus;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.model.billing.AiChargeRequest;
@@ -448,7 +449,8 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             App builder = TestDataFactory.createOwnApp(BUILDER_APP_ID, ULong.valueOf(1), "appbuilder");
             Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
             AppBillingConfig cfg = new AppBillingConfig().setAppId(BUILDER_APP_ID).setClientId(C_CLIENT)
-                    .setAiTokensPerMillion(BigDecimal.valueOf(1000));
+                    .setAiTokensPerMillion(BigDecimal.valueOf(1000))
+                    .setStatus(SecurityAppBillingConfigStatus.ACTIVE);
 
             when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
             when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
@@ -474,11 +476,70 @@ class WalletServiceTest extends AbstractServiceUnitTest {
         }
 
         @Test
+        void chargeAiChargesNothingWhenTheConfigIsPaused() {
+            App builder = TestDataFactory.createOwnApp(BUILDER_APP_ID, ULong.valueOf(1), "appbuilder");
+            Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
+            AppBillingConfig cfg = new AppBillingConfig().setAppId(BUILDER_APP_ID).setClientId(C_CLIENT)
+                    .setAiTokensPerMillion(BigDecimal.valueOf(1000))
+                    .setStatus(SecurityAppBillingConfigStatus.INACTIVE);
+            when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
+            when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(BUILDER_APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
+
+            AiChargeRequest req = new AiChargeRequest("MMMM", "appbuilder", "opus",
+                    BigDecimal.valueOf(2_000_000), "req-2", "sess-1");
+
+            StepVerifier.create(service.chargeAi(req))
+                    .assertNext(r -> assertFalse(r.charged()))
+                    .verifyComplete();
+            verify(walletDAO, never()).debit(any(), any());
+        }
+
+        private void billedBy(SecurityAppBillingConfigStatus status) {
+            AppBillingConfig cfg = new AppBillingConfig().setAppId(BUILDER_APP_ID).setClientId(C_CLIENT)
+                    .setStatus(status);
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(BUILDER_APP_ID, C_CLIENT)).thenReturn(Mono.just(cfg));
+        }
+
+        @Test
+        void aiAllowedTrueWhenTheConfigIsPausedEvenIfTheWalletIsSuspended() {
+            // A wallet left SUSPENDED from an earlier active period must not block AI
+            // once billing for the app is paused.
+            App builder = TestDataFactory.createOwnApp(BUILDER_APP_ID, ULong.valueOf(1), "appbuilder");
+            Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
+            when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
+            when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
+            billedBy(SecurityAppBillingConfigStatus.INACTIVE);
+
+            StepVerifier.create(service.isAiAllowed("appbuilder", "MMMM"))
+                    .expectNext(true)
+                    .verifyComplete();
+            verify(walletDAO, never()).findByClientAndApp(any(), any());
+        }
+
+        @Test
+        void aiAllowedTrueWhenTheAppHasNoBillingConfig() {
+            App builder = TestDataFactory.createOwnApp(BUILDER_APP_ID, ULong.valueOf(1), "appbuilder");
+            Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
+            when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
+            when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
+            when(clientHierarchyService.getClientHierarchyIdInOrder(M_CLIENT)).thenReturn(Mono.just(List.of(C_CLIENT)));
+            when(configService.readByAppAndClientId(BUILDER_APP_ID, C_CLIENT)).thenReturn(Mono.empty());
+
+            StepVerifier.create(service.isAiAllowed("appbuilder", "MMMM"))
+                    .expectNext(true)
+                    .verifyComplete();
+        }
+
+        @Test
         void aiAllowedFalseWhenBuilderWalletSuspended() {
             App builder = TestDataFactory.createOwnApp(BUILDER_APP_ID, ULong.valueOf(1), "appbuilder");
             Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
             when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
             when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
+            billedBy(SecurityAppBillingConfigStatus.ACTIVE);
             Wallet w = new Wallet().setClientId(M_CLIENT).setAppId(BUILDER_APP_ID)
                     .setStatus(SecurityWalletStatus.SUSPENDED);
             w.setId(WALLET_ID);
@@ -495,6 +556,7 @@ class WalletServiceTest extends AbstractServiceUnitTest {
             Client m = TestDataFactory.createClient(M_CLIENT, "MMMM", "BUS", SecurityClientStatusCode.ACTIVE);
             when(appService.getAppByCode("appbuilder")).thenReturn(Mono.just(builder));
             when(clientService.getClientBy("MMMM")).thenReturn(Mono.just(m));
+            billedBy(SecurityAppBillingConfigStatus.ACTIVE);
             when(walletDAO.findByClientAndApp(M_CLIENT, BUILDER_APP_ID)).thenReturn(Mono.empty());
 
             StepVerifier.create(service.isAiAllowed("appbuilder", "MMMM"))
