@@ -38,6 +38,7 @@ import com.fincity.security.dto.billing.Invoice;
 import com.fincity.security.dto.billing.Wallet;
 import com.fincity.security.dto.billing.WalletTransaction;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
+import com.fincity.security.jooq.enums.SecurityAppBillingConfigStatus;
 import com.fincity.security.jooq.enums.SecurityWalletStatus;
 import com.fincity.security.jooq.enums.SecurityWalletTransactionType;
 import com.fincity.security.jooq.tables.records.SecurityWalletRecord;
@@ -404,15 +405,21 @@ public class WalletService
     }
 
     /**
-     * AI start-of-turn gate: false only when M's builder wallet is SUSPENDED. No
-     * wallet or any lookup miss is allowed (fail-open is the caller's job too).
+     * AI start-of-turn gate: false only when billing is ACTIVE for the app (the
+     * config that governs M, see {@link #resolveConfigForBilledClient}) and M's
+     * builder wallet is SUSPENDED. A paused (INACTIVE) config or no config at all
+     * means the app is not billed, so a wallet left SUSPENDED from an earlier
+     * active period must not block AI. No wallet or any lookup miss is allowed
+     * (fail-open is the caller's job too).
      */
     public Mono<Boolean> isAiAllowed(String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByCode(appCode),
                 app -> this.clientService.getClientBy(clientCode),
-                (app, client) -> this.dao.findByClientAndApp(client.getId(), app.getId())
-                        .map(w -> w.getStatus() != SecurityWalletStatus.SUSPENDED)
+                (app, client) -> this.resolveConfigForBilledClient(app.getId(), client.getId())
+                        .filter(WalletService::isBillingActive)
+                        .flatMap(config -> this.dao.findByClientAndApp(client.getId(), app.getId())
+                                .map(w -> w.getStatus() != SecurityWalletStatus.SUSPENDED))
                         .defaultIfEmpty(Boolean.TRUE))
                 .defaultIfEmpty(Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WalletService.isAiAllowed"));
@@ -425,6 +432,10 @@ public class WalletService
                 app -> this.clientService.getClientBy(req.clientCode()),
                 (app, client) -> this.resolveConfigForBilledClient(app.getId(), client.getId()),
                 (app, client, config) -> {
+                    // A paused config bills nothing: the lookup above returns every
+                    // non-DELETED config so that the nearest one governs, active or not.
+                    if (!isBillingActive(config))
+                        return noCharge();
                     BigDecimal rate = config.getAiTokensPerMillion();
                     if (rate == null || rate.signum() <= 0)
                         return noCharge();
@@ -529,6 +540,10 @@ public class WalletService
      * SYSTEM caller it returns every client in the system and this concatMap then
      * fires one sequential config query per client.
      */
+    private static boolean isBillingActive(AppBillingConfig config) {
+        return config.getStatus() == SecurityAppBillingConfigStatus.ACTIVE;
+    }
+
     private Mono<AppBillingConfig> resolveConfigForBilledClient(ULong appId, ULong billedClientId) {
         return this.clientHierarchyService.getClientHierarchyIdInOrder(billedClientId)
                 .flatMapMany(Flux::fromIterable)
