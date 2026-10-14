@@ -274,19 +274,33 @@ public class UserInviteService
         user.setReportingTo(userInvite.getReportingTo());
 
         return FlatMapUtil.flatMapMono(
-                () ->
-
-                this.userDao.checkUserExists(user.getClientId(), user.getUserName(), user.getEmailId(),
-                        user.getPhoneNumber(), null)
-                        .filter(userExists -> !userExists).map(userExists -> Boolean.FALSE),
+                // userDao.checkUserExists only looks at clients MANAGED BY this client, never
+                // the invite's own client, so a user who already existed there got past it and the
+                // insert died on UK1_USER_NAME as a 500. Invite creation already checks the client
+                // itself with getUsersWithAnyIdentity; accepting now does the same.
+                () -> this.userDao.getUsersWithAnyIdentity(user.getClientId(), user.getUserName(),
+                        user.getEmailId(), user.getPhoneNumber(), null)
+                        .hasElements()
+                        .flatMap(userExists -> BooleanUtil.safeValueOf(userExists)
+                                ? this.userAlreadyExists(user)
+                                : Mono.just(Boolean.FALSE)),
 
                 userExists -> SecurityContextUtil.getUsersContextAuthentication()
                         .flatMap(ca -> this.appService.getAppByCode(ca.getUrlAppCode()))
                         .flatMap(app -> this.validateUserCheckForInvite(
                                 app.getId(), app.getClientId(), user.getClientId(),
-                                user.getUserName(), user.getEmailId(), user.getPhoneNumber())),
+                                user.getUserName(), user.getEmailId(), user.getPhoneNumber())
+                                // QA-0352: accepting an invite set the password without the policy.
+                                .flatMap(userCheckValid -> request.getPassType() == null || safeIsBlank(password)
+                                        ? Mono.just(userCheckValid)
+                                        : this.clientService.validatePasswordPolicy(user.getClientId(), app.getId(),
+                                                null, request.getPassType(), password)
+                                                .map(policyOk -> userCheckValid))),
 
-                (userExists, userCheckValid) -> this.userDao.create(user),
+                // A DELETED user keeps its row and the unique key still covers it, so the same
+                // identity can still collide here; say so instead of a 500.
+                (userExists, userCheckValid) -> this.userDao.create(user)
+                        .onErrorResume(UserInviteService::isDuplicateEntry, e -> this.userAlreadyExists(user)),
 
                 (userExists, userCheckValid, createdUser) -> {
                     this.soxLogService.createLog(createdUser.getId(), CREATE,
@@ -328,6 +342,21 @@ public class UserInviteService
                         "UserInviteService.createWithInvitationInternal"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "User"));
+    }
+
+    private <T> Mono<T> userAlreadyExists(User user) {
+        String identity = !safeIsBlank(user.getEmailId()) && !User.PLACEHOLDER.equals(user.getEmailId())
+                ? user.getEmailId()
+                : user.getUserName();
+        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                SecurityMessageResourceService.USER_ALREADY_EXISTS, identity);
+    }
+
+    private static boolean isDuplicateEntry(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause())
+            if (t.getMessage() != null && t.getMessage().contains("Duplicate entry"))
+                return true;
+        return false;
     }
 
     private Mono<Boolean> validateUserCheckForInvite(
