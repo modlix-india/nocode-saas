@@ -15,6 +15,7 @@ import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.document.Storage.StorageIndex;
 import com.fincity.saas.commons.core.exception.StorageObjectNotFoundException;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.model.DraftCopyFilter;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.core.service.CoreSchemaService;
@@ -105,6 +106,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuples;
 
 @Service
 public class MongoAppDataService extends RedisPubSubAdapter<String, String> implements IAppDataService {
@@ -1303,6 +1305,77 @@ public class MongoAppDataService extends RedisPubSubAdapter<String, String> impl
                                 .reduce(0L, Long::sum))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.copyLiveToDraft"));
+    }
+
+    @Override
+    public Mono<Long> clearDraftRows(String clientCode, Connection conn, Storage storage) {
+
+        // deleteMany rather than drop, for the reason copyLiveToDraft gives: a dropped
+        // collection never gets its indexes back while the index cache is warm.
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getCollection(clientCode, conn, storage)
+                                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE)),
+                        draft -> Mono.from(draft.deleteMany(Filters.empty())),
+                        (draft, deleted) -> this.getVersionCollection(clientCode, conn, storage)
+                                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE)),
+                        (draft, deleted, versions) -> Mono.from(versions.deleteMany(Filters.empty()))
+                                .thenReturn(deleted.getDeletedCount()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.clearDraftRows"));
+    }
+
+    @Override
+    public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, DraftCopyFilter filter,
+            Map<String, Storage> followed) {
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getCollection(clientCode, conn, storage)
+                                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.FALSE)),
+                        live -> this.getCollection(clientCode, conn, storage)
+                                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE)),
+                        (live, draft) -> this.draftCopyFilter(clientCode, conn, storage, filter, followed),
+                        (live, draft, where) -> Mono.from(draft.deleteMany(Filters.empty())),
+                        (live, draft, where, cleared) -> Flux.from(live.find(where))
+                                .buffer(COPY_BATCH_SIZE)
+                                .concatMap(batch -> Mono.from(draft.bulkWrite(batch.stream()
+                                                .map(doc -> (WriteModel<Document>) new ReplaceOneModel<>(
+                                                        Filters.eq(ID, doc.get(ID)), doc, UPSERT))
+                                                .toList()))
+                                        .thenReturn((long) batch.size()))
+                                .reduce(0L, Long::sum))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MongoAppDataService.copyLiveToDraft(filter)"));
+    }
+
+    /**
+     * The live-side filter of a filtered copy. A follow becomes an {@code $in} over the
+     * distinct values the followed storage's DRAFT rows hold, read after that storage
+     * was copied.
+     */
+    private Mono<Bson> draftCopyFilter(String clientCode, Connection conn, Storage storage,
+            DraftCopyFilter filter, Map<String, Storage> followed) {
+
+        if (filter == null) return Mono.just(Filters.empty());
+
+        Mono<Bson> base = this.filter(storage, filter.getCondition());
+
+        if (!filter.hasFollow()) return base;
+
+        return Flux.fromIterable(filter.getFollow())
+                .concatMap(f -> this.getCollection(clientCode, conn, followed.get(f.getStorage()))
+                        .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE))
+                        .flatMap(ref -> Flux.from(ref.distinct(f.refFieldOrDefault(), Object.class))
+                                .collectList())
+                        .map(values -> Tuples.of(f.getField(), values)))
+                .collectList()
+                .zipWith(base)
+                .map(tup -> {
+                    List<Bson> each = new ArrayList<>();
+                    List<Bson> filled = new ArrayList<>();
+                    for (var t : tup.getT1()) {
+                        each.add(Filters.or(Filters.eq(t.getT1(), null), Filters.in(t.getT1(), t.getT2())));
+                        filled.add(Filters.ne(t.getT1(), null));
+                    }
+                    return Filters.and(tup.getT2(), Filters.and(each), Filters.or(filled));
+                });
     }
 
     private Flux<Document> applyQueryOnElements(

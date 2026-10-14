@@ -29,6 +29,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.model.DraftCopyFilter;
 import com.fincity.saas.commons.core.model.StorageColumnDefinition;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.core.exception.StorageObjectNotFoundException;
@@ -2960,6 +2961,150 @@ public class MySQLAppDataService implements IAppDataService {
 
                     return Mono.just(shared);
                 });
+    }
+
+    @Override
+    public Mono<Long> clearDraftRows(String clientCode, Connection conn, Storage storage) {
+
+        String draftDb = databaseName(clientCode, storage.getAppCode(), true);
+        String table = storage.getUniqueName();
+        String versions = MySQLVersionTable.nameFor(table);
+
+        DSLContext ctx = this.context(conn);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> MySQLTableInspector.tableExists(ctx, draftDb, table),
+                        hasTable -> MySQLTableInspector.tableExists(ctx, draftDb, versions),
+                        (hasTable, hasVersions) -> !hasTable && !hasVersions
+                                ? Mono.just(0L)
+                                : this.withoutForeignKeyChecks(conn, pinned -> {
+                                    Mono<Long> rows = hasTable
+                                            ? Mono.from(pinned.deleteFrom(DSL.table(DSL.name(draftDb, table))))
+                                                    .map(Integer::longValue)
+                                            : Mono.just(0L);
+
+                                    return rows.flatMap(n -> hasVersions
+                                            ? Mono.from(pinned.deleteFrom(DSL.table(DSL.name(draftDb, versions))))
+                                                    .thenReturn(n)
+                                            : Mono.just(n));
+                                }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.clearDraftRows"));
+    }
+
+    @Override
+    public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, DraftCopyFilter filter,
+            Map<String, Storage> followed) {
+
+        String liveDb = databaseName(clientCode, storage.getAppCode(), false);
+        String draftDb = databaseName(clientCode, storage.getAppCode(), true);
+        String table = storage.getUniqueName();
+
+        DSLContext ctx = this.context(conn);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.ensureTable(conn, clientCode, storage)
+                                .contextWrite(Context.of(LogUtil.DRAFT_KEY, Boolean.TRUE)),
+                        // A live table that was never created has nothing to copy, and
+                        // naming it in a SELECT is an error rather than no rows.
+                        draft -> MySQLTableInspector.tableExists(ctx, liveDb, table),
+                        (draft, liveExists) -> BooleanUtil.safeValueOf(liveExists)
+                                ? this.sharedColumns(ctx, liveDb, draftDb, table)
+                                : Mono.just(List.<String>of()),
+                        (draft, liveExists, columns) -> this.draftCopyCondition(
+                                liveDb, draftDb, table, storage, filter, followed),
+                        (draft, liveExists, columns, where) -> this.withoutForeignKeyChecks(conn, pinned -> {
+                            org.jooq.Table<?> target = DSL.table(DSL.name(draftDb, table));
+
+                            // Emptied even when nothing is selected: the draft is meant to
+                            // hold this filter's rows, and last time's would not be them.
+                            Mono<Integer> clear = Mono.from(pinned.deleteFrom(target));
+
+                            if (columns.isEmpty()) return clear.thenReturn(0L);
+
+                            List<Field<Object>> fields =
+                                    columns.stream().map(c -> DSL.field(DSL.name(c))).toList();
+
+                            return clear.then(Mono.from(pinned.insertInto(target)
+                                            .columns(fields)
+                                            .select(DSL.select(fields)
+                                                    .from(DSL.table(DSL.name(liveDb, table)))
+                                                    .where(where))))
+                                    .map(Integer::longValue)
+                                    .defaultIfEmpty(0L);
+                        }))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MySQLAppDataService.copyLiveToDraft"));
+    }
+
+    /**
+     * The WHERE of a filtered copy, against the live table.
+     *
+     * Follow columns are qualified on both sides. Inside the subquery an unqualified
+     * name that the followed table lacks would quietly resolve to the OUTER table, and
+     * {@code x IN (SELECT x ...)} is true for every row.
+     */
+    private Mono<org.jooq.Condition> draftCopyCondition(String liveDb, String draftDb, String table,
+            Storage storage, DraftCopyFilter filter, Map<String, Storage> followed) {
+
+        if (filter == null) return Mono.just(DSL.noCondition());
+
+        Mono<org.jooq.Condition> base = filter.getCondition() == null
+                ? Mono.just(DSL.noCondition())
+                : this.physicalSchema(storage)
+                        .map(schema -> this.condition(
+                                new Query().setCondition(filter.getCondition()),
+                                MySQLFieldResolver.of(MySQLTypeMapper.jsonColumns(schema, defs(storage)))))
+                        .defaultIfEmpty(DSL.noCondition());
+
+        if (!filter.hasFollow()) return base;
+
+        List<org.jooq.Condition> each = new ArrayList<>();
+        List<org.jooq.Condition> filled = new ArrayList<>();
+
+        for (DraftCopyFilter.Follow f : filter.getFollow()) {
+            String refTable = followed.get(f.getStorage()).getUniqueName();
+            Field<Object> column = DSL.field(DSL.name(liveDb, table, f.getField()));
+
+            org.jooq.Condition inDraft = column.in(DSL.select(DSL.field(DSL.name(draftDb, refTable, f.refFieldOrDefault())))
+                    .from(DSL.table(DSL.name(draftDb, refTable))));
+
+            each.add(column.isNull().or(inDraft));
+            filled.add(column.isNotNull());
+        }
+
+        return base.map(c -> c.and(DSL.and(each)).and(DSL.or(filled)));
+    }
+
+    /**
+     * Run statements on ONE connection with foreign keys unchecked, and check them again
+     * before the connection goes back to the pool.
+     *
+     * FOREIGN_KEY_CHECKS is a session variable, so it only means something on the
+     * connection the statements run on, and a pooled connection handed back with it off
+     * would let the next borrower write dangling references nobody asked for. So the
+     * reset runs on success, error and cancel alike.
+     */
+    private <T> Mono<T> withoutForeignKeyChecks(Connection conn,
+            java.util.function.Function<DSLContext, Mono<T>> work) {
+
+        return Mono.usingWhen(
+                Mono.from(this.pool(conn).create()),
+                c -> {
+                    DSLContext pinned = DSL.using(c, SQLDialect.MYSQL);
+                    return Mono.from(pinned.query("SET FOREIGN_KEY_CHECKS = 0")).then(work.apply(pinned));
+                },
+                this::restoreForeignKeyChecks,
+                (c, e) -> this.restoreForeignKeyChecks(c),
+                this::restoreForeignKeyChecks);
+    }
+
+    private Mono<Void> restoreForeignKeyChecks(io.r2dbc.spi.Connection c) {
+        return Mono.from(DSL.using(c, SQLDialect.MYSQL).query("SET FOREIGN_KEY_CHECKS = 1"))
+                .then()
+                .onErrorResume(e -> {
+                    logger.error("Could not turn foreign key checks back on before releasing a connection", e);
+                    return Mono.empty();
+                })
+                .then(Mono.from(c.close()));
     }
 
     private <T> Mono<T> invalidAggregation(String reason) {
