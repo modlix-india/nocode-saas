@@ -3,6 +3,7 @@ package com.fincity.saas.commons.core.service.connection.appdata;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.model.DataObject;
+import com.fincity.saas.commons.core.model.DraftCopyFilter;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.model.AggregateQuery;
 import com.fincity.saas.commons.model.Query;
@@ -175,4 +176,32 @@ public interface IAppDataService {
      * @return how many documents were written into the draft collection
      */
     Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, Boolean replace);
+
+    /**
+     * Empty one storage's DRAFT rows and their history, keeping the table.
+     *
+     * Rows rather than the table, so nothing memoised about the table (its creation,
+     * its indexes, its keys) goes stale. Foreign keys do not get a say: every draft
+     * row of the app is being discarded, so a parent emptied before its children
+     * would only be refused for a moment that never comes.
+     *
+     * @return how many data rows were deleted; 0 when the draft table was never made
+     */
+    Mono<Long> clearDraftRows(String clientCode, Connection conn, Storage storage);
+
+    /**
+     * Replace one storage's DRAFT rows with the LIVE rows the filter selects.
+     *
+     * The draft rows are emptied first, whether or not anything is selected. Foreign
+     * keys are not checked while copying: storages refer to each other in cycles, so
+     * no order of copying satisfies them, and the rows come from a live database that
+     * already did.
+     *
+     * @param filter which live rows; null copies all of them
+     * @param followed the storages {@code filter.follow} names, resolved for this
+     *            tenant and keyed by name; each must have been copied already
+     * @return how many rows were written into the draft
+     */
+    Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, DraftCopyFilter filter,
+            Map<String, Storage> followed);
 }

@@ -46,6 +46,8 @@ import com.fincity.saas.commons.core.functions.securitycontext.GetAuthentication
 import com.fincity.saas.commons.core.functions.securitycontext.GetUser;
 import com.fincity.saas.commons.core.functions.securitycontext.HasAuthority;
 import com.fincity.saas.commons.core.functions.storage.AggregateStorageObject;
+import com.fincity.saas.commons.core.functions.storage.ClearDraftStorageData;
+import com.fincity.saas.commons.core.functions.storage.CopyLiveStorageDataToDraft;
 import com.fincity.saas.commons.core.functions.storage.CreateManyStorageObject;
 import com.fincity.saas.commons.core.functions.storage.GetVersionDetailsStorageObject;
 import com.fincity.saas.commons.core.functions.storage.CreateStorageObject;
@@ -154,8 +156,12 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction updateManyStorage = new UpdateManyStorageObject(appDataService, gson);
         ReactiveFunction getVersionDetailsStorage =
                 new GetVersionDetailsStorageObject(appDataService, objectMapper, gson);
+        ReactiveFunction clearDraft = new ClearDraftStorageData(appDataService, gson);
+        ReactiveFunction copyToDraft = new CopyLiveStorageDataToDraft(appDataService, objectMapper, gson);
 
         this.addToRepoMap(
+                clearDraft,
+                copyToDraft,
                 createStorage,
                 createManyStorage,
                 deleteStorage,
