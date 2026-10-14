@@ -128,7 +128,10 @@ public class ClientPasswordPolicyService
 
                         pastPassCheck -> this.checkAlphanumericExists(policy, password),
 
-                        (pastPassCheck, isAlphaNumeric) -> this.checkInSpecialCharacters(password),
+                        // Only when the policy asks for one: this ran for every policy.
+                        (pastPassCheck, isAlphaNumeric) -> policy.isAtleastOneSpecialChar()
+                                ? this.checkInSpecialCharacters(password)
+                                : Mono.just(Boolean.TRUE),
 
                         (pastPassCheck, isAlphaNumeric, isSpecial) -> {
 
@@ -186,7 +189,7 @@ public class ClientPasswordPolicyService
             return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.CAPITAL_LETTERS_MISSING);
 
-        if (passwordPolicy.isAtleastOneUppercase() && checkDoesntExistsInBetween(password, 'a', 'z'))
+        if (passwordPolicy.isAtleastOneLowercase() && checkDoesntExistsInBetween(password, 'a', 'z'))
             return securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.SMALL_LETTERS_MISSING);
 
@@ -197,12 +200,15 @@ public class ClientPasswordPolicyService
         return Mono.just(Boolean.TRUE);
     }
 
+    // True when NO character of the password falls in [minBoundary, maxBoundary]. It used to return
+    // false at the first character OUTSIDE the range, so "abc@def" passed the uppercase and digit
+    // rules (QA-0345, QA-0352).
     private boolean checkDoesntExistsInBetween(String password, char minBoundary, char maxBoundary) {
 
         for (int i = 0; i < password.length(); i++) {
 
             char ch = password.charAt(i);
-            if (ch < minBoundary || ch > maxBoundary)
+            if (ch >= minBoundary && ch <= maxBoundary)
                 return false;
         }
         return true;
