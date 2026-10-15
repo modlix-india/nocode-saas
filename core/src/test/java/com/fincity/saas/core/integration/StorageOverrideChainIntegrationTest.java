@@ -455,10 +455,69 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
             Storage read = asClient(storageService.read(leaf.getId()), LEAF);
 
             assertNotNull(read);
-            // The physical collection is per stored document. If a merge ever started
-            // pulling uniqueName down from the base, two clients would silently share
-            // one collection.
+            // A document that stores a uniqueName of its own keeps it: older client
+            // forks were created with their own table and their rows are in it. Only
+            // a document storing none (an override created now) takes the base's.
             assertEquals("testapp_lzacp1_teststorage", read.getUniqueName());
         }
+    }
+
+    /**
+     * A client override is another definition of the SAME table in that client's own
+     * database. Created with a name of its own, the client moved to a new empty table
+     * and its existing rows stayed behind in the old one.
+     */
+    @Nested
+    @DisplayName("creating a client override")
+    class CreateOverride {
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a client override keeps the base's uniqueName and stores none of its own")
+        void overrideKeepsBaseTable() {
+
+            setInheritance(List.of(SYSTEM, MID));
+            Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT")));
+
+            // As callers send it (createForClient, the schema-save override): the
+            // resolved definition re-homed at the client.
+            Storage override = new Storage();
+            override.setName(STORAGE_NAME)
+                    .setAppCode(APP_CODE)
+                    .setClientCode(MID)
+                    .setBaseClientCode(SYSTEM)
+                    .setVersion(1);
+            override.setSchema(new HashMap<>(base.getSchema()));
+
+            Storage created = asClient(storageService.create(override), MID);
+            assertNotNull(created);
+
+            Storage read = asClient(storageService.read(created.getId()), MID);
+            assertEquals(base.getUniqueName(), read.getUniqueName());
+
+            Storage stored = findRaw(created.getId());
+            assertNull(stored.getUniqueName(), "the stored delta must not carry the base's name");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a new storage still gets a uniqueName of its own")
+        void newStorageGetsOwnName() {
+
+            setInheritance(List.of(SYSTEM));
+
+            Storage fresh = new Storage();
+            fresh.setName("freshStorage").setAppCode(APP_CODE).setClientCode(SYSTEM).setVersion(1);
+            fresh.setSchema(schema("type", List.of("OBJECT")));
+
+            Storage created = asClient(storageService.create(fresh), SYSTEM);
+
+            assertNotNull(created.getUniqueName());
+            assertTrue(created.getUniqueName().startsWith(APP_CODE + "_system_"), created.getUniqueName());
+        }
+    }
+
+    private Storage findRaw(String id) {
+        return this.mongoTemplate.findById(id, Storage.class).block();
     }
 }

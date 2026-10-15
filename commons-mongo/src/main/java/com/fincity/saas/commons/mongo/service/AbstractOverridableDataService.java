@@ -1743,7 +1743,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 (key, cEntity) -> cEntity != null ? Mono.just(cEntity.getObject())
                         : this.readIfExistsInBase(name, appCode, urlClientCode, clientCode, draft),
 
-                (key, cEntity, bEntity) -> bEntity == null ? Mono.empty()
+                // A cache hit is served from the cache below, so it must not read the
+                // document and its ancestors again. Without this check every hit ran
+                // readDrafted -> readInternal(id) (a findById plus one find per ancestor)
+                // and then threw the result away: the event scheduler's per-client reads
+                // alone made 11k eventDefinition finds a minute on dev.
+                (key, cEntity, bEntity) -> cEntity != null || bEntity == null ? Mono.empty()
                         : this.readDrafted(bEntity, draft, clientCode),
 
                 (key, cEntity, bEntity, mEntity) -> {

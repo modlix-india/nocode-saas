@@ -223,6 +223,39 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .map(e -> e.into(Client.class));
     }
 
+    /**
+     * The codes among {@code clientCodes} whose client is active and is not managed by
+     * an inactive one: every MANAGE_CLIENT_LEVEL_n above it is active too, as
+     * {@link #isClientActive} requires. A null status is the column default, ACTIVE.
+     * A code with no client at all is simply not returned.
+     *
+     * For core's event scheduler, which has no user and must not run a schedule for a
+     * client that is deleted, inactive or locked, or whose business is.
+     */
+    public Mono<List<String>> getActiveClientCodes(Collection<String> clientCodes) {
+
+        if (clientCodes == null || clientCodes.isEmpty())
+            return Mono.just(List.of());
+
+        com.fincity.security.jooq.tables.SecurityClient manager = SECURITY_CLIENT.as("manager");
+
+        Condition aManagerIsNotActive = DSL.exists(DSL.selectOne()
+                .from(manager)
+                .where(manager.ID.in(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0,
+                        SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1, SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2,
+                        SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3))
+                .and(manager.STATUS_CODE.ne(SecurityClientStatusCode.ACTIVE)));
+
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT.CODE)
+                .from(SECURITY_CLIENT)
+                .leftJoin(SECURITY_CLIENT_HIERARCHY).on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+                .where(SECURITY_CLIENT.CODE.in(clientCodes))
+                .and(SECURITY_CLIENT.STATUS_CODE.isNull().or(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE)))
+                .and(DSL.not(aManagerIsNotActive)))
+                .map(Record1::value1)
+                .collectList();
+    }
+
     public Mono<List<Client>> getClientsBy(List<ULong> clientIds) {
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_CLIENT)

@@ -161,14 +161,38 @@ public class EventsQueListener implements ScheduledEventRunner {
         } else {
             final Mono<Boolean> finalReceivedMono = receivedMono;
             withContext = this.securityService.getClientByCode(qob.getClientCode())
-                    .map(client -> makeAnonymousContextAuth
-                            (qob.getAppCode(), qob.getClientCode(), client))
-                    .flatMap(ca -> finalReceivedMono.contextWrite(ReactiveSecurityContextHolder
-                            .withSecurityContext(Mono.just(new SecurityContextImpl(ca)))));
+                    .flatMap(client -> !isActive(client) ? this.refuseInactive(qob, client, logged)
+                            : finalReceivedMono.contextWrite(ReactiveSecurityContextHolder
+                                    .withSecurityContext(Mono.just(new SecurityContextImpl(
+                                            makeAnonymousContextAuth(qob.getAppCode(), qob.getClientCode(),
+                                                    client))))));
         }
 
         return this.logUnstarted(qob, withContext, logged)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventsQueListener.run"));
+    }
+
+    /** A null status is the column default, ACTIVE. */
+    static boolean isActive(Client client) {
+        return client.getStatusCode() == null || "ACTIVE".equals(client.getStatusCode());
+    }
+
+    /**
+     * An event raised without a user does not run for a client that is deleted, inactive or
+     * locked. The event run log gets a FAILED row saying why, and a run the scheduler raised is
+     * closed as failed instead of waiting out its lease. An event raised by a signed-in user
+     * carries that user's authentication and is not checked here.
+     */
+    private Mono<Boolean> refuseInactive(EventQueObject qob, Client client, AtomicBoolean logged) {
+
+        logged.set(true);
+        String reason = "The client '" + qob.getClientCode() + "' is " + client.getStatusCode().toLowerCase()
+                + ", so the event did not run.";
+
+        Mono<Boolean> refused = this.eventRunService == null ? Mono.just(Boolean.FALSE)
+                : this.eventRunService.record(qob, CoreEventRunsStatus.FAILED, reason).thenReturn(Boolean.FALSE);
+
+        return this.eventScheduler.trackCompletion(qob, refused);
     }
 
     /**

@@ -213,4 +213,34 @@ class EventsQueListenerRunLogTest {
         StepVerifier.create(this.listener.run(this.message)).expectNext(true).verifyComplete();
         verify(this.functions).execute(any(), any(), any());
     }
+
+    @Test
+    void anEventForAnInactiveClientDoesNotRunAndTheLogSaysWhy() {
+
+        when(this.security.getClientByCode("FIN")).thenReturn(Mono.just(
+                (Client) new Client().setId(BigInteger.ONE).setCode("FIN").setStatusCode("INACTIVE")));
+        this.action(Map.of("store", fn("store", 1)));
+
+        StepVerifier.create(this.listener.run(this.message)).expectNext(false).verifyComplete();
+
+        verify(this.runs).record(this.message, CoreEventRunsStatus.FAILED,
+                "The client 'FIN' is inactive, so the event did not run.");
+        verify(this.runs, never()).start(any(), anyInt());
+        verify(this.functions, never()).execute(any(), any(), any());
+    }
+
+    @Test
+    void aDeletedOrLockedClientIsRefusedTooButANullStatusRuns() {
+
+        for (String status : List.of("DELETED", "LOCKED")) {
+            when(this.security.getClientByCode("FIN")).thenReturn(Mono.just(
+                    (Client) new Client().setId(BigInteger.ONE).setCode("FIN").setStatusCode(status)));
+            StepVerifier.create(this.listener.run(this.message)).expectNext(false).verifyComplete();
+            verify(this.runs).record(this.message, CoreEventRunsStatus.FAILED,
+                    "The client 'FIN' is " + status.toLowerCase() + ", so the event did not run.");
+        }
+
+        assertTrue(EventsQueListener.isActive(new Client()));
+        assertTrue(EventsQueListener.isActive((Client) new Client().setStatusCode("ACTIVE")));
+    }
 }

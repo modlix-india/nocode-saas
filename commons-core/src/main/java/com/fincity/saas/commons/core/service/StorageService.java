@@ -121,9 +121,24 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
         this.coreFunctionService = coreFunctionService;
     }
 
+    /**
+     * A client's override keeps its base's uniqueName; only a new storage gets a new one.
+     *
+     * The uniqueName is the table (or collection) name inside a client's OWN data
+     * database, {@code <CLIENT>_<app>}, so two clients sharing it never share rows.
+     * Giving an override a name of its own instead moved that client onto a new,
+     * empty table and left every row it already had in the old one, which made a
+     * client-only field impossible to add to a client that had data.
+     *
+     * Sharing the name means the override is just a different definition of the same
+     * table: a change to the client's schema becomes an ALTER of the table it already
+     * has. The app-level case, where rows land in the URL client's database rather
+     * than the caller's, is covered by the write-access check below: only a client
+     * with write access to the app can override an app-level storage, and those are
+     * the clients whose own database the rows are in.
+     */
     @Override
     public Mono<Storage> create(Storage entity) {
-        entity.setUniqueName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName()));
 
         Mono<Storage> creationMono;
 
@@ -132,6 +147,11 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                             SecurityContextUtil::getUsersContextAuthentication,
                             ca -> this.getMergedSources(entity),
                             (ca, merged) -> {
+                                entity.setUniqueName(
+                                        StringUtil.safeIsBlank(merged.getUniqueName())
+                                                ? newUniqueName(entity)
+                                                : merged.getUniqueName());
+
                                 if (BooleanUtil.safeValueOf(merged.getIsAppLevel()))
                                     return this.securityService
                                             .hasWriteAccess(entity.getAppCode(), entity.getClientCode())
@@ -147,11 +167,15 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                                 return this.localCreate(entity);
                             })
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.create"));
-        } else creationMono = this.localCreate(entity);
+        } else creationMono = this.localCreate(entity.setUniqueName(newUniqueName(entity)));
 
         return creationMono.flatMap(e -> this.cacheService
                 .evictAll(e.getUniqueName() + IAppDataService.CACHE_SUFFIX_FOR_INDEX_CREATION)
                 .map(x -> e));
+    }
+
+    private static String newUniqueName(Storage entity) {
+        return UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getClientCode(), entity.getName());
     }
 
     private Mono<Storage> localCreate(Storage entity) {
@@ -162,13 +186,13 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
     public Mono<Storage> validate(Storage storage) { // NOSONAR
         // Cannot split for just one point increase in complexity.
 
-        // uniqueName IS the physical Mongo collection name, on both the live and the
-        // draft surface. It is generated once at create and never regenerated, and
-        // updatableEntity's whitelist deliberately excludes it. But a null one is
-        // reachable: Storage.subApplyOverride materialises a base's uniqueName into a
-        // derived document when the derived value is null, which would silently point
-        // two clients at one collection. Saving without one is never correct, so fail
-        // loudly here rather than orphan or share data.
+        // uniqueName IS the physical table / collection name, on both the live and the
+        // draft surface. It is set once at create (a new one for a new storage, the
+        // base's for a client override, see create) and never regenerated, and
+        // updatableEntity's whitelist deliberately excludes it. A derived document
+        // stores none of its own when it equals the base's, and gets it back from
+        // Storage.subApplyOverride on every read. Saving without one is never correct,
+        // so fail loudly here rather than orphan data.
         if (StringUtil.safeIsBlank(storage.getUniqueName()))
             return this.messageResourceService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
@@ -423,8 +447,15 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                         // is deliberately left behind: not dropping it on a definition
                         // delete is long-standing behaviour, and changing that would
                         // silently destroy customer data.
-                        (storage, beforeExecuted, deleted, afterExecuted, evicted) -> this.appDataService
-                                .dropDraftStorageData(storage.getAppCode(), storage.getClientCode(), storage)
+                        //
+                        // A client override that shares its base's table is the
+                        // exception: the client falls back to the base definition and
+                        // keeps using that same table, so its definition is not gone.
+                        (storage, beforeExecuted, deleted, afterExecuted, evicted) -> this.sharesBaseTable(storage)
+                                .flatMap(shares -> Boolean.TRUE.equals(shares)
+                                        ? Mono.just(Boolean.FALSE)
+                                        : this.appDataService.dropDraftStorageData(
+                                                storage.getAppCode(), storage.getClientCode(), storage))
                                 // Best effort: the definition is already gone, so failing
                                 // the whole delete here would leave a worse state than an
                                 // orphaned sandbox collection. Logged so it is findable.
@@ -436,6 +467,16 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
                                 })
                                 .map(dropped -> deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.delete"));
+    }
+
+    /** True for a client override whose table is its base's (see create). */
+    private Mono<Boolean> sharesBaseTable(Storage storage) {
+
+        if (StringUtil.safeIsBlank(storage.getBaseClientCode())) return Mono.just(Boolean.FALSE);
+
+        return this.readForTenant(storage.getName(), storage.getAppCode(), storage.getBaseClientCode())
+                .map(base -> StringUtil.safeEquals(base.getUniqueName(), storage.getUniqueName()))
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     @Override
@@ -682,6 +723,67 @@ public class StorageService extends AbstractOverridableDataService<Storage, Stor
      */
     public Mono<Storage> readForTenant(String name, String appCode, String clientCode) {
         return this.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject);
+    }
+
+    /**
+     * A client saved its own version of a schema; give that client its own document of
+     * every storage standing on the schema, so the client's version is the one used.
+     *
+     * A storage resolves its schema in the storage document's own clientCode. A client
+     * with no storage document of its own reads the base's, resolves the schema as the
+     * base, and its override of the schema is never looked at: not for the table and
+     * not for validating a write. Measured on FIN2 before this existed: a FIN2-only
+     * field got no column and a tightened maxLength was not enforced.
+     *
+     * The override created here carries nothing but its baseClientCode. It shares the
+     * base's table (see create), so it moves no data; it only changes which client the
+     * schema is resolved as. It is created live even when the schema save is a draft:
+     * an empty override changes nothing on its own, and the draft surface reads it
+     * the same way.
+     *
+     * Never fails the caller, for the same reason as reconcileForSchemaChange.
+     */
+    public Mono<List<String>> ensureClientOverrides(String appCode, String clientCode, String schemaName) {
+
+        return this.coreSchemaService
+                .referencingClosure(appCode, schemaName)
+                .flatMap(closure -> this.storagesUsing(appCode, closure))
+                .flatMapMany(Flux::fromIterable)
+                .filter(storage -> !clientCode.equals(storage.getClientCode()))
+                .map(Storage::getName)
+                .distinct()
+                .concatMap(name -> this.readForTenant(name, appCode, clientCode)
+                        .filter(resolved -> !clientCode.equals(resolved.getClientCode()))
+                        .flatMap(resolved -> this.create(clientCopy(resolved, clientCode)))
+                        .map(Storage::getName)
+                        .onErrorResume(e -> {
+                            logger.error(
+                                    "Could not create the {} override of storage {} in {} for schema {}",
+                                    clientCode, name, appCode, schemaName, e);
+                            return Mono.empty();
+                        }))
+                .collectList()
+                .onErrorResume(e -> {
+                    logger.error("Could not create storage overrides for schema {} in {}/{}",
+                            schemaName, clientCode, appCode, e);
+                    return Mono.just(List.of());
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageService.ensureClientOverrides"));
+    }
+
+    /**
+     * The resolved definition re-homed at the client, so the stored difference from
+     * the base comes out empty. Seeded from the MERGED storage for the reason
+     * forkForClient gives: a delta would diff against its own base.
+     */
+    private static Storage clientCopy(Storage resolved, String clientCode) {
+        Storage copy = new Storage(resolved);
+        copy.setBaseClientCode(resolved.getClientCode());
+        copy.setClientCode(clientCode);
+        copy.setPublished(null);
+        copy.setVersion(1);
+        copy.setId(null);
+        return copy;
     }
 
     /**
