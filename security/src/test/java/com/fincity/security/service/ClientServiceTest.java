@@ -116,6 +116,7 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 
 		setupMessageResourceService(securityMessageResourceService);
 		setupCacheService(cacheService);
+		lenient().when(dao.readInternal(any())).thenReturn(Mono.empty());
 		setupSoxLogService(soxLogService);
 
 		// Mock soxLogService.create() since AbstractSecurityUpdatableDataService uses
@@ -581,7 +582,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("UPDATED", result.getCode()))
 					.verifyComplete();
 
-			verify(cacheService).evict("clientCodeId", BUS_CLIENT_ID);
+			// The code cache is keyed by code: evicting it by id cleared nothing.
+			verify(cacheService).evict("clientCodeId", "UPDATED");
 			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
 		}
 
@@ -661,7 +663,7 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated Name", result.getName()))
 					.verifyComplete();
 
-			verify(cacheService, atLeast(1)).evict("clientCodeId", BUS_CLIENT_ID);
+			verify(cacheService, atLeast(1)).evict("clientCodeId", "EXISTING");
 			verify(cacheService, atLeast(1)).evict("clientId", BUS_CLIENT_ID);
 		}
 	}
@@ -703,8 +705,50 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals(1, result))
 					.verifyComplete();
 
-			verify(cacheService, atLeastOnce()).evict("clientCodeId", BUS_CLIENT_ID);
+			verify(cacheService, atLeastOnce()).evict("clientCodeId", "TOBEDELETED");
 			verify(cacheService, atLeastOnce()).evict("clientId", BUS_CLIENT_ID);
+		}
+	}
+
+	// =========================================================================
+	// makeClientInActive / makeClientActiveIfInActive
+	// =========================================================================
+
+	@Nested
+	@DisplayName("status changes")
+	class StatusChangeTests {
+
+		@Test
+		@DisplayName("deactivating evicts the client by code, so getClientBy stops serving it as active")
+		void deactivatingEvictsByCode() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(dao.makeClientInActive(BUS_CLIENT_ID)).thenReturn(Mono.just(true));
+			when(dao.readInternal(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "GONE")));
+
+			StepVerifier.create(service.makeClientInActive(BUS_CLIENT_ID))
+					.assertNext(r -> assertTrue(r))
+					.verifyComplete();
+
+			verify(cacheService).evict("clientCodeId", "GONE");
+			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
+		}
+
+		@Test
+		void reactivatingEvictsByCode() {
+
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+			when(dao.makeClientActiveIfInActive(BUS_CLIENT_ID)).thenReturn(Mono.just(true));
+			when(dao.readInternal(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(TestDataFactory.createBusinessClient(BUS_CLIENT_ID, "BACK")));
+
+			StepVerifier.create(service.makeClientActiveIfInActive(BUS_CLIENT_ID))
+					.assertNext(r -> assertTrue(r))
+					.verifyComplete();
+
+			verify(cacheService).evict("clientCodeId", "BACK");
+			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
 		}
 	}
 
@@ -841,7 +885,9 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			when(dao.makeClientActiveIfInActive(isNull())).thenReturn(Mono.just(true));
+			// The logged-in client's id, not null: the DAO used to be handed the null
+			// argument and updated nothing.
+			when(dao.makeClientActiveIfInActive(ULong.valueOf(ca.getUser().getClientId()))).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.makeClientActiveIfInActive(null))
 					.assertNext(result -> assertTrue(result))
@@ -1882,7 +1928,9 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 			ContextAuthentication ca = TestDataFactory.createSystemAuth();
 			setupSecurityContext(ca);
 
-			when(dao.makeClientInActive(isNull())).thenReturn(Mono.just(true));
+			// The logged-in client's id, not null: the DAO used to be handed the null
+			// argument and updated nothing.
+			when(dao.makeClientInActive(ULong.valueOf(ca.getUser().getClientId()))).thenReturn(Mono.just(true));
 
 			StepVerifier.create(service.makeClientInActive(null))
 					.assertNext(result -> assertTrue(result))

@@ -268,6 +268,11 @@ public class ClientController
         return this.service.readByIds(clientIds, queryParams).map(ResponseEntity::ok);
     }
 
+    @PostMapping("/internal/activeClientCodes")
+    public Mono<ResponseEntity<List<String>>> getActiveClientCodes(@RequestBody List<String> clientCodes) {
+        return this.service.getActiveClientCodes(clientCodes).map(ResponseEntity::ok);
+    }
+
     @PostMapping("/internal/batch")
     public Mono<ResponseEntity<List<Client>>> getClientsInternalBatch(
             @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {

@@ -1,7 +1,9 @@
 package com.fincity.saas.ui.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.annotation.Nonnull;
 
@@ -243,6 +245,232 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
     }
 
     /**
+     * A component-level change made FOR a client, whoever makes it.
+     *
+     * The id says which page; the target client says whose copy changes. Before this,
+     * the id was also the copy: a change meant for FIN2 on a page FIN2 had never
+     * customized landed in the owner's page and reached every client.
+     *
+     * - No target, or the target owns the page with this id: today's patch.
+     * - The target has its own copy of the page: patch that copy.
+     * - The target has none: start from the page as the target's base client sees it,
+     *   apply the change, and create the target's copy with baseClientCode = that base
+     *   (none when standalone). create() stores only the difference, so a one-component
+     *   change stores one component.
+     *
+     * With draft, nothing live changes: the target's own copy gets the change as its
+     * draft (saveDraft over the copy's draft view), and a target with no copy gets an
+     * unpublished one (createUnpublished), visible only on the draft surface until it
+     * is published. Asked for explicitly, never inferred, like every draft write.
+     *
+     * Returns the target's page as it now resolves (its draft view when draft).
+     */
+    public Mono<Page> patchForClient(String pageId, String targetClientCode, boolean standalone, boolean draft,
+            java.util.function.Function<Page, Mono<Page>> patch) {
+
+        if (StringUtil.safeIsBlank(targetClientCode) && !draft)
+            return this.patchOverridable(pageId, patch);
+
+        return FlatMapUtil.<ContextAuthentication, Page, Boolean, Optional<Page>, Page>flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> StringUtil.safeIsBlank(pageId) ? Mono.empty() : this.repo.findById(pageId),
+
+                        // The id only names the page. The caller must at least be able to
+                        // READ it, as a plain read(id) requires, before its name and app are
+                        // used to find or create anything. The write check comes next, on
+                        // the document actually written.
+                        (ca, stored) -> this.accessCheck(ca, READ, stored.getAppCode(), stored.getClientCode(), false)
+                                .filter(BooleanUtil::safeValueOf),
+
+                        (ca, stored, canRead) -> this.targetOf(stored, targetClientCode).equals(stored.getClientCode())
+                                ? Mono.just(Optional.of(stored))
+                                : this.repo.findOneByNameAndAppCodeAndClientCode(stored.getName(),
+                                                stored.getAppCode(), this.targetOf(stored, targetClientCode))
+                                        .map(Optional::of)
+                                        .defaultIfEmpty(Optional.empty()),
+
+                        (ca, stored, canRead, own) -> {
+                            if (own.isEmpty())
+                                return this.createForTarget(stored, this.targetOf(stored, targetClientCode),
+                                        standalone, draft, patch);
+                            return draft ? this.patchDraft(ca, own.get(), patch)
+                                    : this.patchOverridable(own.get().getId(), patch);
+                        })
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, "Page"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchForClient"));
+    }
+
+    private String targetOf(Page stored, String targetClientCode) {
+        return StringUtil.safeIsBlank(targetClientCode) ? stored.getClientCode() : targetClientCode;
+    }
+
+    /**
+     * The change applied to the draft view of a copy the target already owns. saveDraft
+     * stores the full object; publish later runs it through the ordinary update, which
+     * is where the difference is extracted.
+     */
+    private Mono<Page> patchDraft(ContextAuthentication ca, Page own, java.util.function.Function<Page, Mono<Page>> patch) {
+
+        // UPDATE on the copy itself, checked here and refused here. saveDraft alone would
+        // not refuse a caller without direct access: its resolveDraftTarget forks the page
+        // into the CALLER's client instead, which is a write nobody asked for.
+        return this.accessCheck(ca, UPDATE, own.getAppCode(), own.getClientCode(), true)
+                .filter(BooleanUtil::safeValueOf)
+                .flatMap(allowed -> this.readDraft(own.getId()))
+                .map(view -> this.objectMapper.convertValue(view, Page.class))
+                .flatMap(patch)
+                .flatMap(this::saveDraft)
+                .flatMap(saved -> this.readDraft(own.getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.patchDraft"));
+    }
+
+    private Mono<Page> createForTarget(Page stored, String targetClientCode, boolean standalone, boolean draft,
+            java.util.function.Function<Page, Mono<Page>> patch) {
+
+        String name = stored.getName();
+        String appCode = stored.getAppCode();
+
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.accessCheck(ca, CREATE, appCode, targetClientCode, true)
+                                .filter(BooleanUtil::safeValueOf),
+
+                        (ca, allowed) -> this.baseClientCodeOf(appCode, targetClientCode)
+                                .defaultIfEmpty(stored.getClientCode()),
+
+                        // The page as the target's base sees it, so a client under FIN starts
+                        // from FIN's customization when FIN has one. Copied through Jackson:
+                        // the read is cached and the patch mutates components in place.
+                        (ca, allowed, base) -> this.readInternal(name, appCode, base)
+                                .map(ObjectWithUniqueID::getObject)
+                                .map(merged -> this.objectMapper.convertValue(merged, Page.class)),
+
+                        (ca, allowed, base, seed) -> patch.apply(seed),
+
+                        (ca, allowed, base, seed, patched) -> {
+                            patched.setId(null);
+                            patched.setClientCode(targetClientCode);
+                            patched.setBaseClientCode(standalone ? null : base);
+                            patched.setVersion(1);
+                            patched.setPublished(null);
+                            return draft ? this.createUnpublished(patched) : this.create(patched);
+                        },
+
+                        (ca, allowed, base, seed, patched, created) -> this.cacheService
+                                .evictAll(EngineService.CACHE_NAME_PAGE + "-" + appCode)
+                                .then(this.readInternal(created.getId())))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION, "Page"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.createForTarget"));
+    }
+
+    /**
+     * Add a component under a parent. A key the page already has is refused rather than
+     * overwritten; that is what patchComponent is for.
+     */
+    public Mono<Page> addComponent(String pageId, String componentKey, Map<String, Object> componentData,
+            String parentKey, String message, String targetClientCode, boolean standalone, boolean draft) {
+
+        return this.patchForClient(pageId, targetClientCode, standalone, draft, existing -> {
+
+            Map<String, ComponentDefinition> compDef = existing.getComponentDefinition();
+            if (compDef == null) {
+                compDef = new HashMap<>();
+                existing.setComponentDefinition(compDef);
+            }
+
+            if (compDef.containsKey(componentKey))
+                return this.messageResourceService.<Page>throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        AbstractMongoMessageResourceService.ALREADY_EXISTS, "Component", componentKey);
+
+            ComponentDefinition parent = StringUtil.safeIsBlank(parentKey) ? null : compDef.get(parentKey);
+            if (parent == null)
+                return this.messageResourceService.<Page>throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Component", parentKey);
+
+            ComponentDefinition added = this.objectMapper.convertValue(componentData, ComponentDefinition.class);
+            added.setKey(componentKey);
+            compDef.put(componentKey, added);
+
+            Map<String, Boolean> children = parent.getChildren() == null ? new HashMap<>()
+                    : new HashMap<>(parent.getChildren());
+            children.put(componentKey, Boolean.TRUE);
+            parent.setChildren(children);
+
+            Map<String, Integer> cv = existing.getComponentVersions() == null ? new HashMap<>()
+                    : existing.getComponentVersions();
+            cv.put(componentKey, 1);
+            cv.put(parentKey, cv.getOrDefault(parentKey, 1) + 1);
+            existing.setComponentVersions(cv);
+
+            existing.setVersion(existing.getVersion() + 1);
+            existing.setMessage(message);
+            return Mono.just(existing);
+        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.addComponent"));
+    }
+
+    /**
+     * Remove a component and everything under it. On a client's copy the removal is
+     * that client's alone: the stored difference records the keys as removed.
+     */
+    public Mono<Page> removeComponent(String pageId, String componentKey, String message,
+            String targetClientCode, boolean standalone, boolean draft) {
+
+        return this.patchForClient(pageId, targetClientCode, standalone, draft, existing -> {
+
+            Map<String, ComponentDefinition> compDef = existing.getComponentDefinition();
+            if (compDef == null || !compDef.containsKey(componentKey))
+                return this.messageResourceService.<Page>throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        AbstractMongoMessageResourceService.OBJECT_NOT_FOUND, "Component", componentKey);
+
+            if (componentKey.equals(existing.getRootComponent()))
+                return this.messageResourceService.<Page>throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        AbstractMongoMessageResourceService.OBJECT_NOT_UPDATABLE);
+
+            java.util.Set<String> gone = new java.util.LinkedHashSet<>();
+            java.util.Deque<String> todo = new java.util.ArrayDeque<>(List.of(componentKey));
+            while (!todo.isEmpty()) {
+                String key = todo.pop();
+                if (!gone.add(key)) continue;
+                ComponentDefinition c = compDef.get(key);
+                if (c != null && c.getChildren() != null) todo.addAll(c.getChildren().keySet());
+            }
+
+            Map<String, Integer> cv = existing.getComponentVersions() == null ? new HashMap<>()
+                    : existing.getComponentVersions();
+
+            for (Map.Entry<String, ComponentDefinition> e : compDef.entrySet()) {
+                if (gone.contains(e.getKey()) || e.getValue().getChildren() == null
+                        || !e.getValue().getChildren().containsKey(componentKey))
+                    continue;
+                Map<String, Boolean> children = new HashMap<>(e.getValue().getChildren());
+                children.remove(componentKey);
+                e.getValue().setChildren(children);
+                cv.put(e.getKey(), cv.getOrDefault(e.getKey(), 1) + 1);
+            }
+
+            gone.forEach(compDef::remove);
+            gone.forEach(cv::remove);
+            existing.setComponentVersions(cv);
+
+            existing.setVersion(existing.getVersion() + 1);
+            existing.setMessage(message);
+            return Mono.just(existing);
+        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.removeComponent"));
+    }
+
+    /**
      * Patch a single component within a page with per-component version checking.
      *
      * @param pageId                  Page MongoDB ID
@@ -253,8 +481,18 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
      */
     public Mono<Page> patchComponent(String pageId, String componentKey,
             Map<String, Object> componentData, int expectedComponentVersion, String message) {
+        return this.patchComponent(pageId, componentKey, componentData, expectedComponentVersion, message, null,
+                false, false);
+    }
 
-        return this.patchOverridable(pageId,
+    /**
+     * The same patch, made for a target client: see {@link #patchForClient}.
+     */
+    public Mono<Page> patchComponent(String pageId, String componentKey,
+            Map<String, Object> componentData, int expectedComponentVersion, String message,
+            String targetClientCode, boolean standalone, boolean draft) {
+
+        return this.patchForClient(pageId, targetClientCode, standalone, draft,
 
                 existing -> {
                     Map<String, ComponentDefinition> compDef = existing.getComponentDefinition();
@@ -323,8 +561,18 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
      */
     public Mono<Page> patchEventFunction(String pageId, String eventName,
             Map<String, Object> eventDefinition, int expectedEventVersion, String message) {
+        return this.patchEventFunction(pageId, eventName, eventDefinition, expectedEventVersion, message, null,
+                false, false);
+    }
 
-        return this.patchOverridable(pageId,
+    /**
+     * The same patch, made for a target client: see {@link #patchForClient}.
+     */
+    public Mono<Page> patchEventFunction(String pageId, String eventName,
+            Map<String, Object> eventDefinition, int expectedEventVersion, String message,
+            String targetClientCode, boolean standalone, boolean draft) {
+
+        return this.patchForClient(pageId, targetClientCode, standalone, draft,
 
                 existing -> {
                     // Per-event version check

@@ -60,6 +60,11 @@ public class DifferenceApplicator {
 				.distinct()
 				.subscribeOn(Schedulers.boundedElastic())
 				.map(e -> Tuples.of(e, Optional.ofNullable(override.containsKey(e) ? override.get(e) : base.get(e))))
+				// A null in the override is a key that client removed (DifferenceExtractor
+				// writes one for every base key the client no longer has), so it leaves the
+				// merged map, as it does in apply(Map, Map). Kept as a null entry, a removed
+				// child still showed up as a key of its parent's children.
+				.filter(e -> e.getT2().isPresent())
 				.collectMap(Tuple2::getT1, e -> e.getT2().orElse(null), HashMap::new)
 				.flatMap(e -> e.isEmpty() ? Mono.justOrEmpty(Map.of()) : Mono.justOrEmpty(e));
 	}
