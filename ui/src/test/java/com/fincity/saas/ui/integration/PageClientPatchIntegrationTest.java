@@ -368,4 +368,27 @@ class PageClientPatchIntegrationTest extends AbstractIntegrationTest {
         assertTrue(stored(LEAF).isEmpty());
         assertEquals("MID own", labelOf(stored(MID).get(0)));
     }
+
+    @Test
+    @Timeout(30)
+    @DisplayName("the client being customized needs write access to the app too (create and change refused)")
+    void targetWithoutWriteAccessRefused() {
+        hierarchy();
+        Page base = systemPage();
+        as(SYSTEM, pageService.patchComponent(base.getId(), "btn", label("MID own"), 0, "m", MID, false, false));
+
+        // The caller (SYSTEM) keeps write access; the targets are read-only clients.
+        Mockito.when(this.feignAuthenticationService.hasWriteAccess(APP_CODE, LEAF)).thenReturn(Mono.just(Boolean.FALSE));
+        Mockito.when(this.feignAuthenticationService.hasWriteAccess(APP_CODE, MID)).thenReturn(Mono.just(Boolean.FALSE));
+
+        assertTrue(refused(() -> as(SYSTEM, pageService.patchComponent(base.getId(), "btn", label("x"), 0, "m",
+                LEAF, false, false))), "no copy may be created for a read-only client");
+        assertTrue(refused(() -> as(SYSTEM, pageService.patchComponent(base.getId(), "btn", label("x"), 0, "m",
+                MID, false, false))), "a read-only client's existing copy may not be changed");
+        assertTrue(stored(LEAF).isEmpty());
+        assertEquals("MID own", labelOf(stored(MID).get(0)));
+
+        // Reading is not customizing: the manager can still read it.
+        assertEquals("MID own", labelOf(as(SYSTEM, pageService.read(stored(MID).get(0).getId()))));
+    }
 }

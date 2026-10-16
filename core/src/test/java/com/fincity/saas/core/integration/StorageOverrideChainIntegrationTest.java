@@ -585,6 +585,23 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    @Timeout(30)
+    @DisplayName("no override may be created for a client without write access to the app")
+    void overrideForReadOnlyClientRefused() {
+        setInheritance(List.of(SYSTEM, MID));
+        Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT")));
+        org.mockito.Mockito.when(feignAuthenticationService.hasWriteAccess(APP_CODE, MID))
+                .thenReturn(Mono.just(Boolean.FALSE));
+
+        Storage override = new Storage();
+        override.setName(STORAGE_NAME).setAppCode(APP_CODE).setClientCode(MID).setBaseClientCode(SYSTEM).setVersion(1);
+        override.setSchema(new HashMap<>(base.getSchema()));
+
+        assertThrows(Exception.class, () -> asClient(storageService.create(override), SYSTEM));
+        assertEquals(0L, findAllRaw(Storage.class).filter(st -> MID.equals(st.getClientCode())).count().block());
+    }
+
     private Storage findRaw(String id) {
         return this.mongoTemplate.findById(id, Storage.class).block();
     }
