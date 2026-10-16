@@ -25,6 +25,7 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserInviteDAO;
+import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.testutil.TestDataFactory;
@@ -99,6 +100,25 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 		org.springframework.util.ReflectionUtils.setField(daoField, service, dao);
 
 		setupMessageResourceService(msgService);
+
+		// By default every client stands alone (no managers), so the business-wide identity check finds no
+		// business and is skipped; the QA-0445 tests below give real hierarchies.
+		lenient().when(clientHierarchyService.getClientHierarchy(any()))
+				.thenAnswer(inv -> Mono.just(hierarchy(inv.getArgument(0))));
+	}
+
+	/** A hierarchy row: the client, then its managers nearest first (the last one is SYSTEM). */
+	private static ClientHierarchy hierarchy(ULong clientId, ULong... managers) {
+		ClientHierarchy h = new ClientHierarchy().setClientId(clientId);
+		if (managers.length > 0)
+			h.setManageClientLevel0(managers[0]);
+		if (managers.length > 1)
+			h.setManageClientLevel1(managers[1]);
+		if (managers.length > 2)
+			h.setManageClientLevel2(managers[2]);
+		if (managers.length > 3)
+			h.setManageClientLevel3(managers[3]);
+		return h;
 	}
 
 	// =========================================================================
@@ -679,6 +699,166 @@ class UserInviteServiceTest extends AbstractServiceUnitTest {
 					.expectErrorMatches(e -> e instanceof GenericException ge
 							&& ge.getStatusCode() == HttpStatus.CONFLICT)
 					.verify();
+		}
+	}
+
+	// =========================================================================
+	// QA-0445: one identity per business (staff and channel partner users)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("business-wide identity (QA-0445)")
+	class BusinessWideIdentityTests {
+
+		private static final ULong CP_CLIENT_ID = ULong.valueOf(3);
+		private static final ULong OTHER_BUS_CLIENT_ID = ULong.valueOf(4);
+		private static final String CP_EMAIL = "cp.user@example.com";
+		private static final String CP_PHONE = "+918276287422";
+
+		@Test
+		void inviteIntoBusiness_IdentityOfItsChannelPartnerUser_Conflict() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			UserInvite invite = new UserInvite();
+			invite.setClientId(BUS_CLIENT_ID);
+			invite.setEmailId(CP_EMAIL);
+			invite.setPhoneNumber(CP_PHONE);
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), isNull(), eq(CP_EMAIL), eq(CP_PHONE), isNull()))
+					.thenReturn(Flux.empty());
+			when(clientHierarchyService.getClientHierarchy(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy(BUS_CLIENT_ID, SYSTEM_CLIENT_ID)));
+			when(userDao.identityExistsInClientFamily(BUS_CLIENT_ID, CP_EMAIL, CP_PHONE))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(msgService).throwMessage(any(), eq(SecurityMessageResourceService.USER_ALREADY_EXISTS),
+					eq(CP_EMAIL));
+			verify(dao, never()).create(any(UserInvite.class));
+		}
+
+		@Test
+		void inviteIntoChannelPartner_IdentityOfBusinessStaff_Conflict() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			UserInvite invite = new UserInvite();
+			invite.setClientId(CP_CLIENT_ID);
+			invite.setPhoneNumber(CP_PHONE);
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(CP_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(CP_CLIENT_ID), isNull(), isNull(), eq(CP_PHONE), isNull()))
+					.thenReturn(Flux.empty());
+			// The CP sits under the business, which sits under SYSTEM: the business is the root checked.
+			when(clientHierarchyService.getClientHierarchy(CP_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy(CP_CLIENT_ID, BUS_CLIENT_ID, SYSTEM_CLIENT_ID)));
+			when(userDao.identityExistsInClientFamily(BUS_CLIENT_ID, null, CP_PHONE))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.createInvite(invite))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(msgService).throwMessage(any(), eq(SecurityMessageResourceService.USER_ALREADY_EXISTS),
+					eq(CP_PHONE));
+			verify(dao, never()).create(any(UserInvite.class));
+		}
+
+		@Test
+		void inviteIntoOtherBusiness_IdentityOnlyInFirstBusiness_Allowed() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			UserInvite invite = new UserInvite();
+			invite.setClientId(OTHER_BUS_CLIENT_ID);
+			invite.setEmailId(CP_EMAIL);
+
+			UserInvite created = new UserInvite();
+			created.setId(ULong.valueOf(1));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(OTHER_BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(userDao.getUsersWithAnyIdentity(eq(OTHER_BUS_CLIENT_ID), isNull(), eq(CP_EMAIL), isNull(),
+					isNull()))
+					.thenReturn(Flux.empty());
+			when(clientHierarchyService.getClientHierarchy(OTHER_BUS_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy(OTHER_BUS_CLIENT_ID, SYSTEM_CLIENT_ID)));
+			when(userDao.identityExistsInClientFamily(OTHER_BUS_CLIENT_ID, CP_EMAIL, null))
+					.thenReturn(Mono.just(false));
+			when(dao.getInviteWithAnyIdentity(eq(OTHER_BUS_CLIENT_ID), eq(CP_EMAIL), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.FALSE, result.get("existingUser")))
+					.verifyComplete();
+
+			// Only the target's own business is searched, never the one the identity lives in.
+			verify(userDao, never()).identityExistsInClientFamily(eq(BUS_CLIENT_ID), any(), any());
+		}
+
+		@Test
+		void inviteIntoSystem_BusinessCheckSkipped() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			UserInvite invite = new UserInvite();
+			invite.setEmailId(CP_EMAIL);
+
+			UserInvite created = new UserInvite();
+			created.setId(ULong.valueOf(1));
+
+			when(userDao.getUsersWithAnyIdentity(eq(SYSTEM_CLIENT_ID), isNull(), eq(CP_EMAIL), isNull(), isNull()))
+					.thenReturn(Flux.empty());
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy(SYSTEM_CLIENT_ID)));
+			when(dao.getInviteWithAnyIdentity(eq(SYSTEM_CLIENT_ID), eq(CP_EMAIL), isNull()))
+					.thenReturn(Mono.empty());
+			when(dao.create(any(UserInvite.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.createInvite(invite))
+					.assertNext(result -> assertEquals(Boolean.FALSE, result.get("existingUser")))
+					.verifyComplete();
+
+			verify(userDao, never()).identityExistsInClientFamily(any(), any(), any());
+		}
+
+		@Test
+		void acceptInvite_IdentityTakenInBusinessSinceInvite_Conflict() {
+			setupSecurityContext(TestDataFactory.createSystemAuth());
+
+			UserInvite invite = new UserInvite();
+			invite.setClientId(BUS_CLIENT_ID);
+			invite.setEmailId(CP_EMAIL);
+			invite.setInviteCode("code1");
+
+			com.fincity.security.model.UserRegistrationRequest request =
+					new com.fincity.security.model.UserRegistrationRequest();
+			request.setInviteCode("code1");
+			request.setFirstName("New");
+			request.setPassType(com.fincity.security.model.AuthenticationPasswordType.PASSWORD);
+			request.setPassword("StrongP@ss123");
+
+			when(dao.getUserInvitation("code1")).thenReturn(Mono.just(invite));
+			when(userDao.getUsersWithAnyIdentity(eq(BUS_CLIENT_ID), any(), eq(CP_EMAIL), any(), isNull()))
+					.thenReturn(Flux.empty());
+			when(clientHierarchyService.getClientHierarchy(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy(BUS_CLIENT_ID, SYSTEM_CLIENT_ID)));
+			when(userDao.identityExistsInClientFamily(eq(BUS_CLIENT_ID), eq(CP_EMAIL), any()))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.acceptInvite(request, null, null))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(userDao, never()).create(any(User.class));
+			verify(dao, never()).deleteUserInvitation(any());
 		}
 	}
 

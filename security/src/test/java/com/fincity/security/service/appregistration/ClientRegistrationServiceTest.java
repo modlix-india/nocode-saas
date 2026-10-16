@@ -137,6 +137,11 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 		}
 
 		setupMessageResourceService(securityMessageResourceService);
+
+		// By default the managing client stands alone (no managers), so the business-wide identity check
+		// finds no business and is skipped; the QA-0445 tests give real hierarchies.
+		lenient().when(clientHierarchyService.getClientHierarchy(any()))
+				.thenAnswer(inv -> Mono.just(new ClientHierarchy().setClientId(inv.getArgument(0))));
 	}
 
 	private ContextAuthentication createUnauthenticatedContext() {
@@ -821,6 +826,129 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 					.verify();
 
 			verify(clientService, never()).createForRegistration(any(Client.class), any(ULong.class));
+		}
+	}
+
+	// =========================================================================
+	// QA-0445: one identity per business (staff and channel partner users)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("register() business-wide identity (QA-0445)")
+	class BusinessWideIdentityTests {
+
+		private static final ULong OTHER_BUS_CLIENT_ID = ULong.valueOf(4);
+		private static final String EMAIL = "test@example.com";
+
+		/** A signup on a business's own URL: the business is the managing client. */
+		private ContextAuthentication signupUnder(ULong managingClientId) {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(managingClientId, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			ca.setAuthenticated(false);
+			ca.setUrlAppCode(APP_CODE);
+			ca.setUrlClientCode(CLIENT_CODE);
+			return ca;
+		}
+
+		private ClientRegistrationRequest channelPartnerSignup() {
+			ClientRegistrationRequest req = createBasicRegistrationRequest();
+			req.setBusinessClient(true);
+			req.setBusinessType("RETAIL");
+			req.setClientName("Partner Co");
+			return req;
+		}
+
+		private void stubUpToDuplicateCheck() {
+			ClientPasswordPolicy policy = TestDataFactory.createPasswordPolicy();
+			when(clientService.getClientAppPolicy(any(ULong.class), eq(APP_CODE), any()))
+					.thenReturn(Mono.just(policy));
+			when(clientService.validatePasswordPolicy(eq(policy), isNull(), any(), anyString()))
+					.thenReturn(Mono.just(Boolean.TRUE));
+			when(userService.checkBusinessClientOwnerExists(eq(CLIENT_CODE), any(ClientRegistrationRequest.class)))
+					.thenReturn(Mono.just(Boolean.FALSE));
+		}
+
+		@Test
+		void channelPartnerSignup_StaffIdentityOfThatBusiness_Conflict() {
+			setupSecurityContext(signupUnder(BUS_CLIENT_ID));
+			stubUpToDuplicateCheck();
+
+			when(clientHierarchyService.getClientHierarchy(BUS_CLIENT_ID)).thenReturn(Mono.just(
+					new ClientHierarchy().setClientId(BUS_CLIENT_ID).setManageClientLevel0(SYSTEM_CLIENT_ID)));
+			when(userService.identityExistsInClientFamily(BUS_CLIENT_ID, EMAIL, null))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			StepVerifier.create(service.register(channelPartnerSignup(), createMockRequest(),
+					mock(ServerHttpResponse.class)))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(securityMessageResourceService).throwMessage(any(),
+					eq(SecurityMessageResourceService.USER_ALREADY_EXISTS), any());
+			verify(clientService, never()).createForRegistration(any(Client.class), any(ULong.class));
+		}
+
+		@Test
+		void signupUnderChannelPartner_IdentityAnywhereInTheBusiness_Conflict() {
+			ULong cpClientId = ULong.valueOf(3);
+			setupSecurityContext(signupUnder(cpClientId));
+			stubUpToDuplicateCheck();
+
+			when(clientHierarchyService.getClientHierarchy(cpClientId)).thenReturn(Mono.just(
+					new ClientHierarchy().setClientId(cpClientId).setManageClientLevel0(BUS_CLIENT_ID)
+							.setManageClientLevel1(SYSTEM_CLIENT_ID)));
+			when(userService.identityExistsInClientFamily(BUS_CLIENT_ID, EMAIL, null))
+					.thenReturn(Mono.just(Boolean.TRUE));
+
+			StepVerifier.create(service.register(channelPartnerSignup(), createMockRequest(),
+					mock(ServerHttpResponse.class)))
+					.expectErrorMatches(e -> e instanceof GenericException ge
+							&& ge.getStatusCode() == HttpStatus.CONFLICT)
+					.verify();
+
+			verify(clientService, never()).createForRegistration(any(Client.class), any(ULong.class));
+		}
+
+		@Test
+		void channelPartnerSignup_IdentityOnlyInAnotherBusiness_PassesTheCheck() {
+			setupSecurityContext(signupUnder(OTHER_BUS_CLIENT_ID));
+			stubUpToDuplicateCheck();
+
+			when(clientHierarchyService.getClientHierarchy(OTHER_BUS_CLIENT_ID)).thenReturn(Mono.just(
+					new ClientHierarchy().setClientId(OTHER_BUS_CLIENT_ID).setManageClientLevel0(SYSTEM_CLIENT_ID)));
+			when(userService.identityExistsInClientFamily(OTHER_BUS_CLIENT_ID, EMAIL, null))
+					.thenReturn(Mono.just(Boolean.FALSE));
+			// The step right after the duplicate check: reaching it means the check let the signup through.
+			when(appService.getAppByCode(APP_CODE))
+					.thenReturn(Mono.error(new IllegalStateException("past the duplicate check")));
+
+			StepVerifier.create(service.register(channelPartnerSignup(), createMockRequest(),
+					mock(ServerHttpResponse.class)))
+					.expectErrorMatches(e -> e instanceof IllegalStateException
+							&& "past the duplicate check".equals(e.getMessage()))
+					.verify();
+
+			verify(userService, never()).identityExistsInClientFamily(eq(BUS_CLIENT_ID), any(), any());
+		}
+
+		@Test
+		void businessSignupUnderSystem_BusinessCheckSkipped() {
+			setupSecurityContext(signupUnder(SYSTEM_CLIENT_ID));
+			stubUpToDuplicateCheck();
+
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(new ClientHierarchy().setClientId(SYSTEM_CLIENT_ID)));
+			when(appService.getAppByCode(APP_CODE))
+					.thenReturn(Mono.error(new IllegalStateException("past the duplicate check")));
+
+			StepVerifier.create(service.register(channelPartnerSignup(), createMockRequest(),
+					mock(ServerHttpResponse.class)))
+					.expectErrorMatches(e -> e instanceof IllegalStateException
+							&& "past the duplicate check".equals(e.getMessage()))
+					.verify();
+
+			verify(userService, never()).identityExistsInClientFamily(any(), any(), any());
 		}
 	}
 

@@ -1856,6 +1856,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
      * independent of who is calling; {@code AuthenticationService.authenticateWSocial} makes
      * the same decision earlier, so that the browser is told to sign in rather than refused.
      */
+    /**
+     * Does any user that is not DELETED, in {@code rootClientId} or any client it manages, hold this email or
+     * phone? Registration's side of the QA-0445 business-wide identity rule; invites ask the DAO directly.
+     */
+    public Mono<Boolean> identityExistsInClientFamily(ULong rootClientId, String emailId, String phoneNumber) {
+        return this.dao.identityExistsInClientFamily(rootClientId, emailId, phoneNumber);
+    }
+
     public Mono<Boolean> checkBusinessClientOwnerExists(String urlClientCode, ClientRegistrationRequest request) {
         return this.clientService
                 .getClientId(urlClientCode)

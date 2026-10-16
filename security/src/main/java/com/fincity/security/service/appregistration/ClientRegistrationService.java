@@ -35,6 +35,7 @@ import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.AppRegistrationIntegration;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
@@ -368,10 +369,33 @@ public class ClientRegistrationService {
                 : this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest);
 
         return alreadyStanding.filter(e -> !e)
+                .flatMap(notStanding -> this.identityTakenInManagingBusiness(ca, registrationRequest))
+                .filter(e -> !e)
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.CONFLICT, msg),
                         SecurityMessageResourceService.USER_ALREADY_EXISTS,
                         registrationRequest.getIdentifier()));
+    }
+
+    /**
+     * QA-0445 rule (2026-10-16): registering under a managing client that is not SYSTEM is refused when an
+     * active user anywhere in that client's business (the top client below SYSTEM, with every client it
+     * manages) already holds the email or phone. So a business's staff cannot sign up as one of its channel
+     * partners, nor one partner's user as another partner. Registering under SYSTEM (a new business) is
+     * left to the checks above.
+     */
+    private Mono<Boolean> identityTakenInManagingBusiness(ContextAuthentication ca,
+                                                          ClientRegistrationRequest registrationRequest) {
+
+        ULong managingClientId = ULongUtil.valueOf(ca.getLoggedInFromClientId());
+        if (managingClientId == null)
+            return Mono.just(Boolean.FALSE);
+
+        return this.clientHierarchyService.getClientHierarchy(managingClientId)
+                .mapNotNull(ClientHierarchy::businessRootId)
+                .flatMap(rootId -> this.userService.identityExistsInClientFamily(rootId,
+                        registrationRequest.getEmailId(), registrationRequest.getPhoneNumber()))
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType, // NOSONAR
