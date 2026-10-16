@@ -64,7 +64,7 @@ public class CoreSchemaService extends AbstractSchemaService<CoreSchema, CoreSch
     @Override
     protected Mono<Boolean> evictRecursively(String appCode, String clientCode, String name) {
         return super.evictRecursively(appCode, clientCode, name)
-                .flatMap(evicted -> this.rebuild(appCode, clientCode, name).thenReturn(evicted));
+                .flatMap(evicted -> this.overridesThenRebuild(appCode, clientCode, name).thenReturn(evicted));
     }
 
     /**
@@ -79,7 +79,19 @@ public class CoreSchemaService extends AbstractSchemaService<CoreSchema, CoreSch
     @Override
     protected Mono<Boolean> evictDraft(String appCode, String clientCode, String name) {
         return super.evictDraft(appCode, clientCode, name)
-                .flatMap(evicted -> this.rebuild(appCode, clientCode, name).thenReturn(evicted));
+                .flatMap(evicted -> this.overridesThenRebuild(appCode, clientCode, name).thenReturn(evicted));
+    }
+
+    /**
+     * A client's own version of a schema only reaches its tables once the client has
+     * its own document of the storages standing on it, so those come first; see
+     * StorageService.ensureClientOverrides. Not on delete: removing a client's schema
+     * is no reason to give it storages.
+     */
+    private Mono<List<String>> overridesThenRebuild(String appCode, String clientCode, String name) {
+        return this.storageService
+                .ensureClientOverrides(appCode, clientCode, name)
+                .then(this.rebuild(appCode, clientCode, name));
     }
 
     /**

@@ -119,6 +119,7 @@ public abstract class AbstractServiceUnitTest {
 
 		lenient().doReturn(Mono.just(true)).when(cacheService).evict(anyString(), any(Object[].class));
 		lenient().doReturn(Mono.just(true)).when(cacheService).evict(anyString(), anyString());
+		lenient().doReturn(Mono.just(true)).when(cacheService).evict(anyString(), anyString());
 		lenient().doReturn(Mono.just(true)).when(cacheService).evictAll(anyString());
 
 		lenient().doAnswer(invocation -> Mono.just(invocation.getArgument(1)))

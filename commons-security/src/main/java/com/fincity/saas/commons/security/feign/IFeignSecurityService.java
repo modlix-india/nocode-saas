@@ -89,6 +89,10 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.writeAccessClientCodes:/api/security/applications/internal/writeAccessClientCodes}")
     Mono<List<String>> getWriteAccessClientCodes(@RequestParam String appCode);
 
+    /** The codes among these whose client, and every client managing it, is active. */
+    @PostMapping("${security.feign.activeClientCodes:/api/security/clients/internal/activeClientCodes}")
+    Mono<List<String>> getActiveClientCodes(@RequestBody List<String> clientCodes);
+
     @GetMapping("${security.feign.validClientCode:/api/security/clients/internal/validateClientCode}")
     Mono<Boolean> validClientCode(@RequestParam String clientCode);
 
