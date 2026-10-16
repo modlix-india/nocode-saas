@@ -337,9 +337,24 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                     if (!BooleanUtil.safeValueOf(managed))
                         return Mono.empty();
 
-                    return checkAppWriteAccess
-                            ? this.securityService.hasWriteAccess(appCode, ca.getClientCode())
-                            : this.securityService.hasReadAccess(appCode, ca.getClientCode());
+                    if (!checkAppWriteAccess)
+                        return this.securityService.hasReadAccess(appCode, ca.getClientCode());
+
+                    // A write needs write access to the app on BOTH sides: the client making
+                    // the change, and the client whose object it is. A customization can
+                    // only exist for a client that may itself change the app, so a manager
+                    // cannot create or edit one for a read-only client (a customer that
+                    // only uses the app).
+                    Mono<Boolean> caller = this.securityService.hasWriteAccess(appCode, ca.getClientCode());
+
+                    // accessCheck retries a refused READ through this write branch; reading
+                    // is not customizing, so the target's own access is not asked then.
+                    if (clientCode.equals(ca.getClientCode()) || READ.equals(method))
+                        return caller;
+
+                    return caller.flatMap(ok -> BooleanUtil.safeValueOf(ok)
+                            ? this.securityService.hasWriteAccess(appCode, clientCode)
+                            : Mono.just(Boolean.FALSE));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).accessCheck"))
@@ -788,7 +803,26 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
             return this.notDraftable();
 
         entity.setPublished(Boolean.FALSE);
-        return this.create(entity);
+
+        // The full content as sent, taken before create(): for a client override,
+        // create() turns the entity into its difference from the base in place.
+        Map<String, Object> content = this.objectMapper.convertValue(entity, TYPE_REFERENCE_MAP);
+
+        // Unpublished work is tracked as draft rows: publish() and publishAll start
+        // from the row. Without one, a never-published object could never go live
+        // and was missing from the app's pending list.
+        return this.create(entity)
+                .doOnNext(created -> {
+                    // The row is read back as the editor's object, so it has to name
+                    // the document it belongs to, as a saveDraft row always does.
+                    content.put("id", created.getId());
+                    content.put("version", created.getVersion());
+                })
+                .flatMap(created -> this.draftService.upsert(this.getObjectName().toUpperCase(),
+                                created.getAppCode(), created.getName(), created.getClientCode(), created.getId(),
+                                content, created.getVersion(), entity.getMessage())
+                        .then(this.evictDraft(created.getAppCode(), created.getClientCode(), created.getName()))
+                        .thenReturn(created));
     }
 
     /**
@@ -1269,6 +1303,74 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 AbstractMongoMessageResourceService.UNABLE_TO_DELETE, this.getObjectName(), id));
     }
 
+    private static final int MAX_BASE_HOPS = 16;
+
+    private static final String SYSTEM_CLIENT_CODE = "SYSTEM";
+
+    /**
+     * The document a derived one stands on: the base client's own copy, or, when that
+     * client has none, the copy its own base would have.
+     *
+     * A client customizes on top of the level above it whether or not that level has
+     * customized anything. Without this, a copy whose base client held no document had
+     * no chain at all: it was stored whole, as a standalone object, and stopped seeing
+     * every later change from above. Measured on monkbars: SASIC (managed by FIN) with
+     * baseClientCode FIN, FIN holding no copy, kept SYSTEM's old text and missed a new
+     * schema field, while FIN2 on SYSTEM saw both.
+     *
+     * Hops stop at the app owner, whose copy has no base, or after MAX_BASE_HOPS as a
+     * guard against a cycle in the hierarchy data.
+     */
+    private Mono<D> baseDocument(String name, String appCode, String baseClientCode, int hops) {
+
+        if (hops > MAX_BASE_HOPS || StringUtil.safeIsBlank(baseClientCode))
+            return Mono.empty();
+
+        return this.repo.findOneByNameAndAppCodeAndClientCode(name, appCode, baseClientCode)
+                .switchIfEmpty(Mono.defer(() -> this.baseClientCodeOf(appCode, baseClientCode)
+                        .filter(next -> !next.equals(baseClientCode))
+                        .flatMap(next -> this.baseDocument(name, appCode, next, hops + 1))));
+    }
+
+    /**
+     * The client a customization by this client stands on: its immediate managing
+     * client, except that a client managed by SYSTEM in an app owned by someone else
+     * stands on the app owner. Empty for the app owner itself.
+     *
+     * The same rule the tools use when they create a client's copy, so the base they
+     * write and the base this walk falls back to are the same client.
+     */
+    public Mono<String> baseClientCodeOf(String appCode, String clientCode) {
+
+        // Deferred so a failed lookup is an error signal the read path can fall back
+        // from, not an exception thrown while the pipeline is being built.
+        return Mono.defer(() -> this.securityService == null ? Mono.<String>empty()
+                : this.baseClientCodeOfInternal(appCode, clientCode));
+    }
+
+    private Mono<String> baseClientCodeOfInternal(String appCode, String clientCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.securityService.getAppExplicitInfoByCode(appCode)
+                        .map(app -> app.getClientCode() == null ? "" : app.getClientCode()),
+
+                owner -> owner.equals(clientCode) ? Mono.empty()
+                        : this.securityService.getClientHierarchyCodes(clientCode)
+                                .defaultIfEmpty(List.of()),
+
+                (owner, hierarchy) -> {
+                    String managing = hierarchy.size() > 1 ? hierarchy.get(1) : null;
+
+                    if (managing == null || (SYSTEM_CLIENT_CODE.equals(managing) && !owner.isEmpty()))
+                        return owner.isEmpty() || owner.equals(clientCode) ? Mono.empty() : Mono.just(owner);
+
+                    return Mono.just(managing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).baseClientCodeOf"));
+    }
+
     protected Mono<D> getMergedSources(D entity) {
 
         if (entity == null)
@@ -1279,9 +1381,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
         Flux<D> x = Mono.just(entity)
                 .expandDeep(e -> e.getBaseClientCode() == null ? Mono.empty()
-                        : this.repo.findOneByNameAndAppCodeAndClientCode(e.getName(),
-                                e.getAppCode(),
-                                e.getBaseClientCode()));
+                        : this.baseDocument(e.getName(), e.getAppCode(), e.getBaseClientCode(), 0));
 
         return x.collectList()
                 .flatMap(list -> {
@@ -1847,7 +1947,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode,
             boolean draft) {
 
-        return FlatMapUtil.flatMapMono(() -> this.inheritanceService.order(appCode, urlClientCode, clientCode),
+        return FlatMapUtil.flatMapMono(() -> this.readOrder(appCode, urlClientCode, clientCode),
 
                 // Never-published objects are filtered out of the list BEFORE the
                 // isEmpty and size()==1 checks below, not inside the reversed walk.
@@ -1882,6 +1982,53 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 (clientCodes, lst, found) -> Mono.just(this.pojoClass.cast(found)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readIfExistsInBase"));
+    }
+
+    /**
+     * The clients a read looks through, base first: the app inheritance order with the
+     * reading client's managing chain added just below the client itself.
+     *
+     * App inheritance is [app owner, URL client, client]. On a client's own URL that
+     * skips its managing clients, so a client under FIN with no copy of its own was
+     * served the owner's object instead of FIN's customization, while a copy of its own
+     * DID follow FIN (getMergedSources walks baseClientCodeOf). Reads and writes must
+     * agree on the level above, so the read order includes the same chain:
+     * client -> baseClientCodeOf(client) -> ... -> app owner, nearest last (it wins).
+     */
+    protected Mono<List<String>> readOrder(String appCode, String urlClientCode, String clientCode) {
+
+        return this.inheritanceService.order(appCode, urlClientCode, clientCode)
+                .flatMap(order -> this.managingChain(appCode, clientCode, new ArrayList<>(), 0)
+                        .map(chain -> {
+                            if (chain.isEmpty() || order.isEmpty())
+                                return order;
+
+                            List<String> merged = new ArrayList<>(order.subList(0, order.size() - 1));
+                            String last = order.get(order.size() - 1);
+                            for (int i = chain.size() - 1; i >= 0; i--) {
+                                String c = chain.get(i);
+                                if (!merged.contains(c) && !c.equals(last))
+                                    merged.add(c);
+                            }
+                            merged.add(last);
+                            return merged;
+                        }));
+    }
+
+    /** baseClientCodeOf repeatedly, nearest first, stopping at the app owner. */
+    private Mono<List<String>> managingChain(String appCode, String clientCode, List<String> acc, int hops) {
+
+        if (hops > MAX_BASE_HOPS || StringUtil.safeIsBlank(clientCode))
+            return Mono.just(acc);
+
+        return this.baseClientCodeOf(appCode, clientCode)
+                .filter(next -> !next.equals(clientCode) && !acc.contains(next))
+                .flatMap(next -> {
+                    acc.add(next);
+                    return this.managingChain(appCode, next, acc, hops + 1);
+                })
+                .defaultIfEmpty(acc)
+                .onErrorResume(e -> Mono.just(acc));
     }
 
     // These parameters are required for the exteneded classes.

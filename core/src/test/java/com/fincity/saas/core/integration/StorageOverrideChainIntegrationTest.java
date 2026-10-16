@@ -517,6 +517,74 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * A client customizes on top of the level above it even when that level has no
+     * copy of its own. Before, the base walk stopped at the missing level: the copy
+     * was stored whole and never saw a later change from above.
+     */
+    @Nested
+    @DisplayName("a base client that holds no copy")
+    class MissingBaseLevel {
+
+        private void stubHierarchy(String clientCode, String... codes) {
+            org.mockito.Mockito.when(feignAuthenticationService.getClientHierarchyCodes(clientCode))
+                    .thenReturn(Mono.just(List.of(codes)));
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("the copy is stored as a difference against the next level that has one, and follows it")
+        void diffsAgainstNextLevel() {
+
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            stubHierarchy(LEAF, LEAF, MID, SYSTEM);
+            stubHierarchy(MID, MID, SYSTEM);
+
+            Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT"), "fromRoot", "r"));
+
+            Storage leaf = new Storage();
+            leaf.setName(STORAGE_NAME).setAppCode(APP_CODE).setClientCode(LEAF).setBaseClientCode(MID).setVersion(1);
+            leaf.setSchema(schema("type", List.of("OBJECT"), "fromRoot", "r", "fromLeaf", "l"));
+
+            Storage created = asClient(storageService.create(leaf), LEAF);
+
+            Storage stored = findRaw(created.getId());
+            assertEquals(MID, stored.getBaseClientCode());
+            assertEquals(Map.of("fromLeaf", "l"), stored.getSchema(), "only the leaf's own change is stored");
+            assertEquals(base.getUniqueName(), created.getUniqueName(), "and it shares the base's table");
+
+            base.getSchema().put("laterFromRoot", "r2");
+            mongoTemplate.save(base).block();
+
+            Storage read = asClient(storageService.readInternal(created.getId()), LEAF);
+            assertEquals("l", read.getSchema().get("fromLeaf"));
+            assertEquals("r2", read.getSchema().get("laterFromRoot"), "a later change from SYSTEM reaches the leaf");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("baseClientCodeOf: the managing client, the app owner instead of SYSTEM, nothing for the owner")
+        void baseClientRule() {
+
+            stubHierarchy(LEAF, LEAF, MID, SYSTEM);
+            stubHierarchy(MID, MID, SYSTEM);
+
+            assertEquals(MID, asClient(storageService.baseClientCodeOf(APP_CODE, LEAF), LEAF));
+            assertEquals(SYSTEM, asClient(storageService.baseClientCodeOf(APP_CODE, MID), MID));
+            assertNull(asClient(storageService.baseClientCodeOf(APP_CODE, SYSTEM), SYSTEM));
+
+            // An app owned by MID: a client managed by SYSTEM directly stands on MID.
+            org.mockito.Mockito.when(feignAuthenticationService.getAppExplicitInfoByCode("midapp"))
+                    .thenReturn(Mono.just(new com.fincity.saas.commons.security.dto.App()
+                            .setAppCode("midapp").setClientCode(MID).setAppAccessType("ANY")));
+            stubHierarchy("OTHER", "OTHER", SYSTEM);
+
+            assertEquals(MID, asClient(storageService.baseClientCodeOf("midapp", "OTHER"), "OTHER"));
+            assertEquals(MID, asClient(storageService.baseClientCodeOf("midapp", LEAF), LEAF));
+            assertNull(asClient(storageService.baseClientCodeOf("midapp", MID), MID));
+        }
+    }
+
     private Storage findRaw(String id) {
         return this.mongoTemplate.findById(id, Storage.class).block();
     }

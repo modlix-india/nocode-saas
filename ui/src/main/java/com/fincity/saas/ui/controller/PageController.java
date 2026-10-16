@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import com.fincity.saas.ui.document.Page;
+import com.fincity.saas.ui.model.ComponentAddRequest;
 import com.fincity.saas.ui.model.ComponentDefinition;
 import com.fincity.saas.ui.model.ComponentPatchRequest;
 import com.fincity.saas.ui.model.EventFunctionPatchRequest;
@@ -82,13 +85,51 @@ public class PageController extends AbstractOverridableDataController<Page, Page
     public Mono<ResponseEntity<Page>> patchComponent(
             @PathVariable String id,
             @PathVariable String componentKey,
-            @RequestBody ComponentPatchRequest request) {
+            @RequestBody ComponentPatchRequest request,
+            @RequestParam(value = "clientCode", required = false) String clientCode,
+            @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
+            @RequestParam(value = "draft", defaultValue = "false") boolean draft) {
 
         return this.service.patchComponent(
                 id, componentKey,
                 request.getComponentData(),
                 request.getExpectedComponentVersion(),
-                request.getMessage())
+                request.getMessage(),
+                clientCode, standalone, draft)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Add a component under an existing parent. With clientCode, the change is made
+     * for that client (its own copy, created on top of its base when it has none);
+     * see PageService.patchForClient.
+     */
+    @PostMapping("/{id}/components")
+    public Mono<ResponseEntity<Page>> addComponent(
+            @PathVariable String id,
+            @RequestBody ComponentAddRequest request,
+            @RequestParam(value = "clientCode", required = false) String clientCode,
+            @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
+            @RequestParam(value = "draft", defaultValue = "false") boolean draft) {
+
+        return this.service.addComponent(id, request.getComponentKey(), request.getComponentData(),
+                request.getParentKey(), request.getMessage(), clientCode, standalone, draft)
+                .map(ResponseEntity::ok);
+    }
+
+    /**
+     * Remove a component and its subtree. With clientCode, from that client's copy only.
+     */
+    @DeleteMapping("/{id}/components/{componentKey}")
+    public Mono<ResponseEntity<Page>> removeComponent(
+            @PathVariable String id,
+            @PathVariable String componentKey,
+            @RequestParam(value = "message", required = false) String message,
+            @RequestParam(value = "clientCode", required = false) String clientCode,
+            @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
+            @RequestParam(value = "draft", defaultValue = "false") boolean draft) {
+
+        return this.service.removeComponent(id, componentKey, message, clientCode, standalone, draft)
                 .map(ResponseEntity::ok);
     }
 
@@ -117,13 +158,17 @@ public class PageController extends AbstractOverridableDataController<Page, Page
     public Mono<ResponseEntity<Page>> putEvent(
             @PathVariable String id,
             @PathVariable String functionName,
-            @RequestBody EventFunctionPatchRequest request) {
+            @RequestBody EventFunctionPatchRequest request,
+            @RequestParam(value = "clientCode", required = false) String clientCode,
+            @RequestParam(value = "standalone", defaultValue = "false") boolean standalone,
+            @RequestParam(value = "draft", defaultValue = "false") boolean draft) {
 
         return this.service.patchEventFunction(
                 id, functionName,
                 request.getDefinition(),
                 request.getExpectedEventVersion(),
-                request.getMessage())
+                request.getMessage(),
+                clientCode, standalone, draft)
                 .map(ResponseEntity::ok);
     }
 }
