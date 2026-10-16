@@ -32,6 +32,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
     private static final String CACHE_NAME_USER_PART_CLIENT = "userPartOfHierarchy";
 
     private static final String CACHE_NAME_APP_STATUS = "appStatus";
+    private static final String CACHE_NAME_CLIENT_HIERARCHY_CODES = "clientHierarchyCodes";
 
     @Autowired(required = false)
     private IFeignSecurityService feignAuthService;
@@ -149,6 +150,16 @@ public class FeignAuthenticationService implements IAuthenticationService {
     public Mono<App> getAppExplicitInfoByCode(String appCode) {
         return cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPCODE_EXPLICIT,
                 () -> this.feignAuthService.getAppExplicitInfoByCode(appCode), appCode);
+    }
+
+    /**
+     * [clientCode, nearest managing client code, next, ...], up to the top. Cached: the
+     * override chain asks for it on every merge of a derived document whose base client
+     * holds no copy of its own.
+     */
+    public Mono<List<String>> getClientHierarchyCodes(String clientCode) {
+        return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_HIERARCHY_CODES,
+                () -> this.feignAuthService.getClientHierarchyCodes(clientCode), clientCode);
     }
 
     public Mono<List<String>> getDependencies(String appCode) {

@@ -547,9 +547,7 @@ public class ClientService
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
                 (ca, managed) -> super.update(entity)
-                        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, entity.getId())
-                                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, entity.getId()))
-                                .map(x -> e)))
+                        .flatMap(e -> this.evictClientCaches(e.getId(), e.getCode()).thenReturn(e)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.update"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
@@ -570,9 +568,7 @@ public class ClientService
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
                 (ca, managed) -> super.update(key, fields)
-                        .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, e.getId())
-                                .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, e.getId()))
-                                .map(x -> e)))
+                        .flatMap(e -> this.evictClientCaches(e.getId(), e.getCode()).thenReturn(e)))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.update"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
@@ -589,9 +585,30 @@ public class ClientService
                     return e;
                 })
                 .flatMap(this::update)
-                .flatMap(e -> this.cacheService.evict(CACHE_NAME_CLIENT_CODE, id)
-                        .flatMap(y -> this.cacheService.evict(CACHE_NAME_CLIENT_ID, id)))
+                .flatMap(e -> this.evictClientCaches(id, e.getCode()))
                 .map(e -> 1);
+    }
+
+    /**
+     * Clears both client caches for one client. {@link #getClientBy(String)} fills the
+     * code cache keyed by CODE and {@link #readInternal(ULong)} the id cache keyed by ID.
+     * Every path used to evict the code cache by id, which cleared nothing, so a
+     * deleted, deactivated or renamed client went on being served as it was.
+     */
+    private Mono<Boolean> evictClientCaches(ULong id, String code) {
+
+        Mono<Boolean> byCode = code == null ? Mono.just(Boolean.TRUE)
+                : this.cacheService.evict(CACHE_NAME_CLIENT_CODE, code);
+
+        return byCode.flatMap(x -> id == null ? Mono.just(Boolean.TRUE)
+                : this.cacheService.evict(CACHE_NAME_CLIENT_ID, id));
+    }
+
+    /** Evicts after a status change made straight in the DAO, which knows only the id. */
+    private Mono<Boolean> evictClientCaches(ULong id) {
+        return this.dao.readInternal(id)
+                .flatMap(c -> this.evictClientCaches(id, c.getCode()))
+                .switchIfEmpty(Mono.defer(() -> this.evictClientCaches(id, null)));
     }
 
     /**
@@ -706,6 +723,17 @@ public class ClientService
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_CODE, () -> this.dao.getClientBy(clientCode), clientCode);
     }
 
+    /**
+     * Which of these clients are active, with every client managing them active too.
+     * Read from the database, not the client cache: core's event scheduler calls it to
+     * stop running schedules for a client the moment it is deleted or deactivated, and
+     * the code-keyed client cache is not evicted on either. See
+     * {@link ClientDAO#getActiveClientCodes}.
+     */
+    public Mono<List<String>> getActiveClientCodes(List<String> clientCodes) {
+        return this.dao.getActiveClientCodes(clientCodes);
+    }
+
     public Mono<ULong> getClientId(String clientCode) {
         return this.getClientBy(clientCode).map(Client::getId);
     }
@@ -724,7 +752,8 @@ public class ClientService
                         : this.isUserClientManageClient(ca, id),
 
                 (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
-                        ? this.dao.makeClientActiveIfInActive(clientId)
+                        ? this.dao.makeClientActiveIfInActive(id)
+                                .flatMap(changed -> this.evictClientCaches(id).thenReturn(changed))
                         : Mono.empty())
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
@@ -747,7 +776,9 @@ public class ClientService
                 (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
                         : this.isUserClientManageClient(ca, id),
 
-                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
+                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
+                        ? this.dao.makeClientInActive(id)
+                                .flatMap(changed -> this.evictClientCaches(id).thenReturn(changed))
                         : Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(

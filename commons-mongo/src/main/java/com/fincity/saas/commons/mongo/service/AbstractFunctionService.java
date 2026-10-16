@@ -87,18 +87,13 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 								.throwMessage(msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
 										AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-					String name = StringUtil.safeValueOf(entity.getDefinition()
-							.get(NAME));
-					String namespace = StringUtil.safeValueOf(entity.getDefinition()
-							.get(NAMESPACE));
+					String funName = this.updatedFunctionName(entity, existing);
 
-					if (name == null || namespace == null) {
+					if (funName == null) {
 						return this.messageResourceService.throwMessage(
 								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
 								AbstractMongoMessageResourceService.NAME_MISSING);
 					}
-
-					String funName = namespace + "." + name;
 
 					if (!funName.equals(existing.getName())) {
 
@@ -114,6 +109,40 @@ public abstract class AbstractFunctionService<D extends AbstractFunction<D>, R e
 
 					return Mono.just(existing);
 				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFunctionService.updatableEntity"));
+	}
+
+	/**
+	 * The function's full name as this update states it.
+	 *
+	 * update() reduces the entity to its difference from the base before this runs, and a
+	 * client's copy has the base's name, so its difference carries no name or namespace.
+	 * Requiring them refused every update of a client's function copy, publishing its draft
+	 * included, with "Namespace or name missing". For a derived document a missing part is
+	 * therefore the stored one; anything present must still match. A base document must carry
+	 * both, as before. Same rule as AbstractSchemaService.updatedSchemaName.
+	 */
+	String updatedFunctionName(D entity, D existing) {
+
+		Map<String, Object> definition = entity.getDefinition();
+
+		String name = definition == null ? null : StringUtil.safeValueOf(definition.get(NAME));
+		String namespace = definition == null ? null : StringUtil.safeValueOf(definition.get(NAMESPACE));
+
+		if (name != null && namespace != null)
+			return namespace + "." + name;
+
+		boolean derived = !StringUtil.safeIsBlank(existing.getBaseClientCode());
+		String stored = existing.getName();
+
+		if (!derived || stored == null)
+			return null;
+
+		int dot = stored.lastIndexOf('.');
+		if (dot <= 0 || dot == stored.length() - 1)
+			return null;
+
+		return (namespace == null ? stored.substring(0, dot) : namespace) + "."
+				+ (name == null ? stored.substring(dot + 1) : name);
 	}
 
 	static class NameOnly {

@@ -455,10 +455,154 @@ class StorageOverrideChainIntegrationTest extends AbstractIntegrationTest {
             Storage read = asClient(storageService.read(leaf.getId()), LEAF);
 
             assertNotNull(read);
-            // The physical collection is per stored document. If a merge ever started
-            // pulling uniqueName down from the base, two clients would silently share
-            // one collection.
+            // A document that stores a uniqueName of its own keeps it: older client
+            // forks were created with their own table and their rows are in it. Only
+            // a document storing none (an override created now) takes the base's.
             assertEquals("testapp_lzacp1_teststorage", read.getUniqueName());
         }
+    }
+
+    /**
+     * A client override is another definition of the SAME table in that client's own
+     * database. Created with a name of its own, the client moved to a new empty table
+     * and its existing rows stayed behind in the old one.
+     */
+    @Nested
+    @DisplayName("creating a client override")
+    class CreateOverride {
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a client override keeps the base's uniqueName and stores none of its own")
+        void overrideKeepsBaseTable() {
+
+            setInheritance(List.of(SYSTEM, MID));
+            Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT")));
+
+            // As callers send it (createForClient, the schema-save override): the
+            // resolved definition re-homed at the client.
+            Storage override = new Storage();
+            override.setName(STORAGE_NAME)
+                    .setAppCode(APP_CODE)
+                    .setClientCode(MID)
+                    .setBaseClientCode(SYSTEM)
+                    .setVersion(1);
+            override.setSchema(new HashMap<>(base.getSchema()));
+
+            Storage created = asClient(storageService.create(override), MID);
+            assertNotNull(created);
+
+            Storage read = asClient(storageService.read(created.getId()), MID);
+            assertEquals(base.getUniqueName(), read.getUniqueName());
+
+            Storage stored = findRaw(created.getId());
+            assertNull(stored.getUniqueName(), "the stored delta must not carry the base's name");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("a new storage still gets a uniqueName of its own")
+        void newStorageGetsOwnName() {
+
+            setInheritance(List.of(SYSTEM));
+
+            Storage fresh = new Storage();
+            fresh.setName("freshStorage").setAppCode(APP_CODE).setClientCode(SYSTEM).setVersion(1);
+            fresh.setSchema(schema("type", List.of("OBJECT")));
+
+            Storage created = asClient(storageService.create(fresh), SYSTEM);
+
+            assertNotNull(created.getUniqueName());
+            assertTrue(created.getUniqueName().startsWith(APP_CODE + "_system_"), created.getUniqueName());
+        }
+    }
+
+    /**
+     * A client customizes on top of the level above it even when that level has no
+     * copy of its own. Before, the base walk stopped at the missing level: the copy
+     * was stored whole and never saw a later change from above.
+     */
+    @Nested
+    @DisplayName("a base client that holds no copy")
+    class MissingBaseLevel {
+
+        private void stubHierarchy(String clientCode, String... codes) {
+            org.mockito.Mockito.when(feignAuthenticationService.getClientHierarchyCodes(clientCode))
+                    .thenReturn(Mono.just(List.of(codes)));
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("the copy is stored as a difference against the next level that has one, and follows it")
+        void diffsAgainstNextLevel() {
+
+            setInheritance(List.of(SYSTEM, MID, LEAF));
+            stubHierarchy(LEAF, LEAF, MID, SYSTEM);
+            stubHierarchy(MID, MID, SYSTEM);
+
+            Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT"), "fromRoot", "r"));
+
+            Storage leaf = new Storage();
+            leaf.setName(STORAGE_NAME).setAppCode(APP_CODE).setClientCode(LEAF).setBaseClientCode(MID).setVersion(1);
+            leaf.setSchema(schema("type", List.of("OBJECT"), "fromRoot", "r", "fromLeaf", "l"));
+
+            Storage created = asClient(storageService.create(leaf), LEAF);
+
+            Storage stored = findRaw(created.getId());
+            assertEquals(MID, stored.getBaseClientCode());
+            assertEquals(Map.of("fromLeaf", "l"), stored.getSchema(), "only the leaf's own change is stored");
+            assertEquals(base.getUniqueName(), created.getUniqueName(), "and it shares the base's table");
+
+            base.getSchema().put("laterFromRoot", "r2");
+            mongoTemplate.save(base).block();
+
+            Storage read = asClient(storageService.readInternal(created.getId()), LEAF);
+            assertEquals("l", read.getSchema().get("fromLeaf"));
+            assertEquals("r2", read.getSchema().get("laterFromRoot"), "a later change from SYSTEM reaches the leaf");
+        }
+
+        @Test
+        @Timeout(30)
+        @DisplayName("baseClientCodeOf: the managing client, the app owner instead of SYSTEM, nothing for the owner")
+        void baseClientRule() {
+
+            stubHierarchy(LEAF, LEAF, MID, SYSTEM);
+            stubHierarchy(MID, MID, SYSTEM);
+
+            assertEquals(MID, asClient(storageService.baseClientCodeOf(APP_CODE, LEAF), LEAF));
+            assertEquals(SYSTEM, asClient(storageService.baseClientCodeOf(APP_CODE, MID), MID));
+            assertNull(asClient(storageService.baseClientCodeOf(APP_CODE, SYSTEM), SYSTEM));
+
+            // An app owned by MID: a client managed by SYSTEM directly stands on MID.
+            org.mockito.Mockito.when(feignAuthenticationService.getAppExplicitInfoByCode("midapp"))
+                    .thenReturn(Mono.just(new com.fincity.saas.commons.security.dto.App()
+                            .setAppCode("midapp").setClientCode(MID).setAppAccessType("ANY")));
+            stubHierarchy("OTHER", "OTHER", SYSTEM);
+
+            assertEquals(MID, asClient(storageService.baseClientCodeOf("midapp", "OTHER"), "OTHER"));
+            assertEquals(MID, asClient(storageService.baseClientCodeOf("midapp", LEAF), LEAF));
+            assertNull(asClient(storageService.baseClientCodeOf("midapp", MID), MID));
+        }
+    }
+
+    @Test
+    @Timeout(30)
+    @DisplayName("no override may be created for a client without write access to the app")
+    void overrideForReadOnlyClientRefused() {
+        setInheritance(List.of(SYSTEM, MID));
+        Storage base = storedStorage(SYSTEM, null, schema("type", List.of("OBJECT")));
+        org.mockito.Mockito.when(feignAuthenticationService.hasWriteAccess(APP_CODE, MID))
+                .thenReturn(Mono.just(Boolean.FALSE));
+
+        Storage override = new Storage();
+        override.setName(STORAGE_NAME).setAppCode(APP_CODE).setClientCode(MID).setBaseClientCode(SYSTEM).setVersion(1);
+        override.setSchema(new HashMap<>(base.getSchema()));
+
+        assertThrows(Exception.class, () -> asClient(storageService.create(override), SYSTEM));
+        assertEquals(0L, findAllRaw(Storage.class).filter(st -> MID.equals(st.getClientCode())).count().block());
+    }
+
+    private Storage findRaw(String id) {
+        return this.mongoTemplate.findById(id, Storage.class).block();
     }
 }

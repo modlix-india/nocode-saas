@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,6 +59,10 @@ public abstract class AbstractSchedulerMongoTest {
     protected final FakeEvents events = new FakeEvents();
     protected final Map<String, List<String>> writeAccess = new ConcurrentHashMap<>();
     protected final AtomicInteger writeAccessCalls = new AtomicInteger();
+    /** Clients security reports as not active (deleted, inactive, locked, or under one that is). */
+    protected final Set<String> notActive = ConcurrentHashMap.newKeySet();
+    protected final AtomicInteger statusCalls = new AtomicInteger();
+    protected volatile boolean statusDown;
 
     @BeforeEach
     void resetDatabase() {
@@ -129,6 +134,15 @@ public abstract class AbstractSchedulerMongoTest {
                     if (method.getName().equals("getWriteAccessClientCodes")) {
                         this.writeAccessCalls.incrementAndGet();
                         return Mono.just(this.writeAccess.getOrDefault((String) args[0], List.of()));
+                    }
+                    if (method.getName().equals("getActiveClientCodes")) {
+                        this.statusCalls.incrementAndGet();
+                        if (this.statusDown)
+                            return Mono.error(new IllegalStateException("security down"));
+                        return Mono.just(((List<?>) args[0]).stream()
+                                .map(String.class::cast)
+                                .filter(c -> !this.notActive.contains(c))
+                                .toList());
                     }
                     if (method.getName().equals("toString"))
                         return "FakeSecurity";

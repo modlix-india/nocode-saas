@@ -26,4 +26,16 @@ class DifferenceApplicatorTest {
                 .expectNext(expected)
                 .verifyComplete();
     }
+
+    @Test
+    void testApplyMapBooleanDropsRemovedKeys() {
+        Map<String, Boolean> base = Map.of("txt", true, "btn", true);
+        Map<String, Boolean> ovr = new HashMap<>();
+        ovr.put("txt", null);
+        ovr.put("extra", true);
+
+        StepVerifier.create(DifferenceApplicator.applyMapBoolean(ovr, base))
+                .expectNext(new HashMap<>(Map.of("btn", true, "extra", true)))
+                .verifyComplete();
+    }
 }

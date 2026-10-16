@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,7 +59,9 @@ import reactor.util.context.Context;
  * <li>Works out which clients run it. A {@code perClient} schedule runs for every
  * client with write access to the app; otherwise it runs for the client holding
  * the definition. Each client's EFFECTIVE definition decides, so an override's
- * cron, timezone and enabled beat the base's.</li>
+ * cron, timezone and enabled beat the base's. A client that is deleted, inactive
+ * or locked, or is managed by one that is, runs nothing; its due one-offs are
+ * closed as FAILED with that reason.</li>
  * <li>Takes the latest tick on that client's cron grid. A tick inside the fresh
  * window is the current one. An older one is a missed tick, and is caught up
  * only when a run was recorded before it, which caps an outage at one catch-up
@@ -142,9 +145,15 @@ public class EventScheduler {
 
     private final Map<String, CronExpression> crons = new ConcurrentHashMap<>();
 
+    /** What security last said about each client, reused for clientsRefreshSeconds. */
+    private final Map<String, ClientState> clientStates = new ConcurrentHashMap<>();
+
     private Clock clock = Clock.systemUTC();
 
     private record WriteAccessClients(Set<String> codes, Instant fetchedAt) {
+    }
+
+    private record ClientState(boolean active, Instant fetchedAt) {
     }
 
     public EventScheduler(EventDefinitionService edService, IFeignSecurityService securityService,
@@ -298,6 +307,12 @@ public class EventScheduler {
                             return Flux.empty();
                         }))
                 .collectList()
+                // No run for a client that is deleted, inactive or locked, or is managed by
+                // one that is, whether it holds the schedule itself or is fanned out to.
+                .flatMap(list -> this.inactiveClients(list.stream().map(Candidate::clientCode)
+                        .collect(Collectors.toSet()), now)
+                        .map(inactive -> inactive.isEmpty() ? list
+                                : list.stream().filter(c -> !inactive.contains(c.clientCode())).toList()))
                 // Every instance walks the same candidates; a shuffled order keeps two of
                 // them from reaching for the same client at the same moment.
                 .flatMapMany(list -> {
@@ -536,6 +551,76 @@ public class EventScheduler {
                 .defaultIfEmpty(Set.of());
     }
 
+    /**
+     * The codes among these that security says are not active: the client is deleted,
+     * inactive or locked, or a client managing it is. Answers are reused for
+     * {@code clientsRefreshSeconds} and fetched in one call for every code that is
+     * stale. Only a client security has answered for is left out: when it cannot be
+     * reached the last answers keep serving, and a client never answered for runs as it
+     * did before this check existed.
+     */
+    private Mono<Set<String>> inactiveClients(Set<String> codes, Instant now) {
+
+        if (codes.isEmpty())
+            return Mono.just(Set.of());
+
+        List<String> stale = codes.stream()
+                .filter(code -> {
+                    ClientState state = this.clientStates.get(code);
+                    return state == null || !state.fetchedAt()
+                            .plusSeconds(this.settings.getClientsRefreshSeconds())
+                            .isAfter(now);
+                })
+                .sorted()
+                .toList();
+
+        Mono<Void> refresh = stale.isEmpty() ? Mono.empty()
+                : Mono.defer(() -> this.securityService.getActiveClientCodes(stale))
+                        .doOnNext(active -> {
+                            Set<String> activeSet = Set.copyOf(active);
+                            for (String code : stale)
+                                this.clientStates.put(code, new ClientState(activeSet.contains(code), now));
+                        })
+                        .onErrorResume(e -> {
+                            logger.warn("Scheduler could not read the status of {} clients: {}", stale.size(),
+                                    e.getMessage());
+                            return Mono.empty();
+                        })
+                        .then();
+
+        return refresh.then(Mono.fromSupplier(() -> codes.stream()
+                .filter(code -> {
+                    ClientState state = this.clientStates.get(code);
+                    return state != null && !state.active();
+                })
+                .collect(Collectors.toSet())));
+    }
+
+    /**
+     * Closes a claimed one-off without raising it when its client is not active: FAILED
+     * with the reason, and a line in the event run log, so it is not tried again. True
+     * when it was closed, false when it should run.
+     */
+    private Mono<Boolean> refuseIfInactive(ScheduledEvent event, Instant now) {
+
+        if (event.getClientCode() == null)
+            return Mono.just(Boolean.FALSE);
+
+        return this.inactiveClients(Set.of(event.getClientCode()), now)
+                .flatMap(inactive -> {
+                    if (!inactive.contains(event.getClientCode()))
+                        return Mono.just(Boolean.FALSE);
+
+                    String reason = "The client '" + event.getClientCode()
+                            + "' is deleted, inactive or locked, so the event was not raised.";
+                    return this.store.failScheduledEvent(event.getId(), event.getClaimToken(), null, reason, now)
+                            .then(this.logRun(this.queObject(event.getAppCode(), event.getClientCode(),
+                                    event.getEventName(), this.oneOffData(event), event.isDraft()),
+                                    CoreEventRunsStatus.FAILED, reason))
+                            .thenReturn(Boolean.TRUE);
+                });
+    }
+
     // ---------------------------------------------------------------- one-off
 
     private Mono<Void> dueOneOffs(Instant now, Counts counts) {
@@ -546,6 +631,11 @@ public class EventScheduler {
 
         return this.store.claimDueEvents(now, this.instanceId, this.settings.lease(),
                         this.settings.getOneOffBatchSize())
+                .collectList()
+                // One status call for the whole batch, so each raise below reads it from memory.
+                .flatMapMany(list -> this.inactiveClients(list.stream().map(ScheduledEvent::getClientCode)
+                        .filter(Objects::nonNull).collect(Collectors.toSet()), now)
+                        .thenMany(Flux.fromIterable(list)))
                 .flatMap(e -> this.raiseOneOff(e, now, counts), Math.max(1, this.settings.getConcurrency()))
                 .then();
     }
@@ -588,10 +678,20 @@ public class EventScheduler {
                     .then();
         }
 
-        counts.oneOffsRaised.incrementAndGet();
-        this.runDetached(runner, this.queObject(event.getAppCode(), event.getClientCode(), event.getEventName(),
-                this.oneOffData(event), event.isDraft()), release);
-        return Mono.empty();
+        return this.refuseIfInactive(event, now)
+                .doOnError(e -> release.run())
+                .flatMap(refused -> {
+                    if (Boolean.TRUE.equals(refused)) {
+                        counts.oneOffsFailed.incrementAndGet();
+                        release.run();
+                        return Mono.<Void>empty();
+                    }
+
+                    counts.oneOffsRaised.incrementAndGet();
+                    this.runDetached(runner, this.queObject(event.getAppCode(), event.getClientCode(),
+                            event.getEventName(), this.oneOffData(event), event.isDraft()), release);
+                    return Mono.<Void>empty();
+                });
     }
 
     private Map<String, Object> oneOffData(ScheduledEvent event) {
@@ -621,17 +721,25 @@ public class EventScheduler {
 
         Map<String, Object> data = this.oneOffData(event);
 
-        return this.raise(event.getAppCode(), event.getClientCode(), event.getEventName(), data, event.isDraft())
-                .doOnSuccess(v -> counts.oneOffsRaised.incrementAndGet())
-                .then()
-                .onErrorResume(e -> {
-                    counts.oneOffsFailed.incrementAndGet();
-                    return this.oneOffs.finish(event.getId(), event.getClaimToken(), false,
-                            "Raise failed: " + e.getMessage())
-                            .then(this.logRun(this.queObject(event.getAppCode(), event.getClientCode(),
-                                    event.getEventName(), data, event.isDraft()), CoreEventRunsStatus.FAILED,
-                                    "The scheduler could not raise the event: " + EventRunService.errorOf(e)));
-                });
+        return this.refuseIfInactive(event, now).flatMap(refused -> {
+
+            if (Boolean.TRUE.equals(refused)) {
+                counts.oneOffsFailed.incrementAndGet();
+                return Mono.<Void>empty();
+            }
+
+            return this.raise(event.getAppCode(), event.getClientCode(), event.getEventName(), data, event.isDraft())
+                    .doOnSuccess(v -> counts.oneOffsRaised.incrementAndGet())
+                    .then()
+                    .onErrorResume(e -> {
+                        counts.oneOffsFailed.incrementAndGet();
+                        return this.oneOffs.finish(event.getId(), event.getClaimToken(), false,
+                                "Raise failed: " + e.getMessage())
+                                .then(this.logRun(this.queObject(event.getAppCode(), event.getClientCode(),
+                                        event.getEventName(), data, event.isDraft()), CoreEventRunsStatus.FAILED,
+                                        "The scheduler could not raise the event: " + EventRunService.errorOf(e)));
+                    });
+        });
     }
 
     /** A one-off whose last attempt never reported back: it is not tried again, and the log says so. */
