@@ -462,6 +462,35 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
                 .map(e -> e.value1() > 0);
     }
 
+    /**
+     * Does any user that is not DELETED, in {@code rootClientId} or in any client it manages at any level,
+     * hold this email or this phone? The business-wide identity check (QA-0445): one person is either a
+     * business's staff or one of its channel partners' users, never both.
+     */
+    public Mono<Boolean> identityExistsInClientFamily(ULong rootClientId, String emailId, String phoneNumber) {
+
+        if (rootClientId == null)
+            return Mono.just(false);
+
+        List<Condition> identityConditions = getUserAvailabilityConditions(null, emailId, phoneNumber);
+        if (identityConditions.isEmpty())
+            return Mono.just(false);
+
+        return Mono.from(
+                this.dslContext.selectCount().from(SECURITY_USER)
+                        .where(SECURITY_USER.CLIENT_ID.eq(rootClientId)
+                                .or(SECURITY_USER.CLIENT_ID.in(
+                                        this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                                                .from(SECURITY_CLIENT_HIERARCHY)
+                                                .where(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(rootClientId)
+                                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1.eq(rootClientId))
+                                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2.eq(rootClientId))
+                                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3.eq(rootClientId))))))
+                        .and(DSL.or(identityConditions))
+                        .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED)))
+                .map(e -> e.value1() > 0);
+    }
+
     private List<Condition> getUserAvailabilityConditions(String userName, String emailId, String phoneNumber) {
 
         List<Condition> conditions = new ArrayList<>();

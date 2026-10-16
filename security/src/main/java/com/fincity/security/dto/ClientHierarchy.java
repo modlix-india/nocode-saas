@@ -151,6 +151,16 @@ public class ClientHierarchy extends AbstractUpdatableDTO<ULong, ULong> {
         return clientIds;
     }
 
+    /**
+     * The business this client belongs to: the top client below SYSTEM in its chain, which is the client
+     * itself when it sits directly under SYSTEM. Null for SYSTEM, which has nothing above it. Not a getter
+     * on purpose, so it stays out of the cached and serialised shape.
+     */
+    public ULong businessRootId() {
+        List<ULong> chain = this.getClientIdsInOrder();
+        return chain.size() < 2 ? null : chain.get(chain.size() - 2);
+    }
+
     public Map<ULong, Integer> getClientOrder() {
 
         Map<ULong, Integer> map = new HashMap<>();

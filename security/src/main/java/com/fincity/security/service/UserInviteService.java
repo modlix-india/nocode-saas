@@ -283,7 +283,9 @@ public class UserInviteService
                         .hasElements()
                         .flatMap(userExists -> BooleanUtil.safeValueOf(userExists)
                                 ? this.userAlreadyExists(user)
-                                : Mono.just(Boolean.FALSE)),
+                                // Someone in the business may have taken the email or phone since the invite.
+                                : this.refuseIfIdentityInBusiness(user.getClientId(), user.getEmailId(),
+                                        user.getPhoneNumber()).map(free -> Boolean.FALSE)),
 
                 userExists -> SecurityContextUtil.getUsersContextAuthentication()
                         .flatMap(ca -> this.appService.getAppByCode(ca.getUrlAppCode()))
@@ -350,6 +352,24 @@ public class UserInviteService
                 : user.getUserName();
         return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
                 SecurityMessageResourceService.USER_ALREADY_EXISTS, identity);
+    }
+
+    /**
+     * QA-0445 rule (2026-10-16): a user cannot be created in a business, or in any client it manages, with
+     * an email or phone that an active user anywhere in that business already holds. So a channel partner's
+     * user cannot be invited as staff, nor one channel partner's user into another. The business is the top
+     * client below SYSTEM in the target's chain; inviting into SYSTEM itself is not checked.
+     */
+    private Mono<Boolean> refuseIfIdentityInBusiness(ULong clientId, String emailId, String phoneNumber) {
+
+        return this.clientHierarchyService.getClientHierarchy(clientId)
+                .mapNotNull(ClientHierarchy::businessRootId)
+                .flatMap(rootId -> this.userDao.identityExistsInClientFamily(rootId, emailId, phoneNumber))
+                .flatMap(taken -> BooleanUtil.safeValueOf(taken)
+                        ? this.msgService.<Boolean>throwMessage(msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                SecurityMessageResourceService.USER_ALREADY_EXISTS, firstNonBlank(emailId, phoneNumber))
+                        : Mono.just(Boolean.TRUE))
+                .defaultIfEmpty(Boolean.TRUE);
     }
 
     private static boolean isDuplicateEntry(Throwable e) {
@@ -481,9 +501,12 @@ public class UserInviteService
 
         String appCode = ca.getUrlAppCode();
 
-        return FlatMapUtil.<Boolean, Boolean, Map<String, Object>>flatMapMono(
+        return FlatMapUtil.<Boolean, Boolean, Boolean, Map<String, Object>>flatMapMono(
 
-                () -> StringUtil.safeIsBlank(appCode)
+                () -> this.refuseIfIdentityInBusiness(invite.getClientId(), invite.getEmailId(),
+                        invite.getPhoneNumber()),
+
+                notInBusiness -> StringUtil.safeIsBlank(appCode)
                         ? Mono.just(true)
                         : this.appService.getAppByCode(appCode)
                                 .flatMap(app -> this.validateUserCheckForInvite(
@@ -491,13 +514,13 @@ public class UserInviteService
                                         invite.getUserName(), invite.getEmailId(), invite.getPhoneNumber()))
                                 .defaultIfEmpty(true),
 
-                userCheckValid -> this.dao
+                (notInBusiness, userCheckValid) -> this.dao
                         .getInviteWithAnyIdentity(invite.getClientId(), invite.getEmailId(), invite.getPhoneNumber())
                         .flatMap(pending -> this.<Boolean>pendingInviteError(
                                 matchesIfGiven(invite.getEmailId(), pending.getEmailId()) ? "email" : "phone number"))
                         .defaultIfEmpty(Boolean.TRUE),
 
-                (userCheckValid, noPendingInvite) -> {
+                (notInBusiness, userCheckValid, noPendingInvite) -> {
                     invite.setInviteCode(UUID.randomUUID().toString().replace("-", ""));
 
                     return super.create(invite)
@@ -532,7 +555,7 @@ public class UserInviteService
 
         Mono<String> profileName = invite.getProfileId() == null
                 ? Mono.just("")
-                : this.profileService.readInternal(invite.getProfileId()).map(Profile::getName).defaultIfEmpty("");
+                : this.profileService.readInternal(invite.getProfileId()).mapNotNull(Profile::getName).defaultIfEmpty("");
 
         // The invited client's own URL, else the host the invite was sent from: a client without its own URL
         // (a leadzump channel partner) signs in on its manager's, and an empty prefix mailed "http:///inviteUser/..".
@@ -721,18 +744,18 @@ public class UserInviteService
 
         return Mono.zip(
                 this.resolveNames(invites, UserInvite::getClientId,
-                        id -> this.clientService.getClientInfoById(id).map(Client::getName)),
+                        id -> this.clientService.getClientInfoById(id).mapNotNull(Client::getName)),
 
                 this.resolveNames(invites, UserInvite::getProfileId,
-                        id -> this.profileService.readInternal(id).map(Profile::getName)),
+                        id -> this.profileService.readInternal(id).mapNotNull(Profile::getName)),
 
                 this.resolveNames(invites, UserInvite::getProfileId,
                         id -> this.profileService.readInternal(id)
                                 .flatMap(profile -> this.appService.getAppByIdInternal(profile.getAppId()))
-                                .map(App::getAppCode)),
+                                .mapNotNull(App::getAppCode)),
 
                 this.resolveNames(invites, UserInvite::getDesignationId,
-                        id -> this.designationService.readInternal(id).map(Designation::getName)),
+                        id -> this.designationService.readInternal(id).mapNotNull(Designation::getName)),
 
                 this.resolveNames(invites, UserInvite::getReportingTo, this::userDisplayName),
 
@@ -754,6 +777,9 @@ public class UserInviteService
     }
 
     /**
+     * The lookups use mapNotNull: a profile, client or designation with a null name (stage had invites on a
+     * nameless profile) made Reactor throw "The mapper returned a null value" and failed the whole Invites list.
+     *
      * Most invites carry no designation and no reporting line, so most of these
      * ids are null - and a null key is exactly what {@code Map.of().get(...)}
      * throws on.
