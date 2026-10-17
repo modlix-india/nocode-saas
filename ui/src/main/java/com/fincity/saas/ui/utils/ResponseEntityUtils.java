@@ -64,6 +64,16 @@ public class ResponseEntityUtils {
 		return build(obj, eTag, contentType, noStore ? "no-store" : "max-age=" + cacheAge + ", must-revalidate");
 	}
 
+	/**
+	 * What a body depends on besides the URL. A signed-in user is served their own
+	 * client's copies (AbstractOverridableDataService.servedClientCode), so one URL
+	 * answers differently per login: without this a theme the browser stored while
+	 * signed out (the login page) kept answering after sign-in for its whole
+	 * lifetime, and a tenant never saw its own theme or functions. The login is the
+	 * Authorization header, never a cookie.
+	 */
+	private static final String VARY = "Authorization, clientCode, appCode";
+
 	private static <T> Mono<ResponseEntity<T>> build(ObjectWithUniqueID<T> obj, String eTag, String contentType,
 			String cacheControl) {
 
@@ -75,11 +85,13 @@ public class ResponseEntityUtils {
 			// revalidated.
 			return Mono.just(ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 					.header("Cache-Control", cacheControl)
+					.header("Vary", VARY)
 					.build());
 
 		var rp = ResponseEntity.ok()
 				.header("ETag", "W/" + obj.getUniqueId())
 				.header("Cache-Control", cacheControl)
+				.header("Vary", VARY)
 				.header("x-frame-options", "SAMEORIGIN")
 				.header("X-Frame-Options", "SAMEORIGIN");
 

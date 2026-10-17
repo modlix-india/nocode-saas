@@ -57,6 +57,9 @@ class EngineServiceRevalidationTest {
 
         this.appService = mock(ApplicationService.class);
         this.pageService = mock(PageService.class);
+        // The client served is the one asked for here: these requests are the host's own.
+        when(this.pageService.servedClientCode(anyString(), anyString()))
+                .thenAnswer(inv -> Mono.just(inv.getArgument(1, String.class)));
         FeignAuthenticationService security = mock(FeignAuthenticationService.class);
         when(security.getAppStatusByCode(anyString())).thenReturn(Mono.just("ACTIVE"));
 

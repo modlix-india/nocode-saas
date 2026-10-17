@@ -1807,10 +1807,53 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                 ca -> ca == null || ca.getUrlClientCode() == null ? Mono.just(clientCode)
                         : Mono.just(ca.getUrlClientCode()),
 
-                (ca, uClientCode) -> this.readInternal(name, appCode, uClientCode, clientCode))
+                (ca, uClientCode) -> this.servedClientCode(appCode, clientCode),
+
+                (ca, uClientCode, served) -> this.readInternal(name, appCode, uClientCode, served))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName()
                                 + "Service).read (name, appCode, clientCode)"));
+    }
+
+    /**
+     * The client whose copy a read serves.
+     *
+     * A request that names no client is given the HOST's client (the gateway fills the
+     * clientCode header from the URL), so on a shared host every signed-in tenant was
+     * served the host's objects: FIN's own deals page, published, never reached a FIN
+     * user on leadzumptwo's host. When the client asked for is the host's and the user
+     * is signed in to a client the host manages, which can read the app, the read is
+     * for the user's client: its copy, else its managing chain's, else the host's
+     * (readOrder). Anything else is unchanged: anonymous reads, a user of the host
+     * itself, a client named on purpose (not the host), and a host that does not
+     * manage the user's client (a SYSTEM user opening a client's own site still sees
+     * that client's site).
+     */
+    public Mono<String> servedClientCode(String appCode, String clientCode) {
+
+        if (StringUtil.safeIsBlank(clientCode) || StringUtil.safeIsBlank(appCode) || this.securityService == null)
+            return Mono.justOrEmpty(clientCode);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+                    String signedIn = ca.getClientCode();
+                    if (!ca.isAuthenticated() || StringUtil.safeIsBlank(signedIn) || signedIn.equals(clientCode)
+                            || !clientCode.equals(ca.getUrlClientCode()))
+                        return Mono.just(clientCode);
+
+                    // The hierarchy is the client itself first, then its managers up to SYSTEM.
+                    return Mono.zip(
+                                    this.securityService.getClientHierarchyCodes(signedIn).defaultIfEmpty(List.of()),
+                                    this.securityService.hasReadAccess(appCode, signedIn).defaultIfEmpty(Boolean.FALSE))
+                            .map(t -> {
+                                List<String> line = t.getT1();
+                                boolean managedByHost = line.size() > 1 && line.subList(1, line.size())
+                                        .contains(clientCode);
+                                return managedByHost && BooleanUtil.safeValueOf(t.getT2()) ? signedIn : clientCode;
+                            })
+                            .onErrorReturn(clientCode);
+                })
+                .defaultIfEmpty(clientCode);
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String clientCode) {
