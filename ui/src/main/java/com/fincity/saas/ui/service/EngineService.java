@@ -133,17 +133,27 @@ public class EngineService {
 
         return LogUtil.isDraft().flatMap(draft -> this.securityService.getAppStatusByCode(appCode)
                 .filter("ACTIVE"::equals)
-                .flatMap(x -> this.internalReadApplication(eTag, appCode, clientCode,
+                .flatMap(x -> this.servedClient(appCode, clientCode))
+                .flatMap(served -> this.internalReadApplication(eTag, appCode, clientCode, served,
                         Boolean.TRUE.equals(draft))));
     }
 
+    /**
+     * The client whose copies are served (AbstractOverridableDataService.servedClientCode):
+     * on a shared host, a signed-in tenant's own. Every engine cache below is keyed by it,
+     * never by the host's client, or the host's cached copy would answer for the tenant.
+     */
+    private Mono<String> servedClient(String appCode, String clientCode) {
+        return this.pageService.servedClientCode(appCode, clientCode);
+    }
+
     private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode,
-            boolean draft) {
+            String served, boolean draft) {
 
         return SecurityContextUtil.getUsersContextAuthentication()
                 .map(ContextAuthentication::isAuthenticated)
                 .defaultIfEmpty(Boolean.FALSE)
-                .flatMap(authenticated -> this.internalReadApplication(eTag, appCode, clientCode, draft,
+                .flatMap(authenticated -> this.internalReadApplication(eTag, appCode, clientCode, served, draft,
                         applicationAuthKey(authenticated)));
     }
 
@@ -161,10 +171,12 @@ public class EngineService {
         return authenticated ? "lg" : "nlg";
     }
 
+    // `clientCode` is the host's, and stays the application's urlClientCode: the browser
+    // sends it back as the host. The definition read is the served client's.
     private Mono<ObjectWithUniqueID<Application>> readApplicationForResponse(String appCode, String clientCode,
-            boolean draft) {
+            String served, boolean draft) {
 
-        return this.appService.read(appCode, appCode, clientCode)
+        return this.appService.read(appCode, appCode, served)
                 .map(e -> withoutPlan(e, Application::new))
                 .map(e -> {
                     e.getObject().setUrlClientCode(clientCode);
@@ -174,11 +186,11 @@ public class EngineService {
     }
 
     private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode,
-            boolean draft, String authKey) {
+            String served, boolean draft, String authKey) {
 
         if (eTag == null || eTag.isEmpty()) {
-            return this.readApplicationForResponse(appCode, clientCode, draft)
-                    .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, clientCode,
+            return this.readApplicationForResponse(appCode, clientCode, served, draft)
+                    .flatMap(e -> this.cacheService.put(CACHE_NAME_APPLICATION + "-" + appCode, e, served,
                             authKey, e.getUniqueId()))
                     .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, eTag)
                             : ResponseEntityUtils.makeRevalidateResponseEntity(e, eTag))
@@ -196,8 +208,8 @@ public class EngineService {
         // the branch most loads take.
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_APPLICATION + "-" + appCode,
-                        () -> this.readApplicationForResponse(appCode, clientCode, draft),
-                        clientCode, authKey, uid)
+                        () -> this.readApplicationForResponse(appCode, clientCode, served, draft),
+                        served, authKey, uid)
                 .flatMap(e -> draft ? ResponseEntityUtils.makeDraftResponseEntity(e, uid)
                         : ResponseEntityUtils.makeRevalidateResponseEntity(e, uid))
                 .defaultIfEmpty(APPLICATION_NOT_FOUND);
@@ -265,7 +277,8 @@ public class EngineService {
     public Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode) {
 
         return LogUtil.isDraft()
-                .flatMap(draft -> this.readPage(eTag, pageName, appCode, clientCode, Boolean.TRUE.equals(draft)));
+                .flatMap(draft -> this.servedClient(appCode, clientCode)
+                        .flatMap(served -> this.readPage(eTag, pageName, appCode, served, Boolean.TRUE.equals(draft))));
     }
 
     private Mono<ResponseEntity<Page>> readPage(String eTag, String pageName, String appCode, String clientCode,
@@ -315,7 +328,8 @@ public class EngineService {
     public Mono<ResponseEntity<String>> readStyle(String eTag, String appCode, String clientCode, String theme) {
 
         return LogUtil.isDraft()
-                .flatMap(draft -> this.readStyle(eTag, appCode, clientCode, theme, Boolean.TRUE.equals(draft)));
+                .flatMap(draft -> this.servedClient(appCode, clientCode)
+                        .flatMap(served -> this.readStyle(eTag, appCode, served, theme, Boolean.TRUE.equals(draft))));
     }
 
     private Mono<ResponseEntity<String>> readStyle(String eTag, String appCode, String clientCode, String theme,
@@ -436,7 +450,8 @@ public class EngineService {
                                                                             String clientCode, String theme) {
 
         return LogUtil.isDraft()
-                .flatMap(draft -> this.readTheme(eTag, appCode, clientCode, theme, Boolean.TRUE.equals(draft)));
+                .flatMap(draft -> this.servedClient(appCode, clientCode)
+                        .flatMap(served -> this.readTheme(eTag, appCode, served, theme, Boolean.TRUE.equals(draft))));
     }
 
     private Mono<ResponseEntity<Map<String, Map<String, String>>>> readTheme(String eTag, String appCode,

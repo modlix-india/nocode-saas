@@ -38,8 +38,12 @@ public abstract class AbstractFillerService<D extends AbstractFiller<D>, R exten
 	@Override
 	public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
 
-		return this.cacheService.cacheEmptyValueOrGet(this.getCacheName(appCode, appCode) + FILLER_READ,
-				() -> super.read(name, appCode, clientCode), clientCode);
+		// Keyed by the client actually served: on a shared host that is the signed-in
+		// user's client, and the host's entry must not answer for it.
+		return this.servedClientCode(appCode, clientCode)
+				.flatMap(served -> this.cacheService.cacheEmptyValueOrGet(
+						this.getCacheName(appCode, appCode) + FILLER_READ,
+						() -> super.read(name, appCode, served), served));
 	}
 
 	@Override

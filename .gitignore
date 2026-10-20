@@ -58,3 +58,4 @@ server-files/
 
 logs/**
 LOG_FILE_*
+configfiles/application-default(retired).yml

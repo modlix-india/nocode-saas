@@ -358,8 +358,31 @@ public class MySQLAppDataService implements IAppDataService {
             java.util.regex.Pattern.compile("^[A-Za-z0-9_]{1,64}$");
 
     private Mono<String> database(String clientCode, Storage storage) {
-        return LogUtil.isDraft()
-                .map(draft -> databaseName(clientCode, storage.getAppCode(), Boolean.TRUE.equals(draft)));
+        return Mono.zip(LogUtil.isDraft(), this.dataClientCode(clientCode, storage))
+                .map(t -> databaseName(t.getT2(), storage.getAppCode(), Boolean.TRUE.equals(t.getT1())));
+    }
+
+    /**
+     * The client whose schema holds this storage's rows.
+     *
+     * An app-level storage is one table shared by every client of the app, held by
+     * the client hosting it (the URL's client), the same rule MongoAppDataService
+     * applies: a client and its customers read and write the same rows. Every other
+     * storage is per tenant. This used to be ignored here, so on MySQL an app-level
+     * storage quietly became one table per tenant.
+     */
+    private Mono<String> dataClientCode(String clientCode, Storage storage) {
+
+        if (!BooleanUtil.safeValueOf(storage.getIsAppLevel())) return Mono.just(clientCode);
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .map(ca -> StringUtil.safeIsBlank(ca.getUrlClientCode()) ? clientCode : ca.getUrlClientCode())
+                .defaultIfEmpty(clientCode);
+    }
+
+    /** Both storages' rows sit in one schema: a foreign key between them is possible. */
+    static boolean sameSchema(Storage a, Storage b) {
+        return BooleanUtil.safeValueOf(a.getIsAppLevel()) == BooleanUtil.safeValueOf(b.getIsAppLevel());
     }
 
     // ------------------------------------------------------------------ ddl
@@ -580,6 +603,10 @@ public class MySQLAppDataService implements IAppDataService {
         return Flux.fromIterable(enforceable.entrySet())
                 .concatMap(e -> this.storageService
                         .readForTenant(e.getValue().getStorageName(), storage.getAppCode(), clientCode)
+                        // An app-level table and a per-tenant one live in different schemas,
+                        // so no key can join them. The service enforces such a relation
+                        // itself: enforcesRelationConstraint answers false without the key.
+                        .filter(target -> sameSchema(storage, target))
                         .flatMap(target -> this.ensureTargetTable(conn, db, target)
                                 .thenReturn(Tuples.of(e.getKey(), target.getUniqueName())))
                         // Not a reason to fail the write that triggered the create -
@@ -2901,8 +2928,15 @@ public class MySQLAppDataService implements IAppDataService {
     @Override
     public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, Boolean replace) {
 
-        String liveDb = databaseName(clientCode, storage.getAppCode(), false);
-        String draftDb = databaseName(clientCode, storage.getAppCode(), true);
+        return this.dataClientCode(clientCode, storage)
+                .flatMap(dataClient -> this.copyLiveToDraft(clientCode, dataClient, conn, storage, replace));
+    }
+
+    private Mono<Long> copyLiveToDraft(String clientCode, String dataClient, Connection conn, Storage storage,
+            Boolean replace) {
+
+        String liveDb = databaseName(dataClient, storage.getAppCode(), false);
+        String draftDb = databaseName(dataClient, storage.getAppCode(), true);
         String table = storage.getUniqueName();
 
         DSLContext ctx = this.context(conn);
@@ -2966,7 +3000,13 @@ public class MySQLAppDataService implements IAppDataService {
     @Override
     public Mono<Long> clearDraftRows(String clientCode, Connection conn, Storage storage) {
 
-        String draftDb = databaseName(clientCode, storage.getAppCode(), true);
+        return this.dataClientCode(clientCode, storage)
+                .flatMap(dataClient -> this.clearDraftRowsIn(dataClient, conn, storage));
+    }
+
+    private Mono<Long> clearDraftRowsIn(String dataClient, Connection conn, Storage storage) {
+
+        String draftDb = databaseName(dataClient, storage.getAppCode(), true);
         String table = storage.getUniqueName();
         String versions = MySQLVersionTable.nameFor(table);
 
@@ -2995,8 +3035,24 @@ public class MySQLAppDataService implements IAppDataService {
     public Mono<Long> copyLiveToDraft(String clientCode, Connection conn, Storage storage, DraftCopyFilter filter,
             Map<String, Storage> followed) {
 
-        String liveDb = databaseName(clientCode, storage.getAppCode(), false);
-        String draftDb = databaseName(clientCode, storage.getAppCode(), true);
+        // A followed storage can sit in the other schema (app level on one side only),
+        // so its draft table is named from its own level, not from this storage's.
+        return Mono.zip(this.dataClientCode(clientCode, storage),
+                        SecurityContextUtil.getUsersContextAuthentication()
+                                .map(ca -> StringUtil.safeIsBlank(ca.getUrlClientCode()) ? clientCode
+                                        : ca.getUrlClientCode())
+                                .defaultIfEmpty(clientCode))
+                .flatMap(t -> this.copyLiveToDraft(clientCode, t.getT1(), conn, storage, filter, followed,
+                        s -> databaseName(BooleanUtil.safeValueOf(s.getIsAppLevel()) ? t.getT2() : clientCode,
+                                s.getAppCode(), true)));
+    }
+
+    private Mono<Long> copyLiveToDraft(String clientCode, String dataClient, Connection conn, Storage storage,
+            DraftCopyFilter filter, Map<String, Storage> followed,
+            java.util.function.Function<Storage, String> draftDbOf) {
+
+        String liveDb = databaseName(dataClient, storage.getAppCode(), false);
+        String draftDb = databaseName(dataClient, storage.getAppCode(), true);
         String table = storage.getUniqueName();
 
         DSLContext ctx = this.context(conn);
@@ -3011,7 +3067,7 @@ public class MySQLAppDataService implements IAppDataService {
                                 ? this.sharedColumns(ctx, liveDb, draftDb, table)
                                 : Mono.just(List.<String>of()),
                         (draft, liveExists, columns) -> this.draftCopyCondition(
-                                liveDb, draftDb, table, storage, filter, followed),
+                                liveDb, table, storage, filter, followed, draftDbOf),
                         (draft, liveExists, columns, where) -> this.withoutForeignKeyChecks(conn, pinned -> {
                             org.jooq.Table<?> target = DSL.table(DSL.name(draftDb, table));
 
@@ -3042,8 +3098,9 @@ public class MySQLAppDataService implements IAppDataService {
      * name that the followed table lacks would quietly resolve to the OUTER table, and
      * {@code x IN (SELECT x ...)} is true for every row.
      */
-    private Mono<org.jooq.Condition> draftCopyCondition(String liveDb, String draftDb, String table,
-            Storage storage, DraftCopyFilter filter, Map<String, Storage> followed) {
+    private Mono<org.jooq.Condition> draftCopyCondition(String liveDb, String table,
+            Storage storage, DraftCopyFilter filter, Map<String, Storage> followed,
+            java.util.function.Function<Storage, String> draftDbOf) {
 
         if (filter == null) return Mono.just(DSL.noCondition());
 
@@ -3061,11 +3118,13 @@ public class MySQLAppDataService implements IAppDataService {
         List<org.jooq.Condition> filled = new ArrayList<>();
 
         for (DraftCopyFilter.Follow f : filter.getFollow()) {
-            String refTable = followed.get(f.getStorage()).getUniqueName();
+            Storage ref = followed.get(f.getStorage());
+            String refTable = ref.getUniqueName();
+            String refDraftDb = draftDbOf.apply(ref);
             Field<Object> column = DSL.field(DSL.name(liveDb, table, f.getField()));
 
-            org.jooq.Condition inDraft = column.in(DSL.select(DSL.field(DSL.name(draftDb, refTable, f.refFieldOrDefault())))
-                    .from(DSL.table(DSL.name(draftDb, refTable))));
+            org.jooq.Condition inDraft = column.in(DSL.select(DSL.field(DSL.name(refDraftDb, refTable, f.refFieldOrDefault())))
+                    .from(DSL.table(DSL.name(refDraftDb, refTable))));
 
             each.add(column.isNull().or(inDraft));
             filled.add(column.isNotNull());
